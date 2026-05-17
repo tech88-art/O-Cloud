@@ -210,5 +210,5 @@ git push origin dev
 
 ---
 
-**License**：（待定）
-**Copyright**：（待定）
+**License**:Apache License 2.0 — 见 `LICENSE` 文件
+**Copyright**:2026 ai-edge contributors
