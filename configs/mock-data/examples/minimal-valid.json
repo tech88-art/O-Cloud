@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "name": "minimal-valid",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T00:00:00Z",
+    "description": "Minimal valid sample for schema self-test (T004 happy-path verification).",
+    "scenario": "single-node"
+  },
+  "clusters": [
+    {
+      "id": "c-test-1",
+      "name": "test-cluster",
+      "role": "edge-single",
+      "status": "healthy"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": []
+}
