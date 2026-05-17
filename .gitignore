@@ -1,0 +1,134 @@
+# =========================================
+# OS
+# =========================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# =========================================
+# IDE
+# =========================================
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+
+# =========================================
+# Go
+# =========================================
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+dist/
+vendor/
+coverage.txt
+coverage.html
+*.prof
+*.pprof
+
+# Air (hot reload)
+tmp/
+.air.toml
+
+# =========================================
+# Node / Frontend
+# =========================================
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.next/
+.nuxt/
+.svelte-kit/
+.turbo/
+
+# Vite
+frontend/dist/
+frontend/.vite/
+frontend/stats.html
+
+# Auto-generated from OpenAPI
+frontend/src/services/types.gen.ts
+
+# =========================================
+# Python (if any tooling)
+# =========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================================
+# Kubebuilder / Operator
+# =========================================
+operators/*/bin/
+operators/*/cover.out
+
+# =========================================
+# Build artifacts
+# =========================================
+*.tar.gz
+*.tgz
+*.zip
+build/
+output/
+
+# =========================================
+# Local config / secrets
+# =========================================
+.env
+.env.local
+.env.*.local
+*.local.yaml
+*-local.yaml
+**/config.local.yaml
+**/kubeconfig
+**/kubeconfig.*
+**/.kube/
+
+# =========================================
+# Helm
+# =========================================
+deploy/helm-charts/*/charts/
+deploy/helm-charts/*/Chart.lock
+*.tgz
+
+# =========================================
+# Docker
+# =========================================
+.dockerignore.local
+
+# =========================================
+# Test outputs
+# =========================================
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+tests/e2e/blob-report/
+tests/e2e/playwright/.cache/
+
+# =========================================
+# Misc
+# =========================================
+.cache/
+.tmp/
+*.bak
+*.orig

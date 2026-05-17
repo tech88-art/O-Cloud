@@ -1,0 +1,615 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ocloud-edge.example.com/schemas/mock-data.json",
+  "title": "Mock Data Schema for O-Cloud Edge Platform",
+  "description": "Phase 1 期间所有 Mock 数据集（set-a-small / set-b-multi-site / set-c-stress）必须符合本 schema。CI 强制校验。修改本 schema 走 RFC。",
+  "version": "0.1.0",
+
+  "type": "object",
+  "required": ["meta", "clusters", "nodes", "npus", "slices", "workloads", "pools", "presets"],
+
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["name", "version", "generatedAt"],
+      "properties": {
+        "name": { "type": "string", "description": "数据集名称，如 set-a-small" },
+        "version": { "type": "string" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" },
+        "scenario": {
+          "type": "string",
+          "enum": ["single-node", "small-cluster", "multi-site", "stress"]
+        }
+      }
+    },
+
+    "clusters": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Cluster" },
+      "minItems": 1
+    },
+
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Node" }
+    },
+
+    "npus": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/NPU" }
+    },
+
+    "slices": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Slice" }
+    },
+
+    "workloads": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Workload" }
+    },
+
+    "pools": {
+      "type": "object",
+      "required": ["cluster", "node", "npu", "npuSlice"],
+      "properties": {
+        "cluster": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ClusterPool" }
+        },
+        "node": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/NodePool" }
+        },
+        "npu": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/NPUPool" }
+        },
+        "npuSlice": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/NPUSlicePool" }
+        }
+      }
+    },
+
+    "presets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Preset" }
+    },
+
+    "events": {
+      "type": "array",
+      "description": "可选：模拟实时事件流，供 WebSocket 推送使用",
+      "items": { "$ref": "#/$defs/Event" }
+    }
+  },
+
+  "$defs": {
+    "Cluster": {
+      "type": "object",
+      "required": ["id", "name", "role", "status"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "name": { "type": "string" },
+        "role": {
+          "type": "string",
+          "enum": ["edge-single", "small-cluster", "multi-site-member"]
+        },
+        "location": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "unreachable"]
+        },
+        "kubernetesVersion": { "type": "string", "example": "v1.31.0" },
+        "nodeCount": { "type": "integer", "minimum": 1 },
+        "npuCount": { "type": "integer", "minimum": 0 },
+        "labels": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "Node": {
+      "type": "object",
+      "required": ["name", "clusterId", "status", "cpu", "memory", "arch"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9.-]+$" },
+        "clusterId": { "type": "string" },
+        "role": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["control-plane", "worker", "edge"]
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Ready", "NotReady", "Unknown"]
+        },
+        "cpu": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "memory": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "arch": {
+          "type": "string",
+          "enum": ["amd64"],
+          "description": "本项目仅支持 x86_64 / amd64，不支持 ARM / 鲲鹏"
+        },
+        "kernelVersion": { "type": "string" },
+        "os": { "type": "string" },
+        "kubeletVersion": { "type": "string" },
+        "npuCount": { "type": "integer", "minimum": 0, "maximum": 16 },
+        "numa": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/NumaNode" }
+        },
+        "networkInterfaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/NetworkInterface" }
+        },
+        "storage": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/StorageDevice" }
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+
+    "NumaNode": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 0 },
+        "cpus": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "memory": { "$ref": "#/$defs/Quantity" },
+        "npus": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "该 NUMA 节点上的 NPU 设备 id 列表"
+        }
+      }
+    },
+
+    "NetworkInterface": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "mac": { "type": "string" },
+        "ips": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "speed": { "type": "string", "example": "25Gbps" }
+      }
+    },
+
+    "StorageDevice": {
+      "type": "object",
+      "required": ["device", "size", "type"],
+      "properties": {
+        "device": { "type": "string" },
+        "size": { "$ref": "#/$defs/Quantity" },
+        "type": {
+          "type": "string",
+          "enum": ["ssd", "hdd", "nvme"]
+        }
+      }
+    },
+
+    "NPU": {
+      "type": "object",
+      "required": ["id", "nodeName", "model", "index", "status", "sliceMode"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "nodeName": { "type": "string" },
+        "model": {
+          "type": "string",
+          "enum": ["Ascend910B"],
+          "description": "Phase 1 仅支持 910B"
+        },
+        "index": { "type": "integer", "minimum": 0 },
+        "vramMiB": { "type": "integer", "minimum": 0 },
+        "aiCoreTotal": { "type": "integer", "minimum": 1 },
+        "numaNode": { "type": "integer", "minimum": 0 },
+        "hccsGroup": {
+          "type": "string",
+          "description": "HCCS 拓扑组 id，同组 NPU 间高速互联"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "faulty", "offline"]
+        },
+        "sliceMode": {
+          "type": "string",
+          "enum": ["whole", "fixed-template", "dynamic"]
+        },
+        "usage": { "$ref": "#/$defs/NPUUsage" }
+      }
+    },
+
+    "Slice": {
+      "type": "object",
+      "required": ["id", "parentNPU", "aiCore", "vramMiB", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "parentNPU": { "type": "string" },
+        "template": { "type": "string", "examples": ["vir02", "vir04", "vir08", "vir16"] },
+        "aiCore": { "type": "integer", "minimum": 1 },
+        "vramMiB": { "type": "integer", "minimum": 1 },
+        "status": {
+          "type": "string",
+          "enum": ["available", "allocated", "faulty"]
+        },
+        "allocatedTo": {
+          "type": ["object", "null"],
+          "properties": {
+            "namespace": { "type": "string" },
+            "podName": { "type": "string" },
+            "containerName": { "type": "string" }
+          }
+        },
+        "usage": { "$ref": "#/$defs/NPUUsage" }
+      }
+    },
+
+    "NPUUsage": {
+      "type": "object",
+      "properties": {
+        "aiCoreUtilization": { "type": "number", "minimum": 0, "maximum": 100 },
+        "vramUtilization": { "type": "number", "minimum": 0, "maximum": 100 },
+        "vramUsedMiB": { "type": "integer", "minimum": 0 },
+        "memoryBandwidthUtilization": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "temperature": { "type": ["number", "null"] },
+        "power": { "type": ["number", "null"] }
+      }
+    },
+
+    "Workload": {
+      "type": "object",
+      "required": ["name", "namespace", "type", "kind", "status"],
+      "properties": {
+        "name": { "type": "string" },
+        "namespace": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["inference", "benchmark", "training", "other"]
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["Deployment", "StatefulSet", "Job", "DaemonSet", "InferenceService", "ModelService"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "running", "succeeded", "failed", "unknown"]
+        },
+        "replicas": {
+          "type": "object",
+          "properties": {
+            "desired": { "type": "integer", "minimum": 0 },
+            "ready": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "nodeNames": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "npuUsage": {
+          "type": "object",
+          "properties": {
+            "allocated": { "type": "integer", "minimum": 0 },
+            "slices": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "pods": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Pod" }
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "type": {
+                "type": "string",
+                "enum": ["pd-pair", "sidecar", "init", "peer"]
+              }
+            }
+          }
+        },
+        "spec": {
+          "type": "object",
+          "description": "完整 spec，含 command/args/env，演示用",
+          "additionalProperties": true
+        },
+        "metrics": {
+          "$ref": "#/$defs/WorkloadMetrics"
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "labels": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+
+    "Pod": {
+      "type": "object",
+      "required": ["name", "namespace", "status"],
+      "properties": {
+        "name": { "type": "string" },
+        "namespace": { "type": "string" },
+        "nodeName": { "type": "string" },
+        "status": { "type": "string" },
+        "containers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "image"],
+            "properties": {
+              "name": { "type": "string" },
+              "image": { "type": "string" },
+              "command": { "type": "array", "items": { "type": "string" } },
+              "args": { "type": "array", "items": { "type": "string" } },
+              "resources": {
+                "type": "object",
+                "properties": {
+                  "cpu": { "type": "string" },
+                  "memory": { "type": "string" },
+                  "npuSlices": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "WorkloadMetrics": {
+      "type": "object",
+      "properties": {
+        "throughput": {
+          "type": "object",
+          "properties": {
+            "inputTokensPerSec": { "type": "number" },
+            "outputTokensPerSec": { "type": "number" },
+            "requestsPerSec": { "type": "number" }
+          }
+        },
+        "latency": {
+          "type": "object",
+          "properties": {
+            "ttftMs": { "$ref": "#/$defs/Percentile" },
+            "itlMs": { "$ref": "#/$defs/Percentile" },
+            "e2eMs": { "$ref": "#/$defs/Percentile" }
+          }
+        },
+        "resourceUsage": {
+          "type": "object",
+          "properties": {
+            "cpuUtilization": { "type": "number" },
+            "memoryUtilization": { "type": "number" },
+            "npuUtilization": { "type": "number" },
+            "vramUtilization": { "type": "number" }
+          }
+        }
+      }
+    },
+
+    "Percentile": {
+      "type": "object",
+      "properties": {
+        "p50": { "type": "number" },
+        "p90": { "type": "number" },
+        "p99": { "type": "number" }
+      }
+    },
+
+    "ClusterPool": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "clusters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "clusterId": { "type": "string" },
+              "syncPolicy": { "type": "string", "enum": ["Push", "Pull"] }
+            }
+          }
+        },
+        "status": {
+          "type": "object",
+          "properties": {
+            "healthyClusters": { "type": "array", "items": { "type": "string" } },
+            "unhealthyClusters": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+
+    "NodePool": {
+      "type": "object",
+      "required": ["name", "role"],
+      "properties": {
+        "name": { "type": "string" },
+        "clusterPoolRef": { "type": "string" },
+        "role": { "type": "string", "enum": ["edge", "core"] },
+        "location": { "type": "string" },
+        "selector": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "status": {
+          "type": "object",
+          "properties": {
+            "nodes": { "type": "array", "items": { "type": "string" } },
+            "totalCPU": { "$ref": "#/$defs/Quantity" },
+            "totalMemory": { "$ref": "#/$defs/Quantity" }
+          }
+        }
+      }
+    },
+
+    "NPUPool": {
+      "type": "object",
+      "required": ["name", "npuModel"],
+      "properties": {
+        "name": { "type": "string" },
+        "nodePoolRef": { "type": "string" },
+        "npuModel": { "type": "string", "enum": ["Ascend910B"] },
+        "sliceStrategy": { "type": "string" },
+        "status": {
+          "type": "object",
+          "properties": {
+            "totalNPUs": { "type": "integer" },
+            "healthyNPUs": { "type": "integer" },
+            "allocatedNPUs": { "type": "integer" },
+            "hccsTopology": {
+              "type": ["object", "null"],
+              "properties": {
+                "groups": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "npus": { "type": "array", "items": { "type": "string" } },
+                      "topology": { "type": "string", "enum": ["full-mesh", "ring", "tree"] }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "NPUSlicePool": {
+      "type": "object",
+      "required": ["name", "strategy"],
+      "properties": {
+        "name": { "type": "string" },
+        "npuPoolRef": { "type": "string" },
+        "strategy": { "type": "string", "enum": ["FixedTemplate", "Dynamic"] },
+        "fixedTemplates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "aiCoreCount": { "type": "integer" },
+              "memoryMiB": { "type": "integer" }
+            }
+          }
+        },
+        "dynamicSlicing": {
+          "type": ["object", "null"],
+          "properties": {
+            "minAICore": { "type": "integer" },
+            "maxAICore": { "type": "integer" },
+            "memoryGranularityMiB": { "type": "integer" },
+            "allowAggregation": { "type": "boolean" }
+          }
+        },
+        "status": {
+          "type": "object",
+          "properties": {
+            "totalSlices": { "type": "integer" },
+            "allocatedSlices": { "type": "integer" },
+            "availableSlices": { "type": "integer" }
+          }
+        }
+      }
+    },
+
+    "Preset": {
+      "type": "object",
+      "required": ["id", "name", "kind", "runtime", "requirements"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "name": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "enum": ["inference", "benchmark", "inference-pd"]
+        },
+        "modelSize": { "type": "string" },
+        "runtime": {
+          "type": "string",
+          "enum": ["mindie", "vllm", "triton"]
+        },
+        "requirements": {
+          "type": "object",
+          "properties": {
+            "npuCount": { "type": "integer" },
+            "npuModel": { "type": "string" },
+            "vramMiBPerNPU": { "type": "integer" },
+            "cpu": { "$ref": "#/$defs/Quantity" },
+            "memory": { "$ref": "#/$defs/Quantity" }
+          }
+        },
+        "description": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "manifest": {
+          "type": "string",
+          "description": "Phase 1 可为占位，Phase 5 替换为真实 Helm values / K8s YAML"
+        }
+      }
+    },
+
+    "Event": {
+      "type": "object",
+      "required": ["timestamp", "type", "payload"],
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "topology.update",
+            "workload.created",
+            "workload.deleted",
+            "workload.statusChanged",
+            "slice.allocated",
+            "slice.released",
+            "npu.statusChanged"
+          ]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+
+    "Quantity": {
+      "type": "object",
+      "required": ["raw"],
+      "properties": {
+        "raw": { "type": "string", "examples": ["16Gi", "8", "500Mi", "2Ti"] },
+        "bytes": { "type": ["integer", "null"], "format": "int64" }
+      }
+    }
+  }
+}

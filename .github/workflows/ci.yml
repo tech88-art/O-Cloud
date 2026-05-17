@@ -1,0 +1,239 @@
+# GitHub Actions CI 框架
+#
+# 本文件是 Phase 0 提供的骨架，由 P1-T-007 在 Phase 1 W1 完成填充。
+# Agent 在 P1-T-007 中需要：
+#   1. 完善每个 job 的实际 step
+#   2. 实现 check-allowed-paths job 的脚本（解析 PR description Refs: P1-T-XXX → 对比 diff）
+#   3. 在测试 PR 上验证全部 job 跑通
+#
+# 详细要求见 deploy/CLAUDE.md §3.1
+
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # =========================================
+  # 路径变更检测
+  # =========================================
+  detect-changes:
+    name: Detect changed paths
+    runs-on: ubuntu-22.04
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      operators: ${{ steps.filter.outputs.operators }}
+      configs: ${{ steps.filter.outputs.configs }}
+      deploy: ${{ steps.filter.outputs.deploy }}
+      contract: ${{ steps.filter.outputs.contract }}
+      mockdata: ${{ steps.filter.outputs.mockdata }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            operators:
+              - 'operators/**'
+            configs:
+              - 'configs/**'
+            deploy:
+              - 'deploy/**'
+              - '.github/**'
+              - 'scripts/**'
+              - 'hack/**'
+            contract:
+              - 'docs/api-contract.yaml'
+            mockdata:
+              - 'configs/mock-data/**'
+
+  # =========================================
+  # Allowed Paths 校验（关键）
+  # =========================================
+  check-allowed-paths:
+    name: Check Allowed Paths
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # TODO(P1-T-007): 实现脚本：
+      # 1. 解析 PR description 提取 "Refs: P1-T-XXX"
+      # 2. 读 docs/tasks/P1-T-XXX.md 提取 Allowed Paths
+      # 3. 对比 PR 的 diff 路径
+      # 4. 越界则失败并输出越界文件
+      - name: Placeholder check
+        run: |
+          echo "::warning::check-allowed-paths 待 P1-T-007 实现"
+          # 暂时通过，避免阻塞 Phase 0 评审
+          exit 0
+
+  # =========================================
+  # 契约校验
+  # =========================================
+  validate-contract:
+    name: Validate OpenAPI Contract
+    needs: detect-changes
+    if: needs.detect-changes.outputs.contract == 'true' || needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install swagger-cli
+        run: npm install -g @apidevtools/swagger-cli@4.0.4
+      - name: Validate OpenAPI
+        run: swagger-cli validate docs/api-contract.yaml
+      # TODO(P1-T-007): backend handler 注解 vs 契约对齐校验
+
+  # =========================================
+  # Mock 数据 schema 校验
+  # =========================================
+  validate-mockdata:
+    name: Validate Mock Data Schema
+    needs: detect-changes
+    if: needs.detect-changes.outputs.mockdata == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install ajv
+        run: npm install -g ajv-cli@5.0.0 ajv-formats@3.0.1
+      - name: Validate mock data
+        run: |
+          if compgen -G "configs/mock-data/set-*" > /dev/null; then
+            for f in $(find configs/mock-data/set-* -name "*.json"); do
+              echo "Validating $f"
+              # TODO(P1-T-007): 实际 schema 校验命令
+            done
+          else
+            echo "No mock datasets yet"
+          fi
+
+  # =========================================
+  # Backend
+  # =========================================
+  backend:
+    name: Backend (${{ matrix.task }})
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [lint, test, build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: backend/go.sum
+      # TODO(P1-T-005, P1-T-007): 实际命令
+      - name: Run ${{ matrix.task }}
+        run: |
+          echo "::warning::backend/${{ matrix.task }} 待 P1-T-005 / P1-T-007 实现"
+          # cd backend && make ${{ matrix.task }}
+          exit 0
+
+  # =========================================
+  # Frontend
+  # =========================================
+  frontend:
+    name: Frontend (${{ matrix.task }})
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [lint, test, build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: '9'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      # TODO(P1-T-006, P1-T-007): 实际命令
+      - name: Run ${{ matrix.task }}
+        run: |
+          echo "::warning::frontend/${{ matrix.task }} 待 P1-T-006 / P1-T-007 实现"
+          # cd frontend && pnpm ${{ matrix.task }}
+          exit 0
+
+  # =========================================
+  # Operators
+  # =========================================
+  operators:
+    name: Operators
+    needs: detect-changes
+    if: needs.detect-changes.outputs.operators == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      # TODO(P1-T-003, P1-T-007): 实际命令
+      - name: Generate + Test
+        run: |
+          echo "::warning::operators CI 待 P1-T-003 / P1-T-007 实现"
+          exit 0
+
+  # =========================================
+  # E2E（W2 起启用）
+  # =========================================
+  e2e:
+    name: E2E
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-22.04
+    continue-on-error: true  # 允许失败但开 issue
+    steps:
+      - uses: actions/checkout@v4
+      # TODO(P1-T-110, P1-T-305): 实际命令
+      - name: Run E2E
+        run: |
+          echo "::warning::E2E 待 P1-T-110 / P1-T-305 实现"
+          exit 0
+
+  # =========================================
+  # 最终汇总
+  # =========================================
+  ci-pass:
+    name: CI Pass
+    if: always()
+    needs:
+      - check-allowed-paths
+      - validate-contract
+      - validate-mockdata
+      - backend
+      - frontend
+      - operators
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check status
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "::error::有必须 job 失败"
+            exit 1
+          fi
+          echo "CI Passed"

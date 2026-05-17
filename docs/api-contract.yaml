@@ -1,0 +1,1168 @@
+openapi: 3.0.3
+info:
+  title: O-Cloud Edge Cloud Platform - Demo Backend API
+  description: |
+    演示后端 REST + WebSocket API 契约。
+    
+    **契约状态**：v0.1 (Phase 0 草稿)
+    **冻结日期**：Phase 1 W1 D2
+    **变更流程**：修改必须走 RFC（见 docs/agent-coordination.md §4）
+    
+    所有 endpoint 前缀 `/api/v1`。
+  version: 0.1.0
+  contact:
+    name: O-Cloud Platform Team
+
+servers:
+  - url: http://localhost:8080
+    description: Local dev
+  - url: http://demo-backend.ocloud-system.svc.cluster.local:8080
+    description: In-cluster
+
+tags:
+  - name: cluster
+    description: 集群与拓扑
+  - name: node
+    description: 节点
+  - name: npu
+    description: NPU 与切片
+  - name: pool
+    description: 池化资源
+  - name: workload
+    description: 工作负载
+  - name: deploy
+    description: 应用部署
+  - name: preset
+    description: 预置应用
+  - name: metrics
+    description: 指标
+  - name: logs
+    description: 日志
+  - name: grafana
+    description: Grafana 集成
+  - name: system
+    description: 系统
+
+paths:
+  # ========= 系统 =========
+  /api/v1/healthz:
+    get:
+      tags: [system]
+      summary: 健康检查
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+
+  /api/v1/version:
+    get:
+      tags: [system]
+      summary: 版本信息
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+
+  # ========= 集群 =========
+  /api/v1/clusters:
+    get:
+      tags: [cluster]
+      summary: 集群列表
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cluster'
+
+  /api/v1/clusters/{clusterId}:
+    get:
+      tags: [cluster]
+      summary: 集群详情
+      parameters:
+        - $ref: '#/components/parameters/ClusterIdPath'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cluster'
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/clusters/{clusterId}/topology:
+    get:
+      tags: [cluster]
+      summary: 集群拓扑（节点 + NPU + 切片 + 池）
+      description: |
+        返回完整拓扑图数据。供前端 G6 渲染。
+      parameters:
+        - $ref: '#/components/parameters/ClusterIdPath'
+        - name: depth
+          in: query
+          schema:
+            type: string
+            enum: [node, npu, slice]
+            default: slice
+          description: 拓扑深度。slice = 展开到切片
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topology'
+
+  # ========= 节点 =========
+  /api/v1/nodes:
+    get:
+      tags: [node]
+      summary: 节点列表
+      parameters:
+        - name: clusterId
+          in: query
+          schema: { type: string }
+        - name: poolName
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Node'
+
+  /api/v1/nodes/{nodeName}:
+    get:
+      tags: [node]
+      summary: 节点详情
+      parameters:
+        - $ref: '#/components/parameters/NodeNamePath'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeDetail'
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/nodes/{nodeName}/npus:
+    get:
+      tags: [node, npu]
+      summary: 节点上 NPU 列表（含切片状态）
+      parameters:
+        - $ref: '#/components/parameters/NodeNamePath'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NPU'
+
+  # ========= 池 =========
+  /api/v1/pools/npu-slice:
+    get:
+      tags: [pool]
+      summary: NPU 切片池列表
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NPUSlicePool'
+
+  /api/v1/pools/npu:
+    get:
+      tags: [pool]
+      summary: NPU 池列表
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NPUPool'
+
+  /api/v1/pools/node:
+    get:
+      tags: [pool]
+      summary: 节点池列表
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NodePool'
+
+  /api/v1/pools/cluster:
+    get:
+      tags: [pool]
+      summary: 集群池列表（多站点联邦）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClusterPool'
+
+  # ========= 工作负载 =========
+  /api/v1/workloads:
+    get:
+      tags: [workload]
+      summary: 工作负载列表
+      parameters:
+        - name: namespace
+          in: query
+          schema: { type: string }
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [inference, benchmark, training, other]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, succeeded, failed, unknown]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Workload'
+
+  /api/v1/workloads/{namespace}/{name}:
+    get:
+      tags: [workload]
+      summary: 工作负载详情
+      parameters:
+        - $ref: '#/components/parameters/NamespacePath'
+        - $ref: '#/components/parameters/NamePath'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkloadDetail'
+
+  /api/v1/workloads/{namespace}/{name}/logs:
+    get:
+      tags: [workload, logs]
+      summary: 工作负载日志（流式或分页）
+      parameters:
+        - $ref: '#/components/parameters/NamespacePath'
+        - $ref: '#/components/parameters/NamePath'
+        - name: container
+          in: query
+          schema: { type: string }
+        - name: tail
+          in: query
+          schema:
+            type: integer
+            default: 200
+        - name: since
+          in: query
+          schema:
+            type: string
+            description: ISO 8601 时间戳
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogPage'
+
+  /api/v1/workloads/{namespace}/{name}/metrics:
+    get:
+      tags: [workload, metrics]
+      summary: 工作负载业务指标（TTFT、Throughput 等）
+      parameters:
+        - $ref: '#/components/parameters/NamespacePath'
+        - $ref: '#/components/parameters/NamePath'
+        - name: window
+          in: query
+          schema:
+            type: string
+            enum: [5m, 15m, 1h, 6h, 24h]
+            default: 15m
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkloadMetrics'
+
+  # ========= 部署 =========
+  /api/v1/presets:
+    get:
+      tags: [preset]
+      summary: 预置应用列表（来自 ConfigMap）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Preset'
+
+  /api/v1/presets/{presetId}:
+    get:
+      tags: [preset]
+      summary: 预置应用详情（含完整 manifest）
+      parameters:
+        - name: presetId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresetDetail'
+
+  /api/v1/deploy:
+    post:
+      tags: [deploy]
+      summary: 部署一个应用
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeployRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeployResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409':
+          description: 资源冲突（手动指定的资源被占用）
+
+  /api/v1/deploy/{deployId}:
+    delete:
+      tags: [deploy]
+      summary: 删除一个已部署的应用
+      parameters:
+        - name: deployId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Deleted
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ========= 指标 =========
+  /api/v1/metrics/query:
+    post:
+      tags: [metrics]
+      summary: 透传 PromQL 查询（白名单）
+      description: |
+        仅允许白名单内的 PromQL 模板（不允许任意查询，安全考虑）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricQueryRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricQueryResponse'
+
+  /api/v1/metrics/templates:
+    get:
+      tags: [metrics]
+      summary: 已注册的查询模板列表
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MetricTemplate'
+
+  # ========= Grafana =========
+  /api/v1/grafana/url:
+    get:
+      tags: [grafana]
+      summary: 签发带 token 的 Grafana 嵌入 URL
+      parameters:
+        - name: dashboard
+          in: query
+          required: true
+          schema:
+            type: string
+            description: 已注册的 dashboard key（如 cluster_overview）
+        - name: variables
+          in: query
+          schema:
+            type: string
+            description: URL-encoded JSON of dashboard variables
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrafanaURL'
+
+# =========================================
+# WebSocket 通道（仅文档，OpenAPI 不直接支持 WS）
+# 
+# /ws/topology         拓扑变化推送
+# /ws/workloads        工作负载状态变化
+# /ws/logs/{ns}/{name} 日志流
+# /ws/metrics          关键指标定时推送
+#
+# 消息格式见 components/schemas/WSMessage
+# =========================================
+
+components:
+  parameters:
+    ClusterIdPath:
+      name: clusterId
+      in: path
+      required: true
+      schema: { type: string }
+    NodeNamePath:
+      name: nodeName
+      in: path
+      required: true
+      schema: { type: string }
+    NamespacePath:
+      name: namespace
+      in: path
+      required: true
+      schema: { type: string }
+    NamePath:
+      name: name
+      in: path
+      required: true
+      schema: { type: string }
+
+  responses:
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadRequest:
+      description: 参数错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+
+    # ========= 通用 =========
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        datasources:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [ok, error, disabled]
+
+    Version:
+      type: object
+      properties:
+        version: { type: string, example: "0.1.0" }
+        commit: { type: string }
+        buildTime: { type: string, format: date-time }
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: "NotFound" }
+        message: { type: string }
+        details:
+          type: object
+          additionalProperties: true
+
+    # ========= 资源标识 =========
+    ResourceRef:
+      type: object
+      required: [kind, name]
+      properties:
+        kind: { type: string, example: "NPUSlicePool" }
+        name: { type: string }
+        namespace: { type: string }
+
+    # ========= 集群 =========
+    Cluster:
+      type: object
+      required: [id, name, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role:
+          type: string
+          enum: [edge-single, small-cluster, multi-site-member]
+        location: { type: string, example: "Site-A" }
+        status:
+          type: string
+          enum: [healthy, degraded, unreachable]
+        kubernetesVersion: { type: string }
+        nodeCount: { type: integer }
+        npuCount: { type: integer }
+        labels:
+          type: object
+          additionalProperties: { type: string }
+        annotations:
+          type: object
+          additionalProperties: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    # ========= 拓扑 =========
+    Topology:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          items: { $ref: '#/components/schemas/TopologyNode' }
+        edges:
+          type: array
+          items: { $ref: '#/components/schemas/TopologyEdge' }
+        meta:
+          type: object
+          properties:
+            clusterId: { type: string }
+            generatedAt: { type: string, format: date-time }
+
+    TopologyNode:
+      type: object
+      required: [id, type, label]
+      properties:
+        id: { type: string }
+        type:
+          type: string
+          enum: [cluster, nodepool, node, npu, slice, network]
+        label: { type: string }
+        status:
+          type: string
+          enum: [healthy, busy, idle, degraded, failed, unknown]
+        attributes:
+          type: object
+          description: |
+            type 相关的字段：
+            - node: cpu, memory, arch, os, numaCount
+            - npu: model, vram, aiCoreTotal, hccsGroup
+            - slice: parentNPU, aiCore, vramMB, allocatedTo
+          additionalProperties: true
+
+    TopologyEdge:
+      type: object
+      required: [source, target, type]
+      properties:
+        source: { type: string }
+        target: { type: string }
+        type:
+          type: string
+          enum: [contains, hccs, network, allocated]
+        attributes:
+          type: object
+          additionalProperties: true
+
+    # ========= 节点 =========
+    Node:
+      type: object
+      required: [name, status]
+      properties:
+        name: { type: string }
+        clusterId: { type: string }
+        role:
+          type: array
+          items:
+            type: string
+            enum: [control-plane, worker, edge]
+        status:
+          type: string
+          enum: [Ready, NotReady, Unknown]
+        cpu:
+          $ref: '#/components/schemas/Quantity'
+        memory:
+          $ref: '#/components/schemas/Quantity'
+        arch: { type: string, example: "amd64" }
+        kernelVersion: { type: string }
+        os: { type: string }
+        kubeletVersion: { type: string }
+        npuCount: { type: integer }
+        labels:
+          type: object
+          additionalProperties: { type: string }
+
+    NodeDetail:
+      allOf:
+        - $ref: '#/components/schemas/Node'
+        - type: object
+          properties:
+            numa:
+              type: array
+              items: { $ref: '#/components/schemas/NumaNode' }
+            networkInterfaces:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  mac: { type: string }
+                  ips:
+                    type: array
+                    items: { type: string }
+                  speed: { type: string }
+            storage:
+              type: array
+              items:
+                type: object
+                properties:
+                  device: { type: string }
+                  size: { $ref: '#/components/schemas/Quantity' }
+                  type: { type: string, enum: [ssd, hdd, nvme] }
+            taints:
+              type: array
+              items:
+                type: object
+
+    NumaNode:
+      type: object
+      properties:
+        id: { type: integer }
+        cpus:
+          type: array
+          items: { type: integer }
+        memory: { $ref: '#/components/schemas/Quantity' }
+        npus:
+          type: array
+          items: { type: string }
+          description: 该 NUMA 节点上的 NPU 设备 ID 列表
+
+    Quantity:
+      type: object
+      required: [raw]
+      properties:
+        raw: { type: string, example: "16Gi" }
+        bytes: { type: integer, format: int64, nullable: true }
+
+    # ========= NPU =========
+    NPU:
+      type: object
+      required: [id, model, status]
+      properties:
+        id: { type: string, example: "npu-0" }
+        nodeName: { type: string }
+        model: { type: string, example: "Ascend910B" }
+        index: { type: integer }
+        vramMiB: { type: integer }
+        aiCoreTotal: { type: integer }
+        numaNode: { type: integer }
+        hccsGroup: { type: string, example: "hccs-0" }
+        status:
+          type: string
+          enum: [healthy, degraded, faulty, offline]
+        sliceMode:
+          type: string
+          enum: [whole, fixed-template, dynamic]
+        slices:
+          type: array
+          items: { $ref: '#/components/schemas/NPUSlice' }
+        usage:
+          $ref: '#/components/schemas/NPUUsage'
+
+    NPUSlice:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string }
+        parentNPU: { type: string }
+        template: { type: string, example: "vir04" }
+        aiCore: { type: integer }
+        vramMiB: { type: integer }
+        status:
+          type: string
+          enum: [available, allocated, faulty]
+        allocatedTo:
+          type: object
+          nullable: true
+          properties:
+            namespace: { type: string }
+            podName: { type: string }
+            containerName: { type: string }
+        usage:
+          $ref: '#/components/schemas/NPUUsage'
+
+    NPUUsage:
+      type: object
+      properties:
+        aiCoreUtilization: { type: number, format: float, description: "0-100" }
+        vramUtilization: { type: number, format: float, description: "0-100" }
+        vramUsedMiB: { type: integer }
+        memoryBandwidthUtilization: { type: number, format: float, nullable: true }
+        temperature: { type: number, format: float, nullable: true }
+        power: { type: number, format: float, nullable: true }
+
+    # ========= 池 =========
+    NPUSlicePool:
+      type: object
+      required: [name, strategy]
+      properties:
+        name: { type: string }
+        namespace: { type: string }
+        npuPoolRef: { type: string }
+        strategy:
+          type: string
+          enum: [FixedTemplate, Dynamic]
+        fixedTemplates:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              aiCoreCount: { type: integer }
+              memoryMiB: { type: integer }
+        dynamicSlicing:
+          type: object
+          nullable: true
+          properties:
+            minAICore: { type: integer }
+            maxAICore: { type: integer }
+            memoryGranularityMiB: { type: integer }
+            allowAggregation: { type: boolean }
+        status:
+          type: object
+          properties:
+            totalSlices: { type: integer }
+            allocatedSlices: { type: integer }
+            availableSlices: { type: integer }
+
+    NPUPool:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        nodePoolRef: { type: string }
+        npuModel: { type: string }
+        sliceStrategy: { type: string }
+        status:
+          type: object
+          properties:
+            totalNPUs: { type: integer }
+            healthyNPUs: { type: integer }
+            allocatedNPUs: { type: integer }
+            hccsTopology:
+              type: object
+              nullable: true
+
+    NodePool:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        clusterPoolRef: { type: string }
+        role:
+          type: string
+          enum: [edge, core]
+        location: { type: string }
+        selector:
+          type: object
+          additionalProperties: true
+        status:
+          type: object
+          properties:
+            nodes:
+              type: array
+              items: { type: string }
+            totalCPU: { $ref: '#/components/schemas/Quantity' }
+            totalMemory: { $ref: '#/components/schemas/Quantity' }
+
+    ClusterPool:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        clusters:
+          type: array
+          items:
+            type: object
+            properties:
+              clusterId: { type: string }
+              syncPolicy:
+                type: string
+                enum: [Push, Pull]
+        status:
+          type: object
+          properties:
+            healthyClusters:
+              type: array
+              items: { type: string }
+            unhealthyClusters:
+              type: array
+              items: { type: string }
+
+    # ========= 工作负载 =========
+    Workload:
+      type: object
+      required: [name, namespace, type, status]
+      properties:
+        name: { type: string }
+        namespace: { type: string }
+        type:
+          type: string
+          enum: [inference, benchmark, training, other]
+        kind:
+          type: string
+          example: "Deployment"
+        status:
+          type: string
+          enum: [pending, running, succeeded, failed, unknown]
+        replicas:
+          type: object
+          properties:
+            desired: { type: integer }
+            ready: { type: integer }
+        nodeNames:
+          type: array
+          items: { type: string }
+        npuUsage:
+          type: object
+          properties:
+            allocated: { type: integer }
+            slices:
+              type: array
+              items: { type: string }
+        createdAt: { type: string, format: date-time }
+        labels:
+          type: object
+          additionalProperties: { type: string }
+
+    WorkloadDetail:
+      allOf:
+        - $ref: '#/components/schemas/Workload'
+        - type: object
+          properties:
+            pods:
+              type: array
+              items: { $ref: '#/components/schemas/Pod' }
+            relations:
+              type: array
+              description: Pod 之间的关系（PD 分离: prefill→decode）
+              items:
+                type: object
+                properties:
+                  from: { type: string }
+                  to: { type: string }
+                  type:
+                    type: string
+                    enum: [pd-pair, sidecar, init, peer]
+            spec:
+              type: object
+              description: 完整 spec（command, args, env 等）
+              additionalProperties: true
+
+    Pod:
+      type: object
+      properties:
+        name: { type: string }
+        namespace: { type: string }
+        nodeName: { type: string }
+        status: { type: string }
+        containers:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              image: { type: string }
+              command:
+                type: array
+                items: { type: string }
+              args:
+                type: array
+                items: { type: string }
+              resources:
+                type: object
+                properties:
+                  cpu: { type: string }
+                  memory: { type: string }
+                  npuSlices:
+                    type: array
+                    items: { type: string }
+
+    WorkloadMetrics:
+      type: object
+      properties:
+        throughput:
+          type: object
+          properties:
+            inputTokensPerSec: { type: number }
+            outputTokensPerSec: { type: number }
+            requestsPerSec: { type: number }
+        latency:
+          type: object
+          properties:
+            ttftMs:
+              $ref: '#/components/schemas/Percentile'
+            itlMs:
+              $ref: '#/components/schemas/Percentile'
+            e2eMs:
+              $ref: '#/components/schemas/Percentile'
+        resourceUsage:
+          type: object
+          properties:
+            cpuUtilization: { type: number }
+            memoryUtilization: { type: number }
+            npuUtilization: { type: number }
+            vramUtilization: { type: number }
+        sampleAt: { type: string, format: date-time }
+
+    Percentile:
+      type: object
+      properties:
+        p50: { type: number }
+        p90: { type: number }
+        p99: { type: number }
+
+    # ========= 部署 =========
+    Preset:
+      type: object
+      required: [id, name, kind]
+      properties:
+        id: { type: string, example: "qwen-8b-pd" }
+        name: { type: string, example: "Qwen 8B PD Disaggregated" }
+        kind:
+          type: string
+          enum: [inference, benchmark, inference-pd]
+        modelSize: { type: string, example: "8B" }
+        runtime:
+          type: string
+          enum: [mindie, vllm, triton]
+        requirements:
+          type: object
+          properties:
+            npuCount: { type: integer }
+            npuModel: { type: string }
+            vramMiBPerNPU: { type: integer }
+            cpu: { $ref: '#/components/schemas/Quantity' }
+            memory: { $ref: '#/components/schemas/Quantity' }
+        description: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+
+    PresetDetail:
+      allOf:
+        - $ref: '#/components/schemas/Preset'
+        - type: object
+          properties:
+            manifest:
+              type: string
+              description: 完整的 Helm values 或 K8s YAML（base64 或 inline）
+            parameters:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  type: { type: string }
+                  default: {}
+                  description: { type: string }
+
+    DeployRequest:
+      type: object
+      required: [presetId, namespace]
+      properties:
+        presetId: { type: string }
+        namespace: { type: string }
+        name: { type: string, description: "可选，缺省按 preset 生成" }
+        replicas: { type: integer, default: 1 }
+        scheduling:
+          type: object
+          properties:
+            mode:
+              type: string
+              enum: [auto, manual]
+              default: auto
+            manualPlacement:
+              type: array
+              description: "manual 模式下，指定每个副本的目标资源"
+              items:
+                type: object
+                properties:
+                  nodeName: { type: string }
+                  npuSliceIds:
+                    type: array
+                    items: { type: string }
+            affinity:
+              type: object
+              properties:
+                numa: { type: boolean, default: true }
+                hccs: { type: boolean, default: true }
+        parameters:
+          type: object
+          additionalProperties: true
+
+    DeployResponse:
+      type: object
+      required: [deployId, status]
+      properties:
+        deployId: { type: string }
+        workloadName: { type: string }
+        namespace: { type: string }
+        status:
+          type: string
+          enum: [accepted, scheduling, running, failed]
+        scheduledNodes:
+          type: array
+          items: { type: string }
+        message: { type: string }
+
+    # ========= 日志 =========
+    LogPage:
+      type: object
+      properties:
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp: { type: string, format: date-time }
+              level: { type: string }
+              container: { type: string }
+              message: { type: string }
+        hasMore: { type: boolean }
+        nextCursor: { type: string, nullable: true }
+
+    # ========= 指标 =========
+    MetricQueryRequest:
+      type: object
+      required: [templateId]
+      properties:
+        templateId: { type: string, description: "白名单模板 id" }
+        variables:
+          type: object
+          additionalProperties: { type: string }
+        range:
+          type: object
+          properties:
+            start: { type: string, format: date-time }
+            end: { type: string, format: date-time }
+            step: { type: string, example: "30s" }
+
+    MetricTemplate:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        promQL: { type: string }
+        variables:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              required: { type: boolean }
+              description: { type: string }
+
+    MetricQueryResponse:
+      type: object
+      properties:
+        result:
+          type: array
+          items:
+            type: object
+            properties:
+              metric:
+                type: object
+                additionalProperties: { type: string }
+              values:
+                type: array
+                items:
+                  type: array
+                  items: {}
+                  description: "[timestamp, value]"
+
+    # ========= Grafana =========
+    GrafanaURL:
+      type: object
+      properties:
+        url: { type: string, format: uri }
+        expiresAt: { type: string, format: date-time }
+        embedToken: { type: string, nullable: true }
+
+    # ========= WebSocket =========
+    WSMessage:
+      type: object
+      required: [type, payload]
+      properties:
+        type:
+          type: string
+          enum:
+            - topology.update
+            - topology.delta
+            - workload.statusChanged
+            - workload.created
+            - workload.deleted
+            - log.line
+            - metric.sample
+            - error
+        timestamp: { type: string, format: date-time }
+        payload:
+          oneOf:
+            - $ref: '#/components/schemas/Topology'
+            - $ref: '#/components/schemas/Workload'
+            - type: object
+              additionalProperties: true
