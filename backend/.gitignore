@@ -1,0 +1,17 @@
+# Build artifacts
+bin/
+coverage.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Local config overrides
+configs/config.local.yaml

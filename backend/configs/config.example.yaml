@@ -1,0 +1,52 @@
+# O-Cloud Edge Cloud demo-backend — full config example.
+#
+# Loaded via Viper. Env-var overrides use prefix OCEDGE_, e.g.
+#   OCEDGE_SERVER_PORT=9000 ./demo-backend
+#
+# Field semantics:
+#   server.port        : HTTP listen port. Default 8080.
+#   server.enableCORS  : Toggle permissive CORS middleware (dev convenience).
+#                        For production deployments narrow this.
+#   datasources.<name> : Per-source config block. Each implementation reads
+#                        its own subset of fields (enabled / path / kubeconfig
+#                        / url …).
+#   mapping.<resource> : Which source serves a given logical resource (used by
+#                        pkg/datasource/factory.go to wire handlers).
+#
+# Phase-1 (P1-T-005) reads these fields but only mounts /healthz + /version
+# until T101+ wires concrete handlers.
+
+server:
+  port: 8080
+  enableCORS: true
+
+logging:
+  level: info  # debug | info | warn | error
+
+datasources:
+  mock:
+    enabled: true
+    path: "./configs/mock-data/set-a-small"
+  k8s:
+    enabled: false
+    kubeconfig: ""        # empty → in-cluster ServiceAccount
+  prometheus:
+    enabled: false
+    url: ""
+  crd:
+    enabled: false
+  configmap:
+    enabled: false
+
+# resource → source-name. factory.SourceFor("clusters") consults this map.
+mapping:
+  clusters: mock
+  topology: mock
+  nodes: mock
+  npus: mock
+  pools: mock
+  workloads: mock
+  metrics: mock
+  presets: mock
+  deploy: mock
+  logs: mock

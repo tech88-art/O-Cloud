@@ -1,0 +1,134 @@
+// Command demo-backend serves the O-Cloud edge cloud platform demo backend.
+//
+// Phase 1 scaffold (P1-T-005) wires Cobra+Viper config, zap logging, Gin
+// engine and mounts /healthz + /version. Resource endpoints come in T101+.
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+
+	"github.com/example/ocloud-edge/backend/pkg/api"
+	"github.com/example/ocloud-edge/backend/pkg/config"
+	"github.com/example/ocloud-edge/backend/pkg/datasource"
+)
+
+const (
+	shutdownGrace    = 10 * time.Second
+	readHeaderTimout = 10 * time.Second
+)
+
+func main() {
+	if err := newRootCmd().Execute(); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func newRootCmd() *cobra.Command {
+	var configFile string
+
+	cmd := &cobra.Command{
+		Use:           "demo-backend",
+		Short:         "O-Cloud edge cloud platform demo backend",
+		Long:          "Serves the REST+WebSocket API behind the demo frontend. See backend/CLAUDE.md.",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runServer(cmd.Context(), configFile)
+		},
+	}
+	cmd.Flags().StringVarP(&configFile, "config", "c", "", "path to config file (default: ./configs/config.yaml)")
+	cmd.AddCommand(newVersionCmd())
+	return cmd
+}
+
+func newVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Print version and exit",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Printf("demo-backend %s (commit=%s, built=%s)\n", api.CurrentVersion, api.BuildCommit, api.BuildTimestamp)
+			return nil
+		},
+	}
+}
+
+func runServer(ctx context.Context, configFile string) error {
+	cfg, err := config.Load(configFile)
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+
+	logger, err := buildLogger(cfg.Logging.Level)
+	if err != nil {
+		return fmt.Errorf("build logger: %w", err)
+	}
+	defer func() {
+		// Sync may return EINVAL when stdout is a terminal — ignore that.
+		_ = logger.Sync()
+	}()
+
+	reg, err := datasource.Build(cfg)
+	if err != nil {
+		return fmt.Errorf("build datasource registry: %w", err)
+	}
+
+	handler := api.NewHandler(reg, logger)
+	router := api.NewRouter(handler, api.RouterOptions{EnableCORS: cfg.Server.EnableCORS})
+
+	addr := fmt.Sprintf(":%d", cfg.Server.Port)
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           router,
+		ReadHeaderTimeout: readHeaderTimout,
+	}
+
+	rootCtx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		logger.Info("listening",
+			zap.String("addr", addr),
+			zap.String("version", api.CurrentVersion))
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+			return
+		}
+		errCh <- nil
+	}()
+
+	select {
+	case <-rootCtx.Done():
+		logger.Info("shutdown signal received")
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownGrace)
+		defer shutdownCancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			return fmt.Errorf("shutdown: %w", err)
+		}
+		return nil
+	case err := <-errCh:
+		return err
+	}
+}
+
+func buildLogger(level string) (*zap.Logger, error) {
+	zapCfg := zap.NewProductionConfig()
+	if level == "" {
+		level = config.DefaultLogLevel
+	}
+	if err := zapCfg.Level.UnmarshalText([]byte(level)); err != nil {
+		return nil, fmt.Errorf("parse log level %q: %w", level, err)
+	}
+	return zapCfg.Build()
+}

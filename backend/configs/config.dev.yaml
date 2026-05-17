@@ -1,0 +1,26 @@
+# Local development config — every resource served from the mock source.
+# Used by `make run` and by docker-compose dev stack.
+
+server:
+  port: 8080
+  enableCORS: true
+
+logging:
+  level: debug
+
+datasources:
+  mock:
+    enabled: true
+    path: "../configs/mock-data/set-a-small"
+
+mapping:
+  clusters: mock
+  topology: mock
+  nodes: mock
+  npus: mock
+  pools: mock
+  workloads: mock
+  metrics: mock
+  presets: mock
+  deploy: mock
+  logs: mock
