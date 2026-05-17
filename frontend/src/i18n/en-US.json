@@ -1,0 +1,42 @@
+{
+  "app": {
+    "title": "O-Cloud Edge Cloud Platform",
+    "subtitle": "Demo Frontend"
+  },
+  "menu": {
+    "overview": "Overview",
+    "workloads": "Workloads",
+    "deploy": "Deploy",
+    "metrics": "Metrics",
+    "logs": "Logs"
+  },
+  "page": {
+    "overview": {
+      "title": "Overview",
+      "placeholder": "Overview page — coming W2"
+    },
+    "workloads": {
+      "title": "Workloads",
+      "placeholder": "Workloads page — coming W2"
+    },
+    "deploy": {
+      "title": "Deploy",
+      "placeholder": "Deploy page — coming W2"
+    },
+    "metrics": {
+      "title": "Metrics",
+      "placeholder": "Metrics page — coming W2"
+    },
+    "logs": {
+      "title": "Logs",
+      "placeholder": "Logs page — coming W2"
+    }
+  },
+  "common": {
+    "loading": "Loading",
+    "error": "Error",
+    "empty": "No data",
+    "retry": "Retry",
+    "language": "Language"
+  }
+}

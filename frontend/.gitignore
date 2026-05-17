@@ -1,0 +1,36 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Build output
+dist
+dist-ssr
+build
+
+# Deps
+node_modules
+
+# Vite
+*.local
+
+# Test
+coverage
+.nyc_output
+
+# TS incremental build artifacts
+*.tsbuildinfo

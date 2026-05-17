@@ -1,0 +1,42 @@
+{
+  "app": {
+    "title": "O-Cloud 边缘云平台",
+    "subtitle": "演示前端"
+  },
+  "menu": {
+    "overview": "概览",
+    "workloads": "工作负载",
+    "deploy": "应用部署",
+    "metrics": "性能指标",
+    "logs": "日志"
+  },
+  "page": {
+    "overview": {
+      "title": "概览",
+      "placeholder": "概览页面 — W2 即将上线"
+    },
+    "workloads": {
+      "title": "工作负载",
+      "placeholder": "工作负载页面 — W2 即将上线"
+    },
+    "deploy": {
+      "title": "应用部署",
+      "placeholder": "应用部署页面 — W2 即将上线"
+    },
+    "metrics": {
+      "title": "性能指标",
+      "placeholder": "性能指标页面 — W2 即将上线"
+    },
+    "logs": {
+      "title": "日志",
+      "placeholder": "日志页面 — W2 即将上线"
+    }
+  },
+  "common": {
+    "loading": "加载中",
+    "error": "出错了",
+    "empty": "暂无数据",
+    "retry": "重试",
+    "language": "语言"
+  }
+}
