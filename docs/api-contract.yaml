@@ -493,12 +493,65 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            code: NotFound
+            message: 资源不存在
+            details: { resource: cluster, id: c-xxx }
     BadRequest:
       description: 参数错误
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            code: BadRequest
+            message: 参数缺失或格式错误
+            details: { field: clusterId }
+    Conflict:
+      description: 资源冲突(已存在 / 状态冲突)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: Conflict
+            message: 部署目标 NPU 已被其他工作负载占用
+            details: { conflictingDeployId: d-yyy }
+    Unauthorized:
+      description: 未认证
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: Unauthorized
+            message: 缺少有效凭证
+    Forbidden:
+      description: 已认证但无权限
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: Forbidden
+            message: 当前用户无 deploy 权限
+    ServerError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: InternalError
+            message: 后端聚合上游失败
+            details: { upstream: prometheus, reason: timeout }
+
+    # =========================================
+    # Phase 1 错误响应约定:
+    #   - 每个 handler 在实现时统一包装错误,由 middleware 映射到上述 components/responses
+    #   - per-endpoint 不显式列出 '400'/'500',避免契约冗余;实际错误码通过 Error.code 区分
+    #   - 当 endpoint 有特定语义错误(如 deploy 冲突 409),才在该 endpoint 显式列出
+    # =========================================
 
   schemas:
 
@@ -899,7 +952,7 @@ components:
               items: { $ref: '#/components/schemas/Pod' }
             relations:
               type: array
-              description: Pod 之间的关系（PD 分离: prefill→decode）
+              description: 'Pod 之间的关系（PD 分离: prefill→decode）'
               items:
                 type: object
                 properties:
