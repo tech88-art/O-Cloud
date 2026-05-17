@@ -1,0 +1,2 @@
+# P1-T-209 fills this directory with dashboard JSON files.
+# Grafana provisioning watches it (see ../provisioning/dashboards/default.yaml).

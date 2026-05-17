@@ -1,0 +1,20 @@
+# Grafana dashboard provider config.
+#
+# Tells Grafana to load every JSON file under /var/lib/grafana/dashboards
+# as a dashboard. P1-T-209 will populate that folder with the cluster /
+# node / npu / workload dashboards.
+
+apiVersion: 1
+
+providers:
+  - name: ocloud-edge
+    orgId: 1
+    folder: O-Cloud Edge
+    folderUid: ocloud-edge
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

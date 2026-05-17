@@ -1,0 +1,27 @@
+# Grafana datasource provisioning for the local dev stack.
+#
+# Mirrors the spec in configs/CLAUDE.md §6. Loki is enabled so dashboards
+# can reference it even when the `logs` profile is down — Grafana will just
+# show "datasource unreachable" until `--profile logs up` is run.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 15s
+      httpMethod: POST
+    version: 1
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: false
+    version: 1

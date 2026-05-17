@@ -1,0 +1,198 @@
+# O-Cloud Edge — local development stack
+#
+# One command launches: backend + frontend + prometheus + grafana.
+# Optional logs stack (loki + promtail) lives behind `--profile logs`.
+#
+# Quickstart:
+#   make dev-up                              # default services
+#   docker compose -f deploy/dev/docker-compose.yaml --profile logs up -d   # incl. logs
+#
+# All services share a single bridge network `ocloud-dev` so they can
+# refer to each other by service name (e.g. `prometheus:9090`).
+
+name: ocloud-dev
+
+services:
+  # ------------------------------------------------------------------ backend
+  # Built from backend/Dockerfile (multi-stage, distroless final).
+  # Note: the production image is distroless and has no shell or `air`;
+  # hot reload is NOT supported by this service. For backend hot reload
+  # use `make backend/run` outside compose (see README §Hot reload).
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+      args:
+        VERSION: dev
+    image: ocloud-dev/backend:latest
+    container_name: ocloud-dev-backend
+    command:
+      - --config
+      - /app/configs/config.yaml
+    # Mount the dev config so the mock datasource is wired up.
+    # Mock data path inside container is relative to /app/configs.
+    volumes:
+      - ../../backend/configs/config.dev.yaml:/app/configs/config.yaml:ro
+      - ../../configs/mock-data:/app/configs/mock-data:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - ocloud-dev
+    healthcheck:
+      # distroless has no curl/wget; rely on built-in /healthz once T201
+      # adds it. For now use the binary's own --version exit (cheap).
+      test: ["CMD", "/app/demo-backend", "--version"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ frontend
+  # Inline node:24-alpine image (no Dockerfile.dev needed — that would
+  # belong to the frontend module which is outside this task's Allowed Paths).
+  # Vite serves on 3000, exposed as-is to the host.
+  frontend:
+    image: node:24-alpine
+    container_name: ocloud-dev-frontend
+    working_dir: /app
+    # corepack ships with node 24; activate pnpm and run dev server.
+    # `--host 0.0.0.0` so Vite is reachable from outside the container.
+    command:
+      - sh
+      - -c
+      - |
+        corepack enable && \
+        pnpm install --frozen-lockfile=false && \
+        pnpm dev --host 0.0.0.0 --port 3000
+    volumes:
+      - ../../frontend:/app
+      # Anonymous volume protects host node_modules from being clobbered
+      # (Linux node_modules vs. Windows host can differ in binary deps).
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      # Vite picks these up to find the backend during dev proxying.
+      VITE_API_BASE_URL: http://localhost:8080
+      VITE_WS_BASE_URL: ws://localhost:8080
+    networks:
+      - ocloud-dev
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ prometheus
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: ocloud-dev-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - ocloud-dev
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/ready"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ grafana
+  grafana:
+    image: grafana/grafana-oss:11.5.0
+    container_name: ocloud-dev-grafana
+    environment:
+      # Dev defaults — clearly marked. Change for any non-local use.
+      GF_SECURITY_ADMIN_USER: ${GF_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_ADMIN_PASSWORD:-admin}
+      # Anonymous read-only access so the T010 iframe POC needs no login.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      # Required for the frontend iframe embed.
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      # Sub-path / CORS friendliness for local dev.
+      GF_SERVER_ROOT_URL: http://localhost:3001/
+      GF_INSTALL_PLUGINS: ""
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - ocloud-dev
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ loki (opt-in)
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: ocloud-dev-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki/local-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - ocloud-dev
+    profiles:
+      - logs
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ promtail (opt-in)
+  promtail:
+    image: grafana/promtail:3.3.2
+    container_name: ocloud-dev-promtail
+    command: -config.file=/etc/promtail/config.yaml
+    volumes:
+      - ./promtail/config.yaml:/etc/promtail/config.yaml:ro
+      # Scrape host Docker container logs.
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - ocloud-dev
+    profiles:
+      - logs
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+networks:
+  ocloud-dev:
+    name: ocloud-dev
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:
