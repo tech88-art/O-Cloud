@@ -1,0 +1,44 @@
+# NOTE: Per docs/architecture.md §6.7 (and the godoc on NPUSlicePool), Phase
+# 1-2 isolation is by convention only — all NPUSlicePool objects MUST land in
+# the `ocloud-system` namespace. The Phase 3 ValidatingAdmissionPolicy will
+# reject cross-namespace placements.
+apiVersion: ims.ocloud.edge.example.com/v1alpha1
+kind: NPUSlicePool
+metadata:
+  name: npuslicepool-vir04-sample
+  namespace: ocloud-system
+  labels:
+    app.kubernetes.io/name: pool-operator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  npuPoolRef:
+    name: npupool-910b-edge-sample
+  strategy: FixedTemplate
+  fixedTemplates:
+    - name: vir04
+      aiCoreCount: 4
+      memoryMiB: 8192
+    - name: vir08
+      aiCoreCount: 8
+      memoryMiB: 16384
+---
+# Sibling sample illustrating the Dynamic strategy. Same parent NPUPool;
+# would coexist with the FixedTemplate pool above in practice only via a
+# Phase-3 admission policy that prevents overlap.
+apiVersion: ims.ocloud.edge.example.com/v1alpha1
+kind: NPUSlicePool
+metadata:
+  name: npuslicepool-dynamic-sample
+  namespace: ocloud-system
+  labels:
+    app.kubernetes.io/name: pool-operator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  npuPoolRef:
+    name: npupool-910b-edge-sample
+  strategy: Dynamic
+  dynamicSlicing:
+    minAICore: 1
+    maxAICore: 16
+    memoryGranularityMiB: 1024
+    allowAggregation: false

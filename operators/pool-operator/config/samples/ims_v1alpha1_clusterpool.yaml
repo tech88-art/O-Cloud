@@ -1,0 +1,13 @@
+apiVersion: ims.ocloud.edge.example.com/v1alpha1
+kind: ClusterPool
+metadata:
+  name: clusterpool-sample
+  labels:
+    app.kubernetes.io/name: pool-operator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  clusters:
+    - clusterId: shanghai-edge-1
+      syncPolicy: Push
+    - clusterId: shanghai-edge-2
+      syncPolicy: Pull

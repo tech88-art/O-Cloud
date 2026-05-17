@@ -1,0 +1,7 @@
+## Append samples of your project ##
+resources:
+- ims_v1alpha1_clusterpool.yaml
+- ims_v1alpha1_nodepool.yaml
+- ims_v1alpha1_npupool.yaml
+- ims_v1alpha1_npuslicepool.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

@@ -1,0 +1,15 @@
+apiVersion: ims.ocloud.edge.example.com/v1alpha1
+kind: NPUPool
+metadata:
+  name: npupool-910b-edge-sample
+  labels:
+    app.kubernetes.io/name: pool-operator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  nodePoolRef:
+    name: nodepool-edge-sample
+  npuModel: Ascend910B
+  selector:
+    matchLabels:
+      hardware.ocloud.edge/npu-firmware-major: "23"
+  sliceStrategy: npuslicepool-vir04-sample

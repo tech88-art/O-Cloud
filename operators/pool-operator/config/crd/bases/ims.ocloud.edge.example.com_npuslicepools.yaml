@@ -1,0 +1,371 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: npuslicepools.ims.ocloud.edge.example.com
+spec:
+  group: ims.ocloud.edge.example.com
+  names:
+    kind: NPUSlicePool
+    listKind: NPUSlicePoolList
+    plural: npuslicepools
+    shortNames:
+    - nsp
+    singular: npuslicepool
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.strategy
+      name: Strategy
+      type: string
+    - jsonPath: .status.totalSlices
+      name: Total
+      type: integer
+    - jsonPath: .status.allocatedSlices
+      name: Allocated
+      type: integer
+    - jsonPath: .status.availableSlices
+      name: Available
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          NPUSlicePool is the level-4 (leaf) pool resource. Hierarchy:
+          ClusterPool -> NodePool -> NPUPool -> NPUSlicePool.
+
+          !!! MULTI-TENANCY / SCOPE WARNING (operators/CLAUDE.md §4) !!!
+
+          NPUSlicePool is Namespaced while every ancestor pool
+          (ClusterPool / NodePool / NPUPool) is Cluster-scoped. As a direct
+          consequence multiple namespaces can declare overlapping slicing policies
+          against the SAME physical NPU devices in the parent NPUPool. The CRD
+          schema alone does NOT enforce tenant isolation — there is no RBAC or
+          admission policy gating cross-namespace ownership of a slice.
+
+          Mitigation roadmap (also tracked in docs/phase0-review.md MUST-FIX #6):
+            - Phase 1-2 (current): isolation by convention only. All NPUSlicePool
+              objects MUST be created in the `ocloud-system` namespace; deploy
+              manifests and the demo backend hard-code this. Out-of-namespace
+              objects are not actively rejected but will be ignored by the
+              pool-operator in Phase 3+.
+            - Phase 3: add a ValidatingAdmissionPolicy skeleton under
+              `operators/pool-operator/config/admission/` that rejects NPUSlicePool
+              objects outside `ocloud-system` and prevents two pools from declaring
+              overlapping slices against the same NPUPool.
+            - Phase 9: full multi-tenancy. RBAC ties NPUSlicePool ownership to a
+              tenant CRD federated by Karmada; admission policy enforces
+              per-tenant quota.
+
+          Do NOT rely on the schema for isolation today. Treat any cross-namespace
+          NPUSlicePool as a misconfiguration to be caught in review.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of NPUSlicePool.
+            properties:
+              dynamicSlicing:
+                description: |-
+                  DynamicSlicing parameterises Strategy=Dynamic. Must be non-nil for
+                  that strategy; ignored otherwise.
+                properties:
+                  allowAggregation:
+                    description: |-
+                      AllowAggregation enables a single slice request to span more than one
+                      physical NPU device (Phase 7+ capability; gated off by default).
+                    type: boolean
+                  maxAICore:
+                    description: |-
+                      MaxAICore is the largest AI Core count allowed for a dynamic slice.
+                      Must be >= MinAICore.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  memoryGranularityMiB:
+                    description: |-
+                      MemoryGranularityMiB is the smallest HBM allocation unit, in mebibytes.
+                      All dynamic memory requests are rounded up to a multiple of this value.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  minAICore:
+                    description: MinAICore is the smallest AI Core count allowed for
+                      a dynamic slice.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                required:
+                - maxAICore
+                - memoryGranularityMiB
+                - minAICore
+                type: object
+              fixedTemplates:
+                description: |-
+                  FixedTemplates lists the discrete slice shapes when Strategy=FixedTemplate.
+                  Must be non-empty for that strategy; ignored otherwise.
+                items:
+                  description: |-
+                    SliceTemplate is a discrete slice shape used by FixedTemplate strategy.
+                    Reflects the Ascend virtualization shape vocabulary (e.g. "vir04", "vir08").
+                  properties:
+                    aiCoreCount:
+                      description: |-
+                        AICoreCount is the number of AI Cores allocated to each slice instance
+                        of this template.
+                      format: int32
+                      minimum: 1
+                      type: integer
+                    memoryMiB:
+                      description: |-
+                        MemoryMiB is the HBM (high-bandwidth memory) reservation per slice
+                        instance, in mebibytes.
+                      format: int32
+                      minimum: 1
+                      type: integer
+                    name:
+                      description: Name is the template identifier, e.g. "vir04".
+                      maxLength: 63
+                      minLength: 1
+                      type: string
+                  required:
+                  - aiCoreCount
+                  - memoryMiB
+                  - name
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+              npuPoolRef:
+                description: |-
+                  NPUPoolRef references the parent NPUPool (Cluster-scoped). NPUSlicePool
+                  itself is Namespaced (see scope warning on NPUSlicePool), but the
+                  parent is Cluster-scoped, so a name-only reference is used.
+                properties:
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              strategy:
+                description: |-
+                  Strategy selects FixedTemplate or Dynamic. Exactly one of
+                  FixedTemplates / DynamicSlicing must be populated to match.
+                enum:
+                - FixedTemplate
+                - Dynamic
+                type: string
+            required:
+            - npuPoolRef
+            - strategy
+            type: object
+          status:
+            description: status defines the observed state of NPUSlicePool.
+            properties:
+              allocatedSlices:
+                description: AllocatedSlices is the count currently bound to a ResourceClaim.
+                format: int32
+                minimum: 0
+                type: integer
+              availableSlices:
+                description: AvailableSlices = TotalSlices - AllocatedSlices - (slices
+                  in error).
+                format: int32
+                minimum: 0
+                type: integer
+              conditions:
+                description: Conditions follow the standard Kubernetes condition convention.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              slices:
+                description: Slices is the per-instance live state of every slice
+                  in this pool.
+                items:
+                  description: |-
+                    SliceStatusEntry is one row in NPUSlicePoolStatus.Slices listing the live
+                    state of a slice instance.
+                  properties:
+                    aiCoreCount:
+                      description: AICoreCount is the actual AI Core count of this
+                        slice instance.
+                      format: int32
+                      minimum: 0
+                      type: integer
+                    allocatedTo:
+                      description: AllocatedTo is the ResourceClaim reference (DRA)
+                        when State=Allocated.
+                      properties:
+                        apiVersion:
+                          description: API version of the referent.
+                          type: string
+                        fieldPath:
+                          description: |-
+                            If referring to a piece of an object instead of an entire object, this string
+                            should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2].
+                            For example, if the object reference is to a container within a pod, this would take on a value like:
+                            "spec.containers{name}" (where "name" refers to the name of the container that triggered
+                            the event) or if no container name is specified "spec.containers[2]" (container with
+                            index 2 in this pod). This syntax is chosen only to have some well-defined way of
+                            referencing a part of an object.
+                          type: string
+                        kind:
+                          description: |-
+                            Kind of the referent.
+                            More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+                          type: string
+                        name:
+                          description: |-
+                            Name of the referent.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          type: string
+                        namespace:
+                          description: |-
+                            Namespace of the referent.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+                          type: string
+                        resourceVersion:
+                          description: |-
+                            Specific resourceVersion to which this reference is made, if any.
+                            More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+                          type: string
+                        uid:
+                          description: |-
+                            UID of the referent.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids
+                          type: string
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    id:
+                      description: ID is the unique identifier of the slice instance
+                        within its pool.
+                      type: string
+                    memoryMiB:
+                      description: MemoryMiB is the actual HBM reservation of this
+                        slice instance.
+                      format: int32
+                      minimum: 0
+                      type: integer
+                    npuDeviceId:
+                      description: NPUDeviceID is the underlying physical NPU device
+                        this slice maps to.
+                      type: string
+                    state:
+                      description: State is the lifecycle state of this slice instance.
+                      enum:
+                      - Idle
+                      - Allocated
+                      - Error
+                      type: string
+                    templateName:
+                      description: |-
+                        TemplateName references the SliceTemplate used to materialise this
+                        slice (empty when Strategy=Dynamic).
+                      type: string
+                  required:
+                  - aiCoreCount
+                  - id
+                  - memoryMiB
+                  - npuDeviceId
+                  - state
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - id
+                x-kubernetes-list-type: map
+              totalSlices:
+                description: TotalSlices is the number of slice instances materialised
+                  in this pool.
+                format: int32
+                minimum: 0
+                type: integer
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

@@ -1,0 +1,16 @@
+apiVersion: ims.ocloud.edge.example.com/v1alpha1
+kind: NodePool
+metadata:
+  name: nodepool-edge-sample
+  labels:
+    app.kubernetes.io/name: pool-operator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  clusterPoolRef:
+    name: clusterpool-sample
+  selector:
+    matchLabels:
+      node-role.kubernetes.io/edge: ""
+      hardware.ocloud.edge/npu-vendor: ascend
+  role: edge
+  location: dc-shanghai-rack-7
