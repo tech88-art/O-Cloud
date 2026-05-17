@@ -1,5 +1,5 @@
-# Logs
-logs
+# Logs (only log files; the `logs` dir pattern was removed because it
+# conflicted with src/pages/Logs/ on case-insensitive filesystems)
 *.log
 npm-debug.log*
 yarn-debug.log*
