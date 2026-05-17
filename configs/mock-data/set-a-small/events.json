@@ -1,0 +1,249 @@
+{
+  "meta": {
+    "name": "set-a-small",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Small single-cluster demo: 1 cluster / 3 nodes / 24 NPUs / mixed workloads. Reproducible (seed=42).",
+    "scenario": "small-cluster"
+  },
+  "clusters": [
+    {
+      "id": "cluster-prod-a-01",
+      "name": "cluster-prod-a-01",
+      "role": "edge-single",
+      "location": "site-a-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 3,
+      "npuCount": 24,
+      "labels": {
+        "environment": "prod",
+        "region": "cn-east-1",
+        "site": "a"
+      },
+      "createdAt": "2026-04-19T08:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": [
+    {
+      "timestamp": "2026-05-17T12:00:00Z",
+      "type": "topology.update",
+      "payload": {
+        "clusters": 1,
+        "nodes": 3,
+        "npus": 24,
+        "snapshot": "initial"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:05Z",
+      "type": "workload.created",
+      "payload": {
+        "name": "pi-3b-canary",
+        "namespace": "ai-inference",
+        "preset": "pi-3b"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:12Z",
+      "type": "slice.allocated",
+      "payload": {
+        "sliceId": "worker-site-a-02-npu-2-slice-0",
+        "to": {
+          "namespace": "ai-inference",
+          "podName": "pi-3b-canary-0"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:18Z",
+      "type": "slice.allocated",
+      "payload": {
+        "sliceId": "worker-site-a-01-npu-3-slice-0",
+        "to": {
+          "namespace": "ai-inference",
+          "podName": "qwen-14b-0"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:25Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "from": "pending",
+        "name": "internlm-7b",
+        "namespace": "ai-inference",
+        "to": "running"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:33Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "from": "healthy",
+        "npuId": "worker-site-a-02-npu-5",
+        "reason": "ECC error threshold exceeded",
+        "to": "degraded"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:40Z",
+      "type": "slice.released",
+      "payload": {
+        "reason": "batch complete",
+        "sliceId": "worker-site-a-01-npu-4-slice-1"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:48Z",
+      "type": "workload.created",
+      "payload": {
+        "name": "qwen-8b-pd-trial",
+        "namespace": "ai-inference",
+        "preset": "qwen-8b-pd"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:56Z",
+      "type": "topology.update",
+      "payload": {
+        "clusters": 1,
+        "delta": "added 1 inference-pd workload",
+        "nodes": 3,
+        "npus": 24
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:03Z",
+      "type": "slice.allocated",
+      "payload": {
+        "sliceId": "worker-site-a-03-npu-6-slice-0",
+        "to": {
+          "namespace": "ai-inference",
+          "podName": "qwen-8b-pd-trial-prefill-0"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:10Z",
+      "type": "slice.allocated",
+      "payload": {
+        "sliceId": "worker-site-a-03-npu-7-slice-0",
+        "to": {
+          "namespace": "ai-inference",
+          "podName": "qwen-8b-pd-trial-decode-0"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:18Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "from": "pending",
+        "name": "qwen-8b-pd-trial",
+        "namespace": "ai-inference",
+        "to": "running"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:25Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "from": "healthy",
+        "npuId": "worker-site-a-01-npu-0",
+        "reason": "heartbeat",
+        "rxBytes": 12345678,
+        "to": "healthy"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:32Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "from": "running",
+        "name": "oom-test-model",
+        "namespace": "ai-inference",
+        "reason": "OOMKilled",
+        "to": "failed"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:38Z",
+      "type": "workload.deleted",
+      "payload": {
+        "name": "oom-test-model",
+        "namespace": "ai-inference"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:45Z",
+      "type": "slice.released",
+      "payload": {
+        "reason": "scale down",
+        "sliceId": "worker-site-a-02-npu-2-slice-2"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:50Z",
+      "type": "topology.update",
+      "payload": {
+        "clusters": 1,
+        "delta": "removed failed workload",
+        "nodes": 3,
+        "npus": 24
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:56Z",
+      "type": "workload.created",
+      "payload": {
+        "name": "llama2-7b-finetune",
+        "namespace": "training",
+        "preset": "custom-job"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:00Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "from": "pending",
+        "name": "llama2-7b-finetune",
+        "namespace": "training",
+        "reason": "waiting for 4 NPUs",
+        "to": "pending"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:05Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "from": "healthy",
+        "npuId": "worker-site-a-03-npu-1",
+        "reason": "heartbeat",
+        "to": "healthy"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:10Z",
+      "type": "slice.allocated",
+      "payload": {
+        "sliceId": "worker-site-a-01-npu-5-slice-1",
+        "to": {
+          "namespace": "ai-inference",
+          "podName": "pi-3b-2"
+        }
+      }
+    }
+  ]
+}

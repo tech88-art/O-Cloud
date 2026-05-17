@@ -1,0 +1,511 @@
+{
+  "meta": {
+    "name": "set-a-small",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Small single-cluster demo: 1 cluster / 3 nodes / 24 NPUs / mixed workloads. Reproducible (seed=42).",
+    "scenario": "small-cluster"
+  },
+  "clusters": [
+    {
+      "id": "cluster-prod-a-01",
+      "name": "cluster-prod-a-01",
+      "role": "edge-single",
+      "location": "site-a-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 3,
+      "npuCount": 24,
+      "labels": {
+        "environment": "prod",
+        "region": "cn-east-1",
+        "site": "a"
+      },
+      "createdAt": "2026-04-19T08:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [
+    {
+      "id": "worker-site-a-01-npu-0",
+      "nodeName": "worker-site-a-01",
+      "model": "Ascend910B",
+      "index": 0,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-01-hccs-0",
+      "status": "healthy",
+      "sliceMode": "whole",
+      "usage": {
+        "memoryBandwidthUtilization": 0,
+        "temperature": 42,
+        "power": 250
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-1",
+      "nodeName": "worker-site-a-01",
+      "model": "Ascend910B",
+      "index": 1,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-01-hccs-0",
+      "status": "healthy",
+      "sliceMode": "whole",
+      "usage": {
+        "aiCoreUtilization": 22,
+        "vramUtilization": 18,
+        "vramUsedMiB": 11796,
+        "memoryBandwidthUtilization": 19.8,
+        "temperature": 43.7,
+        "power": 258.5
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-2",
+      "nodeName": "worker-site-a-01",
+      "model": "Ascend910B",
+      "index": 2,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-01-hccs-0",
+      "status": "healthy",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 31,
+        "vramUtilization": 28,
+        "vramUsedMiB": 18350,
+        "memoryBandwidthUtilization": 27.900000000000002,
+        "temperature": 45.4,
+        "power": 267
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-3",
+      "nodeName": "worker-site-a-01",
+      "model": "Ascend910B",
+      "index": 3,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-01-hccs-0",
+      "status": "healthy",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 45,
+        "vramUtilization": 41,
+        "vramUsedMiB": 26869,
+        "memoryBandwidthUtilization": 40.5,
+        "temperature": 47.1,
+        "power": 275.5
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-4",
+      "nodeName": "worker-site-a-01",
+      "model": "Ascend910B",
+      "index": 4,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-01-hccs-1",
+      "status": "healthy",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 63,
+        "vramUtilization": 58,
+        "vramUsedMiB": 38010,
+        "memoryBandwidthUtilization": 56.7,
+        "temperature": 48.8,
+        "power": 284
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-5",
+      "nodeName": "worker-site-a-01",
+      "model": "Ascend910B",
+      "index": 5,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-01-hccs-1",
+      "status": "healthy",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 72,
+        "vramUtilization": 67,
+        "vramUsedMiB": 43909,
+        "memoryBandwidthUtilization": 64.8,
+        "temperature": 50.5,
+        "power": 292.5
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-6",
+      "nodeName": "worker-site-a-01",
+      "model": "Ascend910B",
+      "index": 6,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-01-hccs-1",
+      "status": "healthy",
+      "sliceMode": "dynamic",
+      "usage": {
+        "aiCoreUtilization": 81,
+        "vramUtilization": 75,
+        "vramUsedMiB": 49152,
+        "memoryBandwidthUtilization": 72.9,
+        "temperature": 52.2,
+        "power": 301
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-7",
+      "nodeName": "worker-site-a-01",
+      "model": "Ascend910B",
+      "index": 7,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-01-hccs-1",
+      "status": "healthy",
+      "sliceMode": "dynamic",
+      "usage": {
+        "aiCoreUtilization": 12,
+        "vramUtilization": 10,
+        "vramUsedMiB": 6554,
+        "memoryBandwidthUtilization": 10.8,
+        "temperature": 53.9,
+        "power": 309.5
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-0",
+      "nodeName": "worker-site-a-02",
+      "model": "Ascend910B",
+      "index": 0,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-02-hccs-0",
+      "status": "healthy",
+      "sliceMode": "whole",
+      "usage": {
+        "memoryBandwidthUtilization": 0,
+        "temperature": 42,
+        "power": 250
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-1",
+      "nodeName": "worker-site-a-02",
+      "model": "Ascend910B",
+      "index": 1,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-02-hccs-0",
+      "status": "healthy",
+      "sliceMode": "whole",
+      "usage": {
+        "aiCoreUtilization": 22,
+        "vramUtilization": 18,
+        "vramUsedMiB": 11796,
+        "memoryBandwidthUtilization": 19.8,
+        "temperature": 43.7,
+        "power": 258.5
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-2",
+      "nodeName": "worker-site-a-02",
+      "model": "Ascend910B",
+      "index": 2,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-02-hccs-0",
+      "status": "healthy",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 31,
+        "vramUtilization": 28,
+        "vramUsedMiB": 18350,
+        "memoryBandwidthUtilization": 27.900000000000002,
+        "temperature": 45.4,
+        "power": 267
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-3",
+      "nodeName": "worker-site-a-02",
+      "model": "Ascend910B",
+      "index": 3,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-02-hccs-0",
+      "status": "healthy",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 45,
+        "vramUtilization": 41,
+        "vramUsedMiB": 26869,
+        "memoryBandwidthUtilization": 40.5,
+        "temperature": 47.1,
+        "power": 275.5
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-4",
+      "nodeName": "worker-site-a-02",
+      "model": "Ascend910B",
+      "index": 4,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-02-hccs-1",
+      "status": "healthy",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 63,
+        "vramUtilization": 58,
+        "vramUsedMiB": 38010,
+        "memoryBandwidthUtilization": 56.7,
+        "temperature": 48.8,
+        "power": 284
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-5",
+      "nodeName": "worker-site-a-02",
+      "model": "Ascend910B",
+      "index": 5,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-02-hccs-1",
+      "status": "degraded",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 72,
+        "vramUtilization": 67,
+        "vramUsedMiB": 43909,
+        "memoryBandwidthUtilization": 64.8,
+        "temperature": 50.5,
+        "power": 292.5
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-6",
+      "nodeName": "worker-site-a-02",
+      "model": "Ascend910B",
+      "index": 6,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-02-hccs-1",
+      "status": "healthy",
+      "sliceMode": "dynamic",
+      "usage": {
+        "aiCoreUtilization": 81,
+        "vramUtilization": 75,
+        "vramUsedMiB": 49152,
+        "memoryBandwidthUtilization": 72.9,
+        "temperature": 52.2,
+        "power": 301
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-7",
+      "nodeName": "worker-site-a-02",
+      "model": "Ascend910B",
+      "index": 7,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-02-hccs-1",
+      "status": "healthy",
+      "sliceMode": "dynamic",
+      "usage": {
+        "aiCoreUtilization": 12,
+        "vramUtilization": 10,
+        "vramUsedMiB": 6554,
+        "memoryBandwidthUtilization": 10.8,
+        "temperature": 53.9,
+        "power": 309.5
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-0",
+      "nodeName": "worker-site-a-03",
+      "model": "Ascend910B",
+      "index": 0,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-03-hccs-0",
+      "status": "healthy",
+      "sliceMode": "whole",
+      "usage": {
+        "memoryBandwidthUtilization": 0,
+        "temperature": 42,
+        "power": 250
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-1",
+      "nodeName": "worker-site-a-03",
+      "model": "Ascend910B",
+      "index": 1,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-03-hccs-0",
+      "status": "healthy",
+      "sliceMode": "whole",
+      "usage": {
+        "aiCoreUtilization": 22,
+        "vramUtilization": 18,
+        "vramUsedMiB": 11796,
+        "memoryBandwidthUtilization": 19.8,
+        "temperature": 43.7,
+        "power": 258.5
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-2",
+      "nodeName": "worker-site-a-03",
+      "model": "Ascend910B",
+      "index": 2,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-03-hccs-0",
+      "status": "healthy",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 31,
+        "vramUtilization": 28,
+        "vramUsedMiB": 18350,
+        "memoryBandwidthUtilization": 27.900000000000002,
+        "temperature": 45.4,
+        "power": 267
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-3",
+      "nodeName": "worker-site-a-03",
+      "model": "Ascend910B",
+      "index": 3,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "worker-site-a-03-hccs-0",
+      "status": "healthy",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 45,
+        "vramUtilization": 41,
+        "vramUsedMiB": 26869,
+        "memoryBandwidthUtilization": 40.5,
+        "temperature": 47.1,
+        "power": 275.5
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-4",
+      "nodeName": "worker-site-a-03",
+      "model": "Ascend910B",
+      "index": 4,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-03-hccs-1",
+      "status": "healthy",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 63,
+        "vramUtilization": 58,
+        "vramUsedMiB": 38010,
+        "memoryBandwidthUtilization": 56.7,
+        "temperature": 48.8,
+        "power": 284
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-5",
+      "nodeName": "worker-site-a-03",
+      "model": "Ascend910B",
+      "index": 5,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-03-hccs-1",
+      "status": "healthy",
+      "sliceMode": "fixed-template",
+      "usage": {
+        "aiCoreUtilization": 72,
+        "vramUtilization": 67,
+        "vramUsedMiB": 43909,
+        "memoryBandwidthUtilization": 64.8,
+        "temperature": 50.5,
+        "power": 292.5
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-6",
+      "nodeName": "worker-site-a-03",
+      "model": "Ascend910B",
+      "index": 6,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-03-hccs-1",
+      "status": "healthy",
+      "sliceMode": "dynamic",
+      "usage": {
+        "aiCoreUtilization": 81,
+        "vramUtilization": 75,
+        "vramUsedMiB": 49152,
+        "memoryBandwidthUtilization": 72.9,
+        "temperature": 52.2,
+        "power": 301
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-7",
+      "nodeName": "worker-site-a-03",
+      "model": "Ascend910B",
+      "index": 7,
+      "vramMiB": 65536,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "worker-site-a-03-hccs-1",
+      "status": "healthy",
+      "sliceMode": "dynamic",
+      "usage": {
+        "aiCoreUtilization": 12,
+        "vramUtilization": 10,
+        "vramUsedMiB": 6554,
+        "memoryBandwidthUtilization": 10.8,
+        "temperature": 53.9,
+        "power": 309.5
+      }
+    }
+  ],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": []
+}

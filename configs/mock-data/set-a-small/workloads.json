@@ -1,0 +1,336 @@
+{
+  "meta": {
+    "name": "set-a-small",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Small single-cluster demo: 1 cluster / 3 nodes / 24 NPUs / mixed workloads. Reproducible (seed=42).",
+    "scenario": "small-cluster"
+  },
+  "clusters": [
+    {
+      "id": "cluster-prod-a-01",
+      "name": "cluster-prod-a-01",
+      "role": "edge-single",
+      "location": "site-a-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 3,
+      "npuCount": 24,
+      "labels": {
+        "environment": "prod",
+        "region": "cn-east-1",
+        "site": "a"
+      },
+      "createdAt": "2026-04-19T08:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [],
+  "workloads": [
+    {
+      "name": "qwen-8b-pd",
+      "namespace": "ai-inference",
+      "type": "inference",
+      "kind": "InferenceService",
+      "status": "running",
+      "replicas": {
+        "desired": 2,
+        "ready": 2
+      },
+      "nodeNames": [
+        "worker-site-a-01",
+        "worker-site-a-02"
+      ],
+      "npuUsage": {
+        "allocated": 2
+      },
+      "pods": [
+        {
+          "name": "qwen-8b-pd-prefill-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-01",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-site-a-01-npu-0"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "qwen-8b-pd-decode-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-02",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-site-a-02-npu-1"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "from": "qwen-8b-pd-prefill-0",
+          "to": "qwen-8b-pd-decode-0",
+          "type": "pd-pair"
+        }
+      ],
+      "metrics": {
+        "throughput": {
+          "inputTokensPerSec": 2400,
+          "outputTokensPerSec": 1100,
+          "requestsPerSec": 8.5
+        },
+        "latency": {
+          "ttftMs": {
+            "p50": 110,
+            "p90": 180,
+            "p99": 260
+          },
+          "itlMs": {
+            "p50": 12,
+            "p90": 18,
+            "p99": 28
+          }
+        },
+        "resourceUsage": {
+          "npuUtilization": 65,
+          "vramUtilization": 58
+        }
+      },
+      "createdAt": "2026-05-11T10:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "qwen-8b-pd",
+        "team": "ai-platform"
+      }
+    },
+    {
+      "name": "deepseek-20b",
+      "namespace": "ai-inference",
+      "type": "inference",
+      "kind": "InferenceService",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-site-a-03"
+      ],
+      "npuUsage": {
+        "allocated": 0,
+        "slices": [
+          "worker-site-a-03-npu-2-slice-0",
+          "worker-site-a-03-npu-2-slice-2"
+        ]
+      },
+      "createdAt": "2026-05-13T06:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "deepseek-20b",
+        "team": "ai-platform"
+      }
+    },
+    {
+      "name": "qwen-14b",
+      "namespace": "ai-inference",
+      "type": "inference",
+      "kind": "InferenceService",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-site-a-01"
+      ],
+      "npuUsage": {
+        "allocated": 0,
+        "slices": [
+          "worker-site-a-01-npu-2-slice-0",
+          "worker-site-a-01-npu-2-slice-2"
+        ]
+      },
+      "createdAt": "2026-05-14T00:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "qwen-14b",
+        "team": "ai-platform"
+      }
+    },
+    {
+      "name": "pi-3b",
+      "namespace": "ai-inference",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 3,
+        "ready": 3
+      },
+      "nodeNames": [
+        "worker-site-a-02",
+        "worker-site-a-03"
+      ],
+      "npuUsage": {
+        "allocated": 0,
+        "slices": [
+          "worker-site-a-02-npu-2-slice-0",
+          "worker-site-a-02-npu-2-slice-2",
+          "worker-site-a-02-npu-3-slice-1"
+        ]
+      },
+      "createdAt": "2026-05-15T09:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "pi-3b",
+        "team": "ai-platform"
+      }
+    },
+    {
+      "name": "vllm-bench",
+      "namespace": "benchmark",
+      "type": "benchmark",
+      "kind": "Job",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-site-a-01"
+      ],
+      "npuUsage": {
+        "allocated": 0,
+        "slices": [
+          "worker-site-a-01-npu-2-slice-0"
+        ]
+      },
+      "createdAt": "2026-05-17T08:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "vllm-bench",
+        "team": "ai-platform"
+      }
+    },
+    {
+      "name": "pi-3b-canary",
+      "namespace": "ai-inference",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-site-a-02"
+      ],
+      "npuUsage": {
+        "allocated": 0,
+        "slices": [
+          "worker-site-a-02-npu-2-slice-0"
+        ]
+      },
+      "createdAt": "2026-05-16T10:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "pi-3b-canary",
+        "team": "ai-platform"
+      }
+    },
+    {
+      "name": "llama2-7b-finetune",
+      "namespace": "training",
+      "type": "training",
+      "kind": "Job",
+      "status": "pending",
+      "replicas": {
+        "desired": 1,
+        "ready": 0
+      },
+      "createdAt": "2026-05-17T11:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "llama2-7b-finetune",
+        "team": "ai-platform"
+      }
+    },
+    {
+      "name": "internlm-7b",
+      "namespace": "ai-inference",
+      "type": "inference",
+      "kind": "InferenceService",
+      "status": "pending",
+      "replicas": {
+        "desired": 1,
+        "ready": 0
+      },
+      "createdAt": "2026-05-17T12:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "internlm-7b",
+        "team": "ai-platform"
+      }
+    },
+    {
+      "name": "bench-historical",
+      "namespace": "benchmark",
+      "type": "benchmark",
+      "kind": "Job",
+      "status": "succeeded",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-site-a-03"
+      ],
+      "npuUsage": {
+        "allocated": 1
+      },
+      "createdAt": "2026-05-09T09:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "bench-historical",
+        "team": "ai-platform"
+      }
+    },
+    {
+      "name": "oom-test-model",
+      "namespace": "ai-inference",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "failed",
+      "replicas": {
+        "desired": 1,
+        "ready": 0
+      },
+      "nodeNames": [
+        "worker-site-a-01"
+      ],
+      "createdAt": "2026-05-12T11:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "oom-test-model",
+        "team": "ai-platform"
+      }
+    }
+  ],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": []
+}

@@ -1,0 +1,946 @@
+{
+  "meta": {
+    "name": "set-a-small",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Small single-cluster demo: 1 cluster / 3 nodes / 24 NPUs / mixed workloads. Reproducible (seed=42).",
+    "scenario": "small-cluster"
+  },
+  "clusters": [
+    {
+      "id": "cluster-prod-a-01",
+      "name": "cluster-prod-a-01",
+      "role": "edge-single",
+      "location": "site-a-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 3,
+      "npuCount": 24,
+      "labels": {
+        "environment": "prod",
+        "region": "cn-east-1",
+        "site": "a"
+      },
+      "createdAt": "2026-04-19T08:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [
+    {
+      "id": "worker-site-a-01-npu-2-slice-0",
+      "parentNPU": "worker-site-a-01-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-2-slice-1",
+      "parentNPU": "worker-site-a-01-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-01-npu-2-slice-2",
+      "parentNPU": "worker-site-a-01-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-2",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-2-slice-3",
+      "parentNPU": "worker-site-a-01-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-01-npu-3-slice-0",
+      "parentNPU": "worker-site-a-01-npu-3",
+      "template": "vir04",
+      "aiCore": 16,
+      "vramMiB": 32768,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-01-npu-3-slice-1",
+      "parentNPU": "worker-site-a-01-npu-3",
+      "template": "vir04",
+      "aiCore": 16,
+      "vramMiB": 32768,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir04-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 22937
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-4-slice-0",
+      "parentNPU": "worker-site-a-01-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-4-slice-1",
+      "parentNPU": "worker-site-a-01-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-01-npu-4-slice-2",
+      "parentNPU": "worker-site-a-01-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-2",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-4-slice-3",
+      "parentNPU": "worker-site-a-01-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-01-npu-4-slice-4",
+      "parentNPU": "worker-site-a-01-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-4",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-4-slice-5",
+      "parentNPU": "worker-site-a-01-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-01-npu-4-slice-6",
+      "parentNPU": "worker-site-a-01-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-6",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-4-slice-7",
+      "parentNPU": "worker-site-a-01-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-01-npu-5-slice-0",
+      "parentNPU": "worker-site-a-01-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-01-npu-5-slice-1",
+      "parentNPU": "worker-site-a-01-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-5-slice-2",
+      "parentNPU": "worker-site-a-01-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-01-npu-5-slice-3",
+      "parentNPU": "worker-site-a-01-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-3",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-6-slice-0",
+      "parentNPU": "worker-site-a-01-npu-6",
+      "aiCore": 12,
+      "vramMiB": 24576,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-01-npu-6-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 15974
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-6-slice-1",
+      "parentNPU": "worker-site-a-01-npu-6",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-01-npu-6-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 10649
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-7-slice-0",
+      "parentNPU": "worker-site-a-01-npu-7",
+      "aiCore": 12,
+      "vramMiB": 24576,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-01-npu-7-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 15974
+      }
+    },
+    {
+      "id": "worker-site-a-01-npu-7-slice-1",
+      "parentNPU": "worker-site-a-01-npu-7",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-01-npu-7-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 10649
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-2-slice-0",
+      "parentNPU": "worker-site-a-02-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-2-slice-1",
+      "parentNPU": "worker-site-a-02-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-02-npu-2-slice-2",
+      "parentNPU": "worker-site-a-02-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-2",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-2-slice-3",
+      "parentNPU": "worker-site-a-02-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-02-npu-3-slice-0",
+      "parentNPU": "worker-site-a-02-npu-3",
+      "template": "vir04",
+      "aiCore": 16,
+      "vramMiB": 32768,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-02-npu-3-slice-1",
+      "parentNPU": "worker-site-a-02-npu-3",
+      "template": "vir04",
+      "aiCore": 16,
+      "vramMiB": 32768,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir04-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 22937
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-4-slice-0",
+      "parentNPU": "worker-site-a-02-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-4-slice-1",
+      "parentNPU": "worker-site-a-02-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-02-npu-4-slice-2",
+      "parentNPU": "worker-site-a-02-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-2",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-4-slice-3",
+      "parentNPU": "worker-site-a-02-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-02-npu-4-slice-4",
+      "parentNPU": "worker-site-a-02-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-4",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-4-slice-5",
+      "parentNPU": "worker-site-a-02-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-02-npu-4-slice-6",
+      "parentNPU": "worker-site-a-02-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-6",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-4-slice-7",
+      "parentNPU": "worker-site-a-02-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-02-npu-5-slice-0",
+      "parentNPU": "worker-site-a-02-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-02-npu-5-slice-1",
+      "parentNPU": "worker-site-a-02-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-5-slice-2",
+      "parentNPU": "worker-site-a-02-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-02-npu-5-slice-3",
+      "parentNPU": "worker-site-a-02-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-3",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-6-slice-0",
+      "parentNPU": "worker-site-a-02-npu-6",
+      "aiCore": 12,
+      "vramMiB": 24576,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-02-npu-6-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 15974
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-6-slice-1",
+      "parentNPU": "worker-site-a-02-npu-6",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-02-npu-6-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 10649
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-7-slice-0",
+      "parentNPU": "worker-site-a-02-npu-7",
+      "aiCore": 12,
+      "vramMiB": 24576,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-02-npu-7-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 15974
+      }
+    },
+    {
+      "id": "worker-site-a-02-npu-7-slice-1",
+      "parentNPU": "worker-site-a-02-npu-7",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-02-npu-7-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 10649
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-2-slice-0",
+      "parentNPU": "worker-site-a-03-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-2-slice-1",
+      "parentNPU": "worker-site-a-03-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-03-npu-2-slice-2",
+      "parentNPU": "worker-site-a-03-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-2",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-2-slice-3",
+      "parentNPU": "worker-site-a-03-npu-2",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-03-npu-3-slice-0",
+      "parentNPU": "worker-site-a-03-npu-3",
+      "template": "vir04",
+      "aiCore": 16,
+      "vramMiB": 32768,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-03-npu-3-slice-1",
+      "parentNPU": "worker-site-a-03-npu-3",
+      "template": "vir04",
+      "aiCore": 16,
+      "vramMiB": 32768,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir04-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 22937
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-4-slice-0",
+      "parentNPU": "worker-site-a-03-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-4-slice-1",
+      "parentNPU": "worker-site-a-03-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-03-npu-4-slice-2",
+      "parentNPU": "worker-site-a-03-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-2",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-4-slice-3",
+      "parentNPU": "worker-site-a-03-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-03-npu-4-slice-4",
+      "parentNPU": "worker-site-a-03-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-4",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-4-slice-5",
+      "parentNPU": "worker-site-a-03-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-03-npu-4-slice-6",
+      "parentNPU": "worker-site-a-03-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir01-6",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 5734
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-4-slice-7",
+      "parentNPU": "worker-site-a-03-npu-4",
+      "template": "vir01",
+      "aiCore": 4,
+      "vramMiB": 8192,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-03-npu-5-slice-0",
+      "parentNPU": "worker-site-a-03-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-03-npu-5-slice-1",
+      "parentNPU": "worker-site-a-03-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-5-slice-2",
+      "parentNPU": "worker-site-a-03-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "available"
+    },
+    {
+      "id": "worker-site-a-03-npu-5-slice-3",
+      "parentNPU": "worker-site-a-03-npu-5",
+      "template": "vir02",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-vir02-3",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 55.00000000000001,
+        "vramUtilization": 70,
+        "vramUsedMiB": 11468
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-6-slice-0",
+      "parentNPU": "worker-site-a-03-npu-6",
+      "aiCore": 12,
+      "vramMiB": 24576,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-03-npu-6-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 15974
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-6-slice-1",
+      "parentNPU": "worker-site-a-03-npu-6",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-03-npu-6-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 10649
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-7-slice-0",
+      "parentNPU": "worker-site-a-03-npu-7",
+      "aiCore": 12,
+      "vramMiB": 24576,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-03-npu-7-0",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 15974
+      }
+    },
+    {
+      "id": "worker-site-a-03-npu-7-slice-1",
+      "parentNPU": "worker-site-a-03-npu-7",
+      "aiCore": 8,
+      "vramMiB": 16384,
+      "status": "allocated",
+      "allocatedTo": {
+        "namespace": "ai-inference",
+        "podName": "pod-dyn-worker-site-a-03-npu-7-1",
+        "containerName": "main"
+      },
+      "usage": {
+        "aiCoreUtilization": 58,
+        "vramUtilization": 65,
+        "vramUsedMiB": 10649
+      }
+    }
+  ],
+  "workloads": [],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": []
+}
