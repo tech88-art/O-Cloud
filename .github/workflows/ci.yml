@@ -1,12 +1,17 @@
-# GitHub Actions CI 框架
+# GitHub Actions CI for O-Cloud Edge Cloud Platform
 #
-# 本文件是 Phase 0 提供的骨架，由 P1-T-007 在 Phase 1 W1 完成填充。
-# Agent 在 P1-T-007 中需要：
-#   1. 完善每个 job 的实际 step
-#   2. 实现 check-allowed-paths job 的脚本（解析 PR description Refs: P1-T-XXX → 对比 diff）
-#   3. 在测试 PR 上验证全部 job 跑通
+# Filled by P1-T-007. Spec source: deploy/CLAUDE.md §3.1.
 #
-# 详细要求见 deploy/CLAUDE.md §3.1
+# Job map (all required for ci-pass except e2e):
+#   detect-changes          dorny/paths-filter — gates other jobs by touched paths
+#   check-allowed-paths     scripts/ci/check-allowed-paths.sh — enforce per-task whitelist
+#   backend                 matrix [lint, test, build] over backend/
+#   frontend                matrix [lint, test, build] + gen:types drift over frontend/
+#   operators               make generate + manifests + diff check + offline validate-crds
+#   validate-contract       swagger-cli + redocly build-docs
+#   validate-mockdata       ajv compile + per-set validate (draft 2020-12, strict=false)
+#   e2e                     stub; W2 task P1-T-110 fills (gated to push:dev)
+#   ci-pass                 aggregator — all required jobs must succeed
 
 name: CI
 
@@ -60,7 +65,7 @@ jobs:
               - 'configs/mock-data/**'
 
   # =========================================
-  # Allowed Paths 校验（关键）
+  # Allowed Paths 校验
   # =========================================
   check-allowed-paths:
     name: Check Allowed Paths
@@ -70,16 +75,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # TODO(P1-T-007): 实现脚本：
-      # 1. 解析 PR description 提取 "Refs: P1-T-XXX"
-      # 2. 读 docs/tasks/P1-T-XXX.md 提取 Allowed Paths
-      # 3. 对比 PR 的 diff 路径
-      # 4. 越界则失败并输出越界文件
-      - name: Placeholder check
+      - name: Run check-allowed-paths
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          echo "::warning::check-allowed-paths 待 P1-T-007 实现"
-          # 暂时通过，避免阻塞 Phase 0 评审
-          exit 0
+          chmod +x scripts/ci/check-allowed-paths.sh
+          ./scripts/ci/check-allowed-paths.sh
 
   # =========================================
   # 契约校验
@@ -94,11 +99,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install swagger-cli
-        run: npm install -g @apidevtools/swagger-cli@4.0.4
-      - name: Validate OpenAPI
-        run: swagger-cli validate docs/api-contract.yaml
-      # TODO(P1-T-007): backend handler 注解 vs 契约对齐校验
+      - name: swagger-cli validate
+        run: npx -y -p @apidevtools/swagger-cli@4 swagger-cli validate docs/api-contract.yaml
+      - name: redocly build-docs
+        run: |
+          # build-docs lints + bundles the OpenAPI into HTML; any unresolved $ref or
+          # severe lint rule violation will fail the build. Output is discarded.
+          npx -y @redocly/cli@latest build-docs docs/api-contract.yaml --output /tmp/api-contract.html
+          test -s /tmp/api-contract.html && echo "build-docs OK"
 
   # =========================================
   # Mock 数据 schema 校验
@@ -113,18 +121,29 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install ajv
-        run: npm install -g ajv-cli@5.0.0 ajv-formats@3.0.1
-      - name: Validate mock data
+      - name: Compile schema
+        # First ensure the schema itself is valid (catches typos in $defs etc.)
         run: |
-          if compgen -G "configs/mock-data/set-*" > /dev/null; then
-            for f in $(find configs/mock-data/set-* -name "*.json"); do
-              echo "Validating $f"
-              # TODO(P1-T-007): 实际 schema 校验命令
-            done
-          else
-            echo "No mock datasets yet"
+          npx -y -p ajv-cli@5 -p ajv-formats@3 ajv compile \
+            --spec=draft2020 --strict=false \
+            -s configs/mock-data/schema.json
+      - name: Validate each set-*/ directory
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          sets=(configs/mock-data/set-*/)
+          if [[ ${#sets[@]} -eq 0 ]]; then
+            echo "No mock datasets present; nothing to validate."
+            exit 0
           fi
+          for d in "${sets[@]}"; do
+            echo "::group::Validating $d"
+            npx -y -p ajv-cli@5 -p ajv-formats@3 ajv validate \
+              --spec=draft2020 --strict=false \
+              -s configs/mock-data/schema.json \
+              -d "${d}*.json"
+            echo "::endgroup::"
+          done
 
   # =========================================
   # Backend
@@ -144,12 +163,9 @@ jobs:
         with:
           go-version: '1.22'
           cache-dependency-path: backend/go.sum
-      # TODO(P1-T-005, P1-T-007): 实际命令
-      - name: Run ${{ matrix.task }}
-        run: |
-          echo "::warning::backend/${{ matrix.task }} 待 P1-T-005 / P1-T-007 实现"
-          # cd backend && make ${{ matrix.task }}
-          exit 0
+      - name: make ${{ matrix.task }}
+        working-directory: backend
+        run: make ${{ matrix.task }}
 
   # =========================================
   # Frontend
@@ -173,12 +189,31 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
           cache-dependency-path: frontend/pnpm-lock.yaml
-      # TODO(P1-T-006, P1-T-007): 实际命令
-      - name: Run ${{ matrix.task }}
+      - name: pnpm install
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: gen:types drift check
+        # Regenerate TS types from docs/api-contract.yaml and assert the committed
+        # frontend/src/services/types.ts is in sync. If this fails, the contract
+        # changed but the generated file wasn't re-committed.
+        working-directory: frontend
         run: |
-          echo "::warning::frontend/${{ matrix.task }} 待 P1-T-006 / P1-T-007 实现"
-          # cd frontend && pnpm ${{ matrix.task }}
-          exit 0
+          pnpm run gen:types
+          if ! git diff --quiet -- src/services/types.ts; then
+            echo "::error::frontend/src/services/types.ts is out of sync with docs/api-contract.yaml. Run 'pnpm run gen:types' and commit."
+            git --no-pager diff -- src/services/types.ts | head -50
+            exit 1
+          fi
+          echo "types.ts in sync with contract."
+      - name: Run ${{ matrix.task }}
+        working-directory: frontend
+        run: |
+          case "${{ matrix.task }}" in
+            lint)  pnpm run lint && pnpm run typecheck ;;
+            test)  pnpm run test ;;
+            build) pnpm run build ;;
+            *) echo "unknown task: ${{ matrix.task }}"; exit 2 ;;
+          esac
 
   # =========================================
   # Operators
@@ -193,14 +228,33 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-      # TODO(P1-T-003, P1-T-007): 实际命令
-      - name: Generate + Test
+          cache-dependency-path: operators/pool-operator/go.sum
+      - name: make generate + manifests
+        working-directory: operators/pool-operator
         run: |
-          echo "::warning::operators CI 待 P1-T-003 / P1-T-007 实现"
-          exit 0
+          make generate
+          make manifests
+      - name: Verify generated artifacts committed
+        # If `make generate` or `make manifests` produced changes, the committed
+        # CRD YAML / deepcopy files are stale. The PR must include them.
+        working-directory: operators/pool-operator
+        run: |
+          if ! git diff --quiet; then
+            echo "::error::operators/pool-operator has uncommitted output from 'make generate'/'make manifests'."
+            git --no-pager diff | head -100
+            exit 1
+          fi
+          echo "Generated artifacts match committed state."
+      - name: Offline CRD validation (Phase 1)
+        # Phase 1 stand-in for `kubectl apply --dry-run=server`. See
+        # operators/pool-operator/hack/validate-crds/main.go for rationale.
+        # Skips `make test` (which needs envtest binaries + a live API server);
+        # Phase 3+ enables envtest in this job.
+        working-directory: operators/pool-operator
+        run: go run ./hack/validate-crds ./config/crd/bases
 
   # =========================================
-  # E2E（W2 起启用）
+  # E2E (W2 起启用 — 由 P1-T-110 实现)
   # =========================================
   e2e:
     name: E2E
@@ -209,10 +263,10 @@ jobs:
     continue-on-error: true  # 允许失败但开 issue
     steps:
       - uses: actions/checkout@v4
-      # TODO(P1-T-110, P1-T-305): 实际命令
-      - name: Run E2E
+      # TODO(P1-T-110, P1-T-305): replace with real Playwright suite
+      - name: Run E2E (stub)
         run: |
-          echo "::warning::E2E 待 P1-T-110 / P1-T-305 实现"
+          echo "::warning::E2E suite not yet implemented — placeholder for P1-T-110 / P1-T-305"
           exit 0
 
   # =========================================

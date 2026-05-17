@@ -229,7 +229,7 @@ graph LR
 | Depends on | P1-T-005, P1-T-006 |
 | Estimated | 1d |
 
-**Allowed Paths**：`.github/workflows/**`
+**Allowed Paths**：`.github/workflows/**`, `scripts/ci/**`
 
 **Acceptance**：
 - [ ] 含 `deploy/CLAUDE.md §3.1` 所有 job
