@@ -107,7 +107,7 @@ Main agent 同步审:5 个 module CLAUDE.md / Makefile / ci.yml / README §8 未
 
 | # | 项 | 文档落点 | 处理 phase |
 |---|---|---|---|
-| 1 | K8s DRA Beta vs GA(K8s 1.31 DRA 是 Beta,非 GA) | `docs/adr/0001-...md §5` 加 "2026-05-17 修订" 段;`docs/architecture.md §3.4` 加 TODO note | Phase 4 启动前 |
+| 1 | K8s DRA — **修订 v1 凭过期记忆判断有误**(原写"GA 目标 1.32 / 2026-06"),P1-T-012 调研驳正:**DRA GA in K8s 1.34, 2025-09-01**。真实瓶颈是 KubeEdge 无 DRA + 无官方 Ascend DRA driver。修订 v2 见 `docs/adr/0001-...md §5` + `docs/architecture.md §3.4` + `docs/research/k8s-dra.md` | 已应用(2026-05-17) |
 | 2 | CRD Strategy union 强类型化(stringly-typed → polymorphic / CEL) | `docs/architecture.md §6.7` 占位 + 待 ADR-0002 | Phase 3 启动前 |
 | 3 | CRD Allocation / Quota 模型缺口 | `docs/architecture.md §6.8` 占位 | Phase 5 启动前 |
 | 4 | DRA standard objects 映射详表 | `docs/architecture.md §6.6` 加 TODO | Phase 4 启动前 |

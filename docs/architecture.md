@@ -215,7 +215,7 @@ flowchart LR
 | 容器运行时 | containerd + Ascend Container Toolkit | | |
 | 虚拟机运行时（隔离性） | KubeVirt | | Phase 5 可选引入 |
 
-> ⚠️ **TODO(Phase 4 启动前)**:K8s 1.31 DRA 仍是 Beta(2026-05-17),GA 目标 1.32(2026-06 RC)。Phase 4 主路径调整为 **Ascend Device Plugin v1**,自研 DRA Driver 作 Phase 4 后段或 Phase 7 增强引入。详见 ADR-0001 §5 修订记录。
+> ⚠️ **修订 v2(2026-05-17, P1-T-012 驳正)**:**DRA 已 GA in K8s 1.34(2025-09-01)**;K8s 1.36 是 2026-05 当前最新。Phase 4 主路径 = Ascend Device Plugin v1 — 真实理由不再是"DRA 未 GA",而是 **KubeEdge v1.22 无 DRA 支持**(边缘路径无选)+ **无官方 Ascend DRA driver**。standard K8s 小集群可 DRA spike;Phase 7 动态切分等 Partitionable Devices GA(估 K8s 1.37)。详见 ADR-0001 §5 v2 与 `docs/research/k8s-dra.md`。
 
 ### 3.5 监控与日志
 

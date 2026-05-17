@@ -49,17 +49,38 @@ O-Cloud 边缘云平台样机启动期。基于昇腾 910B（amd64-only），需
 
 ### 5. K8s 1.31+ 与 DRA
 
-**原因**：DRA 在 K8s 1.31 进入 **Beta(非 GA)**,GA 目标 K8s 1.32(2026-06 RC)。是 NPU 动态切分(Phase 7)的核心机制。
+**原因**：DRA 是 NPU 动态切分(Phase 7)的核心机制。**已 GA**(见下方 2026-05-17 修订)。
 
-**风险**：
-- DRA 仍是 Beta,1.31.x 边缘场景兼容性需验证。已在 P1-T-012 调研。
-- 部分 controller / device-plugin 生态对 DRA Beta 跟进不足。
+**2026-05-17 修订 v1(Phase 0 评审)** — 基于 *错误* 前提"DRA GA 目标 K8s 1.32 / 2026-06":
+- 主路径调整为 Ascend Device Plugin v1
+- 回滚条件:K8s 1.32 GA 推迟到 2026-08+ → 跳过 DRA
 
-**2026-05-17 修订(Phase 0 评审)**:
-- **主路径调整**:Phase 4 默认走 **Ascend Device Plugin v1(非 DRA)**;DRA 作 Phase 4 后段或 Phase 7 增强引入
-- **依据**:DRA Beta → GA 时间窗与本项目 Phase 4 实施期重叠,风险不可控;Ascend Device Plugin 是当前生产路径
-- **回滚条件**:若 K8s 1.32 GA 推迟到 2026-08+,Phase 4 完全跳过 DRA
-- **P1-T-012 子任务追加**:测 K8s 1.31.x DRA Beta 在单节点 KubeEdge 拓扑的稳定性(crash / leak / device hotplug)
+**2026-05-17 修订 v2(P1-T-012 调研驳正)** — 上述前提与事实不符,本节为 v2 终版:
+
+| 事实 | 来源 |
+|---|---|
+| DRA **GA in K8s 1.34**(2025-09-01 release) | kubernetes.io 1.34 blog |
+| K8s 1.35 / 1.36 已发,1.36 release 2026-05-07 | k8s release schedule |
+| K8s 1.32(2024-12)只到 `v1beta1`;1.33 `v1beta2`;1.34 `v1` | KEP-3063 + release notes |
+| **KubeEdge v1.22(2026-04-12)无 DRA 支持**,依赖 K8s 1.31.12,release notes 不提 resource.k8s.io | KubeEdge release notes |
+| 无官方 Ascend DRA driver(2026-05),Huawei 仍只推 Device Plugin | 调研 |
+| `kubernetes-sigs/dra-example-driver` v0.2.1(2026-01-09)可作 fork 起点 | repo |
+| NVIDIA 在 KubeCon EU 2026-03 把 GPU DRA driver 捐赠 CNCF | CNCF |
+| Partitionable Devices(KEP-4815)Alpha 1.35 / Beta 1.36 / GA `[D · 估 1.37]` | KEP 状态 |
+
+**修正后的主路径(本节 operative)**:
+
+- **Phase 4 主路径**:Ascend Device Plugin v1 — 不变。**真实理由**变为:
+  1. KubeEdge edge 路径**完全不支持 DRA**(v1.22 latest 无)→ 边缘场景无路可选,只能 Device Plugin
+  2. Ascend 厂商生态**无官方 DRA driver**,自研成本与 Phase 4 时间预算不匹配
+  3. (原 v1 理由"DRA 未 GA"已被驳正,**不再适用**)
+- **Phase 4 後段(standard K8s 小集群)**:可做 DRA spike,基于 dra-example-driver fork 起步
+- **Phase 7 动态切分**:等 **Partitionable Devices GA**(估 K8s 1.37)+ KubeEdge 跟进 DRA(无时间表),否则仍走 Device Plugin + 自研 slicing controller
+- **新增 fallback 条件**:KubeEdge 在 6 个月内仍无 DRA 支持 → 边缘永久 stay Device Plugin
+
+**P1-T-012 完整产出**:`docs/research/k8s-dra.md`(8 节,1058 字)。
+
+**P1 教训(P3/P1 自查)**:本 ADR §5 v1 修订时,我(协调者)凭过期记忆写"GA 目标 1.32 / 2026-06",未交叉验证。这是 P1 数字必有源 + P6 主动找反证的违反。已通过 T012 subagent 独立验证修正。Future ADRs 必须 cite source。
 
 ---
 
