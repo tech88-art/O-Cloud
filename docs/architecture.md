@@ -72,10 +72,10 @@ flowchart TB
     subgraph L4["④ 服务编排层 (Orchestration)"]
         VOL[Volcano<br/>Gang Scheduling]
         SP[亲和调度插件<br/>NUMA + HCCS/HCCL]
-        KS[KServe + MindIE Backend]
-        VLLM[vLLM<br/>PD 分离]
+        VAS[vllm-ascend Deployment<br/>v0.11.0+]
+        ROUTER[PD Router<br/>inference-operator 内置]
         VPA[VPA + 自定义伸缩控制器]
-        IO[Inference Operator]
+        IO[inference-operator<br/>ModelService CRD]
     end
 
     subgraph L3["③ 资源管理层 (IMS Core)"]
@@ -116,7 +116,7 @@ flowchart TB
 | ① 基础设施层 | 物理资源 | 节点、910B NPU、网络、存储 |
 | ② K8s 集群层 | 容器编排底座 | K3s (边缘) / K8s 1.31+ (小集群) / Karmada (多站点) / KubeEdge (边缘协同) |
 | ③ 资源管理层 | IMS 核心，算力池化、发现、监控 | Ascend Device Plugin、NPU DRA Driver、池化 Operator、Prometheus 栈、Loki |
-| ④ 服务编排层 | AI 工作负载调度与编排 | Volcano、亲和调度 Plugin、KServe + MindIE、vLLM、VPA、Inference Operator |
+| ④ 服务编排层 | AI 工作负载调度与编排 | Volcano、亲和调度 Plugin、vllm-ascend、VPA、inference-operator（含 PD Router） |
 | ⑤ 演示与对外层 | 演示交互、对外 API | 演示前端、演示后端、Grafana 嵌入、O2 DMS Adapter |
 
 > ⚠️ **Layer 5 边界澄清(2026-05-17 评审追加)**:Layer 5 实际包含两个独立子关注:
@@ -209,8 +209,8 @@ flowchart LR
 |---|---|---|---|
 | NPU 设备插件 | **Ascend Device Plugin**（官方） | 自研 | 先用官方，DRA 阶段补齐自研 |
 | 动态切分 | **自研 NPU DRA Driver** | MindCluster | MindCluster 绑定太死，自研 |
-| 推理框架（通用） | **KServe + MindIE 后端** | Triton + MindIE | KServe 提供 K8s 原生 InferenceService CRD |
-| 推理框架（PD 分离） | **vLLM disaggregated** 或 **llm-d** | 自研 | vLLM 0.6+ 原生 PD 分离 |
+| 推理框架（通用） | **vllm-ascend (v0.11.0+) Deployment** | MindIE Service 单栈 | 符合 spec「不用 KServe」要求；vllm-ascend 原生 910B 支持；可经 MindIE Turbo 加速；见 ADR-0002 |
+| 推理框架（PD 分离） | **vllm-ascend disaggregated_prefill_v1** + Mooncake/LLMDataDist | 单实例 colocated | Ascend 原生 PD：HCCS 节点内 / Mooncake 节点间；见 `docs/research/vllm-pd-disaggregation.md` §8 |
 | 训练框架 | （Phase 5 不重点） | | |
 | 容器运行时 | containerd + Ascend Container Toolkit | | |
 | 虚拟机运行时（隔离性） | KubeVirt | | Phase 5 可选引入 |
@@ -233,6 +233,7 @@ flowchart LR
 - ✅ **混合前端方案**：自研 React 主壳 + Grafana iframe 嵌入指标页
 - ✅ **多形态部署**：边缘单节点 K3s+KubeEdge；小集群标准 K8s；多站点 Karmada
 - ✅ **演示后端无状态**：不引入数据库；Mock 数据源走 ConfigMap 或本地 JSON
+- ✅ **不引入 KServe**（spec 第 47-48 行甲方明确要求，见 ADR-0002）：推理服务全用 vllm-ascend Deployment + 自研 inference-operator（含 PD Router），简化技术栈
 
 ---
 
@@ -259,7 +260,6 @@ flowchart LR
 |---|---|---|
 | scheduler-plugins | 增加 HCCS/HCCL 拓扑感知插件 | Phase 6, 2-3 周 |
 | VPA | 接入自定义指标，支持 NPU 显存维度伸缩 | Phase 8, 2 周 |
-| KServe | 适配 MindIE 后端 InferenceService | Phase 5, 1-2 周 |
 | dra-example-driver | 改造为 Ascend NPU DRA Driver | Phase 4-7, 4-6 周 |
 | ascend-npu-exporter（社区版） | 补全切片粒度、HCCS 拓扑、显存带宽等指标 | Phase 2-4, 持续迭代 |
 
@@ -270,7 +270,7 @@ flowchart LR
 | 演示后端 (demo-backend) | API、聚合、Mock | Phase 1 |
 | 演示前端 (demo-frontend) | UI、拓扑、交互 | Phase 1 |
 | 池化 Operator (pool-operator) | 4 级 CRD 与 Controller | Phase 3 |
-| 推理服务 Operator (inference-operator) | 封装 KServe + 调度策略 | Phase 5-6 |
+| 推理服务 Operator (inference-operator) | 管理 vllm-ascend Deployment + 内置 PD Router + 调度策略 + ModelService CRD | Phase 5-6 |
 | NPU 动态切分模块 | 突破硬模板 | Phase 7 |
 | O2 DMS Adapter | 对外 K8s Profile 接口 | Phase 9 |
 
@@ -367,7 +367,7 @@ operators/pool-operator/
 
 ### 5.4 推理服务 Operator `inference-operator`（Phase 5）
 
-封装 KServe 的 `InferenceService` + 调度策略 + 自动伸缩，对上提供 `ModelService` 高阶 CRD。
+管理 vllm-ascend Deployment 生命周期（含单实例与 PD 双实例两种拓扑），内置 PD Router（基于 vllm-ascend `disaggregated_prefill_v1/proxy_server.py` 改造为 K8s Service + Controller），集成 NUMA / HCCS 亲和调度与自动伸缩，对上提供 `ModelService` 高阶 CRD（替代原 KServe `InferenceService` 抽象）。详见 ADR-0002。
 
 ### 5.5 NPU DRA Driver `npu-dra-driver`（Phase 4-7）
 
@@ -681,7 +681,7 @@ Grafana dashboard 在 deploy 目录提前 provisioned，前端只是 iframe 切�
 │ │ ├ Ascend Device Plugin       │ │
 │ │ ├ Prometheus + Grafana       │ │
 │ │ ├ Volcano                    │ │
-│ │ ├ KServe + MindIE            │ │
+│ │ ├ vllm-ascend (含 PD + Mooncake/LLMDataDist) │ │
 │ │ ├ Pool Operator              │ │
 │ │ ├ Demo Backend               │ │
 │ │ └ Demo Frontend              │ │
@@ -803,7 +803,7 @@ ocloud-edge-platform/
 |---|---|---|
 | 昇腾 910B 真机访问受限 | Phase 5+ 卡住 | Phase 1-4 全部基于 Mock + 仿真，硬件就位再切 |
 | K8s 1.31 DRA 在生产环境不稳 | Phase 4 不稳 | Phase 4 先做出原型，生产部署考虑 fallback 到 Device Plugin |
-| MindIE 不开源 | KServe 集成有黑盒 | 用容器镜像方式集成 |
+| MindIE 不开源 | 通过 vllm-ascend MindIE Turbo 间接加速，黑盒影响降低 | 优先 vllm-ascend 原生 backend；MindIE Turbo 仅作为可选加速路径 |
 | vLLM PD 分离与 MindIE 后端不兼容 | Qwen 8B PD 演示失败 | 准备两条路径：vLLM(GPU仿真) + MindIE(标准非 PD) |
 
 ### 14.2 未决问题（Phase 0 评审时讨论）
@@ -851,9 +851,9 @@ ocloud-edge-platform/
 - KubeEdge: https://kubeedge.io
 - Karmada: https://karmada.io
 - Volcano: https://volcano.sh
-- KServe: https://kserve.github.io/website
 - vLLM: https://github.com/vllm-project/vllm
-- llm-d: https://github.com/llm-d/llm-d
+- vllm-ascend: https://github.com/vllm-project/vllm-ascend
+- llm-d: https://github.com/llm-d/llm-d（已拒，不支持 Ascend，仅作参考）
 - Kubebuilder: https://book.kubebuilder.io
 - DRA Example Driver: https://github.com/kubernetes-sigs/dra-example-driver
 - Ascend Device Plugin: https://gitee.com/ascend/ascend-device-plugin

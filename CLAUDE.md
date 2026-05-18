@@ -100,7 +100,7 @@ React 18 + TS 5 + Vite / Ant Design 5 / AntV G6 / ECharts / Zustand / react-quer
 KubeEdge / K3s / Karmada（Phase 9+）/ Volcano / scheduler-plugins（自研 NUMA+HCCS）
 
 ### NPU / AI
-Ascend Device Plugin / **自研 NPU DRA Driver**（基于 kubernetes-sigs/dra-example-driver）/ KServe + MindIE / vLLM 或 llm-d
+Ascend Device Plugin / **自研 NPU DRA Driver**（基于 kubernetes-sigs/dra-example-driver）/ **vllm-ascend** (v0.11.0+) / MindIE Turbo（vllm-ascend 可选加速 backend）/ 自研 **inference-operator**（含 PD Router + ModelService CRD）
 
 ### 监控
 Prometheus + Grafana（iframe 嵌入）/ 自研 ascend-npu-exporter-plus / Loki + Promtail
@@ -109,6 +109,7 @@ Prometheus + Grafana（iframe 嵌入）/ 自研 ascend-npu-exporter-plus / Loki 
 - **不引入 MindCluster / MindX DL**（保留自研动态切分与 DRA 空间）
 - **演示后端无状态**（无数据库，仅聚合 + 短期缓存）
 - **混合前端**（自研主壳 + Grafana iframe 指标页）
+- **不引入 KServe**（spec 第 47-48 行甲方明确要求，见 ADR-0002）：推理服务全部基于 vllm-ascend Deployment + 自研 inference-operator（含 PD Router），不再有 KServe `InferenceService` 包装层
 
 ---
 
