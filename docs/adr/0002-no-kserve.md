@@ -101,6 +101,12 @@
 ### Phase 5+ 任务包
 - 未来拆出 Phase 5 任务时，按本 ADR 基线设计 inference-operator 任务；当前任务包不存在，所以不改。
 
+### Mock 数据层（已知漂移,Phase 1 W4 后清理）
+- `configs/mock-data/`（共享契约，见 `CLAUDE.md §4`）目前仍有 **11 处 `InferenceService` 字面引用**：`schema.json:291` `Workload.kind` enum (1)、`set-a-small/workloads.json` 4 处 kind 值、`generator/preset_small.go` 4 处 `mk()` 调用 + 1 处注释、`generator/README.md` 1 处文档引用。
+- 本 ADR 评审时 plan 横向扫描漏检（P4 失误），**不在本次 commit 范围**。
+- 详见 `docs/research/mock-data-kserve-residue.md`（**已知漂移记录,Deferred**）。
+- **执行时机**：Phase 1 W4 验收完成、所有 W2-W3 开发 agent 收尾后，由协调者单独派单 configs agent — 避免与正在进行的开发任务冲突。
+
 ---
 
 ## 已拒绝的替代方案
@@ -135,4 +141,5 @@ grep -rn "kserve\|KServe\|InferenceService" backend/ frontend/ operators/
 
 ## 修订历史
 
-- 2026-05-17：初版 Proposed（由 spec/OR-requirements.md 引入触发）
+- 2026-05-17 v1：初版 Proposed（由 spec/OR-requirements.md 引入触发）
+- 2026-05-17 v2：补 §影响范围「Mock 数据层」(已知漂移)条目；P4 横向扫描漏检的诚实声明。关联 `docs/research/mock-data-kserve-residue.md` 由 RFC 草案降级为「已知漂移记录」，执行时机推迟至 Phase 1 W4 收尾后，避免与正在进行的开发 agent 任务冲突。
