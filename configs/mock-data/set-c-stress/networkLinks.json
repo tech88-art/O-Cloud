@@ -1,0 +1,977 @@
+{
+  "meta": {
+    "name": "set-c-stress",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Stress single-cluster: 1 cluster / 100 nodes / 800 NPUs / 20 workloads / spine+4leaf fabric. ADR-0005 推翻条件 验证 dataset. Reproducible (seed=4242).",
+    "scenario": "stress"
+  },
+  "clusters": [
+    {
+      "id": "cluster-stress-a",
+      "name": "cluster-stress-a",
+      "role": "small-cluster",
+      "location": "site-stress-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 100,
+      "npuCount": 800,
+      "labels": {
+        "environment": "stress",
+        "region": "cn-east-1",
+        "site": "stress"
+      },
+      "createdAt": "2026-05-03T12:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": [],
+  "networkLinks": [
+    {
+      "id": "link-spine-01-switch-leaf-a",
+      "from": "switch-leaf-a",
+      "to": "switch-spine-01",
+      "bandwidthGbps": 400,
+      "medium": "optical",
+      "utilization": 25,
+      "rttUs": 0.5
+    },
+    {
+      "id": "link-spine-01-switch-leaf-b",
+      "from": "switch-leaf-b",
+      "to": "switch-spine-01",
+      "bandwidthGbps": 400,
+      "medium": "optical",
+      "utilization": 25,
+      "rttUs": 0.5
+    },
+    {
+      "id": "link-spine-01-switch-leaf-c",
+      "from": "switch-leaf-c",
+      "to": "switch-spine-01",
+      "bandwidthGbps": 400,
+      "medium": "optical",
+      "utilization": 25,
+      "rttUs": 0.5
+    },
+    {
+      "id": "link-spine-01-switch-leaf-d",
+      "from": "switch-leaf-d",
+      "to": "switch-spine-01",
+      "bandwidthGbps": 400,
+      "medium": "optical",
+      "utilization": 25,
+      "rttUs": 0.5
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-000",
+      "from": "worker-stress-000",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-001",
+      "from": "worker-stress-001",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-002",
+      "from": "worker-stress-002",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-003",
+      "from": "worker-stress-003",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-004",
+      "from": "worker-stress-004",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-005",
+      "from": "worker-stress-005",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-006",
+      "from": "worker-stress-006",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-007",
+      "from": "worker-stress-007",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-008",
+      "from": "worker-stress-008",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-009",
+      "from": "worker-stress-009",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-010",
+      "from": "worker-stress-010",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-011",
+      "from": "worker-stress-011",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-012",
+      "from": "worker-stress-012",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-013",
+      "from": "worker-stress-013",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-014",
+      "from": "worker-stress-014",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-015",
+      "from": "worker-stress-015",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-016",
+      "from": "worker-stress-016",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-017",
+      "from": "worker-stress-017",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-018",
+      "from": "worker-stress-018",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-019",
+      "from": "worker-stress-019",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-020",
+      "from": "worker-stress-020",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-021",
+      "from": "worker-stress-021",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-022",
+      "from": "worker-stress-022",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-023",
+      "from": "worker-stress-023",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-a-worker-stress-024",
+      "from": "worker-stress-024",
+      "to": "switch-leaf-a",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-025",
+      "from": "worker-stress-025",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-026",
+      "from": "worker-stress-026",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-027",
+      "from": "worker-stress-027",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-028",
+      "from": "worker-stress-028",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-029",
+      "from": "worker-stress-029",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-030",
+      "from": "worker-stress-030",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-031",
+      "from": "worker-stress-031",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-032",
+      "from": "worker-stress-032",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-033",
+      "from": "worker-stress-033",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-034",
+      "from": "worker-stress-034",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-035",
+      "from": "worker-stress-035",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-036",
+      "from": "worker-stress-036",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-037",
+      "from": "worker-stress-037",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-038",
+      "from": "worker-stress-038",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-039",
+      "from": "worker-stress-039",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-040",
+      "from": "worker-stress-040",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-041",
+      "from": "worker-stress-041",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-042",
+      "from": "worker-stress-042",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-043",
+      "from": "worker-stress-043",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-044",
+      "from": "worker-stress-044",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-045",
+      "from": "worker-stress-045",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-046",
+      "from": "worker-stress-046",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-047",
+      "from": "worker-stress-047",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-048",
+      "from": "worker-stress-048",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-b-worker-stress-049",
+      "from": "worker-stress-049",
+      "to": "switch-leaf-b",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-050",
+      "from": "worker-stress-050",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-051",
+      "from": "worker-stress-051",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-052",
+      "from": "worker-stress-052",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-053",
+      "from": "worker-stress-053",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-054",
+      "from": "worker-stress-054",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-055",
+      "from": "worker-stress-055",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-056",
+      "from": "worker-stress-056",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-057",
+      "from": "worker-stress-057",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-058",
+      "from": "worker-stress-058",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-059",
+      "from": "worker-stress-059",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-060",
+      "from": "worker-stress-060",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-061",
+      "from": "worker-stress-061",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-062",
+      "from": "worker-stress-062",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-063",
+      "from": "worker-stress-063",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-064",
+      "from": "worker-stress-064",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-065",
+      "from": "worker-stress-065",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-066",
+      "from": "worker-stress-066",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-067",
+      "from": "worker-stress-067",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-068",
+      "from": "worker-stress-068",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-069",
+      "from": "worker-stress-069",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-070",
+      "from": "worker-stress-070",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-071",
+      "from": "worker-stress-071",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-072",
+      "from": "worker-stress-072",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-073",
+      "from": "worker-stress-073",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-c-worker-stress-074",
+      "from": "worker-stress-074",
+      "to": "switch-leaf-c",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-075",
+      "from": "worker-stress-075",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-076",
+      "from": "worker-stress-076",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-077",
+      "from": "worker-stress-077",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-078",
+      "from": "worker-stress-078",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-079",
+      "from": "worker-stress-079",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-080",
+      "from": "worker-stress-080",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-081",
+      "from": "worker-stress-081",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-082",
+      "from": "worker-stress-082",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-083",
+      "from": "worker-stress-083",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-084",
+      "from": "worker-stress-084",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-085",
+      "from": "worker-stress-085",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-086",
+      "from": "worker-stress-086",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-087",
+      "from": "worker-stress-087",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-088",
+      "from": "worker-stress-088",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-089",
+      "from": "worker-stress-089",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-090",
+      "from": "worker-stress-090",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-091",
+      "from": "worker-stress-091",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-092",
+      "from": "worker-stress-092",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-093",
+      "from": "worker-stress-093",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-094",
+      "from": "worker-stress-094",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-095",
+      "from": "worker-stress-095",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-096",
+      "from": "worker-stress-096",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-097",
+      "from": "worker-stress-097",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-098",
+      "from": "worker-stress-098",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    },
+    {
+      "id": "link-switch-leaf-d-worker-stress-099",
+      "from": "worker-stress-099",
+      "to": "switch-leaf-d",
+      "bandwidthGbps": 25,
+      "medium": "dac",
+      "utilization": 15,
+      "rttUs": 0.8
+    }
+  ]
+}

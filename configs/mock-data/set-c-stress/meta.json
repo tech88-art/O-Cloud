@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "name": "set-c-stress",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Stress single-cluster: 1 cluster / 100 nodes / 800 NPUs / 20 workloads / spine+4leaf fabric. ADR-0005 推翻条件 验证 dataset. Reproducible (seed=4242).",
+    "scenario": "stress"
+  },
+  "clusters": [
+    {
+      "id": "cluster-stress-a",
+      "name": "cluster-stress-a",
+      "role": "small-cluster",
+      "location": "site-stress-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 100,
+      "npuCount": 800,
+      "labels": {
+        "environment": "stress",
+        "region": "cn-east-1",
+        "site": "stress"
+      },
+      "createdAt": "2026-05-03T12:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": []
+}

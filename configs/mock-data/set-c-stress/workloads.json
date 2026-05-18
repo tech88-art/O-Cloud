@@ -1,0 +1,1853 @@
+{
+  "meta": {
+    "name": "set-c-stress",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Stress single-cluster: 1 cluster / 100 nodes / 800 NPUs / 20 workloads / spine+4leaf fabric. ADR-0005 推翻条件 验证 dataset. Reproducible (seed=4242).",
+    "scenario": "stress"
+  },
+  "clusters": [
+    {
+      "id": "cluster-stress-a",
+      "name": "cluster-stress-a",
+      "role": "small-cluster",
+      "location": "site-stress-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 100,
+      "npuCount": 800,
+      "labels": {
+        "environment": "stress",
+        "region": "cn-east-1",
+        "site": "stress"
+      },
+      "createdAt": "2026-05-03T12:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [],
+  "workloads": [
+    {
+      "name": "stress-pd-large",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "InferenceService",
+      "status": "running",
+      "replicas": {
+        "desired": 20,
+        "ready": 20
+      },
+      "nodeNames": [
+        "worker-stress-000",
+        "worker-stress-001",
+        "worker-stress-002",
+        "worker-stress-003",
+        "worker-stress-004",
+        "worker-stress-005",
+        "worker-stress-006",
+        "worker-stress-007",
+        "worker-stress-008",
+        "worker-stress-009",
+        "worker-stress-010",
+        "worker-stress-011",
+        "worker-stress-012",
+        "worker-stress-013",
+        "worker-stress-014",
+        "worker-stress-015",
+        "worker-stress-016",
+        "worker-stress-017",
+        "worker-stress-018",
+        "worker-stress-019"
+      ],
+      "npuUsage": {
+        "allocated": 20,
+        "slices": [
+          "worker-stress-000-npu-0",
+          "worker-stress-010-npu-0",
+          "worker-stress-001-npu-0",
+          "worker-stress-011-npu-0",
+          "worker-stress-002-npu-0",
+          "worker-stress-012-npu-0",
+          "worker-stress-003-npu-0",
+          "worker-stress-013-npu-0",
+          "worker-stress-004-npu-0",
+          "worker-stress-014-npu-0",
+          "worker-stress-005-npu-0",
+          "worker-stress-015-npu-0",
+          "worker-stress-006-npu-0",
+          "worker-stress-016-npu-0",
+          "worker-stress-007-npu-0",
+          "worker-stress-017-npu-0",
+          "worker-stress-008-npu-0",
+          "worker-stress-018-npu-0",
+          "worker-stress-009-npu-0",
+          "worker-stress-019-npu-0"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-pd-large-prefill-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-000",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-000-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-000-npu-0",
+              "role": "prefill"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-decode-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-010",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-010-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-010-npu-0",
+              "role": "decode"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-prefill-1",
+          "namespace": "stress",
+          "nodeName": "worker-stress-001",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-001-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-001-npu-0",
+              "role": "prefill"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-decode-1",
+          "namespace": "stress",
+          "nodeName": "worker-stress-011",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-011-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-011-npu-0",
+              "role": "decode"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-prefill-2",
+          "namespace": "stress",
+          "nodeName": "worker-stress-002",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-002-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-002-npu-0",
+              "role": "prefill"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-decode-2",
+          "namespace": "stress",
+          "nodeName": "worker-stress-012",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-012-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-012-npu-0",
+              "role": "decode"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-prefill-3",
+          "namespace": "stress",
+          "nodeName": "worker-stress-003",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-003-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-003-npu-0",
+              "role": "prefill"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-decode-3",
+          "namespace": "stress",
+          "nodeName": "worker-stress-013",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-013-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-013-npu-0",
+              "role": "decode"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-prefill-4",
+          "namespace": "stress",
+          "nodeName": "worker-stress-004",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-004-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-004-npu-0",
+              "role": "prefill"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-decode-4",
+          "namespace": "stress",
+          "nodeName": "worker-stress-014",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-014-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-014-npu-0",
+              "role": "decode"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-prefill-5",
+          "namespace": "stress",
+          "nodeName": "worker-stress-005",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-005-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-005-npu-0",
+              "role": "prefill"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-decode-5",
+          "namespace": "stress",
+          "nodeName": "worker-stress-015",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-015-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-015-npu-0",
+              "role": "decode"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-prefill-6",
+          "namespace": "stress",
+          "nodeName": "worker-stress-006",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-006-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-006-npu-0",
+              "role": "prefill"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-decode-6",
+          "namespace": "stress",
+          "nodeName": "worker-stress-016",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-016-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-016-npu-0",
+              "role": "decode"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-prefill-7",
+          "namespace": "stress",
+          "nodeName": "worker-stress-007",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-007-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-007-npu-0",
+              "role": "prefill"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-decode-7",
+          "namespace": "stress",
+          "nodeName": "worker-stress-017",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-017-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-017-npu-0",
+              "role": "decode"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-prefill-8",
+          "namespace": "stress",
+          "nodeName": "worker-stress-008",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-008-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-008-npu-0",
+              "role": "prefill"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-decode-8",
+          "namespace": "stress",
+          "nodeName": "worker-stress-018",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-018-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-018-npu-0",
+              "role": "decode"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-prefill-9",
+          "namespace": "stress",
+          "nodeName": "worker-stress-009",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-009-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-009-npu-0",
+              "role": "prefill"
+            }
+          ]
+        },
+        {
+          "name": "stress-pd-large-decode-9",
+          "namespace": "stress",
+          "nodeName": "worker-stress-019",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-019-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-019-npu-0",
+              "role": "decode"
+            }
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "from": "stress-pd-large-prefill-0",
+          "to": "stress-pd-large-decode-0",
+          "type": "pd-pair"
+        },
+        {
+          "from": "stress-pd-large-prefill-1",
+          "to": "stress-pd-large-decode-1",
+          "type": "pd-pair"
+        },
+        {
+          "from": "stress-pd-large-prefill-2",
+          "to": "stress-pd-large-decode-2",
+          "type": "pd-pair"
+        },
+        {
+          "from": "stress-pd-large-prefill-3",
+          "to": "stress-pd-large-decode-3",
+          "type": "pd-pair"
+        },
+        {
+          "from": "stress-pd-large-prefill-4",
+          "to": "stress-pd-large-decode-4",
+          "type": "pd-pair"
+        },
+        {
+          "from": "stress-pd-large-prefill-5",
+          "to": "stress-pd-large-decode-5",
+          "type": "pd-pair"
+        },
+        {
+          "from": "stress-pd-large-prefill-6",
+          "to": "stress-pd-large-decode-6",
+          "type": "pd-pair"
+        },
+        {
+          "from": "stress-pd-large-prefill-7",
+          "to": "stress-pd-large-decode-7",
+          "type": "pd-pair"
+        },
+        {
+          "from": "stress-pd-large-prefill-8",
+          "to": "stress-pd-large-decode-8",
+          "type": "pd-pair"
+        },
+        {
+          "from": "stress-pd-large-prefill-9",
+          "to": "stress-pd-large-decode-9",
+          "type": "pd-pair"
+        }
+      ],
+      "createdAt": "2026-05-14T12:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-pd-large",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-medium-00",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 3,
+        "ready": 3
+      },
+      "nodeNames": [
+        "worker-stress-020"
+      ],
+      "npuUsage": {
+        "allocated": 3,
+        "slices": [
+          "worker-stress-020-npu-1",
+          "worker-stress-020-npu-2",
+          "worker-stress-020-npu-3"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-medium-00-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-020",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-020-npu-1"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-020-npu-1",
+              "role": "primary"
+            }
+          ]
+        },
+        {
+          "name": "stress-medium-00-1",
+          "namespace": "stress",
+          "nodeName": "worker-stress-020",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-020-npu-2"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-020-npu-2",
+              "role": "primary"
+            }
+          ]
+        },
+        {
+          "name": "stress-medium-00-2",
+          "namespace": "stress",
+          "nodeName": "worker-stress-020",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-020-npu-3"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-020-npu-3",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-15T12:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-medium-00",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-medium-01",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 3,
+        "ready": 3
+      },
+      "nodeNames": [
+        "worker-stress-025"
+      ],
+      "npuUsage": {
+        "allocated": 3,
+        "slices": [
+          "worker-stress-025-npu-1",
+          "worker-stress-025-npu-2",
+          "worker-stress-025-npu-3"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-medium-01-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-025",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-025-npu-1"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-025-npu-1",
+              "role": "primary"
+            }
+          ]
+        },
+        {
+          "name": "stress-medium-01-1",
+          "namespace": "stress",
+          "nodeName": "worker-stress-025",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-025-npu-2"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-025-npu-2",
+              "role": "primary"
+            }
+          ]
+        },
+        {
+          "name": "stress-medium-01-2",
+          "namespace": "stress",
+          "nodeName": "worker-stress-025",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-025-npu-3"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-025-npu-3",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-15T11:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-medium-01",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-medium-02",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 3,
+        "ready": 3
+      },
+      "nodeNames": [
+        "worker-stress-030"
+      ],
+      "npuUsage": {
+        "allocated": 3,
+        "slices": [
+          "worker-stress-030-npu-1",
+          "worker-stress-030-npu-2",
+          "worker-stress-030-npu-3"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-medium-02-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-030",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-030-npu-1"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-030-npu-1",
+              "role": "primary"
+            }
+          ]
+        },
+        {
+          "name": "stress-medium-02-1",
+          "namespace": "stress",
+          "nodeName": "worker-stress-030",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-030-npu-2"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-030-npu-2",
+              "role": "primary"
+            }
+          ]
+        },
+        {
+          "name": "stress-medium-02-2",
+          "namespace": "stress",
+          "nodeName": "worker-stress-030",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-030-npu-3"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-030-npu-3",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-15T10:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-medium-02",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-medium-03",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 3,
+        "ready": 3
+      },
+      "nodeNames": [
+        "worker-stress-035"
+      ],
+      "npuUsage": {
+        "allocated": 3,
+        "slices": [
+          "worker-stress-035-npu-1",
+          "worker-stress-035-npu-2",
+          "worker-stress-035-npu-3"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-medium-03-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-035",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-035-npu-1"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-035-npu-1",
+              "role": "primary"
+            }
+          ]
+        },
+        {
+          "name": "stress-medium-03-1",
+          "namespace": "stress",
+          "nodeName": "worker-stress-035",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-035-npu-2"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-035-npu-2",
+              "role": "primary"
+            }
+          ]
+        },
+        {
+          "name": "stress-medium-03-2",
+          "namespace": "stress",
+          "nodeName": "worker-stress-035",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-035-npu-3"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-035-npu-3",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-15T09:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-medium-03",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-00",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-040"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-040-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-00-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-040",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-040-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-040-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T12:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-00",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-01",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-044"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-044-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-01-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-044",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-044-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-044-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T11:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-01",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-02",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-048"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-048-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-02-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-048",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-048-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-048-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T10:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-02",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-03",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-052"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-052-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-03-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-052",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-052-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-052-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T09:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-03",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-04",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-056"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-056-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-04-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-056",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-056-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-056-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T08:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-04",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-05",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-060"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-060-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-05-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-060",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-060-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-060-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T07:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-05",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-06",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-064"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-064-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-06-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-064",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-064-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-064-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T06:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-06",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-07",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-068"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-068-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-07-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-068",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-068-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-068-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T05:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-07",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-08",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-072"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-072-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-08-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-072",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-072-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-072-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T04:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-08",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-09",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-076"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-076-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-09-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-076",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-076-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-076-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T03:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-09",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-10",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-080"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-080-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-10-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-080",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-080-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-080-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T02:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-10",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-11",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-084"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-084-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-11-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-084",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-084-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-084-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T01:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-11",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-12",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-088"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-088-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-12-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-088",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-088-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-088-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-16T00:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-12",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-13",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-092"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-092-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-13-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-092",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-092-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-092-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-15T23:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-13",
+        "team": "stress-team"
+      }
+    },
+    {
+      "name": "stress-small-14",
+      "namespace": "stress",
+      "type": "inference",
+      "kind": "Deployment",
+      "status": "running",
+      "replicas": {
+        "desired": 1,
+        "ready": 1
+      },
+      "nodeNames": [
+        "worker-stress-096"
+      ],
+      "npuUsage": {
+        "allocated": 1,
+        "slices": [
+          "worker-stress-096-npu-7"
+        ]
+      },
+      "pods": [
+        {
+          "name": "stress-small-14-0",
+          "namespace": "stress",
+          "nodeName": "worker-stress-096",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "primary",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-stress-096-npu-7"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-stress-096-npu-7",
+              "role": "primary"
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-05-15T22:00:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "stress-small-14",
+        "team": "stress-team"
+      }
+    }
+  ],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": []
+}

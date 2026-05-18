@@ -1,0 +1,140 @@
+{
+  "meta": {
+    "name": "set-c-stress",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Stress single-cluster: 1 cluster / 100 nodes / 800 NPUs / 20 workloads / spine+4leaf fabric. ADR-0005 推翻条件 验证 dataset. Reproducible (seed=4242).",
+    "scenario": "stress"
+  },
+  "clusters": [
+    {
+      "id": "cluster-stress-a",
+      "name": "cluster-stress-a",
+      "role": "small-cluster",
+      "location": "site-stress-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 100,
+      "npuCount": 800,
+      "labels": {
+        "environment": "stress",
+        "region": "cn-east-1",
+        "site": "stress"
+      },
+      "createdAt": "2026-05-03T12:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [
+    {
+      "id": "pi-3b",
+      "name": "Pi 3B Inference",
+      "kind": "inference",
+      "modelSize": "3B",
+      "runtime": "mindie",
+      "requirements": {
+        "npuCount": 1,
+        "npuModel": "Ascend910B",
+        "vramMiBPerNPU": 8192,
+        "cpu": {
+          "raw": "4"
+        },
+        "memory": {
+          "raw": "16Gi"
+        }
+      },
+      "description": "Lightweight 3B inference. Single NPU slice (vir01), suitable for chat / edge demo.",
+      "tags": [
+        "inference",
+        "small",
+        "single-card"
+      ],
+      "manifest": "placeholder://helm/pi-3b-values.yaml"
+    },
+    {
+      "id": "qwen-8b-pd",
+      "name": "Qwen 8B PD Disaggregated",
+      "kind": "inference-pd",
+      "modelSize": "8B",
+      "runtime": "vllm",
+      "requirements": {
+        "npuCount": 2,
+        "npuModel": "Ascend910B",
+        "vramMiBPerNPU": 65536,
+        "cpu": {
+          "raw": "16"
+        },
+        "memory": {
+          "raw": "64Gi"
+        }
+      },
+      "description": "Qwen 8B with prefill / decode disaggregation (1P1D). Uses vllm-ascend + Mooncake KV transfer.",
+      "tags": [
+        "inference",
+        "pd",
+        "vllm"
+      ],
+      "manifest": "placeholder://helm/qwen-8b-pd-values.yaml"
+    },
+    {
+      "id": "deepseek-20b",
+      "name": "DeepSeek 20B Inference",
+      "kind": "inference",
+      "modelSize": "20B",
+      "runtime": "mindie",
+      "requirements": {
+        "npuCount": 2,
+        "npuModel": "Ascend910B",
+        "vramMiBPerNPU": 65536,
+        "cpu": {
+          "raw": "16"
+        },
+        "memory": {
+          "raw": "64Gi"
+        }
+      },
+      "description": "DeepSeek 20B colocated inference on 2 whole 910B cards with HCCS full-mesh group.",
+      "tags": [
+        "inference",
+        "large",
+        "hccs"
+      ],
+      "manifest": "placeholder://helm/deepseek-20b-values.yaml"
+    },
+    {
+      "id": "qwen-14b",
+      "name": "Qwen 14B Inference",
+      "kind": "inference",
+      "modelSize": "14B",
+      "runtime": "mindie",
+      "requirements": {
+        "npuCount": 1,
+        "npuModel": "Ascend910B",
+        "vramMiBPerNPU": 32768,
+        "cpu": {
+          "raw": "8"
+        },
+        "memory": {
+          "raw": "32Gi"
+        }
+      },
+      "description": "Qwen 14B inference on a single 910B card with vir04 slice.",
+      "tags": [
+        "inference",
+        "medium",
+        "single-card"
+      ],
+      "manifest": "placeholder://helm/qwen-14b-values.yaml"
+    }
+  ],
+  "events": []
+}

@@ -84,25 +84,37 @@ and Phase 2 multi-site / stress preset development.
 
 ---
 
-## 4. set-c-stress (800 NPU) FPS test deferred
+## 4. ~~set-c-stress (800 NPU) FPS test deferred~~ ✓ FIXTURE DELIVERED (FPS run pending)
 
-**Symptom**: ADR-0005 §"推翻条件" says: "set-c-stress (800 NPU) FPS
-< 15 → fall back to per-workload mini-graph". Phase 1 never built
-set-c-stress — it sits as a `preset_stress.go` stub in the generator
-that returns `errStressNotImplemented`.
+**Resolved (fixture)**: 2026-05-18. `preset_stress.go` now emits a
+schema-valid `configs/mock-data/set-c-stress/` (`make gen-stress`):
 
-**Root cause**: set-c-stress is large enough to require a fresh
-generator pass; T307 scope kept set-a-small.
+- 1 cluster / 100 nodes / 800 NPUs / 0 slices (whole-NPU mode)
+- 20 workloads (1 PD pair with 20 pods + 4 medium × 3 pods + 15 small
+  × 1 pod = ~47 pods) with bindings
+- 1 spine + 4 leaf switches + 104 fabric links
+- Schema-valid against `configs/mock-data/schema.json`
 
-**Workaround**: hand-test against set-a-small (which has at most 125
-nodes / 108 edges fully expanded — well under any sane FPS budget).
+Backend smoke against `set-c-stress` with `?depth=npu&includeFabric=
+true&includeWorkloads=true` returns:
 
-**Resolution path**: generate set-c-stress + run a 30s manual scroll
-benchmark with the topology toggles all ON. If FPS drops below 15,
-trigger ADR-0005's fallback (mini-graph in WorkloadDetailDrawer).
+  - **973 nodes / 1014 edges** (1 cluster + 100 nodes + 800 NPUs +
+    20 workloads + 47 pods + 5 switches; 900 contains + 104 fabric-link
+    + 10 pd-pair edges)
+  - Note: binds-to edges drop because the stress preset uses whole-NPU
+    mode (no `slice` nodes for the aggregator's orphan guard to match
+    against). This is documented behavior — Phase 2 fabric work may
+    revisit if we want binds-to → NPU edges in whole-NPU mode.
 
-**Lands**: Phase 2 stretch, alongside the multi-site (set-b)
-generator.
+**Open (FPS measurement)**: the actual ADR-0005 推翻条件 check
+("FPS ≥ 15 with all toggles ON") needs a human-run benchmark — open
+`http://localhost:3000/overview` against a backend loaded with
+set-c-stress, toggle both fabric + workloads ON, scroll for 30s, read
+DevTools Performance panel. If FPS < 15, fall back to ADR-0005's
+per-workload mini-graph.
+
+This step is intrinsically manual (no headless FPS counter in Phase 1
+E2E), so it stays on the operator's plate.
 
 ---
 
@@ -149,11 +161,12 @@ negative branch.
 | 1 | trivial | no | no | **resolved** (split helpers, lint 0 warnings) |
 | 2 | medium  | no | yes(was) → **resolved** (ADR-0006 contract regen) |
 | 3 | medium  | no | yes(was) → **resolved** (generator emits fabric + bindings + D6 workloads) |
-| 4 | medium  | no | maybe (depends on whether stress fidelity matters early) | open |
+| 4 | medium  | no | maybe | **fixture delivered**; FPS run remains operator-side |
 | 5 | trivial | no | no | **resolved** (WS `?fastforward=N` + frontend `?ffwd=` opt-in; E2E unskipped) |
 | 6 | trivial | no | no | **resolved** (reachability probe + Unreachable Alert) |
 
-After ADR-0006 + generator parity + #5/#6 polish, only #4
-(set-c-stress) remains — a Phase 2 stretch goal exercising the
-ADR-0005 fallback condition (800-NPU FPS budget). No Phase 2 entry
-blockers remain.
+After ADR-0006, generator parity (#3), WS fastforward (#5),
+GrafanaPanel unreachable UX (#6), and set-c-stress fixture (#4), all
+six known issues have engineering resolutions. The set-c-stress FPS
+budget check is operator-driven (no automation in Phase 1); the
+fixture is in place and ready to drive that check.

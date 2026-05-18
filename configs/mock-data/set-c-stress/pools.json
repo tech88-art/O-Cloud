@@ -1,0 +1,175 @@
+{
+  "meta": {
+    "name": "set-c-stress",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Stress single-cluster: 1 cluster / 100 nodes / 800 NPUs / 20 workloads / spine+4leaf fabric. ADR-0005 推翻条件 验证 dataset. Reproducible (seed=4242).",
+    "scenario": "stress"
+  },
+  "clusters": [
+    {
+      "id": "cluster-stress-a",
+      "name": "cluster-stress-a",
+      "role": "small-cluster",
+      "location": "site-stress-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 100,
+      "npuCount": 800,
+      "labels": {
+        "environment": "stress",
+        "region": "cn-east-1",
+        "site": "stress"
+      },
+      "createdAt": "2026-05-03T12:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [
+      {
+        "name": "stress-cluster-pool",
+        "clusters": [
+          {
+            "clusterId": "cluster-stress-a",
+            "syncPolicy": "Push"
+          }
+        ],
+        "status": {
+          "healthyClusters": [
+            "cluster-stress-a"
+          ]
+        }
+      }
+    ],
+    "node": [
+      {
+        "name": "stress-node-pool",
+        "clusterPoolRef": "stress-cluster-pool",
+        "role": "edge",
+        "status": {
+          "nodes": [
+            "worker-stress-000",
+            "worker-stress-001",
+            "worker-stress-002",
+            "worker-stress-003",
+            "worker-stress-004",
+            "worker-stress-005",
+            "worker-stress-006",
+            "worker-stress-007",
+            "worker-stress-008",
+            "worker-stress-009",
+            "worker-stress-010",
+            "worker-stress-011",
+            "worker-stress-012",
+            "worker-stress-013",
+            "worker-stress-014",
+            "worker-stress-015",
+            "worker-stress-016",
+            "worker-stress-017",
+            "worker-stress-018",
+            "worker-stress-019",
+            "worker-stress-020",
+            "worker-stress-021",
+            "worker-stress-022",
+            "worker-stress-023",
+            "worker-stress-024",
+            "worker-stress-025",
+            "worker-stress-026",
+            "worker-stress-027",
+            "worker-stress-028",
+            "worker-stress-029",
+            "worker-stress-030",
+            "worker-stress-031",
+            "worker-stress-032",
+            "worker-stress-033",
+            "worker-stress-034",
+            "worker-stress-035",
+            "worker-stress-036",
+            "worker-stress-037",
+            "worker-stress-038",
+            "worker-stress-039",
+            "worker-stress-040",
+            "worker-stress-041",
+            "worker-stress-042",
+            "worker-stress-043",
+            "worker-stress-044",
+            "worker-stress-045",
+            "worker-stress-046",
+            "worker-stress-047",
+            "worker-stress-048",
+            "worker-stress-049",
+            "worker-stress-050",
+            "worker-stress-051",
+            "worker-stress-052",
+            "worker-stress-053",
+            "worker-stress-054",
+            "worker-stress-055",
+            "worker-stress-056",
+            "worker-stress-057",
+            "worker-stress-058",
+            "worker-stress-059",
+            "worker-stress-060",
+            "worker-stress-061",
+            "worker-stress-062",
+            "worker-stress-063",
+            "worker-stress-064",
+            "worker-stress-065",
+            "worker-stress-066",
+            "worker-stress-067",
+            "worker-stress-068",
+            "worker-stress-069",
+            "worker-stress-070",
+            "worker-stress-071",
+            "worker-stress-072",
+            "worker-stress-073",
+            "worker-stress-074",
+            "worker-stress-075",
+            "worker-stress-076",
+            "worker-stress-077",
+            "worker-stress-078",
+            "worker-stress-079",
+            "worker-stress-080",
+            "worker-stress-081",
+            "worker-stress-082",
+            "worker-stress-083",
+            "worker-stress-084",
+            "worker-stress-085",
+            "worker-stress-086",
+            "worker-stress-087",
+            "worker-stress-088",
+            "worker-stress-089",
+            "worker-stress-090",
+            "worker-stress-091",
+            "worker-stress-092",
+            "worker-stress-093",
+            "worker-stress-094",
+            "worker-stress-095",
+            "worker-stress-096",
+            "worker-stress-097",
+            "worker-stress-098",
+            "worker-stress-099"
+          ]
+        }
+      }
+    ],
+    "npu": [
+      {
+        "name": "stress-npu-pool",
+        "nodePoolRef": "stress-node-pool",
+        "npuModel": "Ascend910B",
+        "status": {
+          "totalNPUs": 800,
+          "healthyNPUs": 800,
+          "allocatedNPUs": 47
+        }
+      }
+    ],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": []
+}
