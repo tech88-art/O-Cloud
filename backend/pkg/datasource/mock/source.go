@@ -55,6 +55,14 @@ type Source struct {
 	slicesOnce sync.Once
 	slices     []model.NPUSlice
 	slicesErr  error
+
+	// Events cache (P1-T-105). Loaded once from events.json; StreamEvents
+	// reads from this slice and replays each entry at its declared offset
+	// from event[0]. Reuse across subscribers is safe because Event values
+	// hold json.RawMessage payloads that the replayer only reads.
+	eventsOnce sync.Once
+	events     []model.Event
+	eventsErr  error
 }
 
 // NewSource returns a fresh mock.Source. fixturesPath is the directory of
@@ -73,12 +81,14 @@ func (s *Source) Name() string { return "mock" }
 
 func (s *Source) Capabilities() datasource.Capabilities {
 	// PHASE-1: T101 enables Clusters, T102 enables Topology, T103 enables
-	// Nodes, T104 enables NPUs. Others flip on as later tasks land.
+	// Nodes, T104 enables NPUs, T105 enables Events. Others flip on as
+	// later tasks land.
 	return datasource.Capabilities{
 		Clusters: true,
 		Topology: true,
 		Nodes:    true,
 		NPUs:     true,
+		Events:   true,
 	}
 }
 

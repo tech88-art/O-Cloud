@@ -79,5 +79,10 @@ func NewRouter(h *Handler, opts RouterOptions) *gin.Engine {
 		// /workloads, /presets, ...
 	}
 
+	// WebSocket endpoints sit OUTSIDE /api/v1 per docs/api-contract.yaml
+	// (comment block §"WebSocket 通道"). P1-T-105 mounts /ws/topology;
+	// later phases add /ws/workloads, /ws/logs/*, /ws/metrics.
+	r.GET("/ws/topology", h.WSTopology)
+
 	return r
 }

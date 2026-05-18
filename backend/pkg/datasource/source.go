@@ -28,6 +28,10 @@ type Capabilities struct {
 	Presets   bool
 	Deploy    bool
 	Metrics   bool
+	// Events indicates the source can stream WSMessage events via
+	// StreamEvents. Mock flips this on; k8s/crd will once an informer-backed
+	// stream lands (PHASE-2).
+	Events bool
 }
 
 // Source is the contract every datasource implements. See backend/CLAUDE.md
@@ -63,4 +67,15 @@ type Source interface {
 
 	// Metrics
 	QueryMetric(ctx context.Context, templateID string, vars map[string]string, timeRange model.TimeRange) (*model.MetricQueryResponse, error)
+
+	// Events streams WSMessage envelopes from the source. Implementations
+	// return a receive-only channel that closes when (a) the underlying
+	// fixture/stream is drained, or (b) ctx is cancelled. Callers MUST drain
+	// the channel until close to avoid leaking the producer goroutine.
+	//
+	// PHASE-1: mock.Source replays configs/mock-data/.../events.json at the
+	// declared offsets (real-time) — see backend/pkg/datasource/mock/events.go.
+	// PHASE-2: k8s.Source will adapt informer events; capability flag gates
+	// which source the /ws/topology handler picks up.
+	StreamEvents(ctx context.Context, opts model.StreamEventsOptions) (<-chan *model.WSMessage, error)
 }
