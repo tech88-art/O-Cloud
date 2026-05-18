@@ -20,6 +20,7 @@ import (
 	"github.com/example/ocloud-edge/backend/pkg/api"
 	"github.com/example/ocloud-edge/backend/pkg/config"
 	"github.com/example/ocloud-edge/backend/pkg/datasource"
+	"github.com/example/ocloud-edge/backend/pkg/datasource/mock"
 )
 
 const (
@@ -78,7 +79,14 @@ func runServer(ctx context.Context, configFile string) error {
 		_ = logger.Sync()
 	}()
 
-	reg, err := datasource.Build(cfg)
+	// Construct concrete sources here (in main) to avoid the import cycle
+	// that would arise if datasource/factory.go directly referenced
+	// datasource/mock (which imports datasource for the Source interface).
+	sources := map[string]datasource.Source{}
+	if mockCfg, ok := cfg.Datasources["mock"]; ok && mockCfg.Enabled {
+		sources["mock"] = mock.NewSource(mockCfg.Path)
+	}
+	reg, err := datasource.Build(cfg, sources)
 	if err != nil {
 		return fmt.Errorf("build datasource registry: %w", err)
 	}

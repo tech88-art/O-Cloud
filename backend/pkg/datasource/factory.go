@@ -29,20 +29,18 @@ func (r *Registry) SourceFor(resource string) Source {
 	return r.Sources[srcName]
 }
 
-// Build constructs a Registry from a config.
+// Build constructs a Registry from a config + a pre-built map of sources
+// (keyed by datasource name, e.g. "mock"). Source construction lives in
+// main (or test code) to avoid an import cycle: each concrete source
+// package (datasource/mock, datasource/k8s, ...) imports datasource for
+// the Source interface, so datasource cannot import them back.
 //
-// PHASE-1: this is a stub. T101+ will register concrete implementations:
-//   - mock  → datasource/mock.NewSource
-//   - k8s   → datasource/k8s.NewSource         (PHASE-2)
-//   - crd   → datasource/crd.NewSource         (PHASE-2)
-//   - prom  → datasource/prometheus.NewSource  (PHASE-2)
-//   - cm    → datasource/configmap.NewSource   (PHASE-2)
+// PHASE-1: only "mock" is wired (P1-T-005 + P1-T-101/103 follow-up).
+// PHASE-2: k8s / crd / prometheus / configmap join.
 //
-// For now Build returns an empty Registry when no datasource is enabled (so
-// healthz can still report `status: ok` with an empty datasources map).
-//
-// TODO(@P1-T-101): wire mock source here.
-func Build(cfg *config.Config) (*Registry, error) {
+// Build only registers sources whose corresponding datasources entry has
+// enabled=true (silently dropping the others). Mapping is copied verbatim.
+func Build(cfg *config.Config, sources map[string]Source) (*Registry, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("nil config")
 	}
@@ -50,10 +48,15 @@ func Build(cfg *config.Config) (*Registry, error) {
 		Sources: map[string]Source{},
 		Mapping: map[string]string{},
 	}
-	// Mapping is copied through verbatim so handlers can already query it.
 	for resource, sourceName := range cfg.Mapping {
 		reg.Mapping[resource] = sourceName
 	}
-	// PHASE-1: no actual sources constructed — concrete wiring follows in T101+.
+	for name, src := range sources {
+		entry, ok := cfg.Datasources[name]
+		if !ok || !entry.Enabled || src == nil {
+			continue
+		}
+		reg.Sources[name] = src
+	}
 	return reg, nil
 }
