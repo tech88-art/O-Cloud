@@ -1,6 +1,6 @@
 # ADR-0003: IMS 7-service phasing — provisioning / software-management / lifecycle
 
-- **状态**:Pending(等用户拍板 Phase 入口)
+- **状态**:Accepted — Option C(用户 2026-05-18 拍板)
 - **日期**:2026-05-18
 - **决策者**:协调者(用户)
 - **相关**:spec/OR-requirements.md L16, docs/architecture.md §1.2
@@ -66,3 +66,14 @@ P3 自查:之前的 phase0-review.md 漏检此项 — **审计不周**。
 - 方案 A → 修订 ADR 状态 Accepted + 架构 §13 加 3 行
 - 方案 B → 修订 ADR + 在 docs/phase-3-plan.md / phase-4-plan.md 补任务(暂不存在)
 - 方案 C → 修订 ADR + phase1-plan W4 加 P1-T-308 占位 UI task
+
+## 选定方案:Option C(2026-05-18)
+
+- **Phase 1 W4**:加 P1-T-308 占位 UI(IMS 3 个 tab + Empty + "Phase 3+ 实现" tooltip)
+- **Phase 3**:启动后真实 lifecycle / software-mgmt / provisioning(待 Phase 3 plan 起草时落任务)
+
+## 影响
+
+- 架构 §13 路线图 Phase 1 行加 1 条 + Phase 3 行加 3 条
+- phase1-plan.md W4 新增 P1-T-308(~0.5d)
+- 总 Phase 1 任务数 44 → 45

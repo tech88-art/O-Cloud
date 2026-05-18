@@ -788,6 +788,26 @@ Acceptance(2026-05-18 RFC-003 加 D6 亲和对比):
   - events.json 后 60s 展示 TTFT / ITL / Throughput 差异
   - Metrics 页 dashboard 加 "affinity vs non-affinity" panel(P1-T-209 配套)
 
+### P1-T-308 IMS 7 服务剩 3 项占位 UI(ADR-0003 Option C)
+| | |
+|---|---|
+| Module | frontend |
+| Priority | P2 |
+| Depends on | P1-T-106, P1-T-107 |
+| Estimated | 0.5d |
+
+Allowed: `frontend/src/pages/Infrastructure/**`, `frontend/src/App.tsx`(加 route), `frontend/src/i18n/**`(parity), Layout Sider 加 1 个父菜单 "基础设施服务"
+
+Acceptance(2026-05-18 ADR-0003 Option C):
+- [ ] 新增 3 个占位页面(各 1 EmptyState + tooltip "Phase 3+ 真实实现"):
+  - `/infra/provisioning` 资源准备
+  - `/infra/software-mgmt` 软件管理
+  - `/infra/lifecycle` 生命周期管理
+- [ ] Sider 加 "基础设施服务" 父菜单(下挂 3 子菜单 + 现有 日志/监控/性能 3 项 link 到对应页面)
+- [ ] i18n 双语 key 齐全(`infra.provisioning.{title,placeholder}` 等)
+- [ ] Vitest smoke(3 个页面渲染 + 路由可达)
+- [ ] **不实现真实功能** — 仅可视化入口
+
 ---
 
 ## 6. W1 启动顺序（关键路径）
