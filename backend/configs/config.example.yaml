@@ -76,9 +76,13 @@ datasources:
   k8s:
     enabled: false
     kubeconfig: ""        # empty → in-cluster ServiceAccount
+  # P2-T-007: prometheus.Source. Set `mapping.metrics: prometheus` to
+  # route the Metrics page's QueryMetric calls to a real Prometheus
+  # instead of the mock's synthesized series. URL is the HTTP API
+  # root (no trailing slash needed; e.g. http://prometheus:9090).
   prometheus:
     enabled: false
-    url: ""
+    url: "http://prometheus:9090"
   crd:
     enabled: false
   configmap:

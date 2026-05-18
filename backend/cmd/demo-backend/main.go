@@ -22,6 +22,7 @@ import (
 	"github.com/example/ocloud-edge/backend/pkg/datasource"
 	"github.com/example/ocloud-edge/backend/pkg/datasource/k8s"
 	"github.com/example/ocloud-edge/backend/pkg/datasource/mock"
+	"github.com/example/ocloud-edge/backend/pkg/datasource/prometheus"
 )
 
 const (
@@ -101,6 +102,18 @@ func runServer(ctx context.Context, configFile string) error {
 		sources["k8s"] = k8sSrc
 		logger.Info("k8s source wired",
 			zap.String("kubeconfig", k8sCfg.Kubeconfig))
+	}
+	// P2-T-007: wire prometheus.Source when enabled. URL is the only
+	// required field; bearer token is optional.
+	if pCfg, ok := cfg.Datasources["prometheus"]; ok && pCfg.Enabled {
+		pSrc, err := prometheus.NewSource(prometheus.Options{
+			URL: pCfg.URL,
+		})
+		if err != nil {
+			return fmt.Errorf("build prometheus source: %w", err)
+		}
+		sources["prometheus"] = pSrc
+		logger.Info("prometheus source wired", zap.String("url", pCfg.URL))
 	}
 	reg, err := datasource.Build(cfg, sources)
 	if err != nil {
