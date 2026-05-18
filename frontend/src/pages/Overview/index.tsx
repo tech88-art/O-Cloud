@@ -76,7 +76,12 @@ export default function OverviewPage() {
   // Topology WS — mount once the cluster is known. The hook handles
   // reconnects + cache invalidation; we just surface its status to the
   // header chip.
-  const ws = useTopologyWS(selectedClusterId);
+  //
+  // known-issues #5: an opt-in `?ffwd=<N>` page query param flips the
+  // mock-event replayer to fast-forward mode. Production users don't
+  // pass it; the E2E suite uses ?ffwd=100 to deterministically observe
+  // a backend event landing in ~1.8s instead of 180s real-time.
+  const ws = useTopologyWS(selectedClusterId, { fastforward: readFastforwardFromUrl() });
 
   const treeData = useMemo<DataNode[]>(
     () => (topologyQuery.data ? buildTreeData(topologyQuery.data) : []),
@@ -283,7 +288,14 @@ function WsStatusChip({
     closed: 'danger',
   };
   return (
-    <div data-testid="ws-status-chip" data-status={status}>
+    <div
+      data-testid="ws-status-chip"
+      data-status={status}
+      // known-issues #5: surface lastEventAt as a stable attribute so
+      // the E2E suite can poll for "any event has landed" without
+      // depending on rendered text format.
+      data-last-event-at={lastEventAt ?? ''}
+    >
       <Text type={toneMap[status]}>● {labelMap[status]}</Text>
       {lastEventAt && (
         <Text type="secondary">
@@ -293,6 +305,20 @@ function WsStatusChip({
       )}
     </div>
   );
+}
+
+/**
+ * Read `?ffwd=<N>` from the current page URL. Returns 0 when absent /
+ * invalid / non-positive (which the useTopologyWS hook treats as
+ * "real-time replay"). E2E-only knob; production users don't set it.
+ */
+function readFastforwardFromUrl(): number {
+  if (typeof window === 'undefined') return 0;
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('ffwd');
+  if (!raw) return 0;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
 function formatTimestamp(iso: string): string {

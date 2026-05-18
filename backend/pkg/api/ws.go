@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -100,6 +101,12 @@ func (h *Handler) WSTopology(c *gin.Context) {
 		return
 	}
 
+	// Parse `?fastforward=<float>` (known-issues #5). Empty / invalid /
+	// non-positive values fall through to real-time replay. The replayer
+	// itself clamps negative values, but rejecting them at parse time
+	// makes the debug story cleaner ("bad query param" vs "replayer
+	// silently ignored your input").
+	streamOpts := parseStreamOpts(c)
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		// Upgrade already wrote an HTTP error response; just log.
@@ -110,7 +117,21 @@ func (h *Handler) WSTopology(c *gin.Context) {
 	// Increment AFTER successful upgrade so failed upgrades don't burn a
 	// slot. Decrement is unconditional in serveWSTopology's defer.
 	wsActiveConnections.Add(1)
-	h.serveWSTopology(c.Request.Context(), conn, src)
+	h.serveWSTopology(c.Request.Context(), conn, src, streamOpts)
+}
+
+// parseStreamOpts pulls StreamEventsOptions out of the request's query
+// params. Currently only `fastforward` is recognised; future knobs
+// (e.g. `from=<timestamp>`) hang off this single helper rather than
+// being sprinkled across the WS handlers.
+func parseStreamOpts(c *gin.Context) model.StreamEventsOptions {
+	opts := model.StreamEventsOptions{}
+	if raw := c.Query("fastforward"); raw != "" {
+		if v, err := strconv.ParseFloat(raw, 64); err == nil && v > 0 {
+			opts.FastForward = v
+		}
+	}
+	return opts
 }
 
 // serveWSTopology owns one upgraded connection from cradle to grave. The
@@ -121,7 +142,7 @@ func (h *Handler) WSTopology(c *gin.Context) {
 // HTTP server shuts down, giving us clean shutdown for free. We derive a
 // child ctx that we cancel ourselves on disconnect so the StreamEvents
 // goroutine doesn't outlive the connection.
-func (h *Handler) serveWSTopology(reqCtx context.Context, conn *websocket.Conn, src datasource.Source) {
+func (h *Handler) serveWSTopology(reqCtx context.Context, conn *websocket.Conn, src datasource.Source, streamOpts model.StreamEventsOptions) {
 	defer func() {
 		_ = conn.Close()
 		wsActiveConnections.Add(-1)
@@ -140,7 +161,7 @@ func (h *Handler) serveWSTopology(reqCtx context.Context, conn *websocket.Conn, 
 
 	// Subscribe BEFORE starting the reader so we 500 cleanly if the source
 	// errors out (rather than mid-handshake from the client's view).
-	events, err := src.StreamEvents(streamCtx, model.StreamEventsOptions{})
+	events, err := src.StreamEvents(streamCtx, streamOpts)
 	if err != nil {
 		h.Logger.Error("ws topology: stream events failed",
 			zap.String("source", src.Name()),

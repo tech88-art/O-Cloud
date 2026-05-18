@@ -189,35 +189,25 @@ test.describe('Overview topology — W2 main flow', () => {
   });
 
   /**
-   * Optional step 9 from the task brief.
-   *
-   * What we'd ideally assert: a backend-emitted `npu.statusChanged` event
-   * (from events.json @ t=3s) lands on the WebSocket, triggers a query
-   * invalidation, and the WsStatusChip's `lastEventAt` updates.
-   *
-   * Why it's skipped: the mock event timing is real-time-scaled. On a
-   * CI runner under load — or when Vite is still warming the dep graph
-   * during the page load — the 3s budget often passes before the
-   * frontend mounts the WS hook. The result is a flaky test.
-   *
-   * Follow-up (post-Phase 1): a `FastForward` knob already exists in the
-   * mock datasource (`backend/pkg/datasource/mock/events.go`, see
-   * `model.StreamEventsOptions.FastForward`). Expose it via a query
-   * parameter on `/ws/topology` (e.g. `?fastforward=10`) so the e2e
-   * suite can replay the same script in 0.3s and this assertion becomes
-   * deterministic.
+   * Originally skipped pre-known-issues #5. Now deterministic via the
+   * `?ffwd=<N>` page query param, which `Overview/index.tsx` reads and
+   * forwards into `useTopologyWS` → `/ws/topology?fastforward=N`. The
+   * mock event replayer (`backend/pkg/datasource/mock/events.go`) then
+   * divides every inter-event delay by N, collapsing the 180s storyline
+   * into ~1.8s at N=100.
    */
-  test.skip('WS event drives status change (TODO: needs FastForward query param)', async ({ page }) => {
-    await page.goto('/overview');
+  test('WS event drives status change (fastforward replay)', async ({ page }) => {
+    await page.goto('/overview?ffwd=100');
     await expect(page.getByTestId('overview-tree')).toBeVisible({ timeout: 20_000 });
 
-    // Wait for an event to land — currently flaky on slow runners.
+    // With ffwd=100 the first event lands at ~30ms wall-clock; budget
+    // 15s to absorb Vite cold-start + WS handshake on slow runners.
     await expect.poll(
       async () => {
         const ts = await page.getByTestId('ws-status-chip').getAttribute('data-last-event-at');
-        return ts !== null;
+        return ts ?? '';
       },
       { timeout: 15_000 },
-    ).toBe(true);
+    ).not.toBe('');
   });
 });

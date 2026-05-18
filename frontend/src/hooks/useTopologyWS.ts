@@ -41,6 +41,15 @@ export interface UseTopologyWSResult {
 export interface UseTopologyWSOptions {
   /** Cap for exponential reconnect backoff (default 3000ms). */
   reconnectDelayMs?: number;
+  /**
+   * known-issues #5: when set to a positive number, append
+   * `?fastforward=<N>` to the WS URL. The backend's mock event
+   * replayer divides every inter-event delay by N, so N=100 collapses
+   * a 180s storyline into ~1.8s — used by the E2E suite (which would
+   * otherwise need to wait through real-time replay for an event to
+   * land). Production callers leave this undefined / 0.
+   */
+  fastforward?: number;
 }
 
 /** Types we care about on `/ws/topology`. Other types are accepted but
@@ -74,6 +83,7 @@ export function useTopologyWS(
   opts: UseTopologyWSOptions = {},
 ): UseTopologyWSResult {
   const reconnectCap = opts.reconnectDelayMs ?? 3_000;
+  const fastforward = opts.fastforward && opts.fastforward > 0 ? opts.fastforward : 0;
   const queryClient = useQueryClient();
   const setLastEventAt = useTopologyStore((s) => s.setLastEventAt);
 
@@ -101,7 +111,7 @@ export function useTopologyWS(
     // can re-mount once config lands; we don't try to poll.
     let url: string;
     try {
-      url = buildWsUrl();
+      url = buildWsUrl(fastforward);
     } catch (err) {
       console.warn('useTopologyWS: runtime config unavailable, staying idle', err);
       setStatus('idle');
@@ -226,7 +236,7 @@ export function useTopologyWS(
     // would re-fire the connect effect on every render. Same reasoning as
     // the standard react-query pattern for socket effects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clusterId, reconnectCap]);
+  }, [clusterId, reconnectCap, fastforward]);
 
   return { status, lastError };
 }
@@ -237,12 +247,20 @@ export function useTopologyWS(
  * prod without rebuild.
  *
  * Note: backend mounts `/ws/topology` at the ROOT, not under `/api/v1`.
+ *
+ * When `fastforward > 0`, append `?fastforward=<N>` so the mock event
+ * replayer compresses the storyline (known-issues #5, E2E deterministic
+ * replay).
  */
-function buildWsUrl(): string {
+function buildWsUrl(fastforward: number): string {
   const base = getRuntimeConfig().wsBaseURL;
   // Tolerate trailing slash in config without producing `//`.
   const trimmed = base.endsWith('/') ? base.slice(0, -1) : base;
-  return `${trimmed}/ws/topology`;
+  const path = `/ws/topology`;
+  if (fastforward > 0) {
+    return `${trimmed}${path}?fastforward=${fastforward}`;
+  }
+  return `${trimmed}${path}`;
 }
 
 function coerceError(err: unknown): Error {

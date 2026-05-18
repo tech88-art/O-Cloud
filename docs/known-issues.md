@@ -106,26 +106,17 @@ generator.
 
 ---
 
-## 5. WS event-driven E2E test skipped
+## 5. ~~WS event-driven E2E test skipped~~ ✓ RESOLVED
 
-**Symptom**: `tests/e2e/tests/topology.spec.ts` has one skipped test
-("WS event drives status change") because the mock's real-time event
-replay timing is sensitive to CI runner load.
-
-**Root cause**: mock backend's event replay is real-time-scaled
-(`events.json` declares offsets in seconds). On a slow CI runner the
-3s event window passes before the frontend mounts its WS hook.
-
-**Workaround**: assert WS handshake (status chip flips to `open`)
-unconditionally; skip the event-arrival assertion.
-
-**Resolution path**: expose the existing `FastForward` knob (already
-present in `backend/pkg/datasource/mock/events.go` as
-`model.StreamEventsOptions.FastForward`) via a `/ws/topology?fastforward=10`
-query parameter. The E2E spec can then replay the 180s storyline in
-~18s deterministically.
-
-**Lands**: Phase 2 stretch; not blocking the demo.
+**Resolved**: 2026-05-18. Added `?fastforward=<N>` query parameter to
+`/ws/topology`; `parseStreamOpts` in `backend/pkg/api/ws.go` plumbs
+it into `model.StreamEventsOptions.FastForward`. Frontend
+`useTopologyWS` accepts a matching `fastforward` option and appends
+the param when set; `Overview/index.tsx` reads `?ffwd=<N>` from the
+page URL and forwards it to the hook. The previously-skipped E2E
+case now passes deterministically against `/overview?ffwd=100` (1.8s
+replay vs 180s real-time). `WsStatusChip` also gained a
+`data-last-event-at` data attribute as the stable assertion target.
 
 ---
 
@@ -156,7 +147,7 @@ state in the panel (currently it's just blank). Cosmetic.
 | 2 | medium  | no | yes(was) → **resolved** (ADR-0006 contract regen) |
 | 3 | medium  | no | yes(was) → **resolved** (generator emits fabric + bindings + D6 workloads) |
 | 4 | medium  | no | maybe (depends on whether stress fidelity matters early) | open |
-| 5 | trivial | no | no | open |
+| 5 | trivial | no | no | **resolved** (WS `?fastforward=N` + frontend `?ffwd=` opt-in; E2E unskipped) |
 | 6 | trivial | no | no | open |
 
 After ADR-0006 + generator parity, no Phase 2 entry blockers remain.
