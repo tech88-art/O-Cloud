@@ -20,19 +20,20 @@ import (
 	"github.com/example/ocloud-edge/backend/pkg/model"
 )
 
-func TestNewSourceWithClient_Capabilities_AfterT002(t *testing.T) {
+func TestNewSourceWithClient_Capabilities_AfterT003(t *testing.T) {
 	src := NewSourceWithClient(fake.NewSimpleClientset(), Options{})
 	caps := src.Capabilities()
 
-	// P2-T-001 + P2-T-002 turn on Clusters / Nodes / NPUs.
+	// P2-T-001 + P2-T-002 + P2-T-003 turn on Clusters / Nodes / NPUs
+	// / Workloads.
 	assert.True(t, caps.Clusters, "P2-T-001 turns Clusters ON")
 	assert.True(t, caps.Nodes, "P2-T-001 turns Nodes ON")
 	assert.True(t, caps.NPUs, "P2-T-002 turns NPUs ON")
+	assert.True(t, caps.Workloads, "P2-T-003 turns Workloads ON")
 
 	// Everything else stays OFF until its dedicated P2-T-00x lands.
 	assert.False(t, caps.Topology, "Topology lands with later aggregator wiring")
 	assert.False(t, caps.Pools, "Pools land with P2-T-101")
-	assert.False(t, caps.Workloads, "Workloads land with P2-T-003")
 	assert.False(t, caps.Logs, "Logs land with P2-T-005")
 	assert.False(t, caps.Presets, "Presets land with P2-T-103")
 	assert.False(t, caps.Deploy, "Deploy stays mock-only in Phase 2")
@@ -65,14 +66,6 @@ func TestStubMethods_ReturnErrCapabilityUnavailable(t *testing.T) {
 		}},
 		{"ListNPUSlicePools", func() error {
 			_, err := src.ListNPUSlicePools(ctx)
-			return err
-		}},
-		{"ListWorkloads", func() error {
-			_, err := src.ListWorkloads(ctx, model.WorkloadFilter{})
-			return err
-		}},
-		{"GetWorkloadDetail", func() error {
-			_, err := src.GetWorkloadDetail(ctx, "ns", "name")
 			return err
 		}},
 		{"GetWorkloadLogs", func() error {

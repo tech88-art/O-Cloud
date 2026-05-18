@@ -103,14 +103,15 @@ var _ datasource.Source = (*Source)(nil)
 func (s *Source) Name() string { return "k8s" }
 
 func (s *Source) Capabilities() datasource.Capabilities {
-	// P2-T-001 turned on Clusters + Nodes; P2-T-002 adds NPUs. Each
-	// subsequent P2-T-00x flips one or more additional caps in the
-	// same struct literal so the progression is easy to grep
+	// P2-T-001: Clusters + Nodes. P2-T-002: NPUs. P2-T-003: Workloads.
+	// Each subsequent P2-T-00x flips one or more additional caps in
+	// the same struct literal so the progression is easy to grep
 	// ("Capabilities()" in commits).
 	return datasource.Capabilities{
-		Clusters: true,
-		Nodes:    true,
-		NPUs:     true,
+		Clusters:  true,
+		Nodes:     true,
+		NPUs:      true,
+		Workloads: true,
 	}
 }
 
@@ -133,13 +134,7 @@ func (s *Source) ListNPUSlicePools(_ context.Context) ([]*model.NPUSlicePool, er
 	return nil, datasource.ErrCapabilityUnavailable
 }
 
-func (s *Source) ListWorkloads(_ context.Context, _ model.WorkloadFilter) ([]*model.Workload, error) {
-	return nil, datasource.ErrCapabilityUnavailable
-}
-
-func (s *Source) GetWorkloadDetail(_ context.Context, _, _ string) (*model.WorkloadDetail, error) {
-	return nil, datasource.ErrCapabilityUnavailable
-}
+// ListWorkloads / GetWorkloadDetail live in workload.go (P2-T-003).
 
 func (s *Source) GetWorkloadLogs(_ context.Context, _, _ string, _ model.LogOptions) (*model.LogPage, error) {
 	return nil, datasource.ErrCapabilityUnavailable
