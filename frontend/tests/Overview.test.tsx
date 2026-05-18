@@ -224,39 +224,34 @@ function makeTopology(): Topology {
 }
 
 /**
- * Topology fixture extended with a `switch` node and a `fabric-link` edge
- * (ADR-0004 / RFC-003). The `TopologyNode.type` union in the auto-gen
- * types doesn't yet name `switch`, so we widen the literal at the cast
- * site — the production renderer treats unknown type strings as opaque
- * runtime values, so this mirrors what the backend would actually serve
- * once `?includeFabric=true` reaches the aggregator.
+ * Topology fixture extended with a `switch` node and a `fabric-link`
+ * edge (ADR-0004). Post-ADR-0006 the generated `TopologyNode['type']`
+ * union names `switch` natively, so the fixture is fully type-safe
+ * without `as unknown as` widening (history: that cast pattern lived
+ * here from T212 until the contract regen).
  */
 function makeTopologyWithFabric(): Topology {
-  const nodes = [
-    { id: CLUSTER_ID, type: 'cluster', label: CLUSTER_ID, status: 'healthy' },
-    { id: 'node-1', type: 'node', label: 'node-1', status: 'healthy' },
-    { id: 'npu-1-0', type: 'npu', label: 'npu-1-0', status: 'idle' },
-    { id: 'switch-tor-01', type: 'switch', label: 'tor-01', status: 'up' },
-  ] as unknown as TopologyNode[];
   return {
-    nodes,
+    nodes: [
+      { id: CLUSTER_ID, type: 'cluster', label: CLUSTER_ID, status: 'healthy' },
+      { id: 'node-1', type: 'node', label: 'node-1', status: 'healthy' },
+      { id: 'npu-1-0', type: 'npu', label: 'npu-1-0', status: 'idle' },
+      { id: 'switch-tor-01', type: 'switch', label: 'tor-01', status: 'up' },
+    ],
     edges: [
       { source: CLUSTER_ID, target: 'node-1', type: 'contains' },
       { source: 'node-1', target: 'npu-1-0', type: 'contains' },
-      // The contract enum has not been regenerated yet — see fixture note.
-      { source: 'node-1', target: 'switch-tor-01', type: 'fabric-link' as unknown as 'contains' },
+      { source: 'node-1', target: 'switch-tor-01', type: 'fabric-link' },
     ],
   };
 }
 
 /**
  * Topology fixture extended with a `workload` node, two `pod` nodes,
- * one `binds-to` (pod→slice) edge and one `pd-pair` (pod↔pod) edge —
- * ADR-0005 / RFC-003 wire shape. Same widening trick as
- * `makeTopologyWithFabric`: the auto-gen `TopologyNode.type` union
- * doesn't name `workload` / `pod` yet, so we cast at the fixture
- * boundary; the production renderer (TopologyGraph) treats unknown
- * type strings as opaque, mirroring the actual backend payload.
+ * one `binds-to` (pod→slice) edge and one `pd-pair` (pod↔pod) edge
+ * (ADR-0005). Post-ADR-0006 all three new node literals and both new
+ * edge literals are in the auto-gen `TopologyNode/Edge['type']` union,
+ * so no widening cast is needed.
  *
  * Mirrors what the backend (P1-T-213, `aggregator/topology.go:485-613`)
  * would serve when `?includeWorkloads=true` is set against the
@@ -265,53 +260,49 @@ function makeTopologyWithFabric(): Topology {
  * the test getting brittle.
  */
 function makeTopologyWithWorkloads(): Topology {
-  const nodes = [
-    { id: CLUSTER_ID, type: 'cluster', label: CLUSTER_ID, status: 'healthy' },
-    { id: 'node-1', type: 'node', label: 'node-1', status: 'healthy' },
-    { id: 'npu-1-0', type: 'npu', label: 'npu-1-0', status: 'idle' },
-    {
-      id: 'npu-1-0-slice-0',
-      type: 'slice',
-      label: 'npu-1-0-slice-0',
-      status: 'busy',
-    },
-    {
-      id: 'workload/ai-inference/qwen-8b',
-      type: 'workload',
-      label: 'ai-inference/qwen-8b',
-      status: 'running',
-    },
-    {
-      id: 'pod/ai-inference/qwen-8b-prefill-0',
-      type: 'pod',
-      label: 'qwen-8b-prefill-0',
-      status: 'running',
-    },
-    {
-      id: 'pod/ai-inference/qwen-8b-decode-0',
-      type: 'pod',
-      label: 'qwen-8b-decode-0',
-      status: 'running',
-    },
-  ] as unknown as TopologyNode[];
   return {
-    nodes,
+    nodes: [
+      { id: CLUSTER_ID, type: 'cluster', label: CLUSTER_ID, status: 'healthy' },
+      { id: 'node-1', type: 'node', label: 'node-1', status: 'healthy' },
+      { id: 'npu-1-0', type: 'npu', label: 'npu-1-0', status: 'idle' },
+      {
+        id: 'npu-1-0-slice-0',
+        type: 'slice',
+        label: 'npu-1-0-slice-0',
+        status: 'busy',
+      },
+      {
+        id: 'workload/ai-inference/qwen-8b',
+        type: 'workload',
+        label: 'ai-inference/qwen-8b',
+        status: 'running',
+      },
+      {
+        id: 'pod/ai-inference/qwen-8b-prefill-0',
+        type: 'pod',
+        label: 'qwen-8b-prefill-0',
+        status: 'running',
+      },
+      {
+        id: 'pod/ai-inference/qwen-8b-decode-0',
+        type: 'pod',
+        label: 'qwen-8b-decode-0',
+        status: 'running',
+      },
+    ],
     edges: [
       { source: CLUSTER_ID, target: 'node-1', type: 'contains' },
       { source: 'node-1', target: 'npu-1-0', type: 'contains' },
       { source: 'npu-1-0', target: 'npu-1-0-slice-0', type: 'contains' },
-      // ADR-0005: binds-to (pod → slice) + pd-pair (pod ↔ pod). The
-      // contract enum hasn't been regenerated; same widening cast as
-      // the fabric fixture.
       {
         source: 'pod/ai-inference/qwen-8b-prefill-0',
         target: 'npu-1-0-slice-0',
-        type: 'binds-to' as unknown as 'contains',
+        type: 'binds-to',
       },
       {
         source: 'pod/ai-inference/qwen-8b-prefill-0',
         target: 'pod/ai-inference/qwen-8b-decode-0',
-        type: 'pd-pair' as unknown as 'contains',
+        type: 'pd-pair',
       },
     ],
   };

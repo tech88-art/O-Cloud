@@ -33,44 +33,34 @@ Paths.
 
 ---
 
-## 2. `docs/api-contract.yaml` enum drift on TopologyNode / TopologyEdge
+## 2. ~~`docs/api-contract.yaml` enum drift on TopologyNode / TopologyEdge~~ ✓ RESOLVED
 
-**Symptom**: The OpenAPI spec's `TopologyNode.type` enum is
+**Resolved**: 2026-05-18 via ADR-0006 (commit landed on dev, contract
+regenerated + frontend types refreshed + widening casts dropped +
+`model.Pod.Bindings` added + Pod.bindings surfaces over REST). The
+schema mismatch noted below is the historical record.
+
+**Original symptom**: The OpenAPI spec's `TopologyNode.type` enum was
 `[cluster, nodepool, node, npu, slice, network]` and
-`TopologyEdge.type` is `[contains, hccs, network, allocated]`. The
-backend emits additional runtime values not in either enum:
+`TopologyEdge.type` was `[contains, hccs, network, allocated]`. The
+backend emitted additional runtime values not in either enum:
 
 - nodes: `switch` (ADR-0004), `workload` / `pod` (ADR-0005)
 - edges: `fabric-link` (ADR-0004), `binds-to` / `pd-pair` (ADR-0005)
 
-**Root cause**: each ADR explicitly chose to ship as "runtime-only
-strings" rather than block its task on a contract regen. The
-frontend's `TopologyGraph` widens the generated union via cast at the
-render boundary, so the components are forward-compatible with a
+**Original root cause**: each ADR explicitly chose to ship as
+"runtime-only strings" rather than block its task on a contract regen.
+The frontend's `TopologyGraph` widened the generated union via cast at
+the render boundary, so the components stayed forward-compatible with a
 later regen.
 
-**Workaround**: type assertions at the cast site (search
-`TopologyNodeType` / `TopologyEdgeType` in
-`frontend/src/components/TopologyGraph/TopologyGraph.tsx`).
-
-**Resolution path**: single RFC bundling all three additions:
-
-```yaml
-TopologyNode.type:
-  enum: [cluster, nodepool, node, npu, slice, network,
-         switch, workload, pod]
-
-TopologyEdge.type:
-  enum: [contains, hccs, network, allocated,
-         fabric-link, binds-to, pd-pair]
-```
-
-Plus add `Pod.bindings` to the WorkloadDetail.Pod sub-schema (T013
-added it to mock-data/schema.json; OpenAPI never followed up). Tracked
-in checkpoint-w3.md "known limits #2".
-
-**Lands**: Phase 2 alongside the WSMessage payload-shape additions
-(metric.sample, log.line — log.line was added with T302).
+**Resolution**: ADR-0006 added the 6 missing enum values + Pod.bindings
++ relaxed `TopologyNode.status` to a free-form string (its value space
+is polymorphic by node type — see ADR-0006 §"Status enum relaxation"
+note in the YAML). Frontend cast widening sites removed in
+`TopologyGraph.tsx` and `Overview/index.tsx`'s `buildTreeData`. Test
+fixtures (`tests/Overview.test.tsx`) dropped the corresponding
+`as unknown as 'contains'` workarounds.
 
 ---
 
@@ -166,15 +156,15 @@ state in the panel (currently it's just blank). Cosmetic.
 
 ## Severity ranking
 
-| # | Severity | Blocking demo? | Blocking Phase 2? |
-|---|---|---|---|
-| 1 | trivial | no | no |
-| 2 | medium  | no | **yes** (bundle into contract regen) |
-| 3 | medium  | no | yes (needs cleanup before any large fixture refresh) |
-| 4 | medium  | no | maybe (depends on whether stress fidelity matters early) |
-| 5 | trivial | no | no |
-| 6 | trivial | no | no |
+| # | Severity | Blocking demo? | Blocking Phase 2? | Status |
+|---|---|---|---|---|
+| 1 | trivial | no | no | **resolved** (split helpers, lint 0 warnings) |
+| 2 | medium  | no | yes(was) → **resolved** (ADR-0006 contract regen) |
+| 3 | medium  | no | yes (needs cleanup before any large fixture refresh) | open |
+| 4 | medium  | no | maybe (depends on whether stress fidelity matters early) | open |
+| 5 | trivial | no | no | open |
+| 6 | trivial | no | no | open |
 
-None of the six are demo-blocking. #2 and #3 should be settled before
-Phase 2 onboarding (so a new agent doesn't accidentally regenerate the
-fixture and lose hand-patches).
+After ADR-0006 only the generator drift (#3) remains as a Phase 2 entry
+concern — bundle with the multi-site (set-b) generator work. #4-#6 are
+optional polish; none are demo-blocking.

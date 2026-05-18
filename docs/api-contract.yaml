@@ -644,11 +644,34 @@ components:
         id: { type: string }
         type:
           type: string
-          enum: [cluster, nodepool, node, npu, slice, network]
+          # ADR-0006 (2026-05-18): regenerated to align with the runtime
+          # wire shape. The trailing three values landed via ADR-0004
+          # (switch, fabric-link) and ADR-0005 (workload, pod) but were
+          # only surfaced at runtime through frontend cast-widening until
+          # this contract regen.
+          enum:
+            - cluster
+            - nodepool
+            - node
+            - npu
+            - slice
+            - network
+            - switch    # ADR-0004 inter-node fabric switch
+            - workload  # ADR-0005 workload aggregate
+            - pod       # ADR-0005 workload pod
         label: { type: string }
         status:
+          # ADR-0006: relaxed from a fixed enum to a free-form string —
+          # the value space is polymorphic by node type:
+          #   cluster / node       → healthy | degraded | failed | unknown
+          #   npu                  → healthy | busy | idle | degraded | failed
+          #   slice                → available | allocated | busy | error
+          #   switch (ADR-0004)    → up | degraded | down
+          #   workload / pod (ADR-0005) → pending | running | succeeded | failed | unknown
+          # Frontend's <StatusTag> uses a mapping table to colour any of
+          # these into the AntD tone palette; unknown strings fall to
+          # `default` rather than crashing.
           type: string
-          enum: [healthy, busy, idle, degraded, failed, unknown]
         attributes:
           type: object
           description: |
@@ -656,6 +679,9 @@ components:
             - node: cpu, memory, arch, os, numaCount
             - npu: model, vram, aiCoreTotal, hccsGroup
             - slice: parentNPU, aiCore, vramMB, allocatedTo
+            - switch: type (tor/leaf/spine), portsTotal, portsUsed, bandwidthGbps
+            - workload: namespace, kind, type, nodeNames, replicas
+            - pod: namespace, nodeName, parentId, workload
           additionalProperties: true
 
     TopologyEdge:
@@ -666,7 +692,18 @@ components:
         target: { type: string }
         type:
           type: string
-          enum: [contains, hccs, network, allocated]
+          # ADR-0006: aligned with runtime wire shape. Added enum values
+          # came from ADR-0004 (fabric-link) and ADR-0005 (binds-to,
+          # pd-pair); prior to this regen the frontend widened the
+          # generated union at the renderer boundary.
+          enum:
+            - contains
+            - hccs
+            - network
+            - allocated
+            - fabric-link  # ADR-0004 node↔switch (or switch↔switch)
+            - binds-to     # ADR-0005 pod ↔ slice resource binding
+            - pd-pair      # ADR-0005 prefill ↔ decode pod pair
         attributes:
           type: object
           additionalProperties: true
@@ -994,6 +1031,23 @@ components:
                   npuSlices:
                     type: array
                     items: { type: string }
+        bindings:
+          # ADR-0006: Pod ↔ slice bindings (was in mock-data/schema.json
+          # since T013 but not exposed by this contract until now).
+          # Drives the `binds-to` edges in /topology?includeWorkloads=true
+          # and the slice list in the Workloads Drawer.
+          type: array
+          items:
+            type: object
+            required: [sliceId]
+            properties:
+              sliceId: { type: string }
+              role:
+                type: string
+                description: 'prefill | decode | primary | sidecar | init | peer'
+              indexInPod:
+                type: integer
+                description: 'index of the slice within the pod (0-based)'
 
     WorkloadMetrics:
       type: object

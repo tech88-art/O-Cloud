@@ -37,12 +37,33 @@ type WorkloadDetail struct {
 }
 
 // Pod mirrors components.schemas.Pod.
+//
+// ADR-0006: Bindings field promoted from the aggregator-local mirror
+// (aggregator.WorkloadInput.Pod.Bindings) into the public DTO. The
+// mock fixture (configs/mock-data/set-a-small/workloads.json) has been
+// emitting these via T013 since W2; only the contract + DTO sides were
+// out of sync.
 type Pod struct {
-	Name       string      `json:"name,omitempty"`
-	Namespace  string      `json:"namespace,omitempty"`
-	NodeName   string      `json:"nodeName,omitempty"`
-	Status     string      `json:"status,omitempty"`
-	Containers []Container `json:"containers,omitempty"`
+	Name       string       `json:"name,omitempty"`
+	Namespace  string       `json:"namespace,omitempty"`
+	NodeName   string       `json:"nodeName,omitempty"`
+	Status     string       `json:"status,omitempty"`
+	Containers []Container  `json:"containers,omitempty"`
+	Bindings   []PodBinding `json:"bindings,omitempty"`
+}
+
+// PodBinding mirrors components.schemas.Pod.bindings[] (ADR-0006).
+//
+// Each entry records that a specific pod consumes a specific NPU slice
+// in a known role (prefill / decode / primary / sidecar / init / peer)
+// at a known position within the pod's container array. The aggregator
+// uses these to emit `binds-to` edges in the workload-fused topology
+// (ADR-0005); the Workloads Drawer surfaces them as the slice list per
+// pod card.
+type PodBinding struct {
+	SliceID    string `json:"sliceId"`
+	Role       string `json:"role,omitempty"`
+	IndexInPod int    `json:"indexInPod,omitempty"`
 }
 
 // Container is the inline containers[] object on Pod.

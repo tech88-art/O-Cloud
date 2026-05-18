@@ -17,28 +17,15 @@ import { StatusTag, type StatusTone } from '@/components/StatusTag';
 import type { Topology, TopologyEdge, TopologyNode } from '@/services/cluster';
 
 /**
- * ADR-0004 (fabric) / ADR-0005 (workload fusion) / RFC-003 wire-type
- * extensions.
+ * Topology node + edge type literals used by the renderer.
  *
- * The backend now emits several wire values that the auto-generated
- * `services/types.ts` doesn't yet know about (the OpenAPI spec is
- * regenerated separately — see RFC-003 §schema):
- *
- * Node types:
- *   - 'switch'    → ADR-0004: an inter-node network switch
- *   - 'workload'  → ADR-0005: a top-level workload aggregate
- *   - 'pod'       → ADR-0005: a pod belonging to a workload
- *
- * Edge types:
- *   - 'fabric-link' → ADR-0004: a node↔switch / switch↔switch link
- *   - 'binds-to'    → ADR-0005: pod↔slice binding (resource consumption)
- *   - 'pd-pair'     → ADR-0005: prefill↔decode pod relation
- *
- * Until the contract regen lands we treat them as runtime-only string
- * variants. We narrow with `typeof n.type === 'string'` + literal compare
- * at the render boundary; the TopologyGraph never trusts the generated
- * union alone, so the component is forward-compatible with the contract
- * regen (no churn when the union gets the extra members).
+ * Historically (T211 / T213 / T214) these were runtime-only strings the
+ * generated `services/types.ts` union didn't name, and this file widened
+ * the union via cast at the render boundary. ADR-0006 (2026-05-18)
+ * regenerated the OpenAPI contract so the generated `TopologyNode['type']`
+ * and `TopologyEdge['type']` unions now cover them natively; the
+ * `as const` constants here remain as named anchors for switch/branch
+ * logic (they're cheaper to grep than literal strings sprinkled inline).
  */
 const NODE_TYPE_SWITCH = 'switch' as const;
 const NODE_TYPE_WORKLOAD = 'workload' as const;
@@ -47,18 +34,10 @@ const EDGE_TYPE_FABRIC_LINK = 'fabric-link' as const;
 const EDGE_TYPE_BINDS_TO = 'binds-to' as const;
 const EDGE_TYPE_PD_PAIR = 'pd-pair' as const;
 
-/** Widened topology-node `type` admitting the runtime-only literals. */
-type TopologyNodeType =
-  | TopologyNode['type']
-  | typeof NODE_TYPE_SWITCH
-  | typeof NODE_TYPE_WORKLOAD
-  | typeof NODE_TYPE_POD;
-/** Widened topology-edge `type` admitting the runtime-only literals. */
-type TopologyEdgeType =
-  | TopologyEdge['type']
-  | typeof EDGE_TYPE_FABRIC_LINK
-  | typeof EDGE_TYPE_BINDS_TO
-  | typeof EDGE_TYPE_PD_PAIR;
+/** Topology-node `type`, sourced directly from the auto-gen contract. */
+type TopologyNodeType = TopologyNode['type'];
+/** Topology-edge `type`, sourced directly from the auto-gen contract. */
+type TopologyEdgeType = TopologyEdge['type'];
 
 /**
  * Production topology graph wrapper around ReactFlow. Replaces the
@@ -391,10 +370,10 @@ function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
   g.setDefaultEdgeLabel(() => ({}));
 
   for (const n of topology.nodes) {
-    // Per-type dimensions — pod nodes are smaller (ADR-0005). The cast
-    // mirrors the renderer side; dagre + renderer must consult the same
-    // helper or the layout misaligns with the rendered card.
-    g.setNode(n.id, dimensionsForNodeType(n.type as TopologyNodeType));
+    // Per-type dimensions — pod nodes are smaller (ADR-0005). The dagre
+    // layout and the `<TopoNode>` renderer must consult the same helper
+    // or the layout misaligns with the rendered card.
+    g.setNode(n.id, dimensionsForNodeType(n.type));
   }
   for (const e of topology.edges) {
     g.setEdge(e.source, e.target);
@@ -404,11 +383,7 @@ function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
 
   const flowNodes: TopoFlowNode[] = topology.nodes.map((n) => {
     const pos = g.node(n.id);
-    // Cast widens to TopologyNodeType; runtime values may include
-    // 'switch' / 'workload' / 'pod' which the generated union doesn't
-    // yet name (see top of file for the contract-regen note).
-    const topoType = n.type as TopologyNodeType;
-    const dims = dimensionsForNodeType(topoType);
+    const dims = dimensionsForNodeType(n.type);
     return {
       id: n.id,
       type: 'topo',
@@ -418,7 +393,7 @@ function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
         : { x: 0, y: 0 },
       data: {
         label: n.label,
-        topoType,
+        topoType: n.type,
         status: n.status,
         selected: n.id === selectedNodeId,
       },
@@ -426,16 +401,13 @@ function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
   });
 
   const flowEdges: Edge[] = topology.edges.map((e, i) => {
-    // Cast widens to TopologyEdgeType — see node `as TopologyNodeType`
-    // comment for the rationale.
-    const edgeType = e.type as TopologyEdgeType;
     return {
       // Contract edges have no id; synthesise a stable one from endpoints.
       id: `${e.source}->${e.target}-${e.type}-${i}`,
       source: e.source,
       target: e.target,
-      ...edgeRenderingFor(edgeType),
-      data: { topoEdgeType: edgeType },
+      ...edgeRenderingFor(e.type),
+      data: { topoEdgeType: e.type },
     };
   });
 

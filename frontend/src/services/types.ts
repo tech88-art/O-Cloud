@@ -960,15 +960,17 @@ export interface components {
         TopologyNode: {
             id: string;
             /** @enum {string} */
-            type: "cluster" | "nodepool" | "node" | "npu" | "slice" | "network";
+            type: "cluster" | "nodepool" | "node" | "npu" | "slice" | "network" | "switch" | "workload" | "pod";
             label: string;
-            /** @enum {string} */
-            status?: "healthy" | "busy" | "idle" | "degraded" | "failed" | "unknown";
+            status?: string;
             /**
              * @description type 相关的字段：
              *     - node: cpu, memory, arch, os, numaCount
              *     - npu: model, vram, aiCoreTotal, hccsGroup
              *     - slice: parentNPU, aiCore, vramMB, allocatedTo
+             *     - switch: type (tor/leaf/spine), portsTotal, portsUsed, bandwidthGbps
+             *     - workload: namespace, kind, type, nodeNames, replicas
+             *     - pod: namespace, nodeName, parentId, workload
              */
             attributes?: {
                 [key: string]: unknown;
@@ -978,7 +980,7 @@ export interface components {
             source: string;
             target: string;
             /** @enum {string} */
-            type: "contains" | "hccs" | "network" | "allocated";
+            type: "contains" | "hccs" | "network" | "allocated" | "fabric-link" | "binds-to" | "pd-pair";
             attributes?: {
                 [key: string]: unknown;
             };
@@ -1199,6 +1201,13 @@ export interface components {
                     memory?: string;
                     npuSlices?: string[];
                 };
+            }[];
+            bindings?: {
+                sliceId: string;
+                /** @description prefill | decode | primary | sidecar | init | peer */
+                role?: string;
+                /** @description index of the slice within the pod (0-based) */
+                indexInPod?: number;
             }[];
         };
         WorkloadMetrics: {

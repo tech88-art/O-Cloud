@@ -4,7 +4,7 @@ import type { DataNode } from 'antd/es/tree';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
-import { useClusters, useClusterTopology, type Topology } from '@/services/cluster';
+import { useClusters, useClusterTopology, type Topology, type TopologyNode } from '@/services/cluster';
 import { useTopologyStore } from '@/store/topologyStore';
 import { useTopologyWS } from '@/hooks/useTopologyWS';
 import { DetailPanel } from './DetailPanel';
@@ -153,21 +153,17 @@ export default function OverviewPage() {
  * Phase 2 follow-up.
  */
 function buildTreeData(topology: Topology): DataNode[] {
-  // Helper: backend emits 'workload' / 'pod' (ADR-0005) and 'switch'
-  // (ADR-0004) at runtime, but the auto-generated `TopologyNode.type`
-  // union doesn't list them yet (contract regen is a separate RFC). We
-  // compare via a widened string cast so TS doesn't complain about
-  // "literals with no overlap" while still keeping the narrow union
-  // everywhere else. Same trick TopologyGraph uses at its render boundary.
-  const isGraphOnlyType = (t: string): boolean =>
+  // ADR-0005: workload + pod nodes live in the graph only; the backend
+  // emits no `contains` edges into them, so leaving them in the tree
+  // would produce orphan roots. ADR-0006 promoted both literals into
+  // `TopologyNode['type']` so this comparison is fully type-safe now
+  // (was a runtime-only string cast pre-regen).
+  const isGraphOnlyType = (t: TopologyNode['type']): boolean =>
     t === 'workload' || t === 'pod';
 
   const byId = new Map<string, DataNode>();
   for (const n of topology.nodes) {
-    // ADR-0005: workload/pod live in the graph only; skip from tree
-    // to avoid them appearing as orphan roots (backend doesn't link
-    // them via `contains`).
-    if (isGraphOnlyType(n.type as string)) continue;
+    if (isGraphOnlyType(n.type)) continue;
     byId.set(n.id, {
       key: n.id,
       title: n.label,
@@ -188,7 +184,7 @@ function buildTreeData(topology: Topology): DataNode[] {
   // Roots = anything that is not a `contains` target. For a well-formed
   // topology this is the cluster node.
   return topology.nodes
-    .filter((n) => !isGraphOnlyType(n.type as string))
+    .filter((n) => !isGraphOnlyType(n.type))
     .filter((n) => !targets.has(n.id))
     .map((n) => byId.get(n.id)!)
     .filter(Boolean);
