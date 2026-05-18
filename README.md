@@ -2,8 +2,8 @@
 
 > 基于 O-Cloud 形态的边缘云平台样机，具备**异构算力（昇腾 910B）基础设施管理**与 **AI 推理服务编排部署**两大能力。
 
-**当前阶段**：Phase 0（架构设计与协作协议）— **完成**
-**下一阶段**：Phase 1（核心样机 + Mock 数据）— **即将启动**
+**当前阶段**：Phase 1（核心样机 + Mock 数据）— **完成**(44/44 tasks)
+**下一阶段**:Phase 2(真实 K8s/Prometheus/CRD 数据源切入,零前端改动)
 
 **协作模式**：协调者 + N 个并行 AI Agent + 集成 Agent（详见 `docs/agent-coordination.md`）
 
@@ -99,83 +99,102 @@ ocloud-phase0/
 
 ## 4. 快速开始
 
-### 4.1 给协调者（Phase 1 启动者）
+### 4.1 一键部署(干净 Ubuntu 22.04)
 
 ```bash
-git clone <repo>
-cd ocloud-phase0
-
-# 1. 评审 Phase 0 文档
-ls docs/
-
-# 2. 评审通过后打 baseline tag
-git tag phase-0-baseline
-git push --tags
-
-# 3. 创建 dev 分支
-git checkout -b dev
-git push origin dev
-
-# 4. 按 docs/phase1-plan.md §6 启动顺序分发 W1 任务包
-#    第一步派 P1-T-001 给一个 deploy agent
+git clone <repo> && cd ai-edge
+./scripts/install.sh
 ```
 
-### 4.2 给 Module Agent（任务执行者）
+完成后:
+- 前端 http://localhost:3000
+- 后端 http://localhost:8080/api/v1/healthz
+- Grafana http://localhost:3001(admin/admin)
+
+详见 [`deploy/single-node/README.md`](deploy/single-node/README.md)。
+
+### 4.2 本地开发(已装 Go 1.22+ / pnpm 9+)
+
+```bash
+# Backend
+cd backend && make build && ./bin/demo-backend.exe -c configs/config.dev.yaml
+
+# Frontend(另一终端)
+cd frontend && pnpm install && pnpm dev --host 0.0.0.0
+
+# 浏览器开 http://localhost:3000
+```
+
+### 4.3 数据源切换(零重编译)
+
+`backend/configs/config.dev.yaml` 中 `datasources.mock.path` 改为不同 fixture 目录,重启 backend 即生效。详见 [`backend/configs/config.example.yaml`](backend/configs/config.example.yaml) 头部"DATASET SWAP CONTRACT"。
+
+### 4.4 演示流程
+
+跟 [`docs/demo.md`](docs/demo.md) 走完 5 页(Overview → Workloads → Deploy → Metrics → Logs)+ D6 NUMA+HCCS 亲和对比演示。
+
+### 4.5 给 Agent(新加入的 AI 协作者)
 
 ```
-启动新会话时：
-1. 读 README.md（本文件）
-2. 读 CLAUDE.md
-3. 读 docs/agent-coordination.md
+启动新会话时:
+1. 读 README.md(本文件)
+2. 读 CLAUDE.md(根级协作指南)
+3. 读 docs/agent-coordination.md §0a(operative 模型)
 4. 读 <你的模块>/CLAUDE.md
 5. 读分配给你的任务包
 6. git fetch && git status
-7. 检查依赖：任务包 Depends on 列表已 merge 到 dev
+7. 检查依赖:任务包 Depends on 列表已 merge 到 dev
 8. git checkout -b <type>/p1-t-<id>-<desc>
 9. 开干
-10. 完成后开 PR（PR description 用 docs/agent-coordination.md §5.3 模板）
-```
-
-### 4.3 给集成 Agent
-
-```
-1. 监听 dev 分支
-2. 每次 merge 后跑 E2E
-3. 失败 → 开 issue 指给嫌疑模块 + at 协调者
-4. 不主动改业务代码
+10. 完成后 squash merge 到 dev(本仓库 local-only,无 remote PR)
 ```
 
 ---
 
-## 5. Phase 0 交付清单
+## 5. Phase 1 交付状态
 
-- [x] 架构设计（`docs/architecture.md`，14 章 + 2 附录）
-- [x] OpenAPI 契约（`docs/api-contract.yaml`，覆盖所有 endpoint）
-- [x] CRD 字段草案（架构 §6.3，操作 `operators/pool-operator/` 由 P1-T-003 落实）
-- [x] Mock 数据 Schema（`configs/mock-data/schema.json`）
-- [x] Phase 1 任务包总表（`docs/phase1-plan.md`，31 个任务）
-- [x] Agent 协作协议（`docs/agent-coordination.md`）
-- [x] 根级协作指南（`CLAUDE.md`）
-- [x] 5 个模块级 CLAUDE.md（backend / frontend / operators / configs / deploy）
-- [x] CI 框架（`.github/workflows/ci.yml`，待 P1-T-007 填）
-- [x] 根 Makefile / .gitignore
-- [x] ADR-0001（关键决策记录）
+| Week | 任务数 | 完成 | tag |
+|---|---|---|---|
+| W1 Foundation | 13 | ✓ | `w1-complete` |
+| W2 Topology E2E | 11 | ✓ | `w2-complete` |
+| W3 Workload + Deploy + Metrics + Logs | 13 | ✓ | `w3-complete` |
+| W4 Logs + Polish | 7 | ✓ | `phase-1-complete` |
+| **总** | **44** | **44 ✓** | |
+
+**DoD 验收**(phase1-plan.md §9):
+- [x] 五页全演示(Overview / Workloads / Deploy / Metrics / Logs)
+- [x] 数据源配置切换(`config.example.yaml` 切 fixture 路径,零重编译)
+- [x] install.sh 一键部署(Ubuntu 22.04,< 30 min)
+- [x] OpenAPI 契约 v1.0(`docs/api-contract.yaml`,15 REST + 4 WS endpoint)
+- [x] E2E 主流程通过(Playwright,5 specs / 15 cases + 1 skip)
+- [x] 演示物料:`docs/demo.md` 脚本 + `docs/screenshots/` 占位(视频录制由用户负责,见 phase0-review.md MUST-FIX #3)
+- [x] CI 全绿
+
+**Should Have**:
+- [x] 中英双语完整
+- [ ] manual 部署支持拖拽(deferred to Phase 2)
+- [ ] 暗色主题(deferred)
 
 ---
 
-## 6. Phase 1 概览
+## 6. Phase 1 实现概览
 
-**周期**：4 周
+**周期**:4 周(W1-W4)
 
-**任务包**：31 个，分布：
-- W1（Foundation）：12 个 — 仓库骨架、契约冻结、脚手架
-- W2（Topology E2E）：10 个 — 后端 + 前端拓扑页打通
-- W3（Workload + Deploy + Metrics）：9 个 — 五页全联通
-- W4（Logs + Polish）：7 个 — install.sh / E2E / 文档
+**架构层**:
+- backend(Go 1.22 + Gin):无状态聚合,Source 接口抽象 mock/k8s/prometheus/crd,REST + WS
+- frontend(React 18 + TS 5 + AntD 5 + ReactFlow + dagre):5 页 + i18n(zh/en)
+- configs:mock-data set-a-small(12 workloads incl. 3 PD variants + D6 affinity demo)
+- deploy:docker-compose dev stack + install.sh single-node
 
-**DoD**：五页全演示 + 数据源配置切换 + install.sh 一键部署 + E2E 通过 + 演示视频。
+**关键决策**(见 `docs/adr/`):
+- ADR-0001 Phase 0 关键决策
+- ADR-0002 不引入 KServe(spec L47-48 客户要求,推理用 vllm-ascend + inference-operator)
+- ADR-0003 IMS 3 项推 Phase 9
+- ADR-0004 inter-node fabric topology(switch + fabric-link 节点)
+- ADR-0005 POD 融合主 Topology(workload + pod 节点 + pd-pair 虚线箭头)
 
-详见 `docs/phase1-plan.md`。
+详见 [`docs/phase1-plan.md`](docs/phase1-plan.md)。已知遗留见 [`docs/known-issues.md`](docs/known-issues.md)。
 
 ---
 
@@ -192,13 +211,14 @@ git push origin dev
 
 ---
 
-## 8. 当前未决事项
+## 8. 当前未决事项 / Phase 2 入口
 
-| # | 事项 | 等待方 |
+| # | 事项 | 状态 |
 |---|---|---|
-| 1 | 真机 910B 的 HCCS 拓扑详情 | 用户提供（影响 Mock 数据真实度 + Phase 6 调度插件） |
-| 2 | Phase 0 评审签字 + tag phase-0-baseline | 协调者 |
-| 3 | Phase 1 W1 启动派单（从 P1-T-001 开始） | 协调者 |
+| 1 | 真机 910B 的 HCCS 拓扑详情 | 等用户提供(影响 Phase 6 调度插件真实度) |
+| 2 | 真实 K8s / Prometheus / CRD datasource 实现 | Phase 2 起 |
+| 3 | api-contract.yaml WS 类型 + TopologyNode/Edge enum 同步 RFC | 已知遗留(known-issues.md #2) |
+| 4 | set-c-stress(800 NPU)FPS 测试 | Phase 2 stretch(ADR-0005 推翻条件验证) |
 
 ---
 
