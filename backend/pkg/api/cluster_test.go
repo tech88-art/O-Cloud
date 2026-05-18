@@ -211,3 +211,204 @@ func TestGetCluster_NoMapping_Returns500(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, rec.Code)
 }
+
+// ---- Topology (P1-T-102) -------------------------------------------------
+//
+// The topology endpoint joins clusters + nodes + npus + slices. Tests write
+// minimal but realistic fixtures for all four into a tmp dir, then assert
+// the response shape end-to-end. We reuse the cluster fixture payload from
+// `fixturePayload` for clusters.json and supply node/npu/slice fixtures
+// inline below.
+
+const topologyNodeFixture = `{
+  "nodes": [
+    {
+      "name": "worker-site-a-01",
+      "clusterId": "cluster-prod-a-01",
+      "role": ["worker"],
+      "status": "Ready",
+      "arch": "amd64",
+      "os": "Ubuntu 22.04",
+      "npuCount": 2
+    },
+    {
+      "name": "worker-site-a-02",
+      "clusterId": "cluster-prod-a-01",
+      "role": ["worker"],
+      "status": "Ready",
+      "arch": "amd64",
+      "os": "Ubuntu 22.04",
+      "npuCount": 1
+    }
+  ]
+}`
+
+const topologyNPUFixture = `{
+  "npus": [
+    {"id": "worker-site-a-01-npu-0", "nodeName": "worker-site-a-01", "model": "Ascend910B", "index": 0, "vramMiB": 65536, "aiCoreTotal": 32, "hccsGroup": "hccs-0", "status": "healthy", "sliceMode": "fixed-template"},
+    {"id": "worker-site-a-01-npu-1", "nodeName": "worker-site-a-01", "model": "Ascend910B", "index": 1, "vramMiB": 65536, "aiCoreTotal": 32, "hccsGroup": "hccs-0", "status": "healthy", "sliceMode": "whole"},
+    {"id": "worker-site-a-02-npu-0", "nodeName": "worker-site-a-02", "model": "Ascend910B", "index": 0, "vramMiB": 65536, "aiCoreTotal": 32, "hccsGroup": "hccs-0", "status": "degraded", "sliceMode": "whole"}
+  ]
+}`
+
+const topologySliceFixture = `{
+  "slices": [
+    {"id": "worker-site-a-01-npu-0-slice-0", "parentNPU": "worker-site-a-01-npu-0", "template": "vir02", "aiCore": 8, "vramMiB": 16384, "status": "allocated", "allocatedTo": {"namespace": "ai-inference", "podName": "pod-0", "containerName": "main"}},
+    {"id": "worker-site-a-01-npu-0-slice-1", "parentNPU": "worker-site-a-01-npu-0", "template": "vir02", "aiCore": 8, "vramMiB": 16384, "status": "available"}
+  ]
+}`
+
+// writeTopologyFixtures drops all four files (clusters, nodes, npus, slices)
+// into a fresh tmp dir and returns the dir path. The fixture is the standard
+// 1-cluster / 2-node / 3-npu / 2-slice tree used by every topology test.
+func writeTopologyFixtures(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for name, payload := range map[string]string{
+		"clusters.json": fixturePayload,
+		"nodes.json":    topologyNodeFixture,
+		"npus.json":     topologyNPUFixture,
+		"slices.json":   topologySliceFixture,
+	} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(payload), 0o600))
+	}
+	return dir
+}
+
+// newTopologyRouter builds a router whose registered "mock" source loads from
+// the supplied fixture dir, with both "clusters" and "topology" mapped to it.
+func newTopologyRouter(t *testing.T, fixturePath string) *gin.Engine {
+	t.Helper()
+	src := mocksrc.NewSource(fixturePath)
+	reg := &datasource.Registry{
+		Sources: map[string]datasource.Source{"mock": src},
+		Mapping: map[string]string{"clusters": "mock", "topology": "mock"},
+	}
+	h := NewHandler(reg, nil)
+	return NewRouter(h, RouterOptions{})
+}
+
+func TestGetClusterTopology_DepthSlice_FullGraph(t *testing.T) {
+	router := newTopologyRouter(t, writeTopologyFixtures(t))
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/clusters/cluster-prod-a-01/topology?depth=slice", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var topo model.Topology
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &topo))
+
+	// 1 cluster + 2 nodes + 3 NPUs + 2 slices = 8.
+	assert.Len(t, topo.Nodes, 8)
+	// 2 cluster→node + 3 node→npu + 2 npu→slice = 7.
+	assert.Len(t, topo.Edges, 7)
+
+	// Spot-check a slice node carries its allocatedTo payload.
+	var foundAllocated bool
+	for _, n := range topo.Nodes {
+		if n.ID == "worker-site-a-01-npu-0-slice-0" {
+			assert.Equal(t, "slice", n.Type)
+			assert.Equal(t, "allocated", n.Status)
+			if at, ok := n.Attributes["allocatedTo"].(map[string]interface{}); ok {
+				assert.Equal(t, "ai-inference", at["namespace"])
+				foundAllocated = true
+			}
+			break
+		}
+	}
+	assert.True(t, foundAllocated, "expected allocated slice node in graph")
+
+	require.NotNil(t, topo.Meta)
+	assert.Equal(t, "cluster-prod-a-01", topo.Meta.ClusterID)
+}
+
+func TestGetClusterTopology_DepthNode_OnlyClusterAndNodes(t *testing.T) {
+	router := newTopologyRouter(t, writeTopologyFixtures(t))
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/clusters/cluster-prod-a-01/topology?depth=node", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var topo model.Topology
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &topo))
+
+	// 1 cluster + 2 nodes only.
+	assert.Len(t, topo.Nodes, 3)
+	assert.Len(t, topo.Edges, 2)
+	for _, n := range topo.Nodes {
+		assert.NotContains(t, []string{"npu", "slice"}, n.Type,
+			"depth=node should not contain %q nodes", n.Type)
+	}
+}
+
+func TestGetClusterTopology_DefaultDepth_Slice(t *testing.T) {
+	// No ?depth= → handler defaults to slice.
+	router := newTopologyRouter(t, writeTopologyFixtures(t))
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/clusters/cluster-prod-a-01/topology", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var topo model.Topology
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &topo))
+	assert.Len(t, topo.Nodes, 8)
+	assert.Len(t, topo.Edges, 7)
+}
+
+func TestGetClusterTopology_UnknownCluster_Returns404(t *testing.T) {
+	router := newTopologyRouter(t, writeTopologyFixtures(t))
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/clusters/nonexistent/topology", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+
+	var got model.Error
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	assert.Equal(t, CodeNotFound, got.Code)
+	assert.Equal(t, "cluster", got.Details["resource"])
+	assert.Equal(t, "nonexistent", got.Details["id"])
+}
+
+func TestGetClusterTopology_SourceError_Returns500(t *testing.T) {
+	// Reuse erroringSource and override GetTopology to fail.
+	src := &erroringTopologySource{Source: mocksrc.NewSource("")}
+	reg := &datasource.Registry{
+		Sources: map[string]datasource.Source{"mock": src},
+		Mapping: map[string]string{"topology": "mock"},
+	}
+	h := NewHandler(reg, nil)
+	router := NewRouter(h, RouterOptions{})
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/clusters/anything/topology", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	var got model.Error
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	assert.Equal(t, CodeInternalError, got.Code)
+}
+
+// erroringTopologySource makes only GetTopology fail; other methods inherit
+// the stub Source behavior. Keeps tests honest about which call path
+// surfaces the 500.
+type erroringTopologySource struct {
+	*mocksrc.Source
+}
+
+func (e *erroringTopologySource) GetTopology(_ context.Context, _ string, _ string) (*model.Topology, error) {
+	return nil, errBoom
+}

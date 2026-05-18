@@ -46,6 +46,15 @@ type Source struct {
 	npusOnce sync.Once
 	npus     []*model.NPU
 	npusErr  error
+
+	// Slices cache (P1-T-102). loadNPUs already reads slices.json but attaches
+	// them onto their parent NPU and discards the flat array. Topology needs
+	// the flat array (per-cluster slice nodes), so we cache it separately.
+	// Both caches share the same on-disk fixture; whichever loads first
+	// triggers the other-or not, they're independent sync.Once'd.
+	slicesOnce sync.Once
+	slices     []model.NPUSlice
+	slicesErr  error
 }
 
 // NewSource returns a fresh mock.Source. fixturesPath is the directory of
@@ -63,20 +72,19 @@ var _ datasource.Source = (*Source)(nil)
 func (s *Source) Name() string { return "mock" }
 
 func (s *Source) Capabilities() datasource.Capabilities {
-	// PHASE-1: T101 enables Clusters, T103 enables Nodes, T104 enables NPUs.
-	// Others flip on as T102/T105+ land.
+	// PHASE-1: T101 enables Clusters, T102 enables Topology, T103 enables
+	// Nodes, T104 enables NPUs. Others flip on as later tasks land.
 	return datasource.Capabilities{
 		Clusters: true,
+		Topology: true,
 		Nodes:    true,
 		NPUs:     true,
 	}
 }
 
 // ---- Cluster (T101 — see cluster.go for ListClusters / GetCluster) ----
-
-func (s *Source) GetTopology(ctx context.Context, clusterID string, depth string) (*model.Topology, error) {
-	return nil, ErrNotImplemented
-}
+//
+// GetTopology lives in topology.go (P1-T-102).
 
 // ---- Node / NPU ----
 //

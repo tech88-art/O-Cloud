@@ -65,6 +65,9 @@ func NewRouter(h *Handler, opts RouterOptions) *gin.Engine {
 		v1.GET("/clusters", h.ListClusters)
 		v1.GET("/clusters/:clusterId", h.GetCluster)
 
+		// Topology (P1-T-102) — cluster→node→npu→slice graph for G6
+		v1.GET("/clusters/:clusterId/topology", h.GetClusterTopology)
+
 		// Nodes (P1-T-103)
 		v1.GET("/nodes", h.ListNodes)
 		v1.GET("/nodes/:nodeName", h.GetNodeDetail)

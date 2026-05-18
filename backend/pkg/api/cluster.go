@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"github.com/example/ocloud-edge/backend/pkg/datasource"
 	mocksrc "github.com/example/ocloud-edge/backend/pkg/datasource/mock"
 	"github.com/example/ocloud-edge/backend/pkg/model"
 )
@@ -14,6 +15,16 @@ import (
 // resourceClusters is the registry key for cluster handlers. Mirrors the
 // `mapping.clusters` entry in config.yaml (per backend/CLAUDE.md §4.2).
 const resourceClusters = "clusters"
+
+// resourceTopology is the registry key for topology handler. Topology may be
+// served by a different source than /clusters in later phases (k8s + crd
+// joined), so the mapping is separate. Falls back to the clusters source via
+// topologySource() when no explicit topology mapping exists.
+const resourceTopology = "topology"
+
+// defaultTopologyDepth mirrors the OpenAPI `default: slice` for the depth
+// query param.
+const defaultTopologyDepth = "slice"
 
 // ListClusters handles GET /api/v1/clusters.
 //
@@ -83,4 +94,82 @@ func (h *Handler) GetCluster(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, cluster)
+}
+
+// GetClusterTopology handles GET /api/v1/clusters/:clusterId/topology.
+//
+// Query params:
+//   - depth (string, default "slice"): node | npu | slice. Unknown values
+//     fall through to "slice" — same as the aggregator default. We don't
+//     emit 400 here because the OpenAPI spec marks the param as enum +
+//     default rather than strict, and a frontend typo shouldn't break the
+//     page.
+//
+// Errors:
+//   - cluster id unknown → 404 with the canonical Error envelope.
+//   - no datasource mapped for topology nor clusters → 500.
+//   - any other source error → 500.
+//
+// Contract: returns components.schemas.Topology (G6-compatible graph).
+func (h *Handler) GetClusterTopology(c *gin.Context) {
+	id := c.Param("clusterId")
+	if id == "" {
+		respondError(c, http.StatusBadRequest, CodeBadRequest,
+			"clusterId is required", nil)
+		return
+	}
+
+	depth := c.DefaultQuery("depth", defaultTopologyDepth)
+
+	src := h.topologySource()
+	if src == nil {
+		h.Logger.Error("no datasource mapped for topology")
+		respondError(c, http.StatusInternalServerError, CodeInternalError,
+			"no datasource mapped for topology", nil)
+		return
+	}
+
+	topo, err := src.GetTopology(c.Request.Context(), id, depth)
+	if err != nil {
+		// ErrTopologyClusterNotFound wraps ErrClusterNotFound, so a single
+		// errors.Is on the leaf sentinel catches both. Order matters less
+		// here — we only emit one 404 shape.
+		if errors.Is(err, mocksrc.ErrClusterNotFound) {
+			respondError(c, http.StatusNotFound, CodeNotFound,
+				"cluster not found",
+				map[string]interface{}{"resource": "cluster", "id": id})
+			return
+		}
+		h.Logger.Error("get topology",
+			zap.String("source", src.Name()),
+			zap.String("clusterId", id),
+			zap.String("depth", depth),
+			zap.Error(err))
+		respondError(c, http.StatusInternalServerError, CodeInternalError,
+			"failed to get topology", nil)
+		return
+	}
+	c.JSON(http.StatusOK, topo)
+}
+
+// topologySource resolves the source backing /clusters/:id/topology. Prefers
+// an explicit topology mapping, falls back to the clusters mapping (most
+// configs alias them), then to the lone registered source. Mirrors the
+// pattern in node.go / npu.go.
+func (h *Handler) topologySource() datasource.Source {
+	if h == nil || h.Registry == nil {
+		return nil
+	}
+	if src := h.Registry.SourceFor(resourceTopology); src != nil {
+		return src
+	}
+	if src := h.Registry.SourceFor(resourceClusters); src != nil {
+		return src
+	}
+	if len(h.Registry.Sources) == 1 {
+		for _, s := range h.Registry.Sources {
+			return s
+		}
+	}
+	return nil
 }
