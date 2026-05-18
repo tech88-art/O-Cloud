@@ -1,0 +1,278 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "O-Cloud Edge — single-node detail: host CPU / memory / network throughput and per-NPU summary on the selected node. Metric names align with node_exporter (`node_*`) and backend Ascend Exporter (`ascend_npu_*`). Use `$node` to pivot across cluster nodes.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "row",
+      "title": "Host (CPU / Memory)",
+      "id": 100,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU utilization — $node",
+      "id": 1,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "100 - (avg by (mode) (rate(node_cpu_seconds_total{node=~\"$node\",mode=\"idle\"}[5m])) * 100)",
+          "refId": "A",
+          "legendFormat": "busy %"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "avg by (mode) (rate(node_cpu_seconds_total{node=~\"$node\",mode=\"iowait\"}[5m])) * 100",
+          "refId": "B",
+          "legendFormat": "iowait %"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 12 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory usage — $node",
+      "id": 2,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "(1 - node_memory_MemAvailable_bytes{node=~\"$node\"} / node_memory_MemTotal_bytes{node=~\"$node\"}) * 100",
+          "refId": "A",
+          "legendFormat": "used %"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 12 }
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Network",
+      "id": 101,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Network RX / TX — $node",
+      "id": 3,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (device) (rate(node_network_receive_bytes_total{node=~\"$node\",device!~\"lo|veth.*|docker.*\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "rx {{device}}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (device) (rate(node_network_transmit_bytes_total{node=~\"$node\",device!~\"lo|veth.*|docker.*\"}[5m]))",
+          "refId": "B",
+          "legendFormat": "tx {{device}}"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "NPU per-card (this node)",
+      "id": 102,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "AICore utilization per NPU — $node",
+      "id": 4,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 19 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_aicore_util_percent{node=~\"$node\"}",
+          "refId": "A",
+          "legendFormat": "{{npu}}"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "VRAM utilization per NPU — $node",
+      "id": 5,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 19 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_vram_used_percent{node=~\"$node\"}",
+          "refId": "A",
+          "legendFormat": "{{npu}}"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "type": "table",
+      "title": "NPU summary — $node",
+      "id": 6,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_aicore_util_percent{node=~\"$node\"}",
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{npu}}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_vram_used_percent{node=~\"$node\"}",
+          "refId": "B",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{npu}}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_temperature_celsius{node=~\"$node\"}",
+          "refId": "C",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{npu}}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" }
+          }
+        }
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["o-cloud-edge", "node"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "hide": 0,
+        "refresh": 1,
+        "current": { "text": "Prometheus", "value": "prometheus" }
+      },
+      {
+        "name": "node",
+        "label": "Node",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(ascend_npu_info, node)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "hide": 0,
+        "current": {}
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Node Detail",
+  "uid": "node-detail",
+  "version": 1,
+  "weekStart": ""
+}

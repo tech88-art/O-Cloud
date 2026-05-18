@@ -1,0 +1,297 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "O-Cloud Edge — workload business KPIs: TTFT (time-to-first-token), ITL (inter-token latency), E2E latency, and throughput (input / output tokens, requests). Series pivoted by `$workload` label. Contains the RFC-003 affinity-vs-non-affinity TTFT overlay panel keyed by label `affinity=true/false`.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "row",
+      "title": "Latency (TTFT / ITL / E2E)",
+      "id": 100,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "TTFT — $workload (p50 / p90 / p99)",
+      "id": 1,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(workload_ttft_ms_bucket{workload=~\"$workload\"}[5m])))",
+          "refId": "A",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.90, sum by (le) (rate(workload_ttft_ms_bucket{workload=~\"$workload\"}[5m])))",
+          "refId": "B",
+          "legendFormat": "p90"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(workload_ttft_ms_bucket{workload=~\"$workload\"}[5m])))",
+          "refId": "C",
+          "legendFormat": "p99"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "ITL — $workload (p50 / p90 / p99)",
+      "id": 2,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(workload_itl_ms_bucket{workload=~\"$workload\"}[5m])))",
+          "refId": "A",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.90, sum by (le) (rate(workload_itl_ms_bucket{workload=~\"$workload\"}[5m])))",
+          "refId": "B",
+          "legendFormat": "p90"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(workload_itl_ms_bucket{workload=~\"$workload\"}[5m])))",
+          "refId": "C",
+          "legendFormat": "p99"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "E2E request latency — $workload (p50 / p90 / p99)",
+      "id": 3,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(workload_e2e_ms_bucket{workload=~\"$workload\"}[5m])))",
+          "refId": "A",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.90, sum by (le) (rate(workload_e2e_ms_bucket{workload=~\"$workload\"}[5m])))",
+          "refId": "B",
+          "legendFormat": "p90"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(workload_e2e_ms_bucket{workload=~\"$workload\"}[5m])))",
+          "refId": "C",
+          "legendFormat": "p99"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Throughput (tokens / requests)",
+      "id": 101,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Token throughput — $workload",
+      "id": 4,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(workload_input_tokens_total{workload=~\"$workload\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "input tok/s"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(workload_output_tokens_total{workload=~\"$workload\"}[5m]))",
+          "refId": "B",
+          "legendFormat": "output tok/s"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 12 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Request throughput — $workload",
+      "id": 5,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(workload_requests_total{workload=~\"$workload\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "req/s"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 12 }
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Affinity vs Non-Affinity (RFC-003)",
+      "id": 102,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Affinity vs Non-Affinity — TTFT p90 overlay ($workload)",
+      "id": 6,
+      "description": "RFC-003: overlay TTFT p90 split by label `affinity=true` (NUMA+HCCS bound) vs `affinity=false` (no co-location). Used by demo to show scheduling impact.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 27 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.90, sum by (le, affinity) (rate(workload_ttft_ms_bucket{workload=~\"$workload\",affinity=\"true\"}[5m])))",
+          "refId": "A",
+          "legendFormat": "p90 affinity=true"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.90, sum by (le, affinity) (rate(workload_ttft_ms_bucket{workload=~\"$workload\",affinity=\"false\"}[5m])))",
+          "refId": "B",
+          "legendFormat": "p90 affinity=false"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 12,
+            "lineWidth": 2
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "affinity=true" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "affinity=false" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          }
+        ]
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["o-cloud-edge", "workload", "business"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "hide": 0,
+        "refresh": 1,
+        "current": { "text": "Prometheus", "value": "prometheus" }
+      },
+      {
+        "name": "workload",
+        "label": "Workload",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(workload_requests_total, workload)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "hide": 0,
+        "current": { "text": "All", "value": ["$__all"] }
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Workload Business",
+  "uid": "workload-business",
+  "version": 1,
+  "weekStart": ""
+}

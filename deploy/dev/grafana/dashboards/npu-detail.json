@@ -1,0 +1,278 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "O-Cloud Edge — single NPU detail with per-slice breakdown (spec F4a). Pivot via `$node` + `$npu`. PromQL series include AICore util, VRAM, temperature, power draw, and `ascend_npu_slice_util_percent` keyed by `(node, npu, slice)` for the slice-granularity breakdown panel.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "row",
+      "title": "Core / VRAM",
+      "id": 100,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "AICore utilization — $node/$npu",
+      "id": 1,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_aicore_util_percent{node=~\"$node\",npu=~\"$npu\"}",
+          "refId": "A",
+          "legendFormat": "AICore %"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 15 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "VRAM used — $node/$npu",
+      "id": 2,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_vram_used_bytes{node=~\"$node\",npu=~\"$npu\"}",
+          "refId": "A",
+          "legendFormat": "used"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_vram_total_bytes{node=~\"$node\",npu=~\"$npu\"}",
+          "refId": "B",
+          "legendFormat": "total"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 12 }
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Thermal / Power",
+      "id": 101,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "panels": []
+    },
+    {
+      "type": "gauge",
+      "title": "Temperature — $node/$npu",
+      "id": 3,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 10 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_temperature_celsius{node=~\"$node\",npu=~\"$npu\"}",
+          "refId": "A",
+          "legendFormat": "°C"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdMarkers": true,
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 0,
+          "max": 110,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 75 },
+              { "color": "red", "value": 95 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Power draw — $node/$npu",
+      "id": 4,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 10 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_power_watts{node=~\"$node\",npu=~\"$npu\"}",
+          "refId": "A",
+          "legendFormat": "watts"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "single" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 12 }
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Per-slice breakdown (spec F4a)",
+      "id": 102,
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Per-slice utilization — $node/$npu",
+      "id": 5,
+      "description": "F4a 切片粒度: ascend_npu_slice_util_percent labeled by `slice` (e.g. vNPU-0 .. vNPU-N). One series per slice on the selected NPU.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 16, "x": 0, "y": 19 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_slice_util_percent{node=~\"$node\",npu=~\"$npu\"}",
+          "refId": "A",
+          "legendFormat": "slice {{slice}}"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 8, "stacking": { "mode": "none" } }
+        }
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Per-slice current utilization — $node/$npu",
+      "id": 6,
+      "description": "F4a snapshot view of slice-level utilization (current value).",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 19 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ascend_npu_slice_util_percent{node=~\"$node\",npu=~\"$npu\"}",
+          "refId": "A",
+          "legendFormat": "{{slice}}"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "red", "value": 85 }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["o-cloud-edge", "npu", "slice"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "hide": 0,
+        "refresh": 1,
+        "current": { "text": "Prometheus", "value": "prometheus" }
+      },
+      {
+        "name": "node",
+        "label": "Node",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(ascend_npu_info, node)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "hide": 0,
+        "current": {}
+      },
+      {
+        "name": "npu",
+        "label": "NPU",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(ascend_npu_info{node=~\"$node\"}, npu)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "hide": 0,
+        "current": {}
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "NPU Detail",
+  "uid": "npu-detail",
+  "version": 1,
+  "weekStart": ""
+}
