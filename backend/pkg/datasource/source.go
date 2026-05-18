@@ -8,9 +8,20 @@ package datasource
 
 import (
 	"context"
+	"errors"
 
 	"github.com/example/ocloud-edge/backend/pkg/model"
 )
+
+// ErrCapabilityUnavailable is the canonical sentinel a Source returns when
+// asked to serve a resource it has declared `false` for in Capabilities.
+// Handlers can errors.Is against this to surface a clean 501 / fallback to
+// a sibling source instead of treating the call as a generic 500.
+//
+// Phase 1 mock.Source returned its own `ErrNotImplemented` for stubs;
+// Phase 2 sources (k8s / prometheus / crd / configmap) standardise on this
+// sentinel so the resource dispatch in handlers stays uniform.
+var ErrCapabilityUnavailable = errors.New("datasource: capability unavailable")
 
 // TopologyOptions carries optional flags accepted by GetTopologyWithFabric.
 //
