@@ -64,6 +64,14 @@ type Source struct {
 	events     []model.Event
 	eventsErr  error
 
+	// Workloads cache (P1-T-201). Lazy load from workloads.json. We cache the
+	// full WorkloadDetail records (pods + relations included); ListWorkloads
+	// projects to the list-view Workload, GetWorkloadDetail returns the full
+	// record.
+	workloadsOnce sync.Once
+	workloads     []model.WorkloadDetail
+	workloadsErr  error
+
 	// Presets cache (P1-T-203). Lazy load from presets.json — entries are
 	// stored as the PresetDetail superset so GetPreset returns the manifest
 	// while ListPresets projects out the slim Preset view.
@@ -88,15 +96,16 @@ func (s *Source) Name() string { return "mock" }
 
 func (s *Source) Capabilities() datasource.Capabilities {
 	// PHASE-1: T101 enables Clusters, T102 enables Topology, T103 enables
-	// Nodes, T104 enables NPUs, T105 enables Events, T203 enables Presets.
-	// Others flip on as later tasks land.
+	// Nodes, T104 enables NPUs, T105 enables Events, T201 enables Workloads,
+	// T203 enables Presets. Others flip on as later tasks land.
 	return datasource.Capabilities{
-		Clusters: true,
-		Topology: true,
-		Nodes:    true,
-		NPUs:     true,
-		Presets:  true,
-		Events:   true,
+		Clusters:  true,
+		Topology:  true,
+		Nodes:     true,
+		NPUs:      true,
+		Events:    true,
+		Workloads: true,
+		Presets:   true,
 	}
 }
 
@@ -116,14 +125,9 @@ func (s *Source) ListNPUSlicePools(ctx context.Context) ([]*model.NPUSlicePool, 
 }
 
 // ---- Workload ----
-
-func (s *Source) ListWorkloads(ctx context.Context, filter model.WorkloadFilter) ([]*model.Workload, error) {
-	return nil, ErrNotImplemented
-}
-
-func (s *Source) GetWorkloadDetail(ctx context.Context, namespace, name string) (*model.WorkloadDetail, error) {
-	return nil, ErrNotImplemented
-}
+//
+// ListWorkloads + GetWorkloadDetail moved to workload.go (P1-T-201).
+// GetWorkloadLogs lands with T301.
 
 func (s *Source) GetWorkloadLogs(ctx context.Context, namespace, name string, opts model.LogOptions) (*model.LogPage, error) {
 	return nil, ErrNotImplemented
