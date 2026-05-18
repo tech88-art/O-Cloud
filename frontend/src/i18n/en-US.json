@@ -113,5 +113,41 @@
     "empty": "No data",
     "retry": "Retry",
     "language": "Language"
+  },
+  "deploy": {
+    "title": "Deploy",
+    "subtitle": "Pick a preset application to launch the wizard",
+    "autoMode": "Auto-schedule",
+    "autoModeDescription": "Scheduler picks the node and NPU slice",
+    "manualMode": "Manual placement",
+    "manualModeDescription": "Pick the target node and NPU slice (drag-to-resource lands in W4)",
+    "manualDragNote": "Drag-to-resource ships in W4; pick via the dropdowns below for now",
+    "modeLabel": "Deploy mode",
+    "replicas": "Replicas",
+    "namespace": "Namespace",
+    "node": "Node",
+    "nodePlaceholder": "Select a node",
+    "npu": "NPU / slice",
+    "npuPlaceholder": "Select NPU slices",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "next": "Next",
+    "back": "Back",
+    "steps": {
+      "mode": "Mode",
+      "config": "Configuration"
+    },
+    "preset": {
+      "modelSize": "Model size",
+      "runtime": "Runtime",
+      "npuCount": "NPUs required",
+      "vramPerNpu": "VRAM per NPU"
+    }
+  },
+  "deployMessages": {
+    "successId": "Deploy submitted, id={{id}}",
+    "conflict": "Resource conflict — adjust the slice selection",
+    "error": "Deploy failed: {{message}}",
+    "deploying": "Submitting deploy…"
   }
 }

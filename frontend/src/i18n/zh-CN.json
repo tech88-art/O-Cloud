@@ -113,5 +113,41 @@
     "empty": "暂无数据",
     "retry": "重试",
     "language": "语言"
+  },
+  "deploy": {
+    "title": "应用部署",
+    "subtitle": "选择一个预置应用,启动部署向导",
+    "autoMode": "自动调度",
+    "autoModeDescription": "由调度器选择节点与 NPU 切片",
+    "manualMode": "手动指定",
+    "manualModeDescription": "手动指定节点与 NPU 切片(W4 将补充拖拽到资源)",
+    "manualDragNote": "拖拽到资源功能将在 W4 上线,当前版本通过下拉选择",
+    "modeLabel": "部署模式",
+    "replicas": "副本数",
+    "namespace": "命名空间",
+    "node": "节点",
+    "nodePlaceholder": "请选择节点",
+    "npu": "NPU / 切片",
+    "npuPlaceholder": "请选择 NPU 切片",
+    "submit": "提交",
+    "cancel": "取消",
+    "next": "下一步",
+    "back": "上一步",
+    "steps": {
+      "mode": "选择模式",
+      "config": "配置参数"
+    },
+    "preset": {
+      "modelSize": "模型规模",
+      "runtime": "运行时",
+      "npuCount": "需要 NPU 数",
+      "vramPerNpu": "每卡显存"
+    }
+  },
+  "deployMessages": {
+    "successId": "部署已提交,id={{id}}",
+    "conflict": "资源冲突,请调整切片选择",
+    "error": "部署失败:{{message}}",
+    "deploying": "正在提交部署..."
   }
 }
