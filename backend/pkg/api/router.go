@@ -88,6 +88,11 @@ func NewRouter(h *Handler, opts RouterOptions) *gin.Engine {
 		v1.GET("/presets", h.ListPresets)
 		v1.GET("/presets/:presetId", h.GetPreset)
 
+		// Deploy (P1-T-202) — POST creates a new mock workload from a preset;
+		// DELETE removes it and frees the allocated slices.
+		v1.POST("/deploy", h.Deploy)
+		v1.DELETE("/deploy/:deployId", h.DeleteDeploy)
+
 		// Metrics (P1-T-204, RFC-003 var-slice)
 		v1.POST("/metrics/query", h.QueryMetric)
 		v1.GET("/metrics/query", h.QueryMetric)

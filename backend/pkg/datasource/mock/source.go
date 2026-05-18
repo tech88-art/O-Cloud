@@ -93,6 +93,21 @@ type Source struct {
 	presetsOnce sync.Once
 	presets     []*model.PresetDetail
 	presetsErr  error
+
+	// Deploy state (P1-T-202). Guards mutations to the workloads / slices
+	// caches that Deploy / DeleteDeploy perform, plus the deployId index that
+	// maps a generated deployId back to its workload (namespace/name) so
+	// DeleteDeploy can locate the entry without a linear scan + name parse.
+	//
+	// deployMu MUST be acquired AFTER loadWorkloads / loadNPUs return — those
+	// loaders are sync.Once gated and serialize internally, so we never hold
+	// deployMu across disk I/O.
+	deployMu      sync.Mutex
+	deployCounter uint64
+	// deployIndex: deployId → "namespace/name" key into s.workloads.
+	// Populated on Deploy success, cleared on DeleteDeploy. Keeps DELETE O(N)
+	// over the index instead of O(N) over the workload slice on every request.
+	deployIndex map[string]string
 }
 
 // NewSource returns a fresh mock.Source. fixturesPath is the directory of
@@ -122,6 +137,7 @@ func (s *Source) Capabilities() datasource.Capabilities {
 		Events:    true,
 		Workloads: true,
 		Presets:   true,
+		Deploy:    true,
 		Metrics:   true,
 	}
 }
@@ -153,14 +169,7 @@ func (s *Source) GetWorkloadLogs(ctx context.Context, namespace, name string, op
 // ---- Deploy ----
 //
 // ListPresets / GetPreset moved to preset.go (P1-T-203).
-
-func (s *Source) Deploy(ctx context.Context, req *model.DeployRequest) (*model.DeployResponse, error) {
-	return nil, ErrNotImplemented
-}
-
-func (s *Source) DeleteDeploy(ctx context.Context, deployID string) error {
-	return ErrNotImplemented
-}
+// Deploy / DeleteDeploy moved to deploy.go (P1-T-202).
 
 // ---- Metrics ----
 //
