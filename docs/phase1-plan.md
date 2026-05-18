@@ -560,7 +560,10 @@ Acceptance: 4 个内置 preset（Pi 3B / Qwen 8B PD / DeepSeek 20B / Benchmark�
 | Estimated | 1d |
 
 Allowed: `backend/pkg/api/metrics.go`, `mock/metrics.go`
-Acceptance: 白名单 PromQL 模板查询 + mock 时序数据
+Acceptance(2026-05-18 RFC-003 hardened per spec F4a "最细切分粒度"):
+- [ ] 白名单 PromQL 模板查询 + mock 时序数据
+- [ ] **PromQL templates 支持 `var-slice=<sliceId>` 维度**(spec F4a "最细切分粒度的信息")— 切片级 AI Core / VRAM / 带宽利用率均可分维度查询
+- [ ] mock metrics 数据按 NPU 切片粒度生成,验证 `?templateId=npu_aicore_util&var-slice=worker-site-a-01-npu-3-slice-0` 返回该切片时序
 
 ### P1-T-205 后端 Grafana URL
 | | |
@@ -616,6 +619,88 @@ Acceptance: 选择器 + GrafanaPanel iframe + 联动
 
 Allowed: `deploy/grafana-dashboards/**`, `deploy/dev/grafana/provisioning/**`
 Acceptance: 5 个 dashboard JSON + provisioning 自动加载
+
+---
+
+## 4a. RFC-003 spec 对齐补充任务(2026-05-18)
+
+详见 ADR-0004(inter-node fabric)+ ADR-0005(POD 融合主 Topology)。
+
+### P1-T-013 Mock schema + generator 扩展(fabric + workload)
+| | |
+|---|---|
+| Module | configs |
+| Priority | P1 |
+| Depends on | P1-T-004, P1-T-011 |
+| Estimated | 0.5d |
+
+Allowed: `configs/mock-data/schema.json`(RFC 改),`configs/mock-data/generator/**`,`configs/mock-data/set-a-small/**`
+
+Acceptance:
+- [ ] schema 加 `NetworkSwitch / NetworkLink` $defs(ADR-0004 §Schema)
+- [ ] schema `Pod.bindings` 字段(pod ↔ slice 绑定;ADR-0005)
+- [ ] generator 在 set-a-small 生成 1 ToR switch + 3 link + 10 pod-slice binding
+- [ ] ajv compile + validate set-a-small 全过
+
+### P1-T-211 Backend Topology fabric 扩展
+| | |
+|---|---|
+| Module | backend |
+| Priority | P1 |
+| Depends on | P1-T-013, P1-T-102 |
+| Estimated | 0.5d |
+
+Allowed: `backend/pkg/aggregator/topology.go`, `backend/pkg/datasource/mock/topology.go`
+
+Acceptance:
+- [ ] `/topology?includeFabric=true` 含 switch 节点 + node↔switch fabric-link 边
+- [ ] aggregator 处理 fabric;默认 false 保持兼容
+- [ ] 3+ aggregator 测试覆盖 fabric branch
+
+### P1-T-212 Frontend TopologyGraph fabric 渲染
+| | |
+|---|---|
+| Module | frontend |
+| Priority | P1 |
+| Depends on | P1-T-108a, P1-T-211 |
+| Estimated | 0.5d |
+
+Allowed: `frontend/src/components/TopologyGraph/TopologyGraph.tsx`, `frontend/src/pages/Overview/index.tsx`(toggle)
+
+Acceptance:
+- [ ] switch 节点类型支持(颜色 up/degraded/down)
+- [ ] Overview 加 "Include Fabric" toggle(默认关)
+- [ ] Vitest 覆盖 fabric 节点渲染
+
+### P1-T-213 Backend Topology workload 扩展
+| | |
+|---|---|
+| Module | backend |
+| Priority | P1 |
+| Depends on | P1-T-013, P1-T-102, P1-T-201 |
+| Estimated | 0.5d |
+
+Allowed: `backend/pkg/aggregator/topology.go`, `backend/pkg/datasource/mock/topology.go`
+
+Acceptance:
+- [ ] `/topology?includeWorkloads=true` 含 workload + pod 节点
+- [ ] pd-pair 边(WorkloadDetail.relations 移至 TopologyEdge.type)
+- [ ] pod→slice `binds-to` 边
+
+### P1-T-214 Frontend Workload 融合 + Overview toggle
+| | |
+|---|---|
+| Module | frontend |
+| Priority | P1 |
+| Depends on | P1-T-212, P1-T-213 |
+| Estimated | 1d |
+
+Allowed: `frontend/src/components/TopologyGraph/TopologyGraph.tsx`, `frontend/src/pages/Overview/index.tsx`
+
+Acceptance:
+- [ ] workload / pod 节点 + pd-pair 虚线箭头渲染
+- [ ] Overview 加 "Include Workloads" toggle(默认关)
+- [ ] 实测 set-c-stress(800 NPU + N workload)FPS ≥ 15(否则触发 ADR-0005 推翻条件)
 
 ---
 
@@ -696,7 +781,12 @@ Acceptance: README 快速开始 / 部署文档 / demo.md / known-issues.md
 | Estimated | 0.5d |
 
 Allowed: `configs/mock-data/set-{a,b}*/**`
-Acceptance: 故事性 + 与 demo.md 一致
+Acceptance(2026-05-18 RFC-003 加 D6 亲和对比):
+- [ ] set-a-small 故事性 + 与 demo.md 一致
+- [ ] **新增 set-a-affinity-comparison(或 set-a-small 的 events 后段)演示 spec D6**:**亲和 vs 非亲和 Qwen 8B PD 部署对比**
+  - 2 个 Qwen 8B PD workload(一个亲和 NUMA+HCCS,一个跨 NUMA / 非 HCCS)
+  - events.json 后 60s 展示 TTFT / ITL / Throughput 差异
+  - Metrics 页 dashboard 加 "affinity vs non-affinity" panel(P1-T-209 配套)
 
 ---
 

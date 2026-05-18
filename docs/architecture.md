@@ -213,6 +213,7 @@ flowchart LR
 | 推理框架（PD 分离） | **vllm-ascend disaggregated_prefill_v1** + Mooncake/LLMDataDist | 单实例 colocated | Ascend 原生 PD：HCCS 节点内 / Mooncake 节点间；见 `docs/research/vllm-pd-disaggregation.md` §8 |
 | 训练框架 | （Phase 5 不重点） | | |
 | 容器运行时 | containerd + Ascend Container Toolkit | | |
+| **CANN 运行时底座** | **CANN 8.1** | (与 Ascend driver ≥ 24.x 配套;vllm-ascend v0.11.0+ 要求) | RFC-003 (2026-05-18) 锁定;spec "AI运行时:CANN+MindIE 底座" |
 | 虚拟机运行时（隔离性） | KubeVirt | | Phase 5 可选引入 |
 
 > ⚠️ **修订 v2(2026-05-17, P1-T-012 驳正)**:**DRA 已 GA in K8s 1.34(2025-09-01)**;K8s 1.36 是 2026-05 当前最新。Phase 4 主路径 = Ascend Device Plugin v1 — 真实理由不再是"DRA 未 GA",而是 **KubeEdge v1.22 无 DRA 支持**(边缘路径无选)+ **无官方 Ascend DRA driver**。standard K8s 小集群可 DRA spike;Phase 7 动态切分等 Partitionable Devices GA(估 K8s 1.37)。详见 ADR-0001 §5 v2 与 `docs/research/k8s-dra.md`。
@@ -792,6 +793,17 @@ ocloud-edge-platform/
 | Phase 9 | 多站点 demo backend 缓存重构(LRU 进程内 → Redis/singleton/stateless) | Phase 9 启动前 ADR + 重构路径 |
 | Phase 9 | 安全模型(authn/z + multi-tenancy RBAC + NPUSlicePool admission policy) | Phase 9 启动前完整安全设计 + Karmada RBAC 联动 |
 | Phase 5+ | NPU pod 网络考量(CNI + HCCL RDMA / RoCE / IPoIB 兼容) | Phase 5 启动前调研 + 选型 |
+
+**2026-05-18 RFC-003(spec 对齐补)追加**:
+
+| Phase | 评审 flag | 检查动作 | ADR |
+|---|---|---|---|
+| Phase 1 W1 补 | Topology schema 扩展(switch / network-link / workload / pod 节点+边) | T013 schema RFC + mock generator 扩展(set-a-small 加 fabric + workload 绑定) | ADR-0004 + ADR-0005 |
+| Phase 1 W3 | Topology API + 前端 toggle `includeFabric` / `includeWorkloads` | T211/T212(fabric)+ T213/T214(workload) | ADR-0004 + ADR-0005 |
+| Phase 2 | 真实 fabric discovery(LLDP / SNMP / SONiC API 选型) | Phase 2 启动前调研 + ADR | ADR-0004 |
+| Phase 2 | 真实 Pod→slice binding(K8s scheduler annotation) | Phase 2 启动前 | ADR-0005 |
+| **TBD** | **IMS 7 服务剩 3 项**(资源准备/软件管理/生命周期)Phase 入口 | 用户拍板:方案 A(Phase 9)/ B(Phase 3-4)/ C(Phase 1 占位 + Phase 3+ 真实) | ADR-0003 |
+| Phase 4 | CANN 8.1 锁定 + Ascend driver ≥ 24.x 配套验证 | Phase 4 启动前在真机验证矩阵 | architecture §3.4 +RFC-003 |
 
 ---
 
