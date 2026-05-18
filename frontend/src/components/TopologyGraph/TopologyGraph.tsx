@@ -13,7 +13,31 @@ import {
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
 import { StatusTag, type StatusTone } from '@/components/StatusTag';
-import type { Topology, TopologyNode } from '@/services/cluster';
+import type { Topology, TopologyEdge, TopologyNode } from '@/services/cluster';
+
+/**
+ * ADR-0004 / RFC-003 fabric extension.
+ *
+ * The backend now emits two extra wire values that the auto-generated
+ * `services/types.ts` doesn't yet know about (the OpenAPI spec is
+ * regenerated separately — see RFC-003 §schema):
+ *   - TopologyNode.type === 'switch'       → an inter-node network switch
+ *   - TopologyEdge.type === 'fabric-link'  → a node↔switch / switch↔switch
+ *                                            link in the inter-node fabric
+ *
+ * Until the contract regen lands we treat them as runtime-only string
+ * variants. We narrow with `typeof n.type === 'string'` + literal compare
+ * at the render boundary; the TopologyGraph never trusts the generated
+ * union alone, so the component is forward-compatible with the contract
+ * regen (no churn when the union gets the extra members).
+ */
+const NODE_TYPE_SWITCH = 'switch' as const;
+const EDGE_TYPE_FABRIC_LINK = 'fabric-link' as const;
+
+/** Widened topology-node `type` admitting the runtime-only `switch` literal. */
+type TopologyNodeType = TopologyNode['type'] | typeof NODE_TYPE_SWITCH;
+/** Widened topology-edge `type` admitting the runtime-only `fabric-link`. */
+type TopologyEdgeType = TopologyEdge['type'] | typeof EDGE_TYPE_FABRIC_LINK;
 
 /**
  * Production topology graph wrapper around ReactFlow. Replaces the
@@ -53,16 +77,43 @@ const RANK_SEPARATION = 60;
  * the colors match the AntD theme without pulling the full theme object.
  *
  * Cluster: blue-6 / Node: geekblue-6 / NPU: status-driven via `<StatusTag>` /
- * Slice: status-driven via `<StatusTag>`.
+ * Slice: status-driven via `<StatusTag>` /
+ * Switch (ADR-0004): AntD blue-6, same family as cluster so it reads as a
+ * "platform-level" element rather than an in-node resource. Status colour
+ * (up/degraded/down) is conveyed through the node border ring — see
+ * `switchBorderForStatus` below.
  */
-const TYPE_ACCENT: Record<TopologyNode['type'], string> = {
+const TYPE_ACCENT: Record<TopologyNodeType, string> = {
   cluster: '#1677ff',
   nodepool: '#722ed1',
   node: '#2f54eb',
   npu: '#13c2c2',
   slice: '#52c41a',
   network: '#8c8c8c',
+  switch: '#1677ff',
 };
+
+/**
+ * ADR-0004 switch status → border colour. Backend emits `up | degraded |
+ * down`; everything else falls through to the neutral `#d9d9d9` border
+ * also used by non-switch nodes (so the renderer is forgiving to an unknown
+ * status string without crashing).
+ *
+ * Colours match AntD success / warning / error so the visual language
+ * lines up with `<StatusTag>` even though we're not rendering one inside
+ * the switch node (switch nodes are compact — name + status border ring).
+ */
+const SWITCH_STATUS_BORDER: Record<string, string> = {
+  up: '#52c41a',
+  degraded: '#faad14',
+  down: '#ff4d4f',
+};
+
+function switchBorderForStatus(status: string | undefined, selected: boolean): string {
+  if (selected) return '#1677ff';
+  if (status && SWITCH_STATUS_BORDER[status]) return SWITCH_STATUS_BORDER[status];
+  return '#d9d9d9';
+}
 
 /**
  * Slice-specific status → StatusTag tone mapping. Per T-108b AC:
@@ -91,7 +142,7 @@ interface TopoNodeData {
    *  attributes / status without re-deriving anything. Indexed by `[key:string]`
    *  to satisfy ReactFlow's `Record<string, unknown>` data constraint. */
   label: string;
-  topoType: TopologyNode['type'];
+  topoType: TopologyNodeType;
   status?: TopologyNode['status'];
   selected: boolean;
   [key: string]: unknown;
@@ -104,11 +155,22 @@ type TopoFlowNode = Node<TopoNodeData, 'topo'>;
  * label in the middle, status tag at the bottom. Selection highlight is
  * a 3px ring matching AntD's primary blue.
  *
+ * Switch nodes (ADR-0004) use a status-coloured border ring instead of
+ * the StatusTag underneath — they're typically compact in the inter-node
+ * fabric layer and the up/degraded/down state is the only thing that
+ * matters at a glance, so a colour ring reads faster than a tag.
+ *
  * The whole node is a single `<div>` so ReactFlow's click handlers still
  * fire on any sub-element.
  */
 function TopoNode({ data }: NodeProps<TopoFlowNode>) {
   const accent = TYPE_ACCENT[data.topoType];
+  const isSwitch = data.topoType === NODE_TYPE_SWITCH;
+  const border = isSwitch
+    ? switchBorderForStatus(data.status, data.selected)
+    : data.selected
+    ? '#1677ff'
+    : '#d9d9d9';
   return (
     <div
       data-testid={`topo-node-${data.topoType}`}
@@ -116,7 +178,7 @@ function TopoNode({ data }: NodeProps<TopoFlowNode>) {
         width: NODE_WIDTH,
         height: NODE_HEIGHT,
         background: '#ffffff',
-        border: `1.5px solid ${data.selected ? '#1677ff' : '#d9d9d9'}`,
+        border: `1.5px solid ${border}`,
         borderRadius: 6,
         boxShadow: data.selected
           ? '0 0 0 3px rgba(22, 119, 255, 0.25)'
@@ -154,9 +216,9 @@ function TopoNode({ data }: NodeProps<TopoFlowNode>) {
           }}
           title={data.label}
         >
-          {data.label}
+          {isSwitch ? `⚡ ${data.label}` : data.label}
         </div>
-        {data.status ? (
+        {data.status && !isSwitch ? (
           <StatusTag
             status={data.status}
             mapping={data.topoType === 'slice' ? SLICE_STATUS_MAP : undefined}
@@ -258,20 +320,36 @@ function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
         : { x: 0, y: 0 },
       data: {
         label: n.label,
-        topoType: n.type,
+        // Cast widens to TopologyNodeType; runtime values may include
+        // 'switch' which the generated union doesn't yet name (see top
+        // of file for the ADR-0004 contract-regen note).
+        topoType: n.type as TopologyNodeType,
         status: n.status,
         selected: n.id === selectedNodeId,
       },
     };
   });
 
-  const flowEdges: Edge[] = topology.edges.map((e, i) => ({
-    // Contract edges have no id; synthesise a stable one from endpoints.
-    id: `${e.source}->${e.target}-${e.type}-${i}`,
-    source: e.source,
-    target: e.target,
-    style: { stroke: '#bfbfbf', strokeWidth: 1 },
-  }));
+  const flowEdges: Edge[] = topology.edges.map((e, i) => {
+    // Cast widens to TopologyEdgeType — see node `as TopologyNodeType`
+    // comment for the rationale.
+    const edgeType = e.type as TopologyEdgeType;
+    const isFabricLink = edgeType === EDGE_TYPE_FABRIC_LINK;
+    return {
+      // Contract edges have no id; synthesise a stable one from endpoints.
+      id: `${e.source}->${e.target}-${e.type}-${i}`,
+      source: e.source,
+      target: e.target,
+      // Fabric links render in a blue-grey solid line (1.5px) so they read
+      // as "platform-level" wiring distinct from the in-cluster contains
+      // edges (light grey 1px). Both are solid — fabric is not a "weak"
+      // relation, so a dashed style would mislead.
+      style: isFabricLink
+        ? { stroke: '#69b1ff', strokeWidth: 1.5 }
+        : { stroke: '#bfbfbf', strokeWidth: 1 },
+      data: { topoEdgeType: edgeType },
+    };
+  });
 
   return { nodes: flowNodes, edges: flowEdges };
 }

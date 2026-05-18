@@ -71,7 +71,9 @@
     "errorTitle": "Failed to load topology",
     "noData": "No topology data",
     "selectCluster": "Select a cluster",
-    "detailPanePending": "Select a node to view details (enabled in T108b)"
+    "detailPanePending": "Select a node to view details (enabled in T108b)",
+    "includeFabric": "Include Fabric",
+    "fabricToggleHint": "Show inter-node switches and fabric links (ADR-0004, off by default)"
   },
   "detailPanel": {
     "selectNode": "Select a node to view details",

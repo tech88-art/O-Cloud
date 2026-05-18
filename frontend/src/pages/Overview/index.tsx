@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Skeleton, Tree, Typography } from 'antd';
+import { Skeleton, Switch, Tooltip, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '@/components/EmptyState';
@@ -40,6 +40,11 @@ export default function OverviewPage() {
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
   const setSelectedNode = useTopologyStore((s) => s.setSelectedNode);
   const lastEventAt = useTopologyStore((s) => s.lastEventAt);
+  // ADR-0004 / RFC-003: the fabric toggle. Reads + writes the Zustand
+  // store so refreshes / WS reconnects keep the user's choice, and so
+  // <TopologyView> sees the same flag via `useClusterTopology` keyed on it.
+  const showFabric = useTopologyStore((s) => s.showFabric);
+  const setShowFabric = useTopologyStore((s) => s.setShowFabric);
 
   // Auto-pick first cluster once the list lands. Idempotent: only runs if
   // nothing is selected yet.
@@ -52,7 +57,11 @@ export default function OverviewPage() {
     }
   }, [clustersQuery.data, selectedClusterId, setSelectedCluster]);
 
-  const topologyQuery = useClusterTopology(selectedClusterId);
+  // Passing showFabric here keeps the left-tree query (this hook) in lock-
+  // step with the center-pane query inside <TopologyView> — both call
+  // useClusterTopology with the same args, so react-query de-dupes them
+  // into a single network request.
+  const topologyQuery = useClusterTopology(selectedClusterId, 'slice', showFabric);
 
   // Topology WS — mount once the cluster is known. The hook handles
   // reconnects + cache invalidation; we just surface its status to the
@@ -79,6 +88,12 @@ export default function OverviewPage() {
             closedLabel={t('ws.closed')}
             idleLabel={t('ws.idle')}
             lastEventLabel={t('ws.lastEventAt')}
+          />
+          <FabricToggle
+            showFabric={showFabric}
+            onChange={setShowFabric}
+            label={t('overview.includeFabric')}
+            hint={t('overview.fabricToggleHint')}
           />
         </div>
         <LeftTree
@@ -254,4 +269,44 @@ function formatTimestamp(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+/**
+ * ADR-0004 / RFC-003 fabric toggle. AntD `<Switch>` next to the WS-status
+ * chip so the operator can flip "include inter-node fabric in the
+ * topology" without leaving the page header. Default OFF — see the
+ * Zustand store default — so small-cluster demos don't get drowned by
+ * switch nodes the demo doesn't need.
+ *
+ * `data-testid` is the integration point for the Vitest cases that
+ * assert the toggle behaviour (default off, click → API gets
+ * `?includeFabric=true`, switch nodes render).
+ */
+interface FabricToggleProps {
+  showFabric: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  hint: string;
+}
+
+function FabricToggle({ showFabric, onChange, label, hint }: FabricToggleProps) {
+  return (
+    <Tooltip title={hint}>
+      <div
+        data-testid="fabric-toggle"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}
+      >
+        <Switch
+          size="small"
+          checked={showFabric}
+          onChange={onChange}
+          data-testid="fabric-toggle-switch"
+          aria-label={label}
+        />
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {label}
+        </Text>
+      </div>
+    </Tooltip>
+  );
 }

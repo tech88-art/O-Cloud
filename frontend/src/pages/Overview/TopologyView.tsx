@@ -33,8 +33,16 @@ export function TopologyView({ clusterId }: TopologyViewProps) {
   const setSelectedNode = useTopologyStore((s) => s.setSelectedNode);
   const expandedNPUs = useTopologyStore((s) => s.expandedNPUs);
   const toggleExpandedNPU = useTopologyStore((s) => s.toggleExpandedNPU);
+  // ADR-0004 / RFC-003. Reads the same flag the OverviewPage header writes
+  // so react-query de-dupes the tree's and the graph's topology fetches
+  // into one network request rather than diverging on cache keys.
+  const showFabric = useTopologyStore((s) => s.showFabric);
 
-  const { data, isLoading, error, refetch } = useClusterTopology(clusterId);
+  const { data, isLoading, error, refetch } = useClusterTopology(
+    clusterId,
+    'slice',
+    showFabric,
+  );
 
   if (!clusterId) {
     return (

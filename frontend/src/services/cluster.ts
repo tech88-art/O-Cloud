@@ -45,17 +45,35 @@ export function useClusters() {
  *
  * Disabled while `clusterId` is falsy so that we don't fire a request with
  * an empty path segment.
+ *
+ * `includeFabric` (default false) → ADR-0004 / RFC-003. When truthy the
+ * URL gains `?includeFabric=true`, causing the backend to emit
+ * `type=switch` nodes and `type=fabric-link` edges in addition to the
+ * regular cluster/node/npu/slice tree. Default false keeps the wire
+ * payload byte-equivalent to the T-108a/T-108b expectation.
+ *
+ * The flag is part of the queryKey so toggling it triggers a fresh fetch
+ * rather than serving the cached non-fabric payload.
  */
 export function useClusterTopology(
   clusterId: string | null | undefined,
   depth: TopologyDepth = 'slice',
+  includeFabric = false,
 ) {
   return useQuery({
-    queryKey: ['cluster-topology', clusterId, depth],
+    queryKey: ['cluster-topology', clusterId, depth, includeFabric],
     queryFn: async (): Promise<Topology> => {
+      // Build the params object conditionally — when `includeFabric` is
+      // false we drop the key entirely so the request URL is identical to
+      // the pre-T-212 shape (zero regression for snapshot-style tests and
+      // for backend handlers that key on URL alone).
+      const params: Record<string, string | boolean> = { depth };
+      if (includeFabric) {
+        params.includeFabric = true;
+      }
       const { data } = await api.get<Topology>(
         `/api/v1/clusters/${clusterId}/topology`,
-        { params: { depth } },
+        { params },
       );
       return data;
     },

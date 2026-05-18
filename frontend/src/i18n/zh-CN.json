@@ -71,7 +71,9 @@
     "errorTitle": "加载拓扑失败",
     "noData": "暂无拓扑数据",
     "selectCluster": "请选择集群",
-    "detailPanePending": "选中节点查看详情（T108b 后启用）"
+    "detailPanePending": "选中节点查看详情（T108b 后启用）",
+    "includeFabric": "显示网络 Fabric",
+    "fabricToggleHint": "包含交换机与节点间链路（ADR-0004，默认关闭）"
   },
   "detailPanel": {
     "selectNode": "选中一个节点查看详情",

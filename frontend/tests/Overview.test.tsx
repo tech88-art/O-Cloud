@@ -219,6 +219,32 @@ function makeTopology(): Topology {
   };
 }
 
+/**
+ * Topology fixture extended with a `switch` node and a `fabric-link` edge
+ * (ADR-0004 / RFC-003). The `TopologyNode.type` union in the auto-gen
+ * types doesn't yet name `switch`, so we widen the literal at the cast
+ * site — the production renderer treats unknown type strings as opaque
+ * runtime values, so this mirrors what the backend would actually serve
+ * once `?includeFabric=true` reaches the aggregator.
+ */
+function makeTopologyWithFabric(): Topology {
+  const nodes = [
+    { id: CLUSTER_ID, type: 'cluster', label: CLUSTER_ID, status: 'healthy' },
+    { id: 'node-1', type: 'node', label: 'node-1', status: 'healthy' },
+    { id: 'npu-1-0', type: 'npu', label: 'npu-1-0', status: 'idle' },
+    { id: 'switch-tor-01', type: 'switch', label: 'tor-01', status: 'up' },
+  ] as unknown as TopologyNode[];
+  return {
+    nodes,
+    edges: [
+      { source: CLUSTER_ID, target: 'node-1', type: 'contains' },
+      { source: 'node-1', target: 'npu-1-0', type: 'contains' },
+      // The contract enum has not been regenerated yet — see fixture note.
+      { source: 'node-1', target: 'switch-tor-01', type: 'fabric-link' as unknown as 'contains' },
+    ],
+  };
+}
+
 function makeTopologyWithSlice(): Topology {
   const nodes: TopologyNode[] = [
     { id: CLUSTER_ID, type: 'cluster', label: CLUSTER_ID, status: 'healthy' },
@@ -369,6 +395,9 @@ beforeEach(async () => {
       selectedNodeId: null,
       expandedNPUs: new Set<string>(),
       lastEventAt: null,
+      // P1-T-212 / ADR-0004: reset the fabric toggle each test so cases
+      // don't leak the previous test's flip.
+      showFabric: false,
     });
   });
 });
@@ -542,6 +571,107 @@ describe('OverviewPage — interactions write the topology store', () => {
       expect(screen.getByTestId('rf-node-npu-1-0-slice-0')).toBeInTheDocument();
       expect(screen.getByTestId('rf-node-npu-1-0-slice-1')).toBeInTheDocument();
     });
+  });
+});
+
+describe('OverviewPage — fabric toggle (P1-T-212 / ADR-0004)', () => {
+  it('defaults the fabric toggle to OFF and omits includeFabric from the topology URL', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') {
+        return Promise.resolve({ data: makeClusters() });
+      }
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopology() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    renderOverview();
+
+    // Toggle exists and starts unchecked.
+    const toggle = await screen.findByTestId('fabric-toggle-switch');
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(useTopologyStore.getState().showFabric).toBe(false);
+
+    // Wait for the topology fetch to land, then assert no call carried
+    // includeFabric=true (zero-regression check vs T-108a/T-108b).
+    await screen.findByTestId('rf-stub');
+    const calls = mockGet.mock.calls.filter(([url]) =>
+      String(url).endsWith('/topology'),
+    );
+    expect(calls.length).toBeGreaterThan(0);
+    for (const [, config] of calls) {
+      const params = (config as { params?: Record<string, unknown> } | undefined)?.params;
+      expect(params?.includeFabric).toBeUndefined();
+    }
+  });
+
+  it('flipping the toggle ON triggers a topology fetch with includeFabric=true', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') {
+        return Promise.resolve({ data: makeClusters() });
+      }
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithFabric() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    const user = userEvent.setup();
+    renderOverview();
+
+    // Wait for first (off) render to settle.
+    await screen.findByTestId('rf-stub');
+
+    // Flip the toggle on.
+    await user.click(screen.getByTestId('fabric-toggle-switch'));
+
+    await waitFor(() => {
+      expect(useTopologyStore.getState().showFabric).toBe(true);
+    });
+
+    // A new fetch should fire with the includeFabric param.
+    await waitFor(() => {
+      const withFabric = mockGet.mock.calls.filter(([url, config]) => {
+        if (!String(url).endsWith('/topology')) return false;
+        const params = (config as { params?: Record<string, unknown> } | undefined)
+          ?.params;
+        return params?.includeFabric === true;
+      });
+      expect(withFabric.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('renders switch nodes when fabric data lands and the toggle is ON', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') {
+        return Promise.resolve({ data: makeClusters() });
+      }
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithFabric() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    // Pre-flip the store so the very first fetch already carries
+    // includeFabric=true (avoids a second flip-driven render in the
+    // assertion path).
+    act(() => {
+      useTopologyStore.setState({ showFabric: true });
+    });
+
+    renderOverview();
+
+    // The switch node should be among the rendered ReactFlow stubs.
+    await waitFor(() => {
+      expect(screen.getByTestId('rf-node-switch-tor-01')).toBeInTheDocument();
+    });
+
+    // And the regular cluster / node / npu nodes should still render —
+    // fabric is additive, not a replacement.
+    expect(screen.getByTestId('rf-node-cluster-prod-a-01')).toBeInTheDocument();
+    expect(screen.getByTestId('rf-node-node-1')).toBeInTheDocument();
+    expect(screen.getByTestId('rf-node-npu-1-0')).toBeInTheDocument();
   });
 });
 

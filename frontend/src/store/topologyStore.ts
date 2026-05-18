@@ -18,6 +18,12 @@ import { create } from 'zustand';
  *   - `lastEventAt`       — ISO timestamp of the most recent WS event
  *     applied to the store. Surfaced in the WS-status indicator so
  *     operators can see the stream is alive.
+ *   - `showFabric`        — whether the inter-node network fabric (switch
+ *     nodes + fabric-link edges) is included in the topology query. Off by
+ *     default per ADR-0004 (RFC-003) so small-cluster demos don't get
+ *     visually drowned; the Overview header exposes a toggle that flips
+ *     this. When true the `useClusterTopology` hook appends
+ *     `?includeFabric=true` to the request.
  *
  * Per frontend/CLAUDE.md §4.3 — Zustand only. Page-scoped store kept here
  * (not on the cross-page `store/index.ts`) so that other pages don't
@@ -30,6 +36,12 @@ export interface TopologyState {
   expandedNPUs: Set<string>;
   /** ISO timestamp of the last WS event the store accepted, or null. */
   lastEventAt: string | null;
+  /**
+   * Whether to include the inter-node network fabric (switches + fabric
+   * links) in the topology query. Default false → byte-equivalent to
+   * T108a/T108b. See ADR-0004.
+   */
+  showFabric: boolean;
   setSelectedCluster: (id: string | null) => void;
   setSelectedNode: (id: string | null) => void;
   /** Toggle whether the given NPU's slice subtree is expanded. */
@@ -38,6 +50,8 @@ export interface TopologyState {
   setExpandedNPUs: (ids: Set<string>) => void;
   /** Update `lastEventAt`. Called by the WS hook on each event. */
   setLastEventAt: (iso: string | null) => void;
+  /** Flip the fabric-inclusion toggle. */
+  setShowFabric: (v: boolean) => void;
 }
 
 export const useTopologyStore = create<TopologyState>((set) => ({
@@ -45,6 +59,7 @@ export const useTopologyStore = create<TopologyState>((set) => ({
   selectedNodeId: null,
   expandedNPUs: new Set<string>(),
   lastEventAt: null,
+  showFabric: false,
   setSelectedCluster: (id) => set({ selectedClusterId: id }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
   toggleExpandedNPU: (npuId) =>
@@ -61,4 +76,5 @@ export const useTopologyStore = create<TopologyState>((set) => ({
     }),
   setExpandedNPUs: (ids) => set({ expandedNPUs: new Set(ids) }),
   setLastEventAt: (iso) => set({ lastEventAt: iso }),
+  setShowFabric: (v) => set({ showFabric: v }),
 }));
