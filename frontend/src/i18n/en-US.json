@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "O-Cloud Edge Cloud Platform",
-    "subtitle": "Demo Frontend"
+    "subtitle": "Demo Frontend",
+    "version": "Version"
   },
   "menu": {
     "overview": "Overview",
@@ -30,6 +31,14 @@
     "logs": {
       "title": "Logs",
       "placeholder": "Logs page — coming W2"
+    }
+  },
+  "header": {
+    "toggleSider": "Toggle sider",
+    "language": "Switch language",
+    "languageOption": {
+      "zhCN": "简体中文",
+      "enUS": "English"
     }
   },
   "common": {
