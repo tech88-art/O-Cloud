@@ -6,28 +6,31 @@ import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { useClusters, useClusterTopology, type Topology } from '@/services/cluster';
 import { useTopologyStore } from '@/store/topologyStore';
+import { useTopologyWS } from '@/hooks/useTopologyWS';
+import { DetailPanel } from './DetailPanel';
 import { TopologyView } from './TopologyView';
 import styles from './styles.module.css';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 /**
- * Overview page (P1-T-108a — topology skeleton).
+ * Overview page.
  *
  * Layout: three-column grid (see `styles.module.css`):
  *   - Left:    AntD `<Tree>` driven by the topology DTO.
  *   - Center:  `<TopologyView>` — ReactFlow graph.
- *   - Right:   reserved 320px slot for T-108b's `<DetailPanel>`.
+ *   - Right:   `<DetailPanel>` — selection-driven detail.
  *
  * Selection contract: tree click and graph click both write the same key
  * (`selectedNodeId`) into the Zustand topology store. The center pane
  * reads it back and passes it to `<TopologyGraph selectedNodeId>` so the
- * highlight follows. This is the AC: "tree click → topology node
- * highlights".
+ * highlight follows. DetailPanel reads the same key. T-108b adds:
+ *   - DetailPanel mounted in the right slot
+ *   - useTopologyWS subscription for live updates
+ *   - dbl-click NPU toggles slice subtree expansion via the store
  *
- * Cluster: T-108a auto-picks the first cluster returned by `/api/v1/clusters`
- * so the skeleton is reachable without a cluster switcher UI. A future
- * cluster picker will go in this same shell.
+ * Cluster: auto-picks the first cluster returned by `/api/v1/clusters`
+ * so the page is reachable without a cluster switcher UI.
  */
 export default function OverviewPage() {
   const { t } = useTranslation();
@@ -36,6 +39,7 @@ export default function OverviewPage() {
   const setSelectedCluster = useTopologyStore((s) => s.setSelectedCluster);
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
   const setSelectedNode = useTopologyStore((s) => s.setSelectedNode);
+  const lastEventAt = useTopologyStore((s) => s.lastEventAt);
 
   // Auto-pick first cluster once the list lands. Idempotent: only runs if
   // nothing is selected yet.
@@ -50,6 +54,11 @@ export default function OverviewPage() {
 
   const topologyQuery = useClusterTopology(selectedClusterId);
 
+  // Topology WS — mount once the cluster is known. The hook handles
+  // reconnects + cache invalidation; we just surface its status to the
+  // header chip.
+  const ws = useTopologyWS(selectedClusterId);
+
   const treeData = useMemo<DataNode[]>(
     () => (topologyQuery.data ? buildTreeData(topologyQuery.data) : []),
     [topologyQuery.data],
@@ -62,6 +71,15 @@ export default function OverviewPage() {
           <Title level={5} style={{ margin: 0 }}>
             {t('overview.tree.title')}
           </Title>
+          <WsStatusChip
+            status={ws.status}
+            lastEventAt={lastEventAt}
+            connectingLabel={t('ws.connecting')}
+            openLabel={t('ws.open')}
+            closedLabel={t('ws.closed')}
+            idleLabel={t('ws.idle')}
+            lastEventLabel={t('ws.lastEventAt')}
+          />
         </div>
         <LeftTree
           treeData={treeData}
@@ -82,13 +100,7 @@ export default function OverviewPage() {
         <TopologyView clusterId={selectedClusterId} />
       </main>
       <aside className={styles.detailPane} data-testid="overview-detail-pane">
-        {/*
-         * T-108b will mount <DetailPanel /> here. Keeping the slot present
-         * (not display:none) so the layout grid is stable across stages.
-         */}
-        <div className={styles.detailPanePlaceholder}>
-          {t('overview.detailPanePending')}
-        </div>
+        <DetailPanel />
       </aside>
     </div>
   );
@@ -183,4 +195,63 @@ function LeftTree({
       }}
     />
   );
+}
+
+/**
+ * Small chip showing the WS connection state. Lives next to the tree
+ * header so operators can see whether the live feed is up at a glance.
+ * Text-only — color is conveyed via AntD `Text type`.
+ */
+interface WsStatusChipProps {
+  status: 'idle' | 'connecting' | 'open' | 'closed';
+  lastEventAt: string | null;
+  connectingLabel: string;
+  openLabel: string;
+  closedLabel: string;
+  idleLabel: string;
+  lastEventLabel: string;
+}
+
+function WsStatusChip({
+  status,
+  lastEventAt,
+  connectingLabel,
+  openLabel,
+  closedLabel,
+  idleLabel,
+  lastEventLabel,
+}: WsStatusChipProps) {
+  const labelMap: Record<WsStatusChipProps['status'], string> = {
+    idle: idleLabel,
+    connecting: connectingLabel,
+    open: openLabel,
+    closed: closedLabel,
+  };
+  const toneMap: Record<WsStatusChipProps['status'], 'secondary' | 'success' | 'warning' | 'danger'> = {
+    idle: 'secondary',
+    connecting: 'warning',
+    open: 'success',
+    closed: 'danger',
+  };
+  return (
+    <div data-testid="ws-status-chip" data-status={status}>
+      <Text type={toneMap[status]}>● {labelMap[status]}</Text>
+      {lastEventAt && (
+        <Text type="secondary">
+          {' '}
+          · {lastEventLabel}: {formatTimestamp(lastEventAt)}
+        </Text>
+      )}
+    </div>
+  );
+}
+
+function formatTimestamp(iso: string): string {
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleTimeString();
+  } catch {
+    return iso;
+  }
 }

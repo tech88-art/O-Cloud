@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
-import { StatusTag } from '@/components/StatusTag';
+import { StatusTag, type StatusTone } from '@/components/StatusTag';
 import type { Topology, TopologyNode } from '@/services/cluster';
 
 /**
@@ -62,6 +62,28 @@ const TYPE_ACCENT: Record<TopologyNode['type'], string> = {
   npu: '#13c2c2',
   slice: '#52c41a',
   network: '#8c8c8c',
+};
+
+/**
+ * Slice-specific status → StatusTag tone mapping. Per T-108b AC:
+ *   idle / available → success (AntD green)
+ *   allocated / busy → processing (AntD blue)
+ *   error / failed / faulty → error (AntD red)
+ *   unknown / anything else → default (gray, picked up by StatusTag's fallback)
+ *
+ * The default StatusTag map covers most of these already, but it routes
+ * `allocated` / `busy` to the default tone (gray); slices in the graph
+ * read more clearly when the busy/allocated state is highlighted in
+ * blue (matches the AntD primary), so we override that here.
+ */
+const SLICE_STATUS_MAP: Record<string, StatusTone> = {
+  available: 'success',
+  idle: 'success',
+  allocated: 'processing',
+  busy: 'processing',
+  error: 'error',
+  failed: 'error',
+  faulty: 'error',
 };
 
 interface TopoNodeData {
@@ -134,13 +156,69 @@ function TopoNode({ data }: NodeProps<TopoFlowNode>) {
         >
           {data.label}
         </div>
-        {data.status ? <StatusTag status={data.status} /> : null}
+        {data.status ? (
+          <StatusTag
+            status={data.status}
+            mapping={data.topoType === 'slice' ? SLICE_STATUS_MAP : undefined}
+          />
+        ) : null}
       </div>
     </div>
   );
 }
 
 const NODE_TYPES = { topo: memo(TopoNode) };
+
+/**
+ * Filter a topology so that slice nodes only appear under NPUs that are
+ * currently in `expandedNPUs`. Other node types (cluster / node / npu /
+ * network) always render. Edges that reference filtered-out nodes are
+ * dropped so dagre doesn't lay out dangling endpoints.
+ *
+ * Pure: same input → same output. Returns a fresh object; the input
+ * topology is untouched.
+ *
+ * P1-T-108b dbl-click UX: a slice subtree appears under an NPU only
+ * after the user dbl-clicks it. Default = collapsed so a 24-NPU /
+ * 96-slice cluster doesn't drown the canvas.
+ */
+function filterTopologyForExpandedNPUs(
+  topology: Topology,
+  expandedNPUs: Set<string>,
+): Topology {
+  // Cheap path: no slice nodes → nothing to filter.
+  const hasSlice = topology.nodes.some((n) => n.type === 'slice');
+  if (!hasSlice) return topology;
+
+  // 1. Index NPUs and their direct slice children via `contains` edges.
+  const npuOfSlice = new Map<string, string>();
+  for (const e of topology.edges) {
+    if (e.type !== 'contains') continue;
+    const child = topology.nodes.find((n) => n.id === e.target);
+    if (!child || child.type !== 'slice') continue;
+    npuOfSlice.set(e.target, e.source);
+  }
+
+  // 2. Drop slice nodes whose parent NPU is not expanded.
+  const visibleNodeIds = new Set<string>();
+  const nodes = topology.nodes.filter((n) => {
+    if (n.type !== 'slice') {
+      visibleNodeIds.add(n.id);
+      return true;
+    }
+    const parent = npuOfSlice.get(n.id);
+    const visible = !!parent && expandedNPUs.has(parent);
+    if (visible) visibleNodeIds.add(n.id);
+    return visible;
+  });
+
+  // 3. Drop edges that touch a filtered-out node.
+  const edges = topology.edges.filter(
+    (e) => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target),
+  );
+
+  return { ...topology, nodes, edges };
+}
 
 /**
  * Lay out a topology with dagre. Returns ReactFlow-ready nodes + edges.
@@ -201,21 +279,36 @@ function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
 export interface TopologyGraphProps {
   topology: Topology;
   selectedNodeId?: string | null;
+  /**
+   * Set of NPU ids whose slice subtree should be visible. Slice nodes whose
+   * parent NPU is NOT in this set are filtered out before layout, so the
+   * dbl-click UX in T-108b is just "toggle the parent id". Defaults to an
+   * empty set (collapsed).
+   */
+  expandedNPUs?: ReadonlySet<string>;
   onNodeClick?: (id: string) => void;
-  /** Reserved for T-108b slice-expand. The component fires it on dblclick
-   *  but takes no internal action. */
   onNodeDoubleClick?: (id: string) => void;
 }
+
+// Module-level frozen empty set so the default never creates a new
+// reference (which would defeat the `useMemo` shallow comparison).
+const EMPTY_EXPANDED: ReadonlySet<string> = new Set<string>();
 
 function TopologyGraphInner({
   topology,
   selectedNodeId = null,
+  expandedNPUs = EMPTY_EXPANDED,
   onNodeClick,
   onNodeDoubleClick,
 }: TopologyGraphProps) {
+  const visibleTopology = useMemo(
+    () => filterTopologyForExpandedNPUs(topology, new Set(expandedNPUs)),
+    [topology, expandedNPUs],
+  );
+
   const { nodes, edges } = useMemo(
-    () => layoutWithDagre(topology, selectedNodeId),
-    [topology, selectedNodeId],
+    () => layoutWithDagre(visibleTopology, selectedNodeId),
+    [visibleTopology, selectedNodeId],
   );
 
   const handleNodeClick = useCallback<NodeMouseHandler>(

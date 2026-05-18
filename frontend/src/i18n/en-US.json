@@ -43,6 +43,62 @@
     "selectCluster": "Select a cluster",
     "detailPanePending": "Select a node to view details (enabled in T108b)"
   },
+  "detailPanel": {
+    "selectNode": "Select a node to view details",
+    "staleSelection": "Selection is stale — pick another node",
+    "errorTitle": "Failed to load details",
+    "noExtra": "No additional information",
+    "type": {
+      "cluster": "Cluster",
+      "node": "Node",
+      "nodepool": "Node pool",
+      "npu": "NPU",
+      "slice": "Slice",
+      "network": "Network"
+    },
+    "cluster": {
+      "role": "Role",
+      "location": "Location",
+      "nodeCount": "Nodes",
+      "npuCount": "NPUs",
+      "k8sVersion": "Kubernetes version"
+    },
+    "node": {
+      "cpu": "CPU",
+      "memory": "Memory",
+      "arch": "Architecture",
+      "os": "OS",
+      "kubelet": "kubelet",
+      "npuCount": "NPU count",
+      "numaSection": "NUMA nodes",
+      "numaRow": "NUMA {{id}} · {{cpus}} CPUs · {{memory}} · {{npus}} NPUs",
+      "networkSection": "Network interfaces",
+      "storageSection": "Storage",
+      "npuListSection": "NPUs ({{count}})",
+      "noNpus": "No NPUs reported on this node"
+    },
+    "npu": {
+      "model": "Model",
+      "vram": "VRAM",
+      "aiCore": "AI Cores",
+      "hccs": "HCCS group",
+      "sliceMode": "Slice mode",
+      "slicesHeader": "Slices:",
+      "noSlices": "No slices"
+    },
+    "slice": {
+      "parentNPU": "Parent NPU",
+      "template": "Template",
+      "allocatedTo": "Allocated to"
+    }
+  },
+  "ws": {
+    "idle": "Idle",
+    "connecting": "Connecting",
+    "open": "Connected",
+    "closed": "Disconnected",
+    "lastEventAt": "Last event"
+  },
   "header": {
     "toggleSider": "Toggle sider",
     "language": "Switch language",

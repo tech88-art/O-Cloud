@@ -1,40 +1,45 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  render,
+  screen,
+  waitFor,
+  act,
+  within,
+  renderHook,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
+import type { ReactNode } from 'react';
+import { createElement } from 'react';
 import i18n from '@/i18n';
 import { useTopologyStore } from '@/store/topologyStore';
-import type { Cluster, Topology } from '@/services/cluster';
+import { loadRuntimeConfig } from '@/config/runtime';
+import type { Cluster, Topology, TopologyNode } from '@/services/cluster';
+import type { NodeDetail, NPU } from '@/services/node';
 
 /**
- * P1-T-108a Overview page tests.
+ * P1-T-108b Overview page tests.
+ *
+ * Extends the 7 cases from P1-T-108a with:
+ *   - DetailPanel renders for cluster / node / npu / slice / null selections
+ *   - Dbl-click NPU → store toggle → graph re-renders with slice children
+ *   - useTopologyWS hook: handshake, message dispatch, auto-reconnect
  *
  * jsdom can't render the ReactFlow canvas (no ResizeObserver, no full
  * SVG layout) and we don't care here — the production code is exercised
  * up to the renderer; library rendering is the library's job. Mock
  * `@xyflow/react` at the module boundary so the component imports
- * resolve without hitting real DOM measurement code.
- *
- * Tests run six scenarios:
- *   1. loading      — Skeleton visible while the request is in-flight
- *   2. error        — ErrorState renders with a retry button
- *   3. empty        — EmptyState renders when topology has zero nodes
- *   4. happy        — tree + topology stub render after data lands
- *   5. tree click   — selecting a tree node writes to the Zustand store
- *   6. graph click  — clicking a topology stub node writes to the store
- *                     (covers ReactFlow click → store contract)
+ * resolve without hitting real DOM measurement code. The stub also
+ * surfaces a button per node so user-event can click them and we can
+ * count them after a dbl-click to assert slice nodes appeared.
  */
 
-// Stub ReactFlow's API surface so the production component's imports
-// succeed and we can drive the `onNodeClick` contract directly via the
-// stub. We expose a button per node so user-event can click them.
+// -------- Mock @xyflow/react --------
+
 vi.mock('@xyflow/react', () => {
-  // The component will be configured with `nodes` and `onNodeClick`.
-  // Render each node as a button carrying its id; clicking calls
-  // `onNodeClick(_, { id })` exactly like the real lib would.
   type StubNodeProps = {
     id: string;
     data?: { label?: string };
@@ -45,7 +50,7 @@ vi.mock('@xyflow/react', () => {
     onNodeDoubleClick?: (e: unknown, n: { id: string }) => void;
   };
   const ReactFlow = ({ nodes, onNodeClick, onNodeDoubleClick }: StubProps) => (
-    <div data-testid="rf-stub">
+    <div data-testid="rf-stub" data-node-count={nodes.length}>
       {nodes.map((n) => (
         <button
           key={n.id}
@@ -60,7 +65,7 @@ vi.mock('@xyflow/react', () => {
   );
   return {
     ReactFlow,
-    ReactFlowProvider: ({ children }: { children: React.ReactNode }) => (
+    ReactFlowProvider: ({ children }: { children: ReactNode }) => (
       <>{children}</>
     ),
     Background: () => null,
@@ -70,8 +75,8 @@ vi.mock('@xyflow/react', () => {
 });
 vi.mock('@xyflow/react/dist/style.css', () => ({}));
 
-// Mock the api module to avoid touching axios + runtime config. We hand
-// out a queue of mock implementations per test below.
+// -------- Mock api module --------
+
 const mockGet = vi.fn<(url: string, config?: unknown) => Promise<unknown>>();
 vi.mock('@/services/api', () => ({
   api: {
@@ -81,14 +86,121 @@ vi.mock('@/services/api', () => ({
 
 // Imports of the SUT must come AFTER the mocks are registered.
 const { default: OverviewPage } = await import('@/pages/Overview');
+const { DetailPanel } = await import('@/pages/Overview/DetailPanel');
+const { useTopologyWS } = await import('@/hooks/useTopologyWS');
+
+// -------- Mock WebSocket --------
+
+interface MockWebSocketInstance {
+  url: string;
+  readyState: number;
+  onopen: ((ev: Event) => void) | null;
+  onmessage: ((ev: MessageEvent) => void) | null;
+  onclose: ((ev: CloseEvent) => void) | null;
+  onerror: ((ev: Event) => void) | null;
+  close: () => void;
+  send: (data: string) => void;
+  __triggerOpen: () => void;
+  __triggerMessage: (data: unknown) => void;
+  __triggerClose: () => void;
+}
+
+const wsInstances: MockWebSocketInstance[] = [];
+
+class MockWebSocket implements Partial<WebSocket> {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSING = 2;
+  static CLOSED = 3;
+
+  url: string;
+  readyState = 0;
+  onopen: ((ev: Event) => void) | null = null;
+  onmessage: ((ev: MessageEvent) => void) | null = null;
+  onclose: ((ev: CloseEvent) => void) | null = null;
+  onerror: ((ev: Event) => void) | null = null;
+
+  constructor(url: string) {
+    this.url = url;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this;
+    const instance: MockWebSocketInstance = {
+      url,
+      get readyState() {
+        return self.readyState;
+      },
+      set readyState(v: number) {
+        self.readyState = v;
+      },
+      get onopen() {
+        return self.onopen;
+      },
+      set onopen(v) {
+        self.onopen = v;
+      },
+      get onmessage() {
+        return self.onmessage;
+      },
+      set onmessage(v) {
+        self.onmessage = v;
+      },
+      get onclose() {
+        return self.onclose;
+      },
+      set onclose(v) {
+        self.onclose = v;
+      },
+      get onerror() {
+        return self.onerror;
+      },
+      set onerror(v) {
+        self.onerror = v;
+      },
+      close: () => self.close(),
+      send: () => {
+        /* no-op */
+      },
+      __triggerOpen: () => {
+        self.readyState = MockWebSocket.OPEN;
+        self.onopen?.(new Event('open'));
+      },
+      __triggerMessage: (data: unknown) => {
+        self.onmessage?.(
+          new MessageEvent('message', { data: JSON.stringify(data) }),
+        );
+      },
+      __triggerClose: () => {
+        self.readyState = MockWebSocket.CLOSED;
+        self.onclose?.(new CloseEvent('close'));
+      },
+    };
+    wsInstances.push(instance);
+  }
+
+  close() {
+    this.readyState = MockWebSocket.CLOSED;
+  }
+
+  send() {
+    /* no-op */
+  }
+}
+
+// -------- Fixtures --------
+
+const CLUSTER_ID = 'cluster-prod-a-01';
 
 function makeClusters(): Cluster[] {
   return [
     {
-      id: 'cluster-prod-a-01',
-      name: 'cluster-prod-a-01',
+      id: CLUSTER_ID,
+      name: CLUSTER_ID,
       status: 'healthy',
       role: 'edge-single',
+      location: 'Site-A',
+      nodeCount: 2,
+      npuCount: 8,
+      kubernetesVersion: 'v1.30.0',
     },
   ];
 }
@@ -96,19 +208,106 @@ function makeClusters(): Cluster[] {
 function makeTopology(): Topology {
   return {
     nodes: [
-      { id: 'cluster-prod-a-01', type: 'cluster', label: 'cluster-prod-a-01', status: 'healthy' },
+      { id: CLUSTER_ID, type: 'cluster', label: CLUSTER_ID, status: 'healthy' },
       { id: 'node-1', type: 'node', label: 'node-1', status: 'healthy' },
       { id: 'npu-1-0', type: 'npu', label: 'npu-1-0', status: 'idle' },
     ],
     edges: [
-      { source: 'cluster-prod-a-01', target: 'node-1', type: 'contains' },
+      { source: CLUSTER_ID, target: 'node-1', type: 'contains' },
       { source: 'node-1', target: 'npu-1-0', type: 'contains' },
     ],
   };
 }
 
+function makeTopologyWithSlice(): Topology {
+  const nodes: TopologyNode[] = [
+    { id: CLUSTER_ID, type: 'cluster', label: CLUSTER_ID, status: 'healthy' },
+    { id: 'node-1', type: 'node', label: 'node-1', status: 'healthy' },
+    {
+      id: 'npu-1-0',
+      type: 'npu',
+      label: 'npu-1-0',
+      status: 'healthy',
+      attributes: {
+        model: 'Ascend910B',
+        vramMiB: 65536,
+        aiCoreTotal: 32,
+        hccsGroup: 'hccs-0',
+        sliceMode: 'fixed-template',
+        slices: [
+          { id: 'npu-1-0-slice-0', status: 'available' },
+          { id: 'npu-1-0-slice-1', status: 'allocated' },
+        ],
+      },
+    },
+    {
+      id: 'npu-1-0-slice-0',
+      type: 'slice',
+      label: 'npu-1-0-slice-0',
+      status: 'idle',
+      attributes: {
+        parentNPU: 'npu-1-0',
+        template: 'vir04',
+      },
+    },
+    {
+      id: 'npu-1-0-slice-1',
+      type: 'slice',
+      label: 'npu-1-0-slice-1',
+      status: 'busy',
+      attributes: {
+        parentNPU: 'npu-1-0',
+        template: 'vir04',
+        allocatedTo: { namespace: 'default', podName: 'pod-1' },
+      },
+    },
+  ];
+  return {
+    nodes,
+    edges: [
+      { source: CLUSTER_ID, target: 'node-1', type: 'contains' },
+      { source: 'node-1', target: 'npu-1-0', type: 'contains' },
+      { source: 'npu-1-0', target: 'npu-1-0-slice-0', type: 'contains' },
+      { source: 'npu-1-0', target: 'npu-1-0-slice-1', type: 'contains' },
+    ],
+  };
+}
+
+function nodeDetailFixture(): NodeDetail {
+  return {
+    name: 'node-1',
+    status: 'Ready',
+    cpu: { raw: '32', bytes: null },
+    memory: { raw: '128Gi', bytes: null },
+    arch: 'amd64',
+    os: 'Linux',
+    kubeletVersion: 'v1.30.0',
+    npuCount: 4,
+  };
+}
+
+function npusFixture(): NPU[] {
+  return [
+    {
+      id: 'npu-1-0',
+      model: 'Ascend910B',
+      status: 'healthy',
+      vramMiB: 65536,
+      aiCoreTotal: 32,
+    },
+    {
+      id: 'npu-1-1',
+      model: 'Ascend910B',
+      status: 'degraded',
+      vramMiB: 65536,
+      aiCoreTotal: 32,
+    },
+  ];
+}
+
+// -------- Render helpers --------
+
 function renderOverview() {
-  // Fresh QueryClient per test so cache doesn't leak across cases.
   const qc = new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0, staleTime: 0 },
@@ -127,14 +326,58 @@ function renderOverview() {
   );
 }
 
-beforeEach(() => {
+function renderDetailPanel() {
+  const qc = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0, staleTime: 0 },
+    },
+  });
+  return render(
+    <ConfigProvider>
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={qc}>
+          <DetailPanel />
+        </QueryClientProvider>
+      </I18nextProvider>
+    </ConfigProvider>,
+  );
+}
+
+function wsWrapper(client?: QueryClient) {
+  const qc =
+    client ??
+    new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: 0 } },
+    });
+  return ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client: qc }, children);
+}
+
+// -------- Setup --------
+
+beforeEach(async () => {
   mockGet.mockReset();
-  // Reset Zustand store between tests so selections from one don't bleed
-  // into the next.
+  wsInstances.length = 0;
+  vi.stubGlobal('WebSocket', MockWebSocket);
+  // Runtime config has to be loaded before the WS hook can build a URL.
+  // In jsdom there's no /config.json to fetch so it falls back to DEFAULTS;
+  // that's fine for our purposes — we just need cached !== null.
+  await loadRuntimeConfig();
   act(() => {
-    useTopologyStore.setState({ selectedClusterId: null, selectedNodeId: null });
+    useTopologyStore.setState({
+      selectedClusterId: null,
+      selectedNodeId: null,
+      expandedNPUs: new Set<string>(),
+      lastEventAt: null,
+    });
   });
 });
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+// -------- Tests --------
 
 describe('OverviewPage — state branches', () => {
   it('renders the loading skeleton while the topology fetch is in-flight', async () => {
@@ -156,14 +399,11 @@ describe('OverviewPage — state branches', () => {
 
     renderOverview();
 
-    // Loading skeleton is in both panes initially.
     expect(screen.getByTestId('overview-tree-pane')).toBeInTheDocument();
     expect(screen.getByTestId('overview-center-pane')).toBeInTheDocument();
-    // No tree, no topology stub rendered yet.
     expect(screen.queryByTestId('overview-tree')).not.toBeInTheDocument();
     expect(screen.queryByTestId('rf-stub')).not.toBeInTheDocument();
 
-    // Resolve so React doesn't warn about pending promises after teardown.
     resolveClusters(makeClusters());
     resolveTopology(makeTopology());
   });
@@ -181,7 +421,6 @@ describe('OverviewPage — state branches', () => {
 
     renderOverview();
 
-    // ErrorState (data-testid="error-state") shows up in the center pane.
     const errorState = await screen.findAllByTestId('error-state');
     expect(errorState.length).toBeGreaterThan(0);
     expect(screen.getAllByTestId('error-state-retry').length).toBeGreaterThan(0);
@@ -201,8 +440,6 @@ describe('OverviewPage — state branches', () => {
     renderOverview();
 
     const empty = await screen.findAllByTestId('empty-state');
-    // Both tree pane (no tree data) and center pane (empty topology)
-    // render an EmptyState.
     expect(empty.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -221,7 +458,6 @@ describe('OverviewPage — state branches', () => {
 
     expect(await screen.findByTestId('overview-tree')).toBeInTheDocument();
     expect(await screen.findByTestId('rf-stub')).toBeInTheDocument();
-    // The ReactFlow stub contains one button per topology node.
     expect(screen.getByTestId('rf-node-cluster-prod-a-01')).toBeInTheDocument();
     expect(screen.getByTestId('rf-node-node-1')).toBeInTheDocument();
     expect(screen.getByTestId('rf-node-npu-1-0')).toBeInTheDocument();
@@ -243,9 +479,6 @@ describe('OverviewPage — interactions write the topology store', () => {
     const user = userEvent.setup();
     renderOverview();
 
-    // Wait for the tree to render then click the leaf NPU label INSIDE
-    // the tree pane (`npu-1-0` also appears as a button in the ReactFlow
-    // stub, so an un-scoped `getByText` would match multiple elements).
     await screen.findByTestId('overview-tree');
     const treePane = screen.getByTestId('overview-tree-pane');
     await user.click(within(treePane).getByText('npu-1-0'));
@@ -277,13 +510,13 @@ describe('OverviewPage — interactions write the topology store', () => {
     });
   });
 
-  it('double-clicking a ReactFlow node fires the dblclick hook (reserved for T-108b)', async () => {
+  it('double-clicking an NPU toggles expandedNPUs and reveals slice children in the graph', async () => {
     mockGet.mockImplementation((url: string) => {
       if (url === '/api/v1/clusters') {
         return Promise.resolve({ data: makeClusters() });
       }
       if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
-        return Promise.resolve({ data: makeTopology() });
+        return Promise.resolve({ data: makeTopologyWithSlice() });
       }
       return Promise.reject(new Error(`unexpected URL: ${url}`));
     });
@@ -292,12 +525,235 @@ describe('OverviewPage — interactions write the topology store', () => {
     renderOverview();
 
     await screen.findByTestId('rf-stub');
-    // Pick a different node than the click test so we can assert the
-    // dblclick path independently routes through the store.
+
+    // Default state: NPU not expanded → no slice nodes rendered in the graph.
+    expect(screen.queryByTestId('rf-node-npu-1-0-slice-0')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rf-node-npu-1-0-slice-1')).not.toBeInTheDocument();
+    expect(useTopologyStore.getState().expandedNPUs.size).toBe(0);
+
     await user.dblClick(screen.getByTestId('rf-node-npu-1-0'));
 
+    // After dbl-click the store should hold the NPU id and the graph
+    // should now render the two slice buttons.
     await waitFor(() => {
-      expect(useTopologyStore.getState().selectedNodeId).toBe('npu-1-0');
+      expect(useTopologyStore.getState().expandedNPUs.has('npu-1-0')).toBe(true);
     });
+    await waitFor(() => {
+      expect(screen.getByTestId('rf-node-npu-1-0-slice-0')).toBeInTheDocument();
+      expect(screen.getByTestId('rf-node-npu-1-0-slice-1')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('DetailPanel — selection branches', () => {
+  it('shows the empty placeholder when nothing is selected', () => {
+    renderDetailPanel();
+    expect(screen.getByTestId('detail-panel-empty')).toBeInTheDocument();
+  });
+
+  it('renders the cluster card when a cluster is selected', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') {
+        return Promise.resolve({ data: makeClusters() });
+      }
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithSlice() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    act(() => {
+      useTopologyStore.setState({
+        selectedClusterId: CLUSTER_ID,
+        selectedNodeId: CLUSTER_ID,
+      });
+    });
+
+    renderDetailPanel();
+
+    expect(await screen.findByTestId('detail-panel-cluster')).toBeInTheDocument();
+    expect(screen.getAllByText(CLUSTER_ID).length).toBeGreaterThan(0);
+    expect(screen.getByText('edge-single')).toBeInTheDocument();
+    expect(screen.getByText('Site-A')).toBeInTheDocument();
+  });
+
+  it('fetches /nodes/:name + /nodes/:name/npus when a node is selected', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') {
+        return Promise.resolve({ data: makeClusters() });
+      }
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithSlice() });
+      }
+      if (url === '/api/v1/nodes/node-1') {
+        return Promise.resolve({ data: nodeDetailFixture() });
+      }
+      if (url === '/api/v1/nodes/node-1/npus') {
+        return Promise.resolve({ data: npusFixture() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    act(() => {
+      useTopologyStore.setState({
+        selectedClusterId: CLUSTER_ID,
+        selectedNodeId: 'node-1',
+      });
+    });
+
+    renderDetailPanel();
+
+    expect(await screen.findByTestId('detail-panel-node')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        mockGet.mock.calls.some(([url]) => url === '/api/v1/nodes/node-1'),
+      ).toBe(true);
+      expect(
+        mockGet.mock.calls.some(([url]) => url === '/api/v1/nodes/node-1/npus'),
+      ).toBe(true);
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/npu-1-0 · healthy/)).toBeInTheDocument();
+      expect(screen.getByText(/npu-1-1 · degraded/)).toBeInTheDocument();
+    });
+  });
+
+  it('renders the NPU card from topology attributes (no extra fetch)', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') {
+        return Promise.resolve({ data: makeClusters() });
+      }
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithSlice() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    act(() => {
+      useTopologyStore.setState({
+        selectedClusterId: CLUSTER_ID,
+        selectedNodeId: 'npu-1-0',
+      });
+    });
+
+    renderDetailPanel();
+
+    expect(await screen.findByTestId('detail-panel-npu')).toBeInTheDocument();
+    expect(screen.getByText('Ascend910B')).toBeInTheDocument();
+    expect(screen.getByText('fixed-template')).toBeInTheDocument();
+    expect(screen.getByText(/npu-1-0-slice-0 · available/)).toBeInTheDocument();
+    expect(screen.getByText(/npu-1-0-slice-1 · allocated/)).toBeInTheDocument();
+
+    expect(
+      mockGet.mock.calls.find(([url]) =>
+        String(url).startsWith('/api/v1/nodes/'),
+      ),
+    ).toBeUndefined();
+  });
+
+  it('renders the slice card when a slice is selected (no extra fetch)', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') {
+        return Promise.resolve({ data: makeClusters() });
+      }
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithSlice() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    act(() => {
+      useTopologyStore.setState({
+        selectedClusterId: CLUSTER_ID,
+        selectedNodeId: 'npu-1-0-slice-1',
+      });
+    });
+
+    renderDetailPanel();
+
+    expect(await screen.findByTestId('detail-panel-slice')).toBeInTheDocument();
+    // parentNPU + template come from the slice's attributes.
+    expect(screen.getByText('npu-1-0')).toBeInTheDocument();
+    expect(screen.getByText('vir04')).toBeInTheDocument();
+    expect(screen.getByText('default/pod-1')).toBeInTheDocument();
+
+    expect(
+      mockGet.mock.calls.find(([url]) =>
+        String(url).startsWith('/api/v1/nodes/'),
+      ),
+    ).toBeUndefined();
+  });
+});
+
+describe('useTopologyWS', () => {
+  it('opens a socket and reaches "open" state after handshake', async () => {
+    const { result } = renderHook(() => useTopologyWS('cluster-1'), {
+      wrapper: wsWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(wsInstances.length).toBeGreaterThan(0);
+    });
+    expect(wsInstances[0]!.url).toMatch(/\/ws\/topology$/);
+
+    act(() => {
+      wsInstances[0]!.__triggerOpen();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('open');
+    });
+  });
+
+  it('dispatches topology.update — invalidates cache + updates lastEventAt', async () => {
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: 0 } },
+    });
+    const invalidate = vi.spyOn(qc, 'invalidateQueries');
+
+    renderHook(() => useTopologyWS('cluster-1'), { wrapper: wsWrapper(qc) });
+
+    await waitFor(() => expect(wsInstances.length).toBe(1));
+    act(() => wsInstances[0]!.__triggerOpen());
+
+    act(() => {
+      wsInstances[0]!.__triggerMessage({
+        type: 'topology.update',
+        timestamp: '2026-05-17T12:00:00Z',
+        payload: { nodes: [], edges: [] },
+      });
+    });
+
+    await waitFor(() => {
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ['cluster-topology', 'cluster-1'],
+      });
+      expect(useTopologyStore.getState().lastEventAt).toBe(
+        '2026-05-17T12:00:00Z',
+      );
+    });
+  });
+
+  it('auto-reconnects within 3s after close', async () => {
+    vi.useFakeTimers();
+    try {
+      renderHook(
+        () => useTopologyWS('cluster-1', { reconnectDelayMs: 3_000 }),
+        { wrapper: wsWrapper() },
+      );
+
+      expect(wsInstances.length).toBe(1);
+      act(() => wsInstances[0]!.__triggerOpen());
+      act(() => wsInstances[0]!.__triggerClose());
+
+      await act(async () => {
+        vi.advanceTimersByTime(3_000);
+      });
+
+      expect(wsInstances.length).toBeGreaterThan(1);
+      expect(wsInstances[1]!.url).toMatch(/\/ws\/topology$/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

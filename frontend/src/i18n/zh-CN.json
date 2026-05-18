@@ -43,6 +43,62 @@
     "selectCluster": "请选择集群",
     "detailPanePending": "选中节点查看详情（T108b 后启用）"
   },
+  "detailPanel": {
+    "selectNode": "选中一个节点查看详情",
+    "staleSelection": "选中节点已失效，请重新选择",
+    "errorTitle": "加载详情失败",
+    "noExtra": "暂无额外信息",
+    "type": {
+      "cluster": "集群",
+      "node": "节点",
+      "nodepool": "节点池",
+      "npu": "NPU",
+      "slice": "切片",
+      "network": "网络"
+    },
+    "cluster": {
+      "role": "角色",
+      "location": "位置",
+      "nodeCount": "节点数",
+      "npuCount": "NPU 数",
+      "k8sVersion": "Kubernetes 版本"
+    },
+    "node": {
+      "cpu": "CPU",
+      "memory": "内存",
+      "arch": "架构",
+      "os": "操作系统",
+      "kubelet": "kubelet",
+      "npuCount": "NPU 数",
+      "numaSection": "NUMA 节点",
+      "numaRow": "NUMA {{id}} · {{cpus}} CPU · {{memory}} · {{npus}} NPU",
+      "networkSection": "网络接口",
+      "storageSection": "存储",
+      "npuListSection": "NPU 列表（{{count}}）",
+      "noNpus": "该节点上暂无 NPU"
+    },
+    "npu": {
+      "model": "型号",
+      "vram": "显存",
+      "aiCore": "AI 核心",
+      "hccs": "HCCS 组",
+      "sliceMode": "切片模式",
+      "slicesHeader": "切片：",
+      "noSlices": "暂无切片"
+    },
+    "slice": {
+      "parentNPU": "父 NPU",
+      "template": "模板",
+      "allocatedTo": "已分配至"
+    }
+  },
+  "ws": {
+    "idle": "未连接",
+    "connecting": "连接中",
+    "open": "已连接",
+    "closed": "已断开",
+    "lastEventAt": "最新事件"
+  },
   "header": {
     "toggleSider": "折叠/展开侧边栏",
     "language": "切换语言",

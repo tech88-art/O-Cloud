@@ -18,8 +18,10 @@ import styles from './styles.module.css';
  * `index.tsx`) writes the same store on tree click, which is how the
  * "click tree node → topology highlights" AC is satisfied.
  *
- * T-108b will add: detail-panel data fetch on selection; WS subscription;
- * dblclick → slice expansion.
+ * T-108b additions:
+ *   - reads `expandedNPUs` from the store and passes to `<TopologyGraph>`
+ *   - dbl-clicking an NPU node toggles its id in `expandedNPUs` so the
+ *     slice subtree appears (or disappears) on demand
  */
 export interface TopologyViewProps {
   clusterId: string | null;
@@ -29,6 +31,8 @@ export function TopologyView({ clusterId }: TopologyViewProps) {
   const { t } = useTranslation();
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
   const setSelectedNode = useTopologyStore((s) => s.setSelectedNode);
+  const expandedNPUs = useTopologyStore((s) => s.expandedNPUs);
+  const toggleExpandedNPU = useTopologyStore((s) => s.toggleExpandedNPU);
 
   const { data, isLoading, error, refetch } = useClusterTopology(clusterId);
 
@@ -75,10 +79,16 @@ export function TopologyView({ clusterId }: TopologyViewProps) {
     <TopologyGraph
       topology={data}
       selectedNodeId={selectedNodeId}
+      expandedNPUs={expandedNPUs}
       onNodeClick={(id) => setSelectedNode(id)}
-      // Hook reserved for T-108b slice expansion. Setting the same store
-      // value on dblclick keeps the event observable to tests.
-      onNodeDoubleClick={(id) => setSelectedNode(id)}
+      onNodeDoubleClick={(id) => {
+        // Dbl-click an NPU → toggle its slice subtree. Other node types
+        // dbl-click to no-op (the click handler already selected them).
+        const node = data.nodes.find((n) => n.id === id);
+        if (node?.type === 'npu') {
+          toggleExpandedNPU(id);
+        }
+      }}
     />
   );
 }
