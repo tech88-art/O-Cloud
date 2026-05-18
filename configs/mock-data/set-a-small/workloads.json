@@ -59,8 +59,13 @@
             {
               "name": "prefill",
               "image": "mindie/vllm-ascend:0.11.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["vllm serve qwen/Qwen2.5-8B-Instruct --role prefill --kv-transfer-config mooncake"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "vllm serve qwen/Qwen2.5-8B-Instruct --role prefill --kv-transfer-config mooncake"
+              ],
               "resources": {
                 "cpu": "16",
                 "memory": "64Gi",
@@ -80,8 +85,13 @@
             {
               "name": "decode",
               "image": "mindie/vllm-ascend:0.11.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["vllm serve qwen/Qwen2.5-8B-Instruct --role decode --kv-transfer-config mooncake"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "vllm serve qwen/Qwen2.5-8B-Instruct --role decode --kv-transfer-config mooncake"
+              ],
               "resources": {
                 "cpu": "16",
                 "memory": "64Gi",
@@ -166,8 +176,13 @@
             {
               "name": "server",
               "image": "ascend/mindie:1.0.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["mindie-server --model deepseek-20b --tp 2"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "mindie-server --model deepseek-20b --tp 2"
+              ],
               "resources": {
                 "cpu": "16",
                 "memory": "64Gi",
@@ -175,6 +190,13 @@
                   "worker-site-a-03-npu-2-slice-0"
                 ]
               }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-03-npu-2-slice-0",
+              "role": "primary",
+              "indexInPod": 0
             }
           ]
         },
@@ -187,8 +209,13 @@
             {
               "name": "server",
               "image": "ascend/mindie:1.0.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["mindie-server --model deepseek-20b --tp 2"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "mindie-server --model deepseek-20b --tp 2"
+              ],
               "resources": {
                 "cpu": "16",
                 "memory": "64Gi",
@@ -196,6 +223,13 @@
                   "worker-site-a-03-npu-2-slice-2"
                 ]
               }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-03-npu-2-slice-2",
+              "role": "primary",
+              "indexInPod": 0
             }
           ]
         }
@@ -259,8 +293,13 @@
             {
               "name": "server",
               "image": "ascend/mindie:1.0.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["mindie-server --model qwen-14b"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "mindie-server --model qwen-14b"
+              ],
               "resources": {
                 "cpu": "8",
                 "memory": "32Gi",
@@ -268,6 +307,13 @@
                   "worker-site-a-01-npu-2-slice-0"
                 ]
               }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-01-npu-2-slice-0",
+              "role": "primary",
+              "indexInPod": 0
             }
           ]
         },
@@ -280,8 +326,13 @@
             {
               "name": "server",
               "image": "ascend/mindie:1.0.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["mindie-server --model qwen-14b"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "mindie-server --model qwen-14b"
+              ],
               "resources": {
                 "cpu": "8",
                 "memory": "32Gi",
@@ -289,6 +340,13 @@
                   "worker-site-a-01-npu-2-slice-2"
                 ]
               }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-01-npu-2-slice-2",
+              "role": "primary",
+              "indexInPod": 0
             }
           ]
         }
@@ -354,8 +412,13 @@
             {
               "name": "server",
               "image": "ascend/mindie:1.0.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["mindie-server --model pi-3b --max-batch 8"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "mindie-server --model pi-3b --max-batch 8"
+              ],
               "resources": {
                 "cpu": "4",
                 "memory": "16Gi",
@@ -363,6 +426,13 @@
                   "worker-site-a-02-npu-2-slice-0"
                 ]
               }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-02-npu-2-slice-0",
+              "role": "primary",
+              "indexInPod": 0
             }
           ]
         },
@@ -375,8 +445,13 @@
             {
               "name": "server",
               "image": "ascend/mindie:1.0.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["mindie-server --model pi-3b --max-batch 8"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "mindie-server --model pi-3b --max-batch 8"
+              ],
               "resources": {
                 "cpu": "4",
                 "memory": "16Gi",
@@ -384,6 +459,13 @@
                   "worker-site-a-02-npu-2-slice-2"
                 ]
               }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-02-npu-2-slice-2",
+              "role": "primary",
+              "indexInPod": 0
             }
           ]
         },
@@ -396,8 +478,13 @@
             {
               "name": "server",
               "image": "ascend/mindie:1.0.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["mindie-server --model pi-3b --max-batch 8"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "mindie-server --model pi-3b --max-batch 8"
+              ],
               "resources": {
                 "cpu": "4",
                 "memory": "16Gi",
@@ -405,6 +492,13 @@
                   "worker-site-a-02-npu-3-slice-1"
                 ]
               }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-02-npu-3-slice-1",
+              "role": "primary",
+              "indexInPod": 0
             }
           ]
         }
@@ -467,8 +561,16 @@
             {
               "name": "bench",
               "image": "vllm/benchmark:latest",
-              "command": ["python"],
-              "args": ["-m", "vllm.entrypoints.openai.api_server", "--benchmark", "--duration", "300"],
+              "command": [
+                "python"
+              ],
+              "args": [
+                "-m",
+                "vllm.entrypoints.openai.api_server",
+                "--benchmark",
+                "--duration",
+                "300"
+              ],
               "resources": {
                 "cpu": "8",
                 "memory": "16Gi",
@@ -476,6 +578,13 @@
                   "worker-site-a-01-npu-2-slice-0"
                 ]
               }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-01-npu-2-slice-0",
+              "role": "peer",
+              "indexInPod": 0
             }
           ]
         },
@@ -538,8 +647,13 @@
             {
               "name": "init-warmup",
               "image": "busybox:1.36",
-              "command": ["sh", "-c"],
-              "args": ["echo warmup model && sleep 5"],
+              "command": [
+                "sh",
+                "-c"
+              ],
+              "args": [
+                "echo warmup model && sleep 5"
+              ],
               "resources": {
                 "cpu": "100m",
                 "memory": "128Mi"
@@ -556,8 +670,13 @@
             {
               "name": "server",
               "image": "ascend/mindie:1.0.0-rc2",
-              "command": ["/bin/sh", "-c"],
-              "args": ["mindie-server --model pi-3b --canary"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "mindie-server --model pi-3b --canary"
+              ],
               "resources": {
                 "cpu": "4",
                 "memory": "16Gi",
@@ -565,6 +684,13 @@
                   "worker-site-a-02-npu-2-slice-0"
                 ]
               }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-02-npu-2-slice-0",
+              "role": "primary",
+              "indexInPod": 0
             }
           ]
         }
@@ -601,8 +727,15 @@
             {
               "name": "trainer",
               "image": "ascend/cann-toolkit:8.0",
-              "command": ["python"],
-              "args": ["-m", "torch.distributed.launch", "--nproc_per_node=4", "finetune.py"],
+              "command": [
+                "python"
+              ],
+              "args": [
+                "-m",
+                "torch.distributed.launch",
+                "--nproc_per_node=4",
+                "finetune.py"
+              ],
               "resources": {
                 "cpu": "32",
                 "memory": "128Gi",
@@ -619,8 +752,13 @@
             {
               "name": "dataset-loader",
               "image": "busybox:1.36",
-              "command": ["sh", "-c"],
-              "args": ["aws s3 cp s3://datasets/llama2-finetune /data --recursive"],
+              "command": [
+                "sh",
+                "-c"
+              ],
+              "args": [
+                "aws s3 cp s3://datasets/llama2-finetune /data --recursive"
+              ],
               "resources": {
                 "cpu": "1",
                 "memory": "2Gi"
@@ -661,8 +799,13 @@
             {
               "name": "server",
               "image": "ascend/mindie:1.0.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["mindie-server --model internlm-7b"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "mindie-server --model internlm-7b"
+              ],
               "resources": {
                 "cpu": "8",
                 "memory": "32Gi",
@@ -679,8 +822,13 @@
             {
               "name": "server",
               "image": "ascend/mindie:1.0.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["mindie-server --model internlm-7b"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "mindie-server --model internlm-7b"
+              ],
               "resources": {
                 "cpu": "8",
                 "memory": "32Gi",
@@ -722,8 +870,15 @@
             {
               "name": "bench",
               "image": "vllm/benchmark:0.5.0",
-              "command": ["python"],
-              "args": ["-m", "vllm.benchmark", "--duration", "600"],
+              "command": [
+                "python"
+              ],
+              "args": [
+                "-m",
+                "vllm.benchmark",
+                "--duration",
+                "600"
+              ],
               "resources": {
                 "cpu": "8",
                 "memory": "16Gi",
@@ -731,6 +886,13 @@
                   "worker-site-a-03-npu-3-slice-1"
                 ]
               }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-03-npu-3-slice-1",
+              "role": "peer",
+              "indexInPod": 0
             }
           ]
         },
@@ -743,8 +905,16 @@
             {
               "name": "results-upload",
               "image": "amazon/aws-cli:2.13",
-              "command": ["aws"],
-              "args": ["s3", "cp", "/results/", "s3://bench-results/2026-05-09/", "--recursive"],
+              "command": [
+                "aws"
+              ],
+              "args": [
+                "s3",
+                "cp",
+                "/results/",
+                "s3://bench-results/2026-05-09/",
+                "--recursive"
+              ],
               "resources": {
                 "cpu": "500m",
                 "memory": "512Mi"
@@ -782,8 +952,13 @@
             {
               "name": "server",
               "image": "ascend/mindie:1.0.0",
-              "command": ["/bin/sh", "-c"],
-              "args": ["mindie-server --model 70b --max-batch 32"],
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "mindie-server --model 70b --max-batch 32"
+              ],
               "resources": {
                 "cpu": "8",
                 "memory": "32Gi",
@@ -791,6 +966,13 @@
                   "worker-site-a-01-npu-5-slice-3"
                 ]
               }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-01-npu-5-slice-3",
+              "role": "primary",
+              "indexInPod": 0
             }
           ]
         },
@@ -803,8 +985,13 @@
             {
               "name": "core-dumper",
               "image": "busybox:1.36",
-              "command": ["sh", "-c"],
-              "args": ["cp /proc/$(pidof mindie-server)/coredump /var/log/oom.dump"],
+              "command": [
+                "sh",
+                "-c"
+              ],
+              "args": [
+                "cp /proc/$(pidof mindie-server)/coredump /var/log/oom.dump"
+              ],
               "resources": {
                 "cpu": "100m",
                 "memory": "128Mi"

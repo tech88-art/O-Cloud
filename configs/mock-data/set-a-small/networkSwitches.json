@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "name": "set-a-small",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Small single-cluster demo (T109 polished): 1 cluster / 3 nodes / 24 NPUs (1 degraded) / 10 mixed-status workloads incl. 1 Qwen-8B PD pair. Events 0-180s narrate a 5-page demo (Overview -> Workloads -> Deploy -> Metrics -> Logs).",
+    "scenario": "small-cluster"
+  },
+  "clusters": [
+    {
+      "id": "cluster-prod-a-01",
+      "name": "cluster-prod-a-01",
+      "role": "edge-single",
+      "location": "site-a-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 3,
+      "npuCount": 24,
+      "labels": {
+        "environment": "prod",
+        "region": "cn-east-1",
+        "site": "a"
+      },
+      "createdAt": "2026-04-19T08:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "networkSwitches": [
+    {
+      "id": "switch-tor-a-01",
+      "name": "ToR-Site-A-01",
+      "type": "tor",
+      "location": "site-a-shanghai",
+      "portsTotal": 48,
+      "portsUsed": 6,
+      "bandwidthGbps": 100,
+      "vlans": [
+        "vlan-100-mgmt",
+        "vlan-200-fabric"
+      ],
+      "status": "up"
+    }
+  ]
+}
