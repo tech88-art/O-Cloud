@@ -20,17 +20,18 @@ import (
 	"github.com/example/ocloud-edge/backend/pkg/model"
 )
 
-func TestNewSourceWithClient_Capabilities_AfterT005(t *testing.T) {
+func TestNewSourceWithClient_Capabilities_AfterT004(t *testing.T) {
 	src := NewSourceWithClient(fake.NewSimpleClientset(), Options{})
 	caps := src.Capabilities()
 
-	// P2-T-001..003 + P2-T-005 turn on Clusters / Nodes / NPUs /
-	// Workloads / Logs.
+	// P2-T-001..005 + P2-T-004 turn on Clusters / Nodes / NPUs /
+	// Workloads / Logs / Events.
 	assert.True(t, caps.Clusters, "P2-T-001 turns Clusters ON")
 	assert.True(t, caps.Nodes, "P2-T-001 turns Nodes ON")
 	assert.True(t, caps.NPUs, "P2-T-002 turns NPUs ON")
 	assert.True(t, caps.Workloads, "P2-T-003 turns Workloads ON")
 	assert.True(t, caps.Logs, "P2-T-005 turns Logs ON")
+	assert.True(t, caps.Events, "P2-T-004 turns Events ON")
 
 	// Everything else stays OFF until its dedicated P2-T-00x lands.
 	assert.False(t, caps.Topology, "Topology lands with later aggregator wiring")
@@ -38,7 +39,6 @@ func TestNewSourceWithClient_Capabilities_AfterT005(t *testing.T) {
 	assert.False(t, caps.Presets, "Presets land with P2-T-103")
 	assert.False(t, caps.Deploy, "Deploy stays mock-only in Phase 2")
 	assert.False(t, caps.Metrics, "Metrics land with P2-T-007 (prometheus.Source)")
-	assert.False(t, caps.Events, "Events land with P2-T-004 (informer)")
 }
 
 func TestSource_SatisfiesDatasourceSource(t *testing.T) {
@@ -85,10 +85,6 @@ func TestStubMethods_ReturnErrCapabilityUnavailable(t *testing.T) {
 		}},
 		{"QueryMetric", func() error {
 			_, err := src.QueryMetric(ctx, "t", nil, model.TimeRange{})
-			return err
-		}},
-		{"StreamEvents", func() error {
-			_, err := src.StreamEvents(ctx, model.StreamEventsOptions{})
 			return err
 		}},
 	}

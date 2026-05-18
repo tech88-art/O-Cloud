@@ -104,15 +104,16 @@ func (s *Source) Name() string { return "k8s" }
 
 func (s *Source) Capabilities() datasource.Capabilities {
 	// P2-T-001: Clusters + Nodes. P2-T-002: NPUs. P2-T-003: Workloads.
-	// P2-T-005: Logs. Each subsequent P2-T-00x flips one or more
-	// additional caps in the same struct literal so the progression is
-	// easy to grep ("Capabilities()" in commits).
+	// P2-T-005: Logs. P2-T-004: Events. Each subsequent P2-T-00x flips
+	// one or more additional caps in the same struct literal so the
+	// progression is easy to grep ("Capabilities()" in commits).
 	return datasource.Capabilities{
 		Clusters:  true,
 		Nodes:     true,
 		NPUs:      true,
 		Workloads: true,
 		Logs:      true,
+		Events:    true,
 	}
 }
 
@@ -159,9 +160,7 @@ func (s *Source) QueryMetric(_ context.Context, _ string, _ map[string]string, _
 	return nil, datasource.ErrCapabilityUnavailable
 }
 
-func (s *Source) StreamEvents(_ context.Context, _ model.StreamEventsOptions) (<-chan *model.WSMessage, error) {
-	return nil, datasource.ErrCapabilityUnavailable
-}
+// StreamEvents lives in events.go (P2-T-004).
 
 // ---- loadRESTConfig ----
 
