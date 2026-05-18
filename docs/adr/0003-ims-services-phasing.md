@@ -1,9 +1,9 @@
 # ADR-0003: IMS 7-service phasing — provisioning / software-management / lifecycle
 
-- **状态**:Accepted — Option C(用户 2026-05-18 拍板)
-- **日期**:2026-05-18
+- **状态**:Accepted — **Option A(2026-05-18 v2 修订)**
+- **日期**:2026-05-18(v1 Option C → v2 Option A,同日改)
 - **决策者**:协调者(用户)
-- **相关**:spec/OR-requirements.md L16, docs/architecture.md §1.2
+- **相关**:spec/OR-requirements.md L16, docs/architecture.md §1.2 + §13, M4 路线图 Phase 9 工程化对外
 
 ---
 
@@ -67,13 +67,35 @@ P3 自查:之前的 phase0-review.md 漏检此项 — **审计不周**。
 - 方案 B → 修订 ADR + 在 docs/phase-3-plan.md / phase-4-plan.md 补任务(暂不存在)
 - 方案 C → 修订 ADR + phase1-plan W4 加 P1-T-308 占位 UI task
 
-## 选定方案:Option C(2026-05-18)
+## 选定方案:**Option A**(2026-05-18 v2)
 
-- **Phase 1 W4**:加 P1-T-308 占位 UI(IMS 3 个 tab + Empty + "Phase 3+ 实现" tooltip)
-- **Phase 3**:启动后真实 lifecycle / software-mgmt / provisioning(待 Phase 3 plan 起草时落任务)
+v1 曾选 Option C(Phase 1 W4 加占位 UI + Phase 3 真实)。用户复盘"根据整体计划归档合理 Phase 阶段"后修订为:
+
+**3 项全推 Phase 9 工程化对外**(M4 同期,与 O2 DMS 同节奏)。
+
+### 理由(P5 因果链)
+
+- **资源准备**(provisioning):bare-metal init / OS install / K8s deploy — 系统运行**前**的 Day-0 操作,与 Phase 10 真机对接同期
+- **软件管理**(software mgmt):running node 上 pkg/version 升级 workflow(参考 StarlingX `sw-deployment`)— Day-2 ops,工程化能力
+- **生命周期**(lifecycle):node enroll / drain / decommission — Day-2 ops,工程化能力
+
+3 项共性:**Day-0 / Day-2 ops**,而非 Phase 1-8 的 **样机能力 / 商业演示**。M4 工程化对外是它们的自然归宿。
+
+### Phase 9 任务占位(待 Phase 9 plan 起草时细化)
+
+- **P9-T-IMS-1** node-lifecycle-operator(enroll / drain / decommission CRD + Controller)
+- **P9-T-IMS-2** software-mgmt(节点级软件 inventory + 升级 workflow,参考 StarlingX)
+- **P9-T-IMS-3** bare-metal-provisioning(基于 Metal3 / Tinkerbell,与 Phase 10 真机对接同期)
+
+### Phase 1 不做
+
+- **撤回 v1 的 P1-T-308 占位 UI** — 演示无 IMS-7 入口标签
+- Sider 不加"基础设施服务"父菜单
+- 总任务数 45 → **44**
 
 ## 影响
 
-- 架构 §13 路线图 Phase 1 行加 1 条 + Phase 3 行加 3 条
-- phase1-plan.md W4 新增 P1-T-308(~0.5d)
-- 总 Phase 1 任务数 44 → 45
+- 架构 §13 路线图 Phase 9 行加 3 条(IMS 子项)
+- phase1-plan.md W4 撤回 P1-T-308
+- spec OR-requirements F1 IMS 7 服务 → 演示样机阶段呈现 4/7(日志 / 监控告警 / 性能分析 / 资源清单);剩 3 项 Phase 9 落地
+- demo-script.md(W4 P1-T-306 落)需明确"演示展示 4 项 IMS 服务能力,3 项 Phase 9 工程化阶段补"

@@ -802,7 +802,7 @@ ocloud-edge-platform/
 | Phase 1 W3 | Topology API + 前端 toggle `includeFabric` / `includeWorkloads` | T211/T212(fabric)+ T213/T214(workload) | ADR-0004 + ADR-0005 |
 | Phase 2 | 真实 fabric discovery(LLDP / SNMP / SONiC API 选型) | Phase 2 启动前调研 + ADR | ADR-0004 |
 | Phase 2 | 真实 Pod→slice binding(K8s scheduler annotation) | Phase 2 启动前 | ADR-0005 |
-| Phase 1 W4 + Phase 3 | **IMS 7 服务剩 3 项**(资源准备/软件管理/生命周期)— Option C 拍板 | Phase 1 W4 P1-T-308 占位 UI(3 个 EmptyState 页);Phase 3 起草时落真实任务 | ADR-0003 Accepted |
+| Phase 9 | **IMS 7 服务剩 3 项**(资源准备 / 软件管理 / 生命周期)— Option A 拍板(2026-05-18 v2) | Phase 9 起草时落 P9-T-IMS-{1,2,3}:node-lifecycle-operator / software-mgmt / bare-metal-provisioning(参考 StarlingX);Phase 1 不做占位 UI | ADR-0003 v2 Accepted |
 | Phase 4 | CANN 8.1 锁定 + Ascend driver ≥ 24.x 配套验证 | Phase 4 启动前在真机验证矩阵 | architecture §3.4 +RFC-003 |
 
 ---
