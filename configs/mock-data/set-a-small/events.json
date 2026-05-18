@@ -3,7 +3,7 @@
     "name": "set-a-small",
     "version": "0.1.0",
     "generatedAt": "2026-05-17T12:00:00Z",
-    "description": "Small single-cluster demo (T109 polished): 1 cluster / 3 nodes / 24 NPUs (1 degraded) / 10 mixed-status workloads incl. 1 Qwen-8B PD pair. Events 0-180s narrate a 5-page demo (Overview -> Workloads -> Deploy -> Metrics -> Logs).",
+    "description": "Small single-cluster demo (T307 polished): 1 cluster / 3 nodes / 24 NPUs (1 degraded) / 12 mixed-status workloads incl. 3 Qwen-8B PD variants (inter-node + intra-node affinity + cross-NUMA non-affinity, spec D6). Events 0-180s narrate the 5-page demo; 180-250s narrate the D6 affinity-vs-non-affinity perf comparison.",
     "scenario": "small-cluster"
   },
   "clusters": [
@@ -397,6 +397,98 @@
         "npus": 24,
         "delta": "demo steady state: 8 running, 1 pending, 1 succeeded",
         "stage": "demo-end",
+        "snapshot": "final"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:03:05Z",
+      "type": "workload.created",
+      "payload": {
+        "name": "qwen-8b-pd-affinity",
+        "namespace": "ai-inference",
+        "stage": "d6-affinity-demo-start",
+        "note": "Spec D6: same-node Qwen-8B PD pair with intra-NUMA/HCCS placement (npu-0 + npu-1 on worker-site-a-03)."
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:03:10Z",
+      "type": "workload.created",
+      "payload": {
+        "name": "qwen-8b-pd-cross-numa",
+        "namespace": "ai-inference",
+        "stage": "d6-non-affinity-demo-start",
+        "note": "Spec D6: same-node Qwen-8B PD pair with cross-NUMA placement (npu-0 numa=0 / npu-4 numa=1 on worker-site-a-01). Contrast vs qwen-8b-pd-affinity above."
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:03:30Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "qwen-8b-pd-affinity",
+        "namespace": "ai-inference",
+        "from": "running",
+        "to": "running",
+        "reason": "metrics-tick",
+        "stage": "d6-affinity-steady-state",
+        "ttftMs": 52,
+        "itlMs": 14,
+        "throughputTokPerSec": 1020
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:03:35Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "qwen-8b-pd-cross-numa",
+        "namespace": "ai-inference",
+        "from": "running",
+        "to": "running",
+        "reason": "metrics-tick",
+        "stage": "d6-cross-numa-steady-state",
+        "ttftMs": 87,
+        "itlMs": 24,
+        "throughputTokPerSec": 642
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:04:00Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "qwen-8b-pd-affinity",
+        "namespace": "ai-inference",
+        "from": "running",
+        "to": "running",
+        "reason": "metrics-tick",
+        "stage": "d6-affinity-steady-state",
+        "ttftMs": 49,
+        "itlMs": 15,
+        "throughputTokPerSec": 1085
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:04:05Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "qwen-8b-pd-cross-numa",
+        "namespace": "ai-inference",
+        "from": "running",
+        "to": "running",
+        "reason": "metrics-tick",
+        "stage": "d6-cross-numa-steady-state",
+        "ttftMs": 91,
+        "itlMs": 26,
+        "throughputTokPerSec": 615
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:04:10Z",
+      "type": "topology.update",
+      "payload": {
+        "clusters": 1,
+        "nodes": 3,
+        "npus": 24,
+        "delta": "d6 affinity comparison: ~60% TTFT delta (49ms vs 91ms), ~75% throughput delta (1085 vs 615 tok/s) — NUMA+HCCS affinity matters",
+        "stage": "d6-demo-end",
         "snapshot": "final"
       }
     }

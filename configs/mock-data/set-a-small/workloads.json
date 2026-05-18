@@ -3,7 +3,7 @@
     "name": "set-a-small",
     "version": "0.1.0",
     "generatedAt": "2026-05-17T12:00:00Z",
-    "description": "Small single-cluster demo (T109 polished): 1 cluster / 3 nodes / 24 NPUs (1 degraded) / 10 mixed-status workloads incl. 1 Qwen-8B PD pair. Events 0-180s narrate a 5-page demo (Overview -> Workloads -> Deploy -> Metrics -> Logs).",
+    "description": "Small single-cluster demo (T307 polished): 1 cluster / 3 nodes / 24 NPUs (1 degraded) / 12 mixed-status workloads incl. 3 Qwen-8B PD variants (inter-node + intra-node affinity + cross-NUMA non-affinity, spec D6). Events 0-180s narrate the 5-page demo; 180-250s narrate the D6 affinity-vs-non-affinity perf comparison.",
     "scenario": "small-cluster"
   },
   "clusters": [
@@ -1003,6 +1003,226 @@
       "createdAt": "2026-05-12T11:00:00Z",
       "labels": {
         "app.kubernetes.io/name": "oom-test-model",
+        "team": "ai-platform"
+      }
+    },
+    {
+      "name": "qwen-8b-pd-affinity",
+      "namespace": "ai-inference",
+      "type": "inference",
+      "kind": "InferenceService",
+      "status": "running",
+      "replicas": {
+        "desired": 2,
+        "ready": 2
+      },
+      "nodeNames": [
+        "worker-site-a-03"
+      ],
+      "npuUsage": {
+        "allocated": 2,
+        "slices": [
+          "worker-site-a-03-npu-0",
+          "worker-site-a-03-npu-1"
+        ]
+      },
+      "pods": [
+        {
+          "name": "qwen-8b-pd-affinity-prefill-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-03",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "command": [
+                "vllm-ascend"
+              ],
+              "args": [
+                "serve",
+                "Qwen/Qwen2-8B",
+                "--role",
+                "prefill",
+                "--pd-pair",
+                "qwen-8b-pd-affinity"
+              ],
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-site-a-03-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-03-npu-0",
+              "role": "prefill",
+              "indexInPod": 0
+            }
+          ]
+        },
+        {
+          "name": "qwen-8b-pd-affinity-decode-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-03",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "command": [
+                "vllm-ascend"
+              ],
+              "args": [
+                "serve",
+                "Qwen/Qwen2-8B",
+                "--role",
+                "decode",
+                "--pd-pair",
+                "qwen-8b-pd-affinity"
+              ],
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-site-a-03-npu-1"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-03-npu-1",
+              "role": "decode",
+              "indexInPod": 0
+            }
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "from": "qwen-8b-pd-affinity-prefill-0",
+          "to": "qwen-8b-pd-affinity-decode-0",
+          "type": "pd-pair"
+        }
+      ],
+      "createdAt": "2026-05-17T11:30:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "qwen-8b-pd-affinity",
+        "demo/comparison": "d6-affinity",
+        "team": "ai-platform"
+      }
+    },
+    {
+      "name": "qwen-8b-pd-cross-numa",
+      "namespace": "ai-inference",
+      "type": "inference",
+      "kind": "InferenceService",
+      "status": "running",
+      "replicas": {
+        "desired": 2,
+        "ready": 2
+      },
+      "nodeNames": [
+        "worker-site-a-01"
+      ],
+      "npuUsage": {
+        "allocated": 2,
+        "slices": [
+          "worker-site-a-01-npu-0",
+          "worker-site-a-01-npu-4"
+        ]
+      },
+      "pods": [
+        {
+          "name": "qwen-8b-pd-cross-numa-prefill-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-01",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "prefill",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "command": [
+                "vllm-ascend"
+              ],
+              "args": [
+                "serve",
+                "Qwen/Qwen2-8B",
+                "--role",
+                "prefill",
+                "--pd-pair",
+                "qwen-8b-pd-cross-numa"
+              ],
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-site-a-01-npu-0"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-01-npu-0",
+              "role": "prefill",
+              "indexInPod": 0
+            }
+          ]
+        },
+        {
+          "name": "qwen-8b-pd-cross-numa-decode-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-01",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "decode",
+              "image": "mindie/vllm-ascend:0.11.0",
+              "command": [
+                "vllm-ascend"
+              ],
+              "args": [
+                "serve",
+                "Qwen/Qwen2-8B",
+                "--role",
+                "decode",
+                "--pd-pair",
+                "qwen-8b-pd-cross-numa"
+              ],
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-site-a-01-npu-4"
+                ]
+              }
+            }
+          ],
+          "bindings": [
+            {
+              "sliceId": "worker-site-a-01-npu-4",
+              "role": "decode",
+              "indexInPod": 0
+            }
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "from": "qwen-8b-pd-cross-numa-prefill-0",
+          "to": "qwen-8b-pd-cross-numa-decode-0",
+          "type": "pd-pair"
+        }
+      ],
+      "createdAt": "2026-05-17T11:35:00Z",
+      "labels": {
+        "app.kubernetes.io/name": "qwen-8b-pd-cross-numa",
+        "demo/comparison": "d6-non-affinity",
         "team": "ai-platform"
       }
     }

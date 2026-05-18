@@ -3,7 +3,7 @@
     "name": "set-a-small",
     "version": "0.1.0",
     "generatedAt": "2026-05-17T12:00:00Z",
-    "description": "Small single-cluster demo (T109 polished): 1 cluster / 3 nodes / 24 NPUs (1 degraded) / 10 mixed-status workloads incl. 1 Qwen-8B PD pair. Events 0-180s narrate a 5-page demo (Overview -> Workloads -> Deploy -> Metrics -> Logs).",
+    "description": "Small single-cluster demo (T307 polished): 1 cluster / 3 nodes / 24 NPUs (1 degraded) / 12 mixed-status workloads incl. 3 Qwen-8B PD variants (inter-node + intra-node affinity + cross-NUMA non-affinity, spec D6). Events 0-180s narrate the 5-page demo; 180-250s narrate the D6 affinity-vs-non-affinity perf comparison.",
     "scenario": "small-cluster"
   },
   "clusters": [

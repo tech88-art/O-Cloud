@@ -381,7 +381,20 @@ func TestListWorkloads_SetASmall_FixtureCount(t *testing.T) {
 
 	var got []model.Workload
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	assert.Len(t, got, 10, "P1-T-201 AC: set-a-small ships 10 workloads")
+	// P1-T-201 originally pinned this to exactly 10. P1-T-307 added two
+	// Qwen-8B PD variants (affinity + cross-numa) for the spec D6
+	// comparison demo; current count is 12. Keep a >=10 floor so future
+	// dataset additions don't churn this test, and assert the headline
+	// workload + the D6 pair are present by name.
+	assert.GreaterOrEqual(t, len(got), 10,
+		"set-a-small must ship at least 10 workloads (P1-T-201 baseline)")
+	names := map[string]bool{}
+	for _, w := range got {
+		names[w.Name] = true
+	}
+	assert.True(t, names["qwen-8b-pd"], "qwen-8b-pd PD pair workload must be present")
+	assert.True(t, names["qwen-8b-pd-affinity"], "P1-T-307 D6 affinity workload must be present")
+	assert.True(t, names["qwen-8b-pd-cross-numa"], "P1-T-307 D6 non-affinity workload must be present")
 }
 
 func TestGetWorkloadDetail_SetASmall_QwenPDPair(t *testing.T) {
