@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import GrafanaPanel, { buildPocUrl } from './index';
+import GrafanaPanel from './index';
+import { buildPocUrl } from './urlBuilder';
 import { loadRuntimeConfig } from '@/config/runtime';
 
 describe('buildPocUrl', () => {

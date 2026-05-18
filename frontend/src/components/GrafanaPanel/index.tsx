@@ -1,52 +1,8 @@
 import { Alert, Spin } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { getRuntimeConfig } from '@/config/runtime';
-
-export interface GrafanaPanelProps {
-  /** Dashboard key as defined in `deploy/CLAUDE.md §3.6` (e.g. `cluster_overview`). */
-  dashboard: string;
-  /** Grafana dashboard variables to inject as `var-<name>=<value>` URL params. */
-  variables?: Record<string, string>;
-  /** Iframe height in CSS pixels. Defaults to 600. */
-  height?: number;
-  /** Kiosk mode hides Grafana nav/sidebar. Defaults to 'tv'. Pass false to disable. */
-  kiosk?: 'tv' | 'full' | false;
-}
-
-/**
- * POC fallback: dashboard key -> Grafana URL path.
- *
- * Production: P1-T-205 implements `GET /api/v1/grafana/url?dashboard=...` which
- * returns a signed URL. This component will swap to that API when T205 lands.
- *
- * Keys + slugs come from `deploy/CLAUDE.md §3.6` (file name = key with `_` -> `-`).
- */
-const POC_DASHBOARD_MAP: Record<string, string> = {
-  cluster_overview: '/d/cluster-overview/cluster-overview',
-  node_detail: '/d/node-detail/node-detail',
-  npu_detail: '/d/npu-detail/npu-detail',
-  workload_business: '/d/workload-business/workload-business',
-  workload_resource: '/d/workload-resource/workload-resource',
-};
-
-/** @internal exported for unit tests only. */
-export function buildPocUrl(
-  base: string,
-  dashboard: string,
-  variables: Record<string, string> | undefined,
-  kiosk: GrafanaPanelProps['kiosk'],
-): string | null {
-  const path = POC_DASHBOARD_MAP[dashboard];
-  if (!path) return null;
-  const params = new URLSearchParams({ orgId: '1' });
-  if (kiosk) params.set('kiosk', kiosk);
-  if (variables) {
-    for (const [k, v] of Object.entries(variables)) {
-      params.set(`var-${k}`, v);
-    }
-  }
-  return `${base.replace(/\/$/, '')}${path}?${params.toString()}`;
-}
+import { buildPocUrl } from './urlBuilder';
+import type { GrafanaPanelProps } from './types';
 
 /**
  * Embeds a Grafana dashboard via iframe. POC for P1-T-010.
@@ -60,6 +16,10 @@ export function buildPocUrl(
  * - Backend signs short-lived URLs (P1-T-205, /api/v1/grafana/url)
  * - This component calls that endpoint and uses the signed URL
  * - Grafana behind proxy with shared SSO (OIDC) — see ADR-NNNN when added
+ *
+ * URL builder + props type live in sibling modules (`urlBuilder.ts`,
+ * `types.ts`) so this file exports components only — keeps the React-
+ * refresh HMR boundary clean (see known-issues.md #1).
  */
 export function GrafanaPanel({
   dashboard,
@@ -99,6 +59,9 @@ export function GrafanaPanel({
       return;
     }
     setUrl(computed);
+    // varsKey carries the variables identity; pulling `variables` itself in
+    // would re-fire the effect on every parent re-render even when the
+    // serialized payload is unchanged.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboard, varsKey, kiosk]);
 
