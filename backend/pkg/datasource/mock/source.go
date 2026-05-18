@@ -18,21 +18,28 @@ import (
 // method.
 var ErrNotImplemented = errors.New("mock source: method not implemented")
 
-// Source is the mock datasource stub. Construction is intentionally trivial
-// at this phase — T101 wires Cluster fixtures from configs/mock-data/set-a-small/.
-// Subsequent tasks (T103/T104/T201/...) extend this struct with their own
-// once+slice cache fields for nodes / npus / workloads / etc.
+// Source is the mock datasource. Per-resource lazy caches live on the struct
+// so each Source instance loads its own fixtures from fixturesPath. Each
+// loader file (cluster.go, node.go, ...) defines its own cache fields below
+// and handles empty fixturesPath semantics (some treat empty as no-op for
+// test ergonomics; node.go falls back to DefaultFixturesPath).
 type Source struct {
-	// fixturesPath is the directory of canned JSON fixtures (e.g.
-	// "./configs/mock-data/set-a-small"). Empty path → loaders treat the
-	// dataset as empty (used in unit tests with no disk dependency).
+	// fixturesPath is the directory containing canned JSON fixtures (e.g.
+	// "./configs/mock-data/set-a-small"). Empty path → resource-specific
+	// behavior (see each loader).
 	fixturesPath string
 
-	// clusters cache (T101). sync.Once gives lazy thread-safe load; clustersErr
-	// is sticky so a bad fixture file isn't re-parsed on every request.
+	// Clusters cache (P1-T-101). sync.Once gives lazy thread-safe load;
+	// clustersErr is sticky so a bad fixture file isn't re-parsed.
 	clustersOnce sync.Once
 	clusters     []*model.Cluster
 	clustersErr  error
+
+	// Nodes cache (P1-T-103). Per-instance lazy load; tests reset via
+	// resetNodesStateForTest.
+	nodesOnce sync.Once
+	nodes     []model.NodeDetail
+	nodesErr  error
 }
 
 // NewSource returns a fresh mock.Source. fixturesPath is the directory of
@@ -50,9 +57,11 @@ var _ datasource.Source = (*Source)(nil)
 func (s *Source) Name() string { return "mock" }
 
 func (s *Source) Capabilities() datasource.Capabilities {
-	// PHASE-1: T101 enables Clusters. Other resources land in later tasks.
+	// PHASE-1: T101 enables Clusters, T103 enables Nodes. Others flip on as
+	// T102/T104+ land.
 	return datasource.Capabilities{
 		Clusters: true,
+		Nodes:    true,
 	}
 }
 
@@ -63,14 +72,8 @@ func (s *Source) GetTopology(ctx context.Context, clusterID string, depth string
 }
 
 // ---- Node / NPU ----
-
-func (s *Source) ListNodes(ctx context.Context, filter model.NodeFilter) ([]*model.Node, error) {
-	return nil, ErrNotImplemented
-}
-
-func (s *Source) GetNodeDetail(ctx context.Context, name string) (*model.NodeDetail, error) {
-	return nil, ErrNotImplemented
-}
+//
+// ListNodes + GetNodeDetail moved to node.go (P1-T-103).
 
 func (s *Source) ListNPUs(ctx context.Context, nodeName string) ([]*model.NPU, error) {
 	return nil, ErrNotImplemented

@@ -55,7 +55,12 @@ type Taint = map[string]interface{}
 
 // NodeFilter is the query filter passed to Source.ListNodes (not on the wire —
 // it is a Go-side aggregate of the GET /nodes query params).
+//
+// ClusterID + PoolName mirror the contract's documented query params. Role is
+// an additional Phase-1 affordance (handler accepts `?role=worker`) — see
+// P1-T-103 spec; not yet in api-contract.yaml, RFC-worthy if it survives.
 type NodeFilter struct {
 	ClusterID string
 	PoolName  string
+	Role      string
 }
