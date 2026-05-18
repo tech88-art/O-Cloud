@@ -20,21 +20,21 @@ import (
 	"github.com/example/ocloud-edge/backend/pkg/model"
 )
 
-func TestNewSourceWithClient_Capabilities_AfterT003(t *testing.T) {
+func TestNewSourceWithClient_Capabilities_AfterT005(t *testing.T) {
 	src := NewSourceWithClient(fake.NewSimpleClientset(), Options{})
 	caps := src.Capabilities()
 
-	// P2-T-001 + P2-T-002 + P2-T-003 turn on Clusters / Nodes / NPUs
-	// / Workloads.
+	// P2-T-001..003 + P2-T-005 turn on Clusters / Nodes / NPUs /
+	// Workloads / Logs.
 	assert.True(t, caps.Clusters, "P2-T-001 turns Clusters ON")
 	assert.True(t, caps.Nodes, "P2-T-001 turns Nodes ON")
 	assert.True(t, caps.NPUs, "P2-T-002 turns NPUs ON")
 	assert.True(t, caps.Workloads, "P2-T-003 turns Workloads ON")
+	assert.True(t, caps.Logs, "P2-T-005 turns Logs ON")
 
 	// Everything else stays OFF until its dedicated P2-T-00x lands.
 	assert.False(t, caps.Topology, "Topology lands with later aggregator wiring")
 	assert.False(t, caps.Pools, "Pools land with P2-T-101")
-	assert.False(t, caps.Logs, "Logs land with P2-T-005")
 	assert.False(t, caps.Presets, "Presets land with P2-T-103")
 	assert.False(t, caps.Deploy, "Deploy stays mock-only in Phase 2")
 	assert.False(t, caps.Metrics, "Metrics land with P2-T-007 (prometheus.Source)")
@@ -66,14 +66,6 @@ func TestStubMethods_ReturnErrCapabilityUnavailable(t *testing.T) {
 		}},
 		{"ListNPUSlicePools", func() error {
 			_, err := src.ListNPUSlicePools(ctx)
-			return err
-		}},
-		{"GetWorkloadLogs", func() error {
-			_, err := src.GetWorkloadLogs(ctx, "ns", "name", model.LogOptions{})
-			return err
-		}},
-		{"StreamWorkloadLogs", func() error {
-			_, err := src.StreamWorkloadLogs(ctx, "ns", "name", model.LogStreamOptions{})
 			return err
 		}},
 		{"ListPresets", func() error {
