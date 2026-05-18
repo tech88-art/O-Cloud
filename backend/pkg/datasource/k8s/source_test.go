@@ -20,16 +20,17 @@ import (
 	"github.com/example/ocloud-edge/backend/pkg/model"
 )
 
-func TestNewSourceWithClient_Capabilities_OnlyClustersAndNodes(t *testing.T) {
+func TestNewSourceWithClient_Capabilities_AfterT002(t *testing.T) {
 	src := NewSourceWithClient(fake.NewSimpleClientset(), Options{})
 	caps := src.Capabilities()
 
+	// P2-T-001 + P2-T-002 turn on Clusters / Nodes / NPUs.
 	assert.True(t, caps.Clusters, "P2-T-001 turns Clusters ON")
 	assert.True(t, caps.Nodes, "P2-T-001 turns Nodes ON")
+	assert.True(t, caps.NPUs, "P2-T-002 turns NPUs ON")
 
 	// Everything else stays OFF until its dedicated P2-T-00x lands.
 	assert.False(t, caps.Topology, "Topology lands with later aggregator wiring")
-	assert.False(t, caps.NPUs, "NPUs land with P2-T-002")
 	assert.False(t, caps.Pools, "Pools land with P2-T-101")
 	assert.False(t, caps.Workloads, "Workloads land with P2-T-003")
 	assert.False(t, caps.Logs, "Logs land with P2-T-005")
@@ -60,10 +61,6 @@ func TestStubMethods_ReturnErrCapabilityUnavailable(t *testing.T) {
 		}},
 		{"GetTopologyWithFabric", func() error {
 			_, err := src.GetTopologyWithFabric(ctx, "any", "slice", datasource.TopologyOptions{})
-			return err
-		}},
-		{"ListNPUs", func() error {
-			_, err := src.ListNPUs(ctx, "any-node")
 			return err
 		}},
 		{"ListNPUSlicePools", func() error {

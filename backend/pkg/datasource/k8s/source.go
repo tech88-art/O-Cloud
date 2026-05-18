@@ -103,12 +103,14 @@ var _ datasource.Source = (*Source)(nil)
 func (s *Source) Name() string { return "k8s" }
 
 func (s *Source) Capabilities() datasource.Capabilities {
-	// P2-T-001 turns on Clusters + Nodes. Every subsequent P2-T-00x
-	// flips one or more additional caps in the same struct literal so
-	// the progression is easy to grep ("Capabilities()" in commits).
+	// P2-T-001 turned on Clusters + Nodes; P2-T-002 adds NPUs. Each
+	// subsequent P2-T-00x flips one or more additional caps in the
+	// same struct literal so the progression is easy to grep
+	// ("Capabilities()" in commits).
 	return datasource.Capabilities{
 		Clusters: true,
 		Nodes:    true,
+		NPUs:     true,
 	}
 }
 
@@ -125,9 +127,7 @@ func (s *Source) GetTopologyWithFabric(_ context.Context, _, _ string, _ datasou
 	return nil, datasource.ErrCapabilityUnavailable
 }
 
-func (s *Source) ListNPUs(_ context.Context, _ string) ([]*model.NPU, error) {
-	return nil, datasource.ErrCapabilityUnavailable
-}
+// ListNPUs lives in npu.go (P2-T-002).
 
 func (s *Source) ListNPUSlicePools(_ context.Context) ([]*model.NPUSlicePool, error) {
 	return nil, datasource.ErrCapabilityUnavailable
@@ -217,3 +217,8 @@ func errFromAPIServer(op string, err error) error {
 // their own equivalent (e.g. mocksrc.ErrWorkloadNotFound) — handlers
 // chain the checks.
 var ErrResourceNotFound = errors.New("k8s: resource not found")
+
+// newStaticErr is a tiny helper to allocate a package-local error
+// without depending on errors.New at every call site. Used by parser
+// helpers in npu.go etc.
+func newStaticErr(msg string) error { return errors.New(msg) }
