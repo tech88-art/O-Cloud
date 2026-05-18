@@ -24,6 +24,12 @@ import { create } from 'zustand';
  *     visually drowned; the Overview header exposes a toggle that flips
  *     this. When true the `useClusterTopology` hook appends
  *     `?includeFabric=true` to the request.
+ *   - `showWorkloads`     — whether workload + pod nodes (with binds-to
+ *     and pd-pair edges) are included in the topology query. Off by
+ *     default per ADR-0005 (RFC-003) — workload fusion can produce 30+
+ *     extra nodes on set-a-small, so we let the operator opt in. Mirror
+ *     of `showFabric`: when true the `useClusterTopology` hook appends
+ *     `?includeWorkloads=true` to the request.
  *
  * Per frontend/CLAUDE.md §4.3 — Zustand only. Page-scoped store kept here
  * (not on the cross-page `store/index.ts`) so that other pages don't
@@ -42,6 +48,12 @@ export interface TopologyState {
    * T108a/T108b. See ADR-0004.
    */
   showFabric: boolean;
+  /**
+   * Whether to include workload + pod nodes (plus binds-to / pd-pair
+   * edges) in the topology query. Default false → byte-equivalent to
+   * T108a/T108b/T212. See ADR-0005.
+   */
+  showWorkloads: boolean;
   setSelectedCluster: (id: string | null) => void;
   setSelectedNode: (id: string | null) => void;
   /** Toggle whether the given NPU's slice subtree is expanded. */
@@ -52,6 +64,8 @@ export interface TopologyState {
   setLastEventAt: (iso: string | null) => void;
   /** Flip the fabric-inclusion toggle. */
   setShowFabric: (v: boolean) => void;
+  /** Flip the workload-inclusion toggle. */
+  setShowWorkloads: (v: boolean) => void;
 }
 
 export const useTopologyStore = create<TopologyState>((set) => ({
@@ -60,6 +74,7 @@ export const useTopologyStore = create<TopologyState>((set) => ({
   expandedNPUs: new Set<string>(),
   lastEventAt: null,
   showFabric: false,
+  showWorkloads: false,
   setSelectedCluster: (id) => set({ selectedClusterId: id }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
   toggleExpandedNPU: (npuId) =>
@@ -77,4 +92,5 @@ export const useTopologyStore = create<TopologyState>((set) => ({
   setExpandedNPUs: (ids) => set({ expandedNPUs: new Set(ids) }),
   setLastEventAt: (iso) => set({ lastEventAt: iso }),
   setShowFabric: (v) => set({ showFabric: v }),
+  setShowWorkloads: (v) => set({ showWorkloads: v }),
 }));

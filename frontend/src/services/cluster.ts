@@ -52,24 +52,36 @@ export function useClusters() {
  * regular cluster/node/npu/slice tree. Default false keeps the wire
  * payload byte-equivalent to the T-108a/T-108b expectation.
  *
- * The flag is part of the queryKey so toggling it triggers a fresh fetch
- * rather than serving the cached non-fabric payload.
+ * `includeWorkloads` (default false) → ADR-0005 / RFC-003. Mirror of
+ * `includeFabric`: when truthy the URL gains `?includeWorkloads=true`,
+ * causing the backend (P1-T-213) to emit `type=workload` / `type=pod`
+ * nodes plus `type=binds-to` (pod↔slice) and `type=pd-pair` (pod↔pod)
+ * edges. Default false preserves byte-equivalence with the pre-T-214
+ * topology DTO.
+ *
+ * Both flags participate in the queryKey so toggling either one triggers
+ * a fresh fetch rather than serving a cached payload from the other
+ * branch.
  */
 export function useClusterTopology(
   clusterId: string | null | undefined,
   depth: TopologyDepth = 'slice',
   includeFabric = false,
+  includeWorkloads = false,
 ) {
   return useQuery({
-    queryKey: ['cluster-topology', clusterId, depth, includeFabric],
+    queryKey: ['cluster-topology', clusterId, depth, includeFabric, includeWorkloads],
     queryFn: async (): Promise<Topology> => {
-      // Build the params object conditionally — when `includeFabric` is
-      // false we drop the key entirely so the request URL is identical to
-      // the pre-T-212 shape (zero regression for snapshot-style tests and
-      // for backend handlers that key on URL alone).
+      // Build the params object conditionally — when either flag is false
+      // we drop its key entirely so the request URL is identical to the
+      // pre-T-212/T-214 shape (zero regression for snapshot-style tests
+      // and for backend handlers that key on URL alone).
       const params: Record<string, string | boolean> = { depth };
       if (includeFabric) {
         params.includeFabric = true;
+      }
+      if (includeWorkloads) {
+        params.includeWorkloads = true;
       }
       const { data } = await api.get<Topology>(
         `/api/v1/clusters/${clusterId}/topology`,

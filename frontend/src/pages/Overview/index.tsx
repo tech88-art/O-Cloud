@@ -45,6 +45,11 @@ export default function OverviewPage() {
   // <TopologyView> sees the same flag via `useClusterTopology` keyed on it.
   const showFabric = useTopologyStore((s) => s.showFabric);
   const setShowFabric = useTopologyStore((s) => s.setShowFabric);
+  // ADR-0005 / RFC-003: workloads toggle. Mirror of the fabric toggle —
+  // same store-based wiring so the left-tree topology query and the
+  // <TopologyView> graph query share one react-query cache entry.
+  const showWorkloads = useTopologyStore((s) => s.showWorkloads);
+  const setShowWorkloads = useTopologyStore((s) => s.setShowWorkloads);
 
   // Auto-pick first cluster once the list lands. Idempotent: only runs if
   // nothing is selected yet.
@@ -57,11 +62,16 @@ export default function OverviewPage() {
     }
   }, [clustersQuery.data, selectedClusterId, setSelectedCluster]);
 
-  // Passing showFabric here keeps the left-tree query (this hook) in lock-
-  // step with the center-pane query inside <TopologyView> — both call
-  // useClusterTopology with the same args, so react-query de-dupes them
-  // into a single network request.
-  const topologyQuery = useClusterTopology(selectedClusterId, 'slice', showFabric);
+  // Passing showFabric + showWorkloads here keeps the left-tree query
+  // (this hook) in lock-step with the center-pane query inside
+  // <TopologyView> — both call useClusterTopology with the same args, so
+  // react-query de-dupes them into a single network request.
+  const topologyQuery = useClusterTopology(
+    selectedClusterId,
+    'slice',
+    showFabric,
+    showWorkloads,
+  );
 
   // Topology WS — mount once the cluster is known. The hook handles
   // reconnects + cache invalidation; we just surface its status to the
@@ -95,6 +105,12 @@ export default function OverviewPage() {
             label={t('overview.includeFabric')}
             hint={t('overview.fabricToggleHint')}
           />
+          <WorkloadsToggle
+            showWorkloads={showWorkloads}
+            onChange={setShowWorkloads}
+            label={t('overview.includeWorkloads')}
+            hint={t('overview.workloadsToggleHint')}
+          />
         </div>
         <LeftTree
           treeData={treeData}
@@ -127,10 +143,31 @@ export default function OverviewPage() {
  * what the graph shows — every graph node appears in the tree exactly
  * once. Nodes that don't appear as a target end up as roots (typically
  * the cluster).
+ *
+ * ADR-0005 caveat: workload + pod nodes are intentionally filtered out
+ * of the left tree. The backend does NOT emit cluster→workload or
+ * workload→pod `contains` edges (only `binds-to` / `pd-pair`), so they
+ * would otherwise appear as orphan tree roots and clutter the resource
+ * hierarchy. Workload/pod stay graph-only in Phase 1; surfacing them in
+ * the tree (e.g. under a synthesized "Workloads" parent) is a possible
+ * Phase 2 follow-up.
  */
 function buildTreeData(topology: Topology): DataNode[] {
+  // Helper: backend emits 'workload' / 'pod' (ADR-0005) and 'switch'
+  // (ADR-0004) at runtime, but the auto-generated `TopologyNode.type`
+  // union doesn't list them yet (contract regen is a separate RFC). We
+  // compare via a widened string cast so TS doesn't complain about
+  // "literals with no overlap" while still keeping the narrow union
+  // everywhere else. Same trick TopologyGraph uses at its render boundary.
+  const isGraphOnlyType = (t: string): boolean =>
+    t === 'workload' || t === 'pod';
+
   const byId = new Map<string, DataNode>();
   for (const n of topology.nodes) {
+    // ADR-0005: workload/pod live in the graph only; skip from tree
+    // to avoid them appearing as orphan roots (backend doesn't link
+    // them via `contains`).
+    if (isGraphOnlyType(n.type as string)) continue;
     byId.set(n.id, {
       key: n.id,
       title: n.label,
@@ -151,6 +188,7 @@ function buildTreeData(topology: Topology): DataNode[] {
   // Roots = anything that is not a `contains` target. For a well-formed
   // topology this is the cluster node.
   return topology.nodes
+    .filter((n) => !isGraphOnlyType(n.type as string))
     .filter((n) => !targets.has(n.id))
     .map((n) => byId.get(n.id)!)
     .filter(Boolean);
@@ -301,6 +339,50 @@ function FabricToggle({ showFabric, onChange, label, hint }: FabricToggleProps) 
           checked={showFabric}
           onChange={onChange}
           data-testid="fabric-toggle-switch"
+          aria-label={label}
+        />
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {label}
+        </Text>
+      </div>
+    </Tooltip>
+  );
+}
+
+/**
+ * ADR-0005 / RFC-003 workloads toggle. Mirror of `<FabricToggle>` — same
+ * AntD `<Switch>` + `<Tooltip>` shape, same `data-testid` convention.
+ * When ON the topology query gains `?includeWorkloads=true`, causing the
+ * backend to emit workload + pod nodes plus binds-to / pd-pair edges
+ * (see `services/cluster.ts` and `aggregator/topology.go:485-613`).
+ *
+ * Default OFF — workload fusion can add 30+ extra nodes on set-a-small;
+ * we let the operator opt in to avoid drowning the small-cluster demo.
+ */
+interface WorkloadsToggleProps {
+  showWorkloads: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  hint: string;
+}
+
+function WorkloadsToggle({
+  showWorkloads,
+  onChange,
+  label,
+  hint,
+}: WorkloadsToggleProps) {
+  return (
+    <Tooltip title={hint}>
+      <div
+        data-testid="workloads-toggle"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}
+      >
+        <Switch
+          size="small"
+          checked={showWorkloads}
+          onChange={onChange}
+          data-testid="workloads-toggle-switch"
           aria-label={label}
         />
         <Text type="secondary" style={{ fontSize: 12 }}>

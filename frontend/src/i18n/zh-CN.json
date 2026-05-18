@@ -73,7 +73,9 @@
     "selectCluster": "请选择集群",
     "detailPanePending": "选中节点查看详情（T108b 后启用）",
     "includeFabric": "显示网络 Fabric",
-    "fabricToggleHint": "包含交换机与节点间链路（ADR-0004，默认关闭）"
+    "fabricToggleHint": "包含交换机与节点间链路（ADR-0004，默认关闭）",
+    "includeWorkloads": "显示工作负载",
+    "workloadsToggleHint": "包含 Workload/Pod 节点与 PD 对/绑定边（ADR-0005，默认关闭）"
   },
   "detailPanel": {
     "selectNode": "选中一个节点查看详情",

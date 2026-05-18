@@ -2,6 +2,7 @@ import { memo, useCallback, useMemo } from 'react';
 import {
   Background,
   Controls,
+  MarkerType,
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
@@ -16,14 +17,22 @@ import { StatusTag, type StatusTone } from '@/components/StatusTag';
 import type { Topology, TopologyEdge, TopologyNode } from '@/services/cluster';
 
 /**
- * ADR-0004 / RFC-003 fabric extension.
+ * ADR-0004 (fabric) / ADR-0005 (workload fusion) / RFC-003 wire-type
+ * extensions.
  *
- * The backend now emits two extra wire values that the auto-generated
+ * The backend now emits several wire values that the auto-generated
  * `services/types.ts` doesn't yet know about (the OpenAPI spec is
  * regenerated separately — see RFC-003 §schema):
- *   - TopologyNode.type === 'switch'       → an inter-node network switch
- *   - TopologyEdge.type === 'fabric-link'  → a node↔switch / switch↔switch
- *                                            link in the inter-node fabric
+ *
+ * Node types:
+ *   - 'switch'    → ADR-0004: an inter-node network switch
+ *   - 'workload'  → ADR-0005: a top-level workload aggregate
+ *   - 'pod'       → ADR-0005: a pod belonging to a workload
+ *
+ * Edge types:
+ *   - 'fabric-link' → ADR-0004: a node↔switch / switch↔switch link
+ *   - 'binds-to'    → ADR-0005: pod↔slice binding (resource consumption)
+ *   - 'pd-pair'     → ADR-0005: prefill↔decode pod relation
  *
  * Until the contract regen lands we treat them as runtime-only string
  * variants. We narrow with `typeof n.type === 'string'` + literal compare
@@ -32,12 +41,24 @@ import type { Topology, TopologyEdge, TopologyNode } from '@/services/cluster';
  * regen (no churn when the union gets the extra members).
  */
 const NODE_TYPE_SWITCH = 'switch' as const;
+const NODE_TYPE_WORKLOAD = 'workload' as const;
+const NODE_TYPE_POD = 'pod' as const;
 const EDGE_TYPE_FABRIC_LINK = 'fabric-link' as const;
+const EDGE_TYPE_BINDS_TO = 'binds-to' as const;
+const EDGE_TYPE_PD_PAIR = 'pd-pair' as const;
 
-/** Widened topology-node `type` admitting the runtime-only `switch` literal. */
-type TopologyNodeType = TopologyNode['type'] | typeof NODE_TYPE_SWITCH;
-/** Widened topology-edge `type` admitting the runtime-only `fabric-link`. */
-type TopologyEdgeType = TopologyEdge['type'] | typeof EDGE_TYPE_FABRIC_LINK;
+/** Widened topology-node `type` admitting the runtime-only literals. */
+type TopologyNodeType =
+  | TopologyNode['type']
+  | typeof NODE_TYPE_SWITCH
+  | typeof NODE_TYPE_WORKLOAD
+  | typeof NODE_TYPE_POD;
+/** Widened topology-edge `type` admitting the runtime-only literals. */
+type TopologyEdgeType =
+  | TopologyEdge['type']
+  | typeof EDGE_TYPE_FABRIC_LINK
+  | typeof EDGE_TYPE_BINDS_TO
+  | typeof EDGE_TYPE_PD_PAIR;
 
 /**
  * Production topology graph wrapper around ReactFlow. Replaces the
@@ -67,21 +88,64 @@ type TopologyEdgeType = TopologyEdge['type'] | typeof EDGE_TYPE_FABRIC_LINK;
 
 const NODE_WIDTH = 160;
 const NODE_HEIGHT = 64;
+/** Compact dimensions for pod nodes (ADR-0005). Pod nodes are the leaves
+ *  of the workload-fusion subtree, often 2-3 per workload — keeping them a
+ *  bit smaller than the default lets a 21-pod set-a-small fixture lay out
+ *  cleanly alongside 24 NPU + 66 slice nodes without overflowing the
+ *  canvas. Width chosen so a 50-char "qwen-8b-pd-decode-0" pod name
+ *  truncates cleanly via the existing ellipsis. */
+const NODE_WIDTH_POD = 140;
+const NODE_HEIGHT_POD = 52;
+/** Compact dimensions for NPU nodes. With 24 NPUs per cluster sitting in
+ *  one dagre rank, the full-width 160px node would push the rank out to
+ *  ~4400px and force `fitView` to ~0.3× zoom — labels turn unreadable.
+ *  NPU labels are short ("Ascend910B#23") and don't carry a StatusTag
+ *  string longer than "healthy", so 110×56 keeps the visual density at a
+ *  readable default while leaving room for the accent stripe + tag. */
+const NODE_WIDTH_NPU = 110;
+const NODE_HEIGHT_NPU = 56;
 /** dagre uses these to space nodes within a rank (`nodesep`) and between
  *  ranks (`ranksep`). Tuned so a 24-NPU cluster reads cleanly at 1280px. */
 const NODE_SEPARATION = 24;
 const RANK_SEPARATION = 60;
 
 /**
+ * Per-type render dimensions. Pod nodes use the compact size; NPU nodes
+ * use a narrower variant so the 24-per-cluster rank fits at a readable
+ * zoom; everything else gets the standard 160×64. The dagre layout and
+ * the `<TopoNode>` renderer both consult this helper so they never
+ * disagree on a node's footprint (which would produce overlap or
+ * misaligned edges).
+ */
+function dimensionsForNodeType(type: TopologyNodeType): {
+  width: number;
+  height: number;
+} {
+  if (type === NODE_TYPE_POD) {
+    return { width: NODE_WIDTH_POD, height: NODE_HEIGHT_POD };
+  }
+  if (type === 'npu') {
+    return { width: NODE_WIDTH_NPU, height: NODE_HEIGHT_NPU };
+  }
+  return { width: NODE_WIDTH, height: NODE_HEIGHT };
+}
+
+/**
  * Type-keyed accent colors. AntD design tokens, kept here as constants so
  * the colors match the AntD theme without pulling the full theme object.
  *
- * Cluster: blue-6 / Node: geekblue-6 / NPU: status-driven via `<StatusTag>` /
- * Slice: status-driven via `<StatusTag>` /
+ * Cluster: blue-6 / Node: geekblue-6 / NPU: cyan-6 / Slice: green-6 /
+ * Network: grey-6 /
  * Switch (ADR-0004): AntD blue-6, same family as cluster so it reads as a
  * "platform-level" element rather than an in-node resource. Status colour
  * (up/degraded/down) is conveyed through the node border ring — see
  * `switchBorderForStatus` below.
+ * Workload (ADR-0005): AntD grey-6, intentionally muted so the workload
+ * aggregate doesn't visually compete with the infrastructure stripe colours.
+ * Pod (ADR-0005): AntD grey-5, one step lighter than workload so the
+ * parent/child relation reads even when the dagre layout puts them in
+ * unrelated ranks (backend doesn't emit a workload→pod contains edge —
+ * see ADR-0005 §Schema).
  */
 const TYPE_ACCENT: Record<TopologyNodeType, string> = {
   cluster: '#1677ff',
@@ -91,6 +155,8 @@ const TYPE_ACCENT: Record<TopologyNodeType, string> = {
   slice: '#52c41a',
   network: '#8c8c8c',
   switch: '#1677ff',
+  workload: '#8c8c8c',
+  pod: '#bfbfbf',
 };
 
 /**
@@ -160,23 +226,37 @@ type TopoFlowNode = Node<TopoNodeData, 'topo'>;
  * fabric layer and the up/degraded/down state is the only thing that
  * matters at a glance, so a colour ring reads faster than a tag.
  *
+ * Workload nodes (ADR-0005) get a ⚙ prefix and a regular StatusTag.
+ * Pod nodes (ADR-0005) use the compact dimensions from
+ * `dimensionsForNodeType` plus tighter padding so the smaller card still
+ * fits the label + StatusTag. The accent stripe still encodes the
+ * workload/pod distinction by colour.
+ *
  * The whole node is a single `<div>` so ReactFlow's click handlers still
  * fire on any sub-element.
  */
 function TopoNode({ data }: NodeProps<TopoFlowNode>) {
   const accent = TYPE_ACCENT[data.topoType];
   const isSwitch = data.topoType === NODE_TYPE_SWITCH;
+  const isWorkload = data.topoType === NODE_TYPE_WORKLOAD;
+  const isPod = data.topoType === NODE_TYPE_POD;
+  const dims = dimensionsForNodeType(data.topoType);
   const border = isSwitch
     ? switchBorderForStatus(data.status, data.selected)
     : data.selected
     ? '#1677ff'
     : '#d9d9d9';
+  // Pod cards are visibly smaller; squeeze padding + font so the label +
+  // StatusTag still fit inside NODE_HEIGHT_POD (52px). Other node types
+  // keep the standard 6px/10px padding + 12px font.
+  const innerPadding = isPod ? '4px 8px' : '6px 10px';
+  const labelFontSize = isPod ? 11 : 12;
   return (
     <div
       data-testid={`topo-node-${data.topoType}`}
       style={{
-        width: NODE_WIDTH,
-        height: NODE_HEIGHT,
+        width: dims.width,
+        height: dims.height,
         background: '#ffffff',
         border: `1.5px solid ${border}`,
         borderRadius: 6,
@@ -186,7 +266,7 @@ function TopoNode({ data }: NodeProps<TopoFlowNode>) {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        fontSize: 12,
+        fontSize: labelFontSize,
       }}
     >
       <div
@@ -198,7 +278,7 @@ function TopoNode({ data }: NodeProps<TopoFlowNode>) {
       />
       <div
         style={{
-          padding: '6px 10px',
+          padding: innerPadding,
           display: 'flex',
           flexDirection: 'column',
           gap: 4,
@@ -216,7 +296,11 @@ function TopoNode({ data }: NodeProps<TopoFlowNode>) {
           }}
           title={data.label}
         >
-          {isSwitch ? `⚡ ${data.label}` : data.label}
+          {isSwitch
+            ? `⚡ ${data.label}`
+            : isWorkload
+            ? `⚙ ${data.label}`
+            : data.label}
         </div>
         {data.status && !isSwitch ? (
           <StatusTag
@@ -285,6 +369,12 @@ function filterTopologyForExpandedNPUs(
 /**
  * Lay out a topology with dagre. Returns ReactFlow-ready nodes + edges.
  * Pure: same input → same output, no DOM access.
+ *
+ * Edge styling table (kept here so the visual contract is greppable):
+ *   - contains      → grey 1px solid       (default infrastructure tree)
+ *   - fabric-link   → blue 1.5px solid     (ADR-0004 platform fabric)
+ *   - binds-to      → cyan 1px solid       (ADR-0005 pod→slice resource bind)
+ *   - pd-pair       → orange dashed + arrow + "PD" label (ADR-0005 P↔D)
  */
 function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
   nodes: TopoFlowNode[];
@@ -301,7 +391,10 @@ function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
   g.setDefaultEdgeLabel(() => ({}));
 
   for (const n of topology.nodes) {
-    g.setNode(n.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    // Per-type dimensions — pod nodes are smaller (ADR-0005). The cast
+    // mirrors the renderer side; dagre + renderer must consult the same
+    // helper or the layout misaligns with the rendered card.
+    g.setNode(n.id, dimensionsForNodeType(n.type as TopologyNodeType));
   }
   for (const e of topology.edges) {
     g.setEdge(e.source, e.target);
@@ -311,19 +404,21 @@ function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
 
   const flowNodes: TopoFlowNode[] = topology.nodes.map((n) => {
     const pos = g.node(n.id);
+    // Cast widens to TopologyNodeType; runtime values may include
+    // 'switch' / 'workload' / 'pod' which the generated union doesn't
+    // yet name (see top of file for the contract-regen note).
+    const topoType = n.type as TopologyNodeType;
+    const dims = dimensionsForNodeType(topoType);
     return {
       id: n.id,
       type: 'topo',
       // dagre returns the CENTER; ReactFlow expects top-left.
       position: pos
-        ? { x: pos.x - NODE_WIDTH / 2, y: pos.y - NODE_HEIGHT / 2 }
+        ? { x: pos.x - dims.width / 2, y: pos.y - dims.height / 2 }
         : { x: 0, y: 0 },
       data: {
         label: n.label,
-        // Cast widens to TopologyNodeType; runtime values may include
-        // 'switch' which the generated union doesn't yet name (see top
-        // of file for the ADR-0004 contract-regen note).
-        topoType: n.type as TopologyNodeType,
+        topoType,
         status: n.status,
         selected: n.id === selectedNodeId,
       },
@@ -334,24 +429,65 @@ function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
     // Cast widens to TopologyEdgeType — see node `as TopologyNodeType`
     // comment for the rationale.
     const edgeType = e.type as TopologyEdgeType;
-    const isFabricLink = edgeType === EDGE_TYPE_FABRIC_LINK;
     return {
       // Contract edges have no id; synthesise a stable one from endpoints.
       id: `${e.source}->${e.target}-${e.type}-${i}`,
       source: e.source,
       target: e.target,
-      // Fabric links render in a blue-grey solid line (1.5px) so they read
-      // as "platform-level" wiring distinct from the in-cluster contains
-      // edges (light grey 1px). Both are solid — fabric is not a "weak"
-      // relation, so a dashed style would mislead.
-      style: isFabricLink
-        ? { stroke: '#69b1ff', strokeWidth: 1.5 }
-        : { stroke: '#bfbfbf', strokeWidth: 1 },
+      ...edgeRenderingFor(edgeType),
       data: { topoEdgeType: edgeType },
     };
   });
 
   return { nodes: flowNodes, edges: flowEdges };
+}
+
+/**
+ * Per-edge-type ReactFlow styling. Pulled out of `layoutWithDagre` so the
+ * styling decisions live next to each other (and so future edge types can
+ * be added with one new branch each, not by editing inline ternaries).
+ *
+ * Returns only ReactFlow `Edge` fields (style / label / labelStyle /
+ * markerEnd) — the caller stamps the id / source / target / data.
+ *
+ * `markerEnd` uses the literal `'arrowclosed'` string instead of the
+ * `MarkerType` enum so the test mock for `@xyflow/react` doesn't have to
+ * re-export the enum — the wire-level value is what ReactFlow consumes
+ * either way.
+ */
+function edgeRenderingFor(
+  edgeType: TopologyEdgeType,
+): Pick<Edge, 'style' | 'label' | 'labelStyle' | 'markerEnd'> {
+  switch (edgeType) {
+    case EDGE_TYPE_FABRIC_LINK:
+      // Fabric links render in a blue-grey solid line (1.5px) so they read
+      // as "platform-level" wiring distinct from the in-cluster contains
+      // edges. Solid — fabric is not a "weak" relation.
+      return { style: { stroke: '#69b1ff', strokeWidth: 1.5 } };
+    case EDGE_TYPE_BINDS_TO:
+      // Pod → slice resource binding. Cyan matches the NPU/slice accent
+      // family so the eye reads "this pod is consuming an NPU resource".
+      // Thin so a workload with 4 pods × 4 slices doesn't dominate.
+      return { style: { stroke: '#13c2c2', strokeWidth: 1 } };
+    case EDGE_TYPE_PD_PAIR:
+      // Prefill ↔ Decode relation. Dashed + AntD warning-orange + a "PD"
+      // label so demo viewers instantly spot the disaggregation pair, with
+      // an arrowhead at the target end so the directionality of the
+      // backend's `from`/`to` survives the render.
+      return {
+        style: {
+          stroke: '#fa8c16',
+          strokeWidth: 1.5,
+          strokeDasharray: '6 4',
+        },
+        label: 'PD',
+        labelStyle: { fontSize: 10, fill: '#fa8c16', fontWeight: 600 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#fa8c16' },
+      };
+    default:
+      // contains / hccs / network / allocated and anything unknown.
+      return { style: { stroke: '#bfbfbf', strokeWidth: 1 } };
+  }
 }
 
 export interface TopologyGraphProps {
@@ -412,6 +548,13 @@ function TopologyGraphInner({
         onNodeClick={handleNodeClick}
         onNodeDoubleClick={handleNodeDoubleClick}
         fitView
+        // Cap the initial fitView zoom — at set-a-small (24 NPUs in one
+        // rank) the natural fit shrinks labels to ~0.3× and they become
+        // unreadable. `minZoom: 0.55` keeps the default zoom legible at
+        // the cost of clipping the edges of the widest rank; the user
+        // can pan, or click "fit view" in the Controls widget to see
+        // everything. `padding: 0.05` trims excess whitespace.
+        fitViewOptions={{ minZoom: 0.55, padding: 0.05 }}
         minZoom={0.2}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}

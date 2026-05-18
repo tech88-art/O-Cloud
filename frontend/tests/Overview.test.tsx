@@ -71,6 +71,10 @@ vi.mock('@xyflow/react', () => {
     Background: () => null,
     Controls: () => null,
     MiniMap: () => null,
+    // ADR-0005 (P1-T-214): the production TopologyGraph imports
+    // `MarkerType` to stamp an arrowhead on pd-pair edges. Mirror the
+    // enum shape so the import resolves to defined values in jsdom.
+    MarkerType: { Arrow: 'arrow', ArrowClosed: 'arrowclosed' },
   };
 });
 vi.mock('@xyflow/react/dist/style.css', () => ({}));
@@ -245,6 +249,74 @@ function makeTopologyWithFabric(): Topology {
   };
 }
 
+/**
+ * Topology fixture extended with a `workload` node, two `pod` nodes,
+ * one `binds-to` (pod→slice) edge and one `pd-pair` (pod↔pod) edge —
+ * ADR-0005 / RFC-003 wire shape. Same widening trick as
+ * `makeTopologyWithFabric`: the auto-gen `TopologyNode.type` union
+ * doesn't name `workload` / `pod` yet, so we cast at the fixture
+ * boundary; the production renderer (TopologyGraph) treats unknown
+ * type strings as opaque, mirroring the actual backend payload.
+ *
+ * Mirrors what the backend (P1-T-213, `aggregator/topology.go:485-613`)
+ * would serve when `?includeWorkloads=true` is set against the
+ * set-a-small fixture — minimal subset (1 workload + 2 pods + 1 of each
+ * edge type) so test assertions can pin specific test-ids without
+ * the test getting brittle.
+ */
+function makeTopologyWithWorkloads(): Topology {
+  const nodes = [
+    { id: CLUSTER_ID, type: 'cluster', label: CLUSTER_ID, status: 'healthy' },
+    { id: 'node-1', type: 'node', label: 'node-1', status: 'healthy' },
+    { id: 'npu-1-0', type: 'npu', label: 'npu-1-0', status: 'idle' },
+    {
+      id: 'npu-1-0-slice-0',
+      type: 'slice',
+      label: 'npu-1-0-slice-0',
+      status: 'busy',
+    },
+    {
+      id: 'workload/ai-inference/qwen-8b',
+      type: 'workload',
+      label: 'ai-inference/qwen-8b',
+      status: 'running',
+    },
+    {
+      id: 'pod/ai-inference/qwen-8b-prefill-0',
+      type: 'pod',
+      label: 'qwen-8b-prefill-0',
+      status: 'running',
+    },
+    {
+      id: 'pod/ai-inference/qwen-8b-decode-0',
+      type: 'pod',
+      label: 'qwen-8b-decode-0',
+      status: 'running',
+    },
+  ] as unknown as TopologyNode[];
+  return {
+    nodes,
+    edges: [
+      { source: CLUSTER_ID, target: 'node-1', type: 'contains' },
+      { source: 'node-1', target: 'npu-1-0', type: 'contains' },
+      { source: 'npu-1-0', target: 'npu-1-0-slice-0', type: 'contains' },
+      // ADR-0005: binds-to (pod → slice) + pd-pair (pod ↔ pod). The
+      // contract enum hasn't been regenerated; same widening cast as
+      // the fabric fixture.
+      {
+        source: 'pod/ai-inference/qwen-8b-prefill-0',
+        target: 'npu-1-0-slice-0',
+        type: 'binds-to' as unknown as 'contains',
+      },
+      {
+        source: 'pod/ai-inference/qwen-8b-prefill-0',
+        target: 'pod/ai-inference/qwen-8b-decode-0',
+        type: 'pd-pair' as unknown as 'contains',
+      },
+    ],
+  };
+}
+
 function makeTopologyWithSlice(): Topology {
   const nodes: TopologyNode[] = [
     { id: CLUSTER_ID, type: 'cluster', label: CLUSTER_ID, status: 'healthy' },
@@ -398,6 +470,8 @@ beforeEach(async () => {
       // P1-T-212 / ADR-0004: reset the fabric toggle each test so cases
       // don't leak the previous test's flip.
       showFabric: false,
+      // P1-T-214 / ADR-0005: same reset story for the workloads toggle.
+      showWorkloads: false,
     });
   });
 });
@@ -669,6 +743,117 @@ describe('OverviewPage — fabric toggle (P1-T-212 / ADR-0004)', () => {
 
     // And the regular cluster / node / npu nodes should still render —
     // fabric is additive, not a replacement.
+    expect(screen.getByTestId('rf-node-cluster-prod-a-01')).toBeInTheDocument();
+    expect(screen.getByTestId('rf-node-node-1')).toBeInTheDocument();
+    expect(screen.getByTestId('rf-node-npu-1-0')).toBeInTheDocument();
+  });
+});
+
+describe('OverviewPage — workloads toggle (P1-T-214 / ADR-0005)', () => {
+  it('defaults the workloads toggle to OFF and omits includeWorkloads from the topology URL', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') {
+        return Promise.resolve({ data: makeClusters() });
+      }
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopology() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    renderOverview();
+
+    // Toggle exists and starts unchecked.
+    const toggle = await screen.findByTestId('workloads-toggle-switch');
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(useTopologyStore.getState().showWorkloads).toBe(false);
+
+    // Wait for the topology fetch to land, then assert no call carried
+    // includeWorkloads=true (zero-regression check vs T-108a/T-108b/T-212).
+    await screen.findByTestId('rf-stub');
+    const calls = mockGet.mock.calls.filter(([url]) =>
+      String(url).endsWith('/topology'),
+    );
+    expect(calls.length).toBeGreaterThan(0);
+    for (const [, config] of calls) {
+      const params = (config as { params?: Record<string, unknown> } | undefined)?.params;
+      expect(params?.includeWorkloads).toBeUndefined();
+    }
+  });
+
+  it('flipping the toggle ON triggers a topology fetch with includeWorkloads=true', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') {
+        return Promise.resolve({ data: makeClusters() });
+      }
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithWorkloads() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    const user = userEvent.setup();
+    renderOverview();
+
+    // Wait for first (off) render to settle.
+    await screen.findByTestId('rf-stub');
+
+    // Flip the toggle on.
+    await user.click(screen.getByTestId('workloads-toggle-switch'));
+
+    await waitFor(() => {
+      expect(useTopologyStore.getState().showWorkloads).toBe(true);
+    });
+
+    // A new fetch should fire with the includeWorkloads param.
+    await waitFor(() => {
+      const withWorkloads = mockGet.mock.calls.filter(([url, config]) => {
+        if (!String(url).endsWith('/topology')) return false;
+        const params = (config as { params?: Record<string, unknown> } | undefined)
+          ?.params;
+        return params?.includeWorkloads === true;
+      });
+      expect(withWorkloads.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('renders workload + pod nodes when workloads data lands and the toggle is ON', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') {
+        return Promise.resolve({ data: makeClusters() });
+      }
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithWorkloads() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    // Pre-flip the store so the very first fetch already carries
+    // includeWorkloads=true (avoids a second flip-driven render in the
+    // assertion path; mirrors the T-212 fabric pattern).
+    act(() => {
+      useTopologyStore.setState({ showWorkloads: true });
+    });
+
+    renderOverview();
+
+    // The workload + pod nodes should be among the rendered ReactFlow stubs.
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('rf-node-workload/ai-inference/qwen-8b'),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByTestId('rf-node-pod/ai-inference/qwen-8b-prefill-0'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('rf-node-pod/ai-inference/qwen-8b-decode-0'),
+    ).toBeInTheDocument();
+
+    // And the regular cluster / node / npu nodes should still render —
+    // workload fusion is additive. (Slice nodes are gated by the
+    // `expandedNPUs` set so they don't render here even though they're
+    // in the fixture; that's T-108b behaviour, orthogonal to T-214.)
     expect(screen.getByTestId('rf-node-cluster-prod-a-01')).toBeInTheDocument();
     expect(screen.getByTestId('rf-node-node-1')).toBeInTheDocument();
     expect(screen.getByTestId('rf-node-npu-1-0')).toBeInTheDocument();
