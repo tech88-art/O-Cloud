@@ -88,6 +88,61 @@ GitHub RFC issue 仪式**省略**;ADR 是 single source of truth。
 设计(§11):看板维护任务状态。
 实际:任务状态由 PR / branch / CI 状态承载,不再维护并行看板。
 
+### 0a.9 并发 subagent 隔离:git worktree(W1 复盘补丁,2026-05-17)
+
+**背景**:W1 派 4 个 subagent 并发,**全部**在主 working tree 上 git checkout/branch/cherry-pick → 互踩(T009 commit 落到 T007 分支、T008 用 `git branch -f` + `git reset --hard` 自救)。Main agent 事后 cherry-pick 清理。
+
+**operative rule**:**派 ≥ 2 个 subagent 并发时,main agent 必须为每个 subagent 创建独立 git worktree**。1 个 subagent 可在主 working tree 跑。
+
+#### 0a.9.1 Worktree 命名
+
+```
+D:/code/ai-edge/         主 working tree (main agent 用)
+D:/code/ai-edge-wt/      worktree 父目录 (sibling, 主仓库外, 不被 git tracked)
+   ├── p1-t-XXX/         一个 subagent 一个 worktree
+   └── p1-t-YYY/
+```
+
+worktree 父目录在主仓库**外**,无需 `.gitignore`。
+
+#### 0a.9.2 Main agent 派 subagent 流程
+
+```bash
+# 1. 准备 worktree + branch
+cd /d/code/ai-edge
+git worktree add ../ai-edge-wt/p1-t-XXX -b feat/p1-t-XXX-<short> dev
+
+# 2. 派 subagent,在 prompt 里指定:
+#    "工作目录: /d/code/ai-edge-wt/p1-t-XXX"
+#    "分支 feat/p1-t-XXX-<short> 已由 main agent 创建,不要切分支"
+#    "只 git add <Allowed Paths 内文件> + git commit"
+
+# 3. subagent 完成 commit 后,main agent 在主 working tree 操作:
+cd /d/code/ai-edge
+git checkout dev
+git merge --squash feat/p1-t-XXX-<short>
+git commit -m "..."
+
+# 4. 清理
+git worktree remove ../ai-edge-wt/p1-t-XXX
+git branch -D feat/p1-t-XXX-<short>
+```
+
+#### 0a.9.3 Subagent 在 worktree 里的纪律
+
+- 工作路径固定:`cd /d/code/ai-edge-wt/<task-id>`
+- **禁止**:`git checkout` / `git branch -f` / `git fetch` / `git push` / 跨 worktree 操作
+- 允许:`git status`, `git diff`, `git add <files>`, `git commit`, `git log`
+- 完成后报告:branch 名 + commit hash + AC 结果
+
+#### 0a.9.4 单 subagent 例外
+
+派 **1 个** subagent 时,main agent 与 subagent 串行(不并发)→ 主 working tree 上跑即可,worktree 是额外开销。
+
+#### 0a.9.5 Cleanup 不可省
+
+worktree 失败 / 中断 → main agent 必须 `git worktree remove --force` + 删 stale branch,否则 `git worktree list` 累积垃圾。
+
 ---
 
 ## 1. 任务包格式(Task Package)
