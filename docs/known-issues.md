@@ -64,29 +64,23 @@ fixtures (`tests/Overview.test.tsx`) dropped the corresponding
 
 ---
 
-## 3. T013 generator drift
+## 3. ~~T013 generator drift~~ ✓ RESOLVED
 
-**Symptom**: `make gen-small` from `configs/mock-data/generator/`
-produces a set-a-small **without** the fabric (`networkSwitches.json`
-/ `networkLinks.json`) or pod `bindings` arrays — those fields were
-hand-patched into the on-disk fixture by T013 but the Go generator
-was never updated.
+**Resolved**: 2026-05-18. Generator extended to emit fabric
+(`networkSwitches.json` + `networkLinks.json`), pod `bindings`, and
+the two T307 D6 affinity workloads. Schema-validated parity at the
+headline level (1 cluster / 3 nodes / 24 NPUs / 12 workloads / 1
+switch / 3 fabric-links). Capability-vs-content split documented in
+`configs/mock-data/generator/README.md` §"Capability vs content".
 
-**Root cause**: T013 was scoped to schema + data, not the generator;
-the canonical regeneration path drifted from the canonical fixture.
-
-**Workaround**: treat the hand-edited set-a-small as canonical; do
-NOT run `make gen-small` against it (it will overwrite). T307's two
-new D6 workloads were also hand-added — same workaround applies.
-
-**Resolution path**: extend
-`configs/mock-data/generator/pkg/model/dataset.go` + the small preset
-builder to emit fabric + bindings + D6 workloads. ~1 day's work,
-mostly mechanical.
-
-**Lands**: when a real fixture refresh is needed (e.g. T209 changes
-NPU layout). Bundle with set-b-multi-site implementation since both
-will exercise the same generator code paths.
+**Historical**: Symptom was `make gen-small` producing a set-a-small
+without the fabric files or pod bindings — those fields were
+hand-patched into the on-disk fixture by T013 / T307 but the Go
+generator was never updated. Resolution preserved the canonical
+hand-tuned narrative (events.json with T307 D6 metric-tick payloads,
+denser per-workload labels) while enabling `make gen-small` to
+reproduce a schema-equivalent fixture against `--output` for testing
+and Phase 2 multi-site / stress preset development.
 
 ---
 
@@ -160,11 +154,10 @@ state in the panel (currently it's just blank). Cosmetic.
 |---|---|---|---|---|
 | 1 | trivial | no | no | **resolved** (split helpers, lint 0 warnings) |
 | 2 | medium  | no | yes(was) → **resolved** (ADR-0006 contract regen) |
-| 3 | medium  | no | yes (needs cleanup before any large fixture refresh) | open |
+| 3 | medium  | no | yes(was) → **resolved** (generator emits fabric + bindings + D6 workloads) |
 | 4 | medium  | no | maybe (depends on whether stress fidelity matters early) | open |
 | 5 | trivial | no | no | open |
 | 6 | trivial | no | no | open |
 
-After ADR-0006 only the generator drift (#3) remains as a Phase 2 entry
-concern — bundle with the multi-site (set-b) generator work. #4-#6 are
-optional polish; none are demo-blocking.
+After ADR-0006 + generator parity, no Phase 2 entry blockers remain.
+#4-#6 are optional polish; none are demo-blocking.

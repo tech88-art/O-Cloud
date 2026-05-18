@@ -140,11 +140,44 @@ type Container struct {
 
 // Pod matches $defs/Pod.
 type Pod struct {
-	Name       string      `json:"name"`
-	Namespace  string      `json:"namespace"`
-	NodeName   string      `json:"nodeName,omitempty"`
-	Status     string      `json:"status"`
-	Containers []Container `json:"containers,omitempty"`
+	Name       string       `json:"name"`
+	Namespace  string       `json:"namespace"`
+	NodeName   string       `json:"nodeName,omitempty"`
+	Status     string       `json:"status"`
+	Containers []Container  `json:"containers,omitempty"`
+	Bindings   []PodBinding `json:"bindings,omitempty"`
+}
+
+// PodBinding matches $defs/Pod.bindings[] (T013 schema add, ADR-0006
+// surfaced through OpenAPI). One entry per (pod, slice) consumed slot.
+type PodBinding struct {
+	SliceID    string `json:"sliceId"`
+	Role       string `json:"role,omitempty"`
+	IndexInPod int    `json:"indexInPod,omitempty"`
+}
+
+// NetworkSwitch matches $defs/NetworkSwitch (ADR-0004 inter-node fabric).
+type NetworkSwitch struct {
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Type          string   `json:"type"` // tor | leaf | spine | access
+	Location      string   `json:"location,omitempty"`
+	PortsTotal    int      `json:"portsTotal,omitempty"`
+	PortsUsed     int      `json:"portsUsed,omitempty"`
+	BandwidthGbps int      `json:"bandwidthGbps,omitempty"`
+	VLANs         []string `json:"vlans,omitempty"`
+	Status        string   `json:"status"` // up | degraded | down
+}
+
+// NetworkLink matches $defs/NetworkLink (ADR-0004).
+type NetworkLink struct {
+	ID            string  `json:"id"`
+	From          string  `json:"from"`
+	To            string  `json:"to"`
+	BandwidthGbps int     `json:"bandwidthGbps"`
+	Medium        string  `json:"medium,omitempty"`      // copper | fiber | dac | optical
+	Utilization   float64 `json:"utilization,omitempty"` // 0-100
+	RTTUs         float64 `json:"rttUs,omitempty"`
 }
 
 // Relation matches $defs/Workload.relations[].
@@ -352,15 +385,23 @@ type Pools struct {
 }
 
 // Dataset is the in-memory model of one set-*. Writer fans this out into
-// nine JSON files.
+// JSON files (one per top-level section + a combined set.json).
+//
+// The fabric arrays (NetworkSwitches / NetworkLinks) are emitted to
+// networkSwitches.json + networkLinks.json respectively. They're
+// optional in the schema — when both are empty the files still exist
+// (empty arrays) so the backend mock loader's sync.Once paths don't
+// have to branch on file presence.
 type Dataset struct {
-	Meta      Meta       `json:"meta"`
-	Clusters  []Cluster  `json:"clusters"`
-	Nodes     []Node     `json:"nodes"`
-	NPUs      []NPU      `json:"npus"`
-	Slices    []Slice    `json:"slices"`
-	Workloads []Workload `json:"workloads"`
-	Pools     Pools      `json:"pools"`
-	Presets   []Preset   `json:"presets"`
-	Events    []Event    `json:"events"`
+	Meta            Meta            `json:"meta"`
+	Clusters        []Cluster       `json:"clusters"`
+	Nodes           []Node          `json:"nodes"`
+	NPUs            []NPU           `json:"npus"`
+	Slices          []Slice         `json:"slices"`
+	Workloads       []Workload      `json:"workloads"`
+	Pools           Pools           `json:"pools"`
+	Presets         []Preset        `json:"presets"`
+	Events          []Event         `json:"events"`
+	NetworkSwitches []NetworkSwitch `json:"networkSwitches,omitempty"`
+	NetworkLinks    []NetworkLink   `json:"networkLinks,omitempty"`
 }

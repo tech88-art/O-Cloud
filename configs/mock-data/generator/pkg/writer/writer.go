@@ -47,15 +47,17 @@ func emptyPools() model.Pools {
 // emit `[]` when the section is empty to keep the shape stable.
 func section(ds *model.Dataset, populate func(out *model.Dataset)) *model.Dataset {
 	out := &model.Dataset{
-		Meta:      ds.Meta,
-		Clusters:  []model.Cluster{},
-		Nodes:     []model.Node{},
-		NPUs:      []model.NPU{},
-		Slices:    []model.Slice{},
-		Workloads: []model.Workload{},
-		Pools:     emptyPools(),
-		Presets:   []model.Preset{},
-		Events:    []model.Event{},
+		Meta:            ds.Meta,
+		Clusters:        []model.Cluster{},
+		Nodes:           []model.Node{},
+		NPUs:            []model.NPU{},
+		Slices:          []model.Slice{},
+		Workloads:       []model.Workload{},
+		Pools:           emptyPools(),
+		Presets:         []model.Preset{},
+		Events:          []model.Event{},
+		NetworkSwitches: []model.NetworkSwitch{},
+		NetworkLinks:    []model.NetworkLink{},
 	}
 	populate(out)
 	// Clusters is required to have minItems=1, so for non-cluster files
@@ -87,6 +89,11 @@ func Write(outDir string, ds *model.Dataset) error {
 		{"pools.json", section(ds, func(o *model.Dataset) { o.Pools = ds.Pools })},
 		{"presets.json", section(ds, func(o *model.Dataset) { o.Presets = ds.Presets })},
 		{"events.json", section(ds, func(o *model.Dataset) { o.Events = ds.Events })},
+		// ADR-0004 fabric: optional schema sections; empty arrays still
+		// emit so backend mock.Source's sync.Once loaders can read the
+		// file without branching on missing-file.
+		{"networkSwitches.json", section(ds, func(o *model.Dataset) { o.NetworkSwitches = ds.NetworkSwitches })},
+		{"networkLinks.json", section(ds, func(o *model.Dataset) { o.NetworkLinks = ds.NetworkLinks })},
 	}
 
 	for _, f := range files {

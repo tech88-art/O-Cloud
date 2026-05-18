@@ -179,22 +179,27 @@ func buildSetASmall() *model.Dataset {
 	// ---- Events ----
 	events := buildEventsForSmall(t0, nodeNames, slices, workloads)
 
+	// ---- Fabric (ADR-0004) ----
+	switches, links := buildFabricForSmall(nodeNames)
+
 	return &model.Dataset{
 		Meta: model.Meta{
 			Name:        "set-a-small",
-			Version:     "0.1.0",
+			Version:     "0.2.0",
 			GeneratedAt: t0.UTC().Format(time.RFC3339),
-			Description: "Small single-cluster demo: 1 cluster / 3 nodes / 24 NPUs / mixed workloads. Reproducible (seed=42).",
+			Description: "Small single-cluster demo: 1 cluster / 3 nodes / 24 NPUs / 12 workloads incl. 3 Qwen-8B PD variants (inter-node + intra-node affinity + cross-NUMA non-affinity, spec D6) / 1 ToR switch + 3 fabric-links. Reproducible (seed=42).",
 			Scenario:    "small-cluster",
 		},
-		Clusters:  clusters,
-		Nodes:     nodes,
-		NPUs:      npus,
-		Slices:    slices,
-		Workloads: workloads,
-		Pools:     pools,
-		Presets:   presets,
-		Events:    events,
+		Clusters:        clusters,
+		Nodes:           nodes,
+		NPUs:            npus,
+		Slices:          slices,
+		Workloads:       workloads,
+		Pools:           pools,
+		Presets:         presets,
+		Events:          events,
+		NetworkSwitches: switches,
+		NetworkLinks:    links,
 	}
 }
 
@@ -382,6 +387,13 @@ func buildWorkloadsForSmall(t0 time.Time, nodeNames []string, slices []model.Sli
 					},
 				},
 			},
+			// ADR-0005 / T013: pod→slice bindings drive the binds-to edges
+			// in /topology?includeWorkloads=true and feed the Drawer's
+			// slice list. Bindings here mirror what an inter-node PD pair
+			// would actually consume (one slice per pod).
+			Bindings: []model.PodBinding{
+				{SliceID: "worker-site-a-01-npu-0", Role: "prefill", IndexInPod: 0},
+			},
 		},
 		{
 			Name: "qwen-8b-pd-decode-0", Namespace: "ai-inference", NodeName: "worker-site-a-02", Status: "Running",
@@ -395,6 +407,9 @@ func buildWorkloadsForSmall(t0 time.Time, nodeNames []string, slices []model.Sli
 						NPUSlices: []string{"worker-site-a-02-npu-1"},
 					},
 				},
+			},
+			Bindings: []model.PodBinding{
+				{SliceID: "worker-site-a-02-npu-1", Role: "decode", IndexInPod: 0},
 			},
 		},
 	}
@@ -451,8 +466,153 @@ func buildWorkloadsForSmall(t0 time.Time, nodeNames []string, slices []model.Sli
 	// 10. failed: model that OOMed on launch
 	wl = append(wl, mk("oom-test-model", "ai-inference", "inference", "Deployment", "failed",
 		1, 0, []string{"worker-site-a-01"}, 0, nil, 5, 1))
+	wl[len(wl)-1].Pods = []model.Pod{
+		{
+			Name: "oom-test-model-69dfg", Namespace: "ai-inference", NodeName: "worker-site-a-01", Status: "Failed",
+			Containers: []model.Container{
+				{
+					Name:  "server",
+					Image: "ascend/mindie:1.0.0",
+					Resources: &model.ContainerResources{
+						CPU:       "8",
+						Memory:    "32Gi",
+						NPUSlices: []string{"worker-site-a-01-npu-5-slice-3"},
+					},
+				},
+			},
+			Bindings: []model.PodBinding{
+				{SliceID: "worker-site-a-01-npu-5-slice-3", Role: "primary", IndexInPod: 0},
+			},
+		},
+	}
+
+	// 11. running: D6 affinity demo — intra-NUMA + intra-HCCS placement
+	// on worker-site-a-03 (npu-0 + npu-1, both hccs-0/numa-0). Pair with
+	// #12 below to demo the spec D6 affinity-vs-cross-numa comparison.
+	wl = append(wl, mk("qwen-8b-pd-affinity", "ai-inference", "inference", "InferenceService", "running",
+		2, 2, []string{"worker-site-a-03"}, 2, []string{"worker-site-a-03-npu-0", "worker-site-a-03-npu-1"}, 1, 4))
+	wl[len(wl)-1].Labels["demo/comparison"] = "d6-affinity"
+	wl[len(wl)-1].Relations = []model.Relation{
+		{From: "qwen-8b-pd-affinity-prefill-0", To: "qwen-8b-pd-affinity-decode-0", Type: "pd-pair"},
+	}
+	wl[len(wl)-1].Pods = []model.Pod{
+		{
+			Name: "qwen-8b-pd-affinity-prefill-0", Namespace: "ai-inference", NodeName: "worker-site-a-03", Status: "Running",
+			Containers: []model.Container{
+				{
+					Name:  "prefill",
+					Image: "mindie/vllm-ascend:0.11.0",
+					Resources: &model.ContainerResources{
+						CPU:       "16",
+						Memory:    "64Gi",
+						NPUSlices: []string{"worker-site-a-03-npu-0"},
+					},
+				},
+			},
+			Bindings: []model.PodBinding{
+				{SliceID: "worker-site-a-03-npu-0", Role: "prefill", IndexInPod: 0},
+			},
+		},
+		{
+			Name: "qwen-8b-pd-affinity-decode-0", Namespace: "ai-inference", NodeName: "worker-site-a-03", Status: "Running",
+			Containers: []model.Container{
+				{
+					Name:  "decode",
+					Image: "mindie/vllm-ascend:0.11.0",
+					Resources: &model.ContainerResources{
+						CPU:       "16",
+						Memory:    "64Gi",
+						NPUSlices: []string{"worker-site-a-03-npu-1"},
+					},
+				},
+			},
+			Bindings: []model.PodBinding{
+				{SliceID: "worker-site-a-03-npu-1", Role: "decode", IndexInPod: 0},
+			},
+		},
+	}
+
+	// 12. running: D6 cross-numa — intra-node but cross-NUMA + cross-HCCS
+	// on worker-site-a-01 (npu-0 hccs-0/numa-0 paired with npu-4
+	// hccs-1/numa-1). Performance gap vs #11 is the headline of the
+	// affinity demo.
+	wl = append(wl, mk("qwen-8b-pd-cross-numa", "ai-inference", "inference", "InferenceService", "running",
+		2, 2, []string{"worker-site-a-01"}, 2, []string{"worker-site-a-01-npu-0", "worker-site-a-01-npu-4"}, 1, 4))
+	wl[len(wl)-1].Labels["demo/comparison"] = "d6-non-affinity"
+	wl[len(wl)-1].Relations = []model.Relation{
+		{From: "qwen-8b-pd-cross-numa-prefill-0", To: "qwen-8b-pd-cross-numa-decode-0", Type: "pd-pair"},
+	}
+	wl[len(wl)-1].Pods = []model.Pod{
+		{
+			Name: "qwen-8b-pd-cross-numa-prefill-0", Namespace: "ai-inference", NodeName: "worker-site-a-01", Status: "Running",
+			Containers: []model.Container{
+				{
+					Name:  "prefill",
+					Image: "mindie/vllm-ascend:0.11.0",
+					Resources: &model.ContainerResources{
+						CPU:       "16",
+						Memory:    "64Gi",
+						NPUSlices: []string{"worker-site-a-01-npu-0"},
+					},
+				},
+			},
+			Bindings: []model.PodBinding{
+				{SliceID: "worker-site-a-01-npu-0", Role: "prefill", IndexInPod: 0},
+			},
+		},
+		{
+			Name: "qwen-8b-pd-cross-numa-decode-0", Namespace: "ai-inference", NodeName: "worker-site-a-01", Status: "Running",
+			Containers: []model.Container{
+				{
+					Name:  "decode",
+					Image: "mindie/vllm-ascend:0.11.0",
+					Resources: &model.ContainerResources{
+						CPU:       "16",
+						Memory:    "64Gi",
+						NPUSlices: []string{"worker-site-a-01-npu-4"},
+					},
+				},
+			},
+			Bindings: []model.PodBinding{
+				{SliceID: "worker-site-a-01-npu-4", Role: "decode", IndexInPod: 0},
+			},
+		},
+	}
 
 	return wl
+}
+
+// buildFabricForSmall emits one ToR switch + one fabric-link per node
+// (ADR-0004). Set-a-small's three nodes share a single rack so a single
+// access-tier ToR switch is enough; multi-site fixtures (set-b) would
+// add leaf/spine tiers.
+func buildFabricForSmall(nodeNames []string) ([]model.NetworkSwitch, []model.NetworkLink) {
+	switches := []model.NetworkSwitch{
+		{
+			ID:            "switch-tor-01",
+			Name:          "switch-tor-01",
+			Type:          "tor",
+			Location:      "site-a-shanghai-rack-01",
+			PortsTotal:    48,
+			PortsUsed:     len(nodeNames),
+			BandwidthGbps: 25,
+			VLANs:         []string{"vlan-mgmt", "vlan-data"},
+			Status:        "up",
+		},
+	}
+	links := make([]model.NetworkLink, 0, len(nodeNames))
+	for i, name := range nodeNames {
+		links = append(links, model.NetworkLink{
+			ID:            fmt.Sprintf("link-tor-01-%s", name),
+			From:          name,
+			To:            "switch-tor-01",
+			BandwidthGbps: 25,
+			Medium:        "dac",
+			Utilization:   12.0 + float64(i)*3.5,
+			RTTUs:         0.8 + float64(i)*0.1,
+		})
+	}
+	return switches, links
 }
 
 // pickSliceIDsForNode returns up to limit allocated slice ids belonging

@@ -29,7 +29,7 @@ make all            # gen-small + validate
 Only `--preset small` is implemented today. `multi` and `stress` return an
 explicit error and are tracked under P1-T-307.
 
-## Output (9 files)
+## Output (11 files)
 
 ```
 set-a-small/
@@ -41,8 +41,37 @@ set-a-small/
 ├── workloads.json
 ├── pools.json
 ├── presets.json
-└── events.json
+├── events.json
+├── networkSwitches.json     (ADR-0004 fabric)
+└── networkLinks.json        (ADR-0004 fabric)
 ```
+
+## Capability vs content (known-issues #3 resolution)
+
+The generator emits the **shape** the schema requires plus all ADR-0004
+fabric, ADR-0005 workload-fusion, and T013 pod-binding additions. The
+canonical `configs/mock-data/set-a-small/` directory is **hand-curated**
+with richer narrative content (per-workload tuned timestamps, denser
+events sequence, T307 D6 affinity-vs-non-affinity metric payloads) that
+the generator does not aim to replicate verbatim:
+
+- counts match at the headline: 1 cluster / 3 nodes / 24 NPUs / 12
+  workloads / 1 switch / 3 fabric-links
+- bindings: generator emits bindings for the headline workloads
+  (3 Qwen-8B PD variants + OOM failure case = 7 bindings); the
+  auxiliary workloads (deepseek-20b / qwen-14b / pi-3b / vllm-bench /
+  …) get them only in the canonical fixture, not from the generator —
+  Phase 2 multi-site / stress fixtures will exercise that auxiliary
+  binding path
+- events: generator's `buildEventsForSmall` produces a 21-event arc
+  faithful to the 5-page demo; canonical has 38 events including the
+  T307 D6 metric-comparison tail
+
+In short: **`make gen-small` produces a fresh schema-valid set-a-small
+that's safe to test against, but it does NOT overwrite the canonical
+demo content** (Phase 1's hand-tuned narrative is intentionally
+preserved). Use `--output` to a sibling directory if you want to
+inspect generator output without disturbing the demo.
 
 ### Why each file repeats `meta` and `clusters`
 
@@ -73,9 +102,17 @@ Conforms to `configs/CLAUDE.md` §3.3 and §3.4:
   - **Slice mode mix** — 2 whole + 4 fixed-template + 2 dynamic per node.
 - **~40 slices** total (vir01 / vir02 / vir04 + 6 dynamic shapes), with ~50%
   allocated to demo workloads.
-- **10 workloads** with status mix 6 running / 2 pending / 1 succeeded /
-  1 failed; one Qwen 8B PD pair with `pd-pair` relation; mixed kinds
-  (`Deployment` / `InferenceService` / `Job`).
+- **12 workloads** with status mix 8 running / 2 pending / 1 succeeded /
+  1 failed; three Qwen 8B PD variants:
+  - `qwen-8b-pd` — inter-node PD (a-01 + a-02)
+  - `qwen-8b-pd-affinity` — intra-NUMA/HCCS on a-03 (spec D6 affinity demo)
+  - `qwen-8b-pd-cross-numa` — cross-NUMA/HCCS on a-01 (spec D6 non-affinity)
+  Each with `pd-pair` relation; mixed kinds (`Deployment` /
+  `InferenceService` / `Job`).
+- **1 ToR switch** + **3 fabric-links** to model the inter-node
+  network (ADR-0004).
+- **Pod bindings** on the 4 PD-variant pods + the OOM-failed pod
+  (T013 / ADR-0005 / ADR-0006).
 - **Realistic utilisation** — per-NPU `aiCoreUtilization` ranges 0%, 12%,
   22%, 31%, 45%, 63%, 72%, 81% (deliberately not all-50%).
 - **Pools** — 1 ClusterPool, 1 NodePool, 1 NPUPool (with HCCS topology),
@@ -102,7 +139,7 @@ configs/mock-data/generator/
 ├── pkg/
 │   ├── model/              Go types matching schema.json $defs
 │   ├── builder/            HCCS / NUMA / time-skew helpers
-│   └── writer/             Fans Dataset out to 9 JSON files
+│   └── writer/             Fans Dataset out to 11 JSON files
 ├── Makefile
 ├── go.mod
 └── go.sum
