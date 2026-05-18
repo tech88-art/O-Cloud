@@ -83,7 +83,12 @@ func NewRouter(h *Handler, opts RouterOptions) *gin.Engine {
 		v1.GET("/presets", h.ListPresets)
 		v1.GET("/presets/:presetId", h.GetPreset)
 
-		// PHASE-1: later tasks extend with /deploy, /metrics, ...
+		// Metrics (P1-T-204, RFC-003 var-slice)
+		v1.POST("/metrics/query", h.QueryMetric)
+		v1.GET("/metrics/query", h.QueryMetric)
+		v1.GET("/metrics/templates", h.ListTemplates)
+
+		// PHASE-1: later tasks extend with /deploy, /grafana/url, ...
 	}
 
 	// WebSocket endpoints sit OUTSIDE /api/v1 per docs/api-contract.yaml

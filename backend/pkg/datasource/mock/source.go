@@ -97,7 +97,8 @@ func (s *Source) Name() string { return "mock" }
 func (s *Source) Capabilities() datasource.Capabilities {
 	// PHASE-1: T101 enables Clusters, T102 enables Topology, T103 enables
 	// Nodes, T104 enables NPUs, T105 enables Events, T201 enables Workloads,
-	// T203 enables Presets. Others flip on as later tasks land.
+	// T203 enables Presets, T204 enables Metrics (white-listed PromQL +
+	// var-slice). Others flip on as later tasks land.
 	return datasource.Capabilities{
 		Clusters:  true,
 		Topology:  true,
@@ -106,6 +107,7 @@ func (s *Source) Capabilities() datasource.Capabilities {
 		Events:    true,
 		Workloads: true,
 		Presets:   true,
+		Metrics:   true,
 	}
 }
 
@@ -146,7 +148,6 @@ func (s *Source) DeleteDeploy(ctx context.Context, deployID string) error {
 }
 
 // ---- Metrics ----
-
-func (s *Source) QueryMetric(ctx context.Context, templateID string, vars map[string]string, timeRange model.TimeRange) (*model.MetricQueryResponse, error) {
-	return nil, ErrNotImplemented
-}
+//
+// QueryMetric + ListTemplates live in metrics.go (P1-T-204 — white-listed
+// PromQL templates + var-slice synthesis).
