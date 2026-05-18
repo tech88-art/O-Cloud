@@ -3,7 +3,7 @@
     "name": "set-a-small",
     "version": "0.1.0",
     "generatedAt": "2026-05-17T12:00:00Z",
-    "description": "Small single-cluster demo: 1 cluster / 3 nodes / 24 NPUs / mixed workloads. Reproducible (seed=42).",
+    "description": "Small single-cluster demo (T109 polished): 1 cluster / 3 nodes / 24 NPUs (1 degraded) / 10 mixed-status workloads incl. 1 Qwen-8B PD pair. Events 0-180s narrate a 5-page demo (Overview -> Workloads -> Deploy -> Metrics -> Logs).",
     "scenario": "small-cluster"
   },
   "clusters": [
@@ -38,9 +38,12 @@
       "status": "healthy",
       "sliceMode": "whole",
       "usage": {
-        "memoryBandwidthUtilization": 0,
-        "temperature": 42,
-        "power": 250
+        "aiCoreUtilization": 5,
+        "vramUtilization": 4,
+        "vramUsedMiB": 2621,
+        "memoryBandwidthUtilization": 4.2,
+        "temperature": 41.5,
+        "power": 245
       }
     },
     {
@@ -78,7 +81,7 @@
         "aiCoreUtilization": 31,
         "vramUtilization": 28,
         "vramUsedMiB": 18350,
-        "memoryBandwidthUtilization": 27.900000000000002,
+        "memoryBandwidthUtilization": 27.9,
         "temperature": 45.4,
         "power": 267
       }
@@ -95,10 +98,10 @@
       "status": "healthy",
       "sliceMode": "fixed-template",
       "usage": {
-        "aiCoreUtilization": 45,
-        "vramUtilization": 41,
-        "vramUsedMiB": 26869,
-        "memoryBandwidthUtilization": 40.5,
+        "aiCoreUtilization": 38,
+        "vramUtilization": 35,
+        "vramUsedMiB": 22937,
+        "memoryBandwidthUtilization": 34.1,
         "temperature": 47.1,
         "power": 275.5
       }
@@ -155,10 +158,10 @@
       "status": "healthy",
       "sliceMode": "dynamic",
       "usage": {
-        "aiCoreUtilization": 81,
-        "vramUtilization": 75,
-        "vramUsedMiB": 49152,
-        "memoryBandwidthUtilization": 72.9,
+        "aiCoreUtilization": 84,
+        "vramUtilization": 78,
+        "vramUsedMiB": 51118,
+        "memoryBandwidthUtilization": 75.6,
         "temperature": 52.2,
         "power": 301
       }
@@ -179,8 +182,8 @@
         "vramUtilization": 10,
         "vramUsedMiB": 6554,
         "memoryBandwidthUtilization": 10.8,
-        "temperature": 53.9,
-        "power": 309.5
+        "temperature": 46.3,
+        "power": 263
       }
     },
     {
@@ -195,9 +198,12 @@
       "status": "healthy",
       "sliceMode": "whole",
       "usage": {
-        "memoryBandwidthUtilization": 0,
-        "temperature": 42,
-        "power": 250
+        "aiCoreUtilization": 8,
+        "vramUtilization": 6,
+        "vramUsedMiB": 3932,
+        "memoryBandwidthUtilization": 6.4,
+        "temperature": 42.1,
+        "power": 248
       }
     },
     {
@@ -212,12 +218,12 @@
       "status": "healthy",
       "sliceMode": "whole",
       "usage": {
-        "aiCoreUtilization": 22,
-        "vramUtilization": 18,
-        "vramUsedMiB": 11796,
-        "memoryBandwidthUtilization": 19.8,
-        "temperature": 43.7,
-        "power": 258.5
+        "aiCoreUtilization": 41,
+        "vramUtilization": 36,
+        "vramUsedMiB": 23593,
+        "memoryBandwidthUtilization": 36.9,
+        "temperature": 46.0,
+        "power": 269
       }
     },
     {
@@ -232,12 +238,12 @@
       "status": "healthy",
       "sliceMode": "fixed-template",
       "usage": {
-        "aiCoreUtilization": 31,
-        "vramUtilization": 28,
-        "vramUsedMiB": 18350,
-        "memoryBandwidthUtilization": 27.900000000000002,
-        "temperature": 45.4,
-        "power": 267
+        "aiCoreUtilization": 27,
+        "vramUtilization": 24,
+        "vramUsedMiB": 15728,
+        "memoryBandwidthUtilization": 24.3,
+        "temperature": 44.8,
+        "power": 264
       }
     },
     {
@@ -252,12 +258,12 @@
       "status": "healthy",
       "sliceMode": "fixed-template",
       "usage": {
-        "aiCoreUtilization": 45,
-        "vramUtilization": 41,
-        "vramUsedMiB": 26869,
-        "memoryBandwidthUtilization": 40.5,
-        "temperature": 47.1,
-        "power": 275.5
+        "aiCoreUtilization": 55,
+        "vramUtilization": 49,
+        "vramUsedMiB": 32113,
+        "memoryBandwidthUtilization": 49.5,
+        "temperature": 48.2,
+        "power": 278
       }
     },
     {
@@ -272,12 +278,12 @@
       "status": "healthy",
       "sliceMode": "fixed-template",
       "usage": {
-        "aiCoreUtilization": 63,
-        "vramUtilization": 58,
-        "vramUsedMiB": 38010,
-        "memoryBandwidthUtilization": 56.7,
-        "temperature": 48.8,
-        "power": 284
+        "aiCoreUtilization": 49,
+        "vramUtilization": 44,
+        "vramUsedMiB": 28836,
+        "memoryBandwidthUtilization": 44.1,
+        "temperature": 47.5,
+        "power": 274
       }
     },
     {
@@ -292,12 +298,12 @@
       "status": "degraded",
       "sliceMode": "fixed-template",
       "usage": {
-        "aiCoreUtilization": 72,
+        "aiCoreUtilization": 18,
         "vramUtilization": 67,
         "vramUsedMiB": 43909,
-        "memoryBandwidthUtilization": 64.8,
-        "temperature": 50.5,
-        "power": 292.5
+        "memoryBandwidthUtilization": 16.2,
+        "temperature": 71.4,
+        "power": 318.5
       }
     },
     {
@@ -312,12 +318,12 @@
       "status": "healthy",
       "sliceMode": "dynamic",
       "usage": {
-        "aiCoreUtilization": 81,
-        "vramUtilization": 75,
-        "vramUsedMiB": 49152,
-        "memoryBandwidthUtilization": 72.9,
-        "temperature": 52.2,
-        "power": 301
+        "aiCoreUtilization": 76,
+        "vramUtilization": 71,
+        "vramUsedMiB": 46531,
+        "memoryBandwidthUtilization": 68.4,
+        "temperature": 51.7,
+        "power": 297
       }
     },
     {
@@ -332,12 +338,12 @@
       "status": "healthy",
       "sliceMode": "dynamic",
       "usage": {
-        "aiCoreUtilization": 12,
-        "vramUtilization": 10,
-        "vramUsedMiB": 6554,
-        "memoryBandwidthUtilization": 10.8,
-        "temperature": 53.9,
-        "power": 309.5
+        "aiCoreUtilization": 15,
+        "vramUtilization": 12,
+        "vramUsedMiB": 7864,
+        "memoryBandwidthUtilization": 13.5,
+        "temperature": 45.1,
+        "power": 261
       }
     },
     {
@@ -352,9 +358,12 @@
       "status": "healthy",
       "sliceMode": "whole",
       "usage": {
-        "memoryBandwidthUtilization": 0,
-        "temperature": 42,
-        "power": 250
+        "aiCoreUtilization": 6,
+        "vramUtilization": 5,
+        "vramUsedMiB": 3276,
+        "memoryBandwidthUtilization": 5.4,
+        "temperature": 41.8,
+        "power": 246
       }
     },
     {
@@ -369,12 +378,12 @@
       "status": "healthy",
       "sliceMode": "whole",
       "usage": {
-        "aiCoreUtilization": 22,
-        "vramUtilization": 18,
-        "vramUsedMiB": 11796,
-        "memoryBandwidthUtilization": 19.8,
-        "temperature": 43.7,
-        "power": 258.5
+        "aiCoreUtilization": 88,
+        "vramUtilization": 82,
+        "vramUsedMiB": 53739,
+        "memoryBandwidthUtilization": 79.2,
+        "temperature": 54.6,
+        "power": 312
       }
     },
     {
@@ -389,12 +398,12 @@
       "status": "healthy",
       "sliceMode": "fixed-template",
       "usage": {
-        "aiCoreUtilization": 31,
-        "vramUtilization": 28,
-        "vramUsedMiB": 18350,
-        "memoryBandwidthUtilization": 27.900000000000002,
-        "temperature": 45.4,
-        "power": 267
+        "aiCoreUtilization": 36,
+        "vramUtilization": 32,
+        "vramUsedMiB": 20971,
+        "memoryBandwidthUtilization": 32.4,
+        "temperature": 45.9,
+        "power": 268
       }
     },
     {
@@ -409,12 +418,12 @@
       "status": "healthy",
       "sliceMode": "fixed-template",
       "usage": {
-        "aiCoreUtilization": 45,
-        "vramUtilization": 41,
-        "vramUsedMiB": 26869,
-        "memoryBandwidthUtilization": 40.5,
-        "temperature": 47.1,
-        "power": 275.5
+        "aiCoreUtilization": 52,
+        "vramUtilization": 47,
+        "vramUsedMiB": 30801,
+        "memoryBandwidthUtilization": 46.8,
+        "temperature": 47.8,
+        "power": 277
       }
     },
     {
@@ -429,12 +438,12 @@
       "status": "healthy",
       "sliceMode": "fixed-template",
       "usage": {
-        "aiCoreUtilization": 63,
-        "vramUtilization": 58,
-        "vramUsedMiB": 38010,
-        "memoryBandwidthUtilization": 56.7,
-        "temperature": 48.8,
-        "power": 284
+        "aiCoreUtilization": 67,
+        "vramUtilization": 61,
+        "vramUsedMiB": 39977,
+        "memoryBandwidthUtilization": 60.3,
+        "temperature": 49.4,
+        "power": 287.5
       }
     },
     {
@@ -449,12 +458,12 @@
       "status": "healthy",
       "sliceMode": "fixed-template",
       "usage": {
-        "aiCoreUtilization": 72,
-        "vramUtilization": 67,
-        "vramUsedMiB": 43909,
-        "memoryBandwidthUtilization": 64.8,
-        "temperature": 50.5,
-        "power": 292.5
+        "aiCoreUtilization": 78,
+        "vramUtilization": 72,
+        "vramUsedMiB": 47186,
+        "memoryBandwidthUtilization": 70.2,
+        "temperature": 51.0,
+        "power": 295
       }
     },
     {
@@ -473,8 +482,8 @@
         "vramUtilization": 75,
         "vramUsedMiB": 49152,
         "memoryBandwidthUtilization": 72.9,
-        "temperature": 52.2,
-        "power": 301
+        "temperature": 52.5,
+        "power": 303
       }
     },
     {
@@ -489,12 +498,12 @@
       "status": "healthy",
       "sliceMode": "dynamic",
       "usage": {
-        "aiCoreUtilization": 12,
-        "vramUtilization": 10,
-        "vramUsedMiB": 6554,
-        "memoryBandwidthUtilization": 10.8,
-        "temperature": 53.9,
-        "power": 309.5
+        "aiCoreUtilization": 24,
+        "vramUtilization": 20,
+        "vramUsedMiB": 13107,
+        "memoryBandwidthUtilization": 21.6,
+        "temperature": 45.8,
+        "power": 265
       }
     }
   ],

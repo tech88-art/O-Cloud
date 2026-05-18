@@ -3,7 +3,7 @@
     "name": "set-a-small",
     "version": "0.1.0",
     "generatedAt": "2026-05-17T12:00:00Z",
-    "description": "Small single-cluster demo: 1 cluster / 3 nodes / 24 NPUs / mixed workloads. Reproducible (seed=42).",
+    "description": "Small single-cluster demo (T109 polished): 1 cluster / 3 nodes / 24 NPUs (1 degraded) / 10 mixed-status workloads incl. 1 Qwen-8B PD pair. Events 0-180s narrate a 5-page demo (Overview -> Workloads -> Deploy -> Metrics -> Logs).",
     "scenario": "small-cluster"
   },
   "clusters": [
@@ -43,7 +43,11 @@
         "worker-site-a-02"
       ],
       "npuUsage": {
-        "allocated": 2
+        "allocated": 2,
+        "slices": [
+          "worker-site-a-01-npu-1",
+          "worker-site-a-02-npu-1"
+        ]
       },
       "pods": [
         {
@@ -55,11 +59,13 @@
             {
               "name": "prefill",
               "image": "mindie/vllm-ascend:0.11.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["vllm serve qwen/Qwen2.5-8B-Instruct --role prefill --kv-transfer-config mooncake"],
               "resources": {
                 "cpu": "16",
                 "memory": "64Gi",
                 "npuSlices": [
-                  "worker-site-a-01-npu-0"
+                  "worker-site-a-01-npu-1"
                 ]
               }
             }
@@ -74,6 +80,8 @@
             {
               "name": "decode",
               "image": "mindie/vllm-ascend:0.11.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["vllm serve qwen/Qwen2.5-8B-Instruct --role decode --kv-transfer-config mooncake"],
               "resources": {
                 "cpu": "16",
                 "memory": "64Gi",
@@ -108,9 +116,16 @@
             "p50": 12,
             "p90": 18,
             "p99": 28
+          },
+          "e2eMs": {
+            "p50": 420,
+            "p90": 680,
+            "p99": 920
           }
         },
         "resourceUsage": {
+          "cpuUtilization": 38,
+          "memoryUtilization": 52,
           "npuUtilization": 65,
           "vramUtilization": 58
         }
@@ -128,18 +143,85 @@
       "kind": "InferenceService",
       "status": "running",
       "replicas": {
-        "desired": 1,
-        "ready": 1
+        "desired": 2,
+        "ready": 2
       },
       "nodeNames": [
         "worker-site-a-03"
       ],
       "npuUsage": {
-        "allocated": 0,
+        "allocated": 2,
         "slices": [
           "worker-site-a-03-npu-2-slice-0",
           "worker-site-a-03-npu-2-slice-2"
         ]
+      },
+      "pods": [
+        {
+          "name": "deepseek-20b-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-03",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "server",
+              "image": "ascend/mindie:1.0.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["mindie-server --model deepseek-20b --tp 2"],
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-site-a-03-npu-2-slice-0"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "deepseek-20b-1",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-03",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "server",
+              "image": "ascend/mindie:1.0.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["mindie-server --model deepseek-20b --tp 2"],
+              "resources": {
+                "cpu": "16",
+                "memory": "64Gi",
+                "npuSlices": [
+                  "worker-site-a-03-npu-2-slice-2"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "metrics": {
+        "throughput": {
+          "inputTokensPerSec": 1850,
+          "outputTokensPerSec": 720,
+          "requestsPerSec": 5.4
+        },
+        "latency": {
+          "ttftMs": {
+            "p50": 145,
+            "p90": 230,
+            "p99": 340
+          },
+          "itlMs": {
+            "p50": 18,
+            "p90": 26,
+            "p99": 38
+          }
+        },
+        "resourceUsage": {
+          "npuUtilization": 55,
+          "vramUtilization": 62
+        }
       },
       "createdAt": "2026-05-13T06:00:00Z",
       "labels": {
@@ -154,18 +236,85 @@
       "kind": "InferenceService",
       "status": "running",
       "replicas": {
-        "desired": 1,
-        "ready": 1
+        "desired": 2,
+        "ready": 2
       },
       "nodeNames": [
         "worker-site-a-01"
       ],
       "npuUsage": {
-        "allocated": 0,
+        "allocated": 2,
         "slices": [
           "worker-site-a-01-npu-2-slice-0",
           "worker-site-a-01-npu-2-slice-2"
         ]
+      },
+      "pods": [
+        {
+          "name": "qwen-14b-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-01",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "server",
+              "image": "ascend/mindie:1.0.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["mindie-server --model qwen-14b"],
+              "resources": {
+                "cpu": "8",
+                "memory": "32Gi",
+                "npuSlices": [
+                  "worker-site-a-01-npu-2-slice-0"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "qwen-14b-1",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-01",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "server",
+              "image": "ascend/mindie:1.0.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["mindie-server --model qwen-14b"],
+              "resources": {
+                "cpu": "8",
+                "memory": "32Gi",
+                "npuSlices": [
+                  "worker-site-a-01-npu-2-slice-2"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "metrics": {
+        "throughput": {
+          "inputTokensPerSec": 1620,
+          "outputTokensPerSec": 880,
+          "requestsPerSec": 7.2
+        },
+        "latency": {
+          "ttftMs": {
+            "p50": 95,
+            "p90": 160,
+            "p99": 235
+          },
+          "itlMs": {
+            "p50": 14,
+            "p90": 21,
+            "p99": 31
+          }
+        },
+        "resourceUsage": {
+          "npuUtilization": 48,
+          "vramUtilization": 51
+        }
       },
       "createdAt": "2026-05-14T00:00:00Z",
       "labels": {
@@ -188,12 +337,100 @@
         "worker-site-a-03"
       ],
       "npuUsage": {
-        "allocated": 0,
+        "allocated": 3,
         "slices": [
           "worker-site-a-02-npu-2-slice-0",
           "worker-site-a-02-npu-2-slice-2",
           "worker-site-a-02-npu-3-slice-1"
         ]
+      },
+      "pods": [
+        {
+          "name": "pi-3b-7f9b8c-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-02",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "server",
+              "image": "ascend/mindie:1.0.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["mindie-server --model pi-3b --max-batch 8"],
+              "resources": {
+                "cpu": "4",
+                "memory": "16Gi",
+                "npuSlices": [
+                  "worker-site-a-02-npu-2-slice-0"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "pi-3b-7f9b8c-1",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-02",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "server",
+              "image": "ascend/mindie:1.0.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["mindie-server --model pi-3b --max-batch 8"],
+              "resources": {
+                "cpu": "4",
+                "memory": "16Gi",
+                "npuSlices": [
+                  "worker-site-a-02-npu-2-slice-2"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "pi-3b-7f9b8c-2",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-03",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "server",
+              "image": "ascend/mindie:1.0.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["mindie-server --model pi-3b --max-batch 8"],
+              "resources": {
+                "cpu": "4",
+                "memory": "16Gi",
+                "npuSlices": [
+                  "worker-site-a-02-npu-3-slice-1"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "metrics": {
+        "throughput": {
+          "inputTokensPerSec": 3200,
+          "outputTokensPerSec": 1450,
+          "requestsPerSec": 18.6
+        },
+        "latency": {
+          "ttftMs": {
+            "p50": 42,
+            "p90": 78,
+            "p99": 120
+          },
+          "itlMs": {
+            "p50": 8,
+            "p90": 13,
+            "p99": 19
+          }
+        },
+        "resourceUsage": {
+          "npuUtilization": 39,
+          "vramUtilization": 35
+        }
       },
       "createdAt": "2026-05-15T09:00:00Z",
       "labels": {
@@ -215,11 +452,57 @@
         "worker-site-a-01"
       ],
       "npuUsage": {
-        "allocated": 0,
+        "allocated": 1,
         "slices": [
           "worker-site-a-01-npu-2-slice-0"
         ]
       },
+      "pods": [
+        {
+          "name": "vllm-bench-h47kp",
+          "namespace": "benchmark",
+          "nodeName": "worker-site-a-01",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "bench",
+              "image": "vllm/benchmark:latest",
+              "command": ["python"],
+              "args": ["-m", "vllm.entrypoints.openai.api_server", "--benchmark", "--duration", "300"],
+              "resources": {
+                "cpu": "8",
+                "memory": "16Gi",
+                "npuSlices": [
+                  "worker-site-a-01-npu-2-slice-0"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "vllm-bench-h47kp-sidecar",
+          "namespace": "benchmark",
+          "nodeName": "worker-site-a-01",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "metrics-exporter",
+              "image": "prom/node-exporter:latest",
+              "resources": {
+                "cpu": "200m",
+                "memory": "256Mi"
+              }
+            }
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "from": "vllm-bench-h47kp",
+          "to": "vllm-bench-h47kp-sidecar",
+          "type": "sidecar"
+        }
+      ],
       "createdAt": "2026-05-17T08:00:00Z",
       "labels": {
         "app.kubernetes.io/name": "vllm-bench",
@@ -233,18 +516,66 @@
       "kind": "Deployment",
       "status": "running",
       "replicas": {
-        "desired": 1,
-        "ready": 1
+        "desired": 2,
+        "ready": 2
       },
       "nodeNames": [
         "worker-site-a-02"
       ],
       "npuUsage": {
-        "allocated": 0,
+        "allocated": 1,
         "slices": [
           "worker-site-a-02-npu-2-slice-0"
         ]
       },
+      "pods": [
+        {
+          "name": "pi-3b-canary-init-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-02",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "init-warmup",
+              "image": "busybox:1.36",
+              "command": ["sh", "-c"],
+              "args": ["echo warmup model && sleep 5"],
+              "resources": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            }
+          ]
+        },
+        {
+          "name": "pi-3b-canary-server-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-02",
+          "status": "Running",
+          "containers": [
+            {
+              "name": "server",
+              "image": "ascend/mindie:1.0.0-rc2",
+              "command": ["/bin/sh", "-c"],
+              "args": ["mindie-server --model pi-3b --canary"],
+              "resources": {
+                "cpu": "4",
+                "memory": "16Gi",
+                "npuSlices": [
+                  "worker-site-a-02-npu-2-slice-0"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "from": "pi-3b-canary-init-0",
+          "to": "pi-3b-canary-server-0",
+          "type": "init"
+        }
+      ],
       "createdAt": "2026-05-16T10:00:00Z",
       "labels": {
         "app.kubernetes.io/name": "pi-3b-canary",
@@ -261,6 +592,50 @@
         "desired": 1,
         "ready": 0
       },
+      "pods": [
+        {
+          "name": "llama2-7b-finetune-c4tz9",
+          "namespace": "training",
+          "status": "Pending",
+          "containers": [
+            {
+              "name": "trainer",
+              "image": "ascend/cann-toolkit:8.0",
+              "command": ["python"],
+              "args": ["-m", "torch.distributed.launch", "--nproc_per_node=4", "finetune.py"],
+              "resources": {
+                "cpu": "32",
+                "memory": "128Gi",
+                "npuSlices": []
+              }
+            }
+          ]
+        },
+        {
+          "name": "llama2-7b-finetune-c4tz9-storage-init",
+          "namespace": "training",
+          "status": "Pending",
+          "containers": [
+            {
+              "name": "dataset-loader",
+              "image": "busybox:1.36",
+              "command": ["sh", "-c"],
+              "args": ["aws s3 cp s3://datasets/llama2-finetune /data --recursive"],
+              "resources": {
+                "cpu": "1",
+                "memory": "2Gi"
+              }
+            }
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "from": "llama2-7b-finetune-c4tz9-storage-init",
+          "to": "llama2-7b-finetune-c4tz9",
+          "type": "init"
+        }
+      ],
       "createdAt": "2026-05-17T11:00:00Z",
       "labels": {
         "app.kubernetes.io/name": "llama2-7b-finetune",
@@ -277,6 +652,44 @@
         "desired": 1,
         "ready": 0
       },
+      "pods": [
+        {
+          "name": "internlm-7b-mn92x-0",
+          "namespace": "ai-inference",
+          "status": "Pending",
+          "containers": [
+            {
+              "name": "server",
+              "image": "ascend/mindie:1.0.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["mindie-server --model internlm-7b"],
+              "resources": {
+                "cpu": "8",
+                "memory": "32Gi",
+                "npuSlices": []
+              }
+            }
+          ]
+        },
+        {
+          "name": "internlm-7b-mn92x-1",
+          "namespace": "ai-inference",
+          "status": "Pending",
+          "containers": [
+            {
+              "name": "server",
+              "image": "ascend/mindie:1.0.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["mindie-server --model internlm-7b"],
+              "resources": {
+                "cpu": "8",
+                "memory": "32Gi",
+                "npuSlices": []
+              }
+            }
+          ]
+        }
+      ],
       "createdAt": "2026-05-17T12:00:00Z",
       "labels": {
         "app.kubernetes.io/name": "internlm-7b",
@@ -299,6 +712,47 @@
       "npuUsage": {
         "allocated": 1
       },
+      "pods": [
+        {
+          "name": "bench-historical-zx81r",
+          "namespace": "benchmark",
+          "nodeName": "worker-site-a-03",
+          "status": "Succeeded",
+          "containers": [
+            {
+              "name": "bench",
+              "image": "vllm/benchmark:0.5.0",
+              "command": ["python"],
+              "args": ["-m", "vllm.benchmark", "--duration", "600"],
+              "resources": {
+                "cpu": "8",
+                "memory": "16Gi",
+                "npuSlices": [
+                  "worker-site-a-03-npu-3-slice-1"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "bench-historical-zx81r-results",
+          "namespace": "benchmark",
+          "nodeName": "worker-site-a-03",
+          "status": "Succeeded",
+          "containers": [
+            {
+              "name": "results-upload",
+              "image": "amazon/aws-cli:2.13",
+              "command": ["aws"],
+              "args": ["s3", "cp", "/results/", "s3://bench-results/2026-05-09/", "--recursive"],
+              "resources": {
+                "cpu": "500m",
+                "memory": "512Mi"
+              }
+            }
+          ]
+        }
+      ],
       "createdAt": "2026-05-09T09:00:00Z",
       "labels": {
         "app.kubernetes.io/name": "bench-historical",
@@ -317,6 +771,47 @@
       },
       "nodeNames": [
         "worker-site-a-01"
+      ],
+      "pods": [
+        {
+          "name": "oom-test-model-69dfg",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-01",
+          "status": "Failed",
+          "containers": [
+            {
+              "name": "server",
+              "image": "ascend/mindie:1.0.0",
+              "command": ["/bin/sh", "-c"],
+              "args": ["mindie-server --model 70b --max-batch 32"],
+              "resources": {
+                "cpu": "8",
+                "memory": "32Gi",
+                "npuSlices": [
+                  "worker-site-a-01-npu-5-slice-3"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "oom-test-model-69dfg-debugger",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-01",
+          "status": "Failed",
+          "containers": [
+            {
+              "name": "core-dumper",
+              "image": "busybox:1.36",
+              "command": ["sh", "-c"],
+              "args": ["cp /proc/$(pidof mindie-server)/coredump /var/log/oom.dump"],
+              "resources": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            }
+          ]
+        }
       ],
       "createdAt": "2026-05-12T11:00:00Z",
       "labels": {

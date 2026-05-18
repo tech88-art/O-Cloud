@@ -3,7 +3,7 @@
     "name": "set-a-small",
     "version": "0.1.0",
     "generatedAt": "2026-05-17T12:00:00Z",
-    "description": "Small single-cluster demo: 1 cluster / 3 nodes / 24 NPUs / mixed workloads. Reproducible (seed=42).",
+    "description": "Small single-cluster demo (T109 polished): 1 cluster / 3 nodes / 24 NPUs (1 degraded) / 10 mixed-status workloads incl. 1 Qwen-8B PD pair. Events 0-180s narrate a 5-page demo (Overview -> Workloads -> Deploy -> Metrics -> Logs).",
     "scenario": "small-cluster"
   },
   "clusters": [
@@ -58,7 +58,8 @@
         "small",
         "single-card"
       ],
-      "manifest": "placeholder://helm/pi-3b-values.yaml"
+      "manifest": "placeholder://helm/pi-3b-values.yaml",
+      "dependencies": []
     },
     {
       "id": "qwen-8b-pd",
@@ -83,7 +84,10 @@
         "pd",
         "vllm"
       ],
-      "manifest": "placeholder://helm/qwen-8b-pd-values.yaml"
+      "manifest": "placeholder://helm/qwen-8b-pd-values.yaml",
+      "dependencies": [
+        "mooncake-kv-store"
+      ]
     },
     {
       "id": "deepseek-20b",
@@ -108,7 +112,8 @@
         "large",
         "hccs"
       ],
-      "manifest": "placeholder://helm/deepseek-20b-values.yaml"
+      "manifest": "placeholder://helm/deepseek-20b-values.yaml",
+      "dependencies": []
     },
     {
       "id": "qwen-14b",
@@ -133,7 +138,8 @@
         "medium",
         "single-card"
       ],
-      "manifest": "placeholder://helm/qwen-14b-values.yaml"
+      "manifest": "placeholder://helm/qwen-14b-values.yaml",
+      "dependencies": []
     }
   ],
   "events": []
