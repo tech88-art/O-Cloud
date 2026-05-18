@@ -20,6 +20,7 @@ import (
 	"github.com/example/ocloud-edge/backend/pkg/api"
 	"github.com/example/ocloud-edge/backend/pkg/config"
 	"github.com/example/ocloud-edge/backend/pkg/datasource"
+	"github.com/example/ocloud-edge/backend/pkg/datasource/k8s"
 	"github.com/example/ocloud-edge/backend/pkg/datasource/mock"
 )
 
@@ -85,6 +86,21 @@ func runServer(ctx context.Context, configFile string) error {
 	sources := map[string]datasource.Source{}
 	if mockCfg, ok := cfg.Datasources["mock"]; ok && mockCfg.Enabled {
 		sources["mock"] = mock.NewSource(mockCfg.Path)
+	}
+	// P2-T-006: wire k8s.Source when datasources.k8s.enabled = true.
+	// Construction fetches the kubeconfig (path-on-disk or in-cluster
+	// SA), builds the clientset. Failure aborts startup — operators
+	// shouldn't silently fall back to mock when they asked for real K8s.
+	if k8sCfg, ok := cfg.Datasources["k8s"]; ok && k8sCfg.Enabled {
+		k8sSrc, err := k8s.NewSource(k8s.Options{
+			KubeconfigPath: k8sCfg.Kubeconfig,
+		})
+		if err != nil {
+			return fmt.Errorf("build k8s source: %w", err)
+		}
+		sources["k8s"] = k8sSrc
+		logger.Info("k8s source wired",
+			zap.String("kubeconfig", k8sCfg.Kubeconfig))
 	}
 	reg, err := datasource.Build(cfg, sources)
 	if err != nil {

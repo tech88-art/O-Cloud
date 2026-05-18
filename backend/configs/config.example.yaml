@@ -60,9 +60,19 @@ grafana:
 datasources:
   mock:
     enabled: true
-    # Swap path → swap dataset. set-a-small ships with W1; set-b-small lands
-    # with P1-T-307. See header comment for the named-variants pattern.
+    # Swap path → swap dataset. set-a-small / set-c-stress are the two
+    # canonical fixtures today; phase2-plan.md §3 walks through the
+    # planned set-b-multi-site addition.
     path: "./configs/mock-data/set-a-small"
+  # P2-T-006 wired k8s.Source. To use real K8s as the data path:
+  #   1) enabled: true
+  #   2) Kubeconfig: leave empty for in-cluster ServiceAccount (binary
+  #      runs as a Pod), or path-on-disk for dev / E2E test runners.
+  #   3) flip `mapping.<resource>` from `mock` → `k8s` per resource;
+  #      mix-and-match is supported (mock workloads + k8s nodes is
+  #      fine for piecemeal cutover).
+  # k8s.Source today serves: Clusters / Nodes / NPUs / Workloads /
+  # Logs. CRD pools + metrics + events land with later P2-T-1xx tasks.
   k8s:
     enabled: false
     kubeconfig: ""        # empty → in-cluster ServiceAccount
