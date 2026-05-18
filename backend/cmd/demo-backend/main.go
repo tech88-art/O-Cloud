@@ -92,6 +92,10 @@ func runServer(ctx context.Context, configFile string) error {
 	}
 
 	handler := api.NewHandler(reg, logger)
+	// T205 follow-up: wire Grafana base URL from config (fallback in handler).
+	if cfg.Grafana.BaseURL != "" {
+		handler.GrafanaBaseURL = cfg.Grafana.BaseURL
+	}
 	router := api.NewRouter(handler, api.RouterOptions{EnableCORS: cfg.Server.EnableCORS})
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
