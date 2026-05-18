@@ -60,7 +60,13 @@ func NewRouter(h *Handler, opts RouterOptions) *gin.Engine {
 	{
 		v1.GET("/healthz", h.Healthz)
 		v1.GET("/version", h.Version)
-		// PHASE-1: T101+ extends this block with /clusters, /nodes, /npus, ...
+
+		// T101: cluster resource
+		v1.GET("/clusters", h.ListClusters)
+		v1.GET("/clusters/:clusterId", h.GetCluster)
+
+		// PHASE-1: T102+ extends this block with /clusters/:id/topology,
+		// /nodes, /npus, /workloads, /presets, ...
 	}
 
 	return r

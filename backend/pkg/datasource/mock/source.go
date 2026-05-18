@@ -7,6 +7,7 @@ package mock
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/example/ocloud-edge/backend/pkg/datasource"
 	"github.com/example/ocloud-edge/backend/pkg/model"
@@ -18,12 +19,20 @@ import (
 var ErrNotImplemented = errors.New("mock source: method not implemented")
 
 // Source is the mock datasource stub. Construction is intentionally trivial
-// at this phase — T101 will give it a path-to-fixtures argument and load
-// JSON from configs/mock-data/set-a-small/.
+// at this phase — T101 wires Cluster fixtures from configs/mock-data/set-a-small/.
+// Subsequent tasks (T103/T104/T201/...) extend this struct with their own
+// once+slice cache fields for nodes / npus / workloads / etc.
 type Source struct {
-	// fixturesPath is reserved for T101+; held here so callers already know
-	// the constructor shape.
+	// fixturesPath is the directory of canned JSON fixtures (e.g.
+	// "./configs/mock-data/set-a-small"). Empty path → loaders treat the
+	// dataset as empty (used in unit tests with no disk dependency).
 	fixturesPath string
+
+	// clusters cache (T101). sync.Once gives lazy thread-safe load; clustersErr
+	// is sticky so a bad fixture file isn't re-parsed on every request.
+	clustersOnce sync.Once
+	clusters     []*model.Cluster
+	clustersErr  error
 }
 
 // NewSource returns a fresh mock.Source. fixturesPath is the directory of
@@ -41,19 +50,13 @@ var _ datasource.Source = (*Source)(nil)
 func (s *Source) Name() string { return "mock" }
 
 func (s *Source) Capabilities() datasource.Capabilities {
-	// PHASE-1: stub declares no real capabilities until T101+ implements them.
-	return datasource.Capabilities{}
+	// PHASE-1: T101 enables Clusters. Other resources land in later tasks.
+	return datasource.Capabilities{
+		Clusters: true,
+	}
 }
 
-// ---- Cluster ----
-
-func (s *Source) ListClusters(ctx context.Context) ([]*model.Cluster, error) {
-	return nil, ErrNotImplemented
-}
-
-func (s *Source) GetCluster(ctx context.Context, id string) (*model.Cluster, error) {
-	return nil, ErrNotImplemented
-}
+// ---- Cluster (T101 — see cluster.go for ListClusters / GetCluster) ----
 
 func (s *Source) GetTopology(ctx context.Context, clusterID string, depth string) (*model.Topology, error) {
 	return nil, ErrNotImplemented
