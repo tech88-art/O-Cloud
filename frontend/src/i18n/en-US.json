@@ -30,7 +30,17 @@
     },
     "logs": {
       "title": "Logs",
-      "placeholder": "Logs page — coming W2"
+      "placeholder": "Logs page — coming W2",
+      "workload": "Workload",
+      "workloadPlaceholder": "Select a workload",
+      "container": "Container",
+      "containerAll": "All containers",
+      "tail": "Tail",
+      "live": "Live stream",
+      "selectWorkload": "Pick a workload to view its logs",
+      "empty": "No log lines",
+      "errorTitle": "Failed to load logs",
+      "wsWarning": "Live stream lost connection, auto-reconnecting"
     }
   },
   "workloads": {

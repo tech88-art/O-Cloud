@@ -30,7 +30,17 @@
     },
     "logs": {
       "title": "日志",
-      "placeholder": "日志页面 — W2 即将上线"
+      "placeholder": "日志页面 — W2 即将上线",
+      "workload": "工作负载",
+      "workloadPlaceholder": "选择一个工作负载",
+      "container": "容器",
+      "containerAll": "全部容器",
+      "tail": "尾部行数",
+      "live": "实时流",
+      "selectWorkload": "请选择工作负载以查看日志",
+      "empty": "暂无日志",
+      "errorTitle": "加载日志失败",
+      "wsWarning": "实时流连接异常，已自动重连"
     }
   },
   "workloads": {

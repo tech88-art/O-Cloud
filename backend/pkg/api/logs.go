@@ -292,7 +292,9 @@ func (h *Handler) writerLoopLogs(ctx context.Context, conn *websocket.Conn, line
 				continue
 			}
 			msg := &model.WSMessage{
-				Type:      "log",
+				// "log.line" is the canonical type per
+				// docs/api-contract.yaml components.schemas.WSMessage enum.
+				Type:      "log.line",
 				Timestamp: time.Now().UTC(),
 				Payload:   payload,
 			}

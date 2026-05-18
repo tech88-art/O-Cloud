@@ -241,7 +241,7 @@ func TestWSLogs_HappyPath_StreamsLogMessages(t *testing.T) {
 
 	var env model.WSMessage
 	require.NoError(t, json.Unmarshal(raw, &env))
-	assert.Equal(t, "log", env.Type, "log stream envelope should be type=log")
+	assert.Equal(t, "log.line", env.Type, "log stream envelope must use the canonical WSMessage type")
 
 	var line model.LogLine
 	require.NoError(t, json.Unmarshal(env.Payload, &line))
