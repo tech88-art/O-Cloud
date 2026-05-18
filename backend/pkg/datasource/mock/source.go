@@ -40,6 +40,12 @@ type Source struct {
 	nodesOnce sync.Once
 	nodes     []model.NodeDetail
 	nodesErr  error
+
+	// NPUs cache (P1-T-104). Lazy load merges npus.json + slices.json so the
+	// returned NPUs already carry slice status (see npu.go loadNPUs).
+	npusOnce sync.Once
+	npus     []*model.NPU
+	npusErr  error
 }
 
 // NewSource returns a fresh mock.Source. fixturesPath is the directory of
@@ -57,11 +63,12 @@ var _ datasource.Source = (*Source)(nil)
 func (s *Source) Name() string { return "mock" }
 
 func (s *Source) Capabilities() datasource.Capabilities {
-	// PHASE-1: T101 enables Clusters, T103 enables Nodes. Others flip on as
-	// T102/T104+ land.
+	// PHASE-1: T101 enables Clusters, T103 enables Nodes, T104 enables NPUs.
+	// Others flip on as T102/T105+ land.
 	return datasource.Capabilities{
 		Clusters: true,
 		Nodes:    true,
+		NPUs:     true,
 	}
 }
 
@@ -74,10 +81,7 @@ func (s *Source) GetTopology(ctx context.Context, clusterID string, depth string
 // ---- Node / NPU ----
 //
 // ListNodes + GetNodeDetail moved to node.go (P1-T-103).
-
-func (s *Source) ListNPUs(ctx context.Context, nodeName string) ([]*model.NPU, error) {
-	return nil, ErrNotImplemented
-}
+// ListNPUs moved to npu.go (P1-T-104).
 
 // ---- Pool ----
 

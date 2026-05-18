@@ -69,8 +69,11 @@ func NewRouter(h *Handler, opts RouterOptions) *gin.Engine {
 		v1.GET("/nodes", h.ListNodes)
 		v1.GET("/nodes/:nodeName", h.GetNodeDetail)
 
+		// NPUs (P1-T-104)
+		v1.GET("/nodes/:nodeName/npus", h.ListNPUs)
+
 		// PHASE-1: T102+ extends this block with /clusters/:id/topology,
-		// /nodes/:name/npus, /workloads, /presets, ...
+		// /workloads, /presets, ...
 	}
 
 	return r
