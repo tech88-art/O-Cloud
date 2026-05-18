@@ -15,15 +15,22 @@ import (
 // TopologyOptions carries optional flags accepted by GetTopologyWithFabric.
 //
 // We chose a struct (instead of additional positional args) so future fabric-
-// related flags — e.g. `IncludeBindings`, fabric tier filters — can land
-// without changing the interface signature again. See ADR-0004 §"Topology API
-// extension" for the design intent.
+// related flags — e.g. fabric tier filters — can land without changing the
+// interface signature again. See ADR-0004 §"Topology API extension" and
+// ADR-0005 §"Topology API 扩展" for the design intent.
 type TopologyOptions struct {
 	// IncludeFabric, when true, asks the source to add `type=switch` nodes
 	// and `type=fabric-link` edges to the returned topology. When false, the
 	// returned graph is byte-equivalent to GetTopology(ctx, id, depth) — a
 	// zero-regression contract callers can rely on.
 	IncludeFabric bool
+
+	// IncludeWorkloads, when true (P1-T-213, ADR-0005), asks the source to
+	// fold workload + pod nodes plus binds-to / pd-pair edges into the
+	// returned topology. When false the returned graph carries no workload
+	// or pod layer — preserving the T102 / T211 zero-regression contract
+	// callers can rely on.
+	IncludeWorkloads bool
 }
 
 // Capabilities is the self-declared set of methods a Source supports.

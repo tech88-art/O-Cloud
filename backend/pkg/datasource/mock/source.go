@@ -87,6 +87,16 @@ type Source struct {
 	workloads     []model.WorkloadDetail
 	workloadsErr  error
 
+	// Topology-workloads cache (P1-T-213, ADR-0005). Reads workloads.json into
+	// the aggregator.WorkloadInput shape — captures the per-pod `bindings`
+	// array T013 added to the schema (the model.Pod struct doesn't surface
+	// bindings yet; the migration is a follow-up RFC). Decoupled from
+	// workloadsOnce/workloads so the existing /workloads handler logic is
+	// untouched.
+	topoWorkloadsOnce sync.Once
+	topoWorkloads     []aggregator.WorkloadInput
+	topoWorkloadsErr  error
+
 	// Presets cache (P1-T-203). Lazy load from presets.json — entries are
 	// stored as the PresetDetail superset so GetPreset returns the manifest
 	// while ListPresets projects out the slim Preset view.

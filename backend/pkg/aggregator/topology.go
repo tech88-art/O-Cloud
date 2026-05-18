@@ -8,13 +8,17 @@
 //
 // Wire shape: see docs/api-contract.yaml components.schemas.{Topology,
 // TopologyNode, TopologyEdge}. TopologyNode.Type ∈ {cluster, node, npu, slice,
-// switch} (we don't emit nodepool here; that joins later phases).
-// TopologyEdge.Type is "contains" for the parent → child relations and
-// "fabric-link" when ADR-0004 fabric extension is enabled.
+// switch, workload, pod}. TopologyEdge.Type ∈ {contains, fabric-link,
+// binds-to, pd-pair}. The contract today still enumerates only the original
+// values; the new ones (workload / pod / binds-to / pd-pair) are documented
+// in ADR-0004 + ADR-0005 and added without OpenAPI enum constraint per the
+// RFC-003 batch — frontend renders any unknown value as a generic node.
 //
 // P1-T-211 extends the input bundle with Switches/Links + IncludeFabric flag.
-// When IncludeFabric is false (default) the output graph is byte-equivalent
+// P1-T-213 extends it again with Workloads + IncludeWorkloads (ADR-0005).
+// When both flags are false (default) the output graph is byte-equivalent
 // to the T102 build — zero regression for the depth=node/npu/slice paths.
+// Fabric and workload branches coexist independently when both flags are on.
 package aggregator
 
 import (
@@ -29,14 +33,18 @@ import (
 // hoist them as constants so aggregator and any future helper share the same
 // spelling.
 const (
-	nodeTypeCluster = "cluster"
-	nodeTypeNode    = "node"
-	nodeTypeNPU     = "npu"
-	nodeTypeSlice   = "slice"
-	nodeTypeSwitch  = "switch" // ADR-0004 fabric: a network switch in the inter-node fabric
+	nodeTypeCluster  = "cluster"
+	nodeTypeNode     = "node"
+	nodeTypeNPU      = "npu"
+	nodeTypeSlice    = "slice"
+	nodeTypeSwitch   = "switch"   // ADR-0004 fabric: a network switch in the inter-node fabric
+	nodeTypeWorkload = "workload" // ADR-0005 workload fusion: top-level workload aggregate
+	nodeTypePod      = "pod"      // ADR-0005 workload fusion: individual pod under a workload
 
-	edgeTypeContains    = "contains"
-	edgeTypeFabricLink  = "fabric-link" // ADR-0004 fabric: a node↔switch (or switch↔switch) link
+	edgeTypeContains   = "contains"
+	edgeTypeFabricLink = "fabric-link" // ADR-0004 fabric: a node↔switch (or switch↔switch) link
+	edgeTypeBindsTo    = "binds-to"    // ADR-0005 workload fusion: pod ↔ slice binding
+	edgeTypePDPair     = "pd-pair"     // ADR-0005 workload fusion: prefill ↔ decode pod relation
 )
 
 // Topology depth values. Matches the `depth` query param enum in
@@ -102,6 +110,68 @@ type NetworkLink struct {
 	RTTUs         float64 `json:"rttUs,omitempty"`
 }
 
+// WorkloadInput is the aggregator-local minimal shape needed to fold workload
+// + pod nodes into the topology graph (ADR-0005). We keep this type here —
+// rather than rely on pkg/model.WorkloadDetail — because (a) the model
+// package's Pod type does not yet carry the `bindings` array T013 added to
+// the schema (the OpenAPI contract migration is a follow-up RFC) and (b) the
+// aggregator already owns NetworkSwitch / NetworkLink as local shapes for the
+// same boundary-cleanliness reason.
+//
+// JSON tags mirror configs/mock-data/schema.json so the mock loader can
+// unmarshal directly.
+type WorkloadInput struct {
+	Name      string             `json:"name"`
+	Namespace string             `json:"namespace"`
+	Kind      string             `json:"kind,omitempty"`
+	Status    string             `json:"status,omitempty"`
+	Type      string             `json:"type,omitempty"`
+	Replicas  *WorkloadReplicas  `json:"replicas,omitempty"`
+	NodeNames []string           `json:"nodeNames,omitempty"`
+	Pods      []WorkloadPod      `json:"pods,omitempty"`
+	Relations []WorkloadRelation `json:"relations,omitempty"`
+}
+
+// WorkloadReplicas mirrors components.schemas.Workload.replicas inline. Kept
+// pointer-shaped at the parent so callers can distinguish "absent" from
+// "desired=0 ready=0".
+type WorkloadReplicas struct {
+	Desired int `json:"desired"`
+	Ready   int `json:"ready"`
+}
+
+// WorkloadPod carries the subset of pod fields the aggregator needs to emit
+// pod nodes + binds-to edges. Bindings is the canonical T013 schema field
+// (`$defs.Pod.bindings`) — per-pod slice attachments with optional role for
+// PD-disaggregated workloads.
+type WorkloadPod struct {
+	Name      string       `json:"name"`
+	Namespace string       `json:"namespace,omitempty"`
+	NodeName  string       `json:"nodeName,omitempty"`
+	Status    string       `json:"status,omitempty"`
+	Bindings  []PodBinding `json:"bindings,omitempty"`
+}
+
+// PodBinding mirrors $defs.Pod.bindings entries. Role is informational
+// (prefill / decode / peer / primary / sidecar); the aggregator emits one
+// binds-to edge per (pod, sliceId) pair regardless of role.
+type PodBinding struct {
+	SliceID    string `json:"sliceId"`
+	Role       string `json:"role,omitempty"`
+	IndexInPod int    `json:"indexInPod,omitempty"`
+}
+
+// WorkloadRelation mirrors $defs.Workload.relations entries. Phase 1 surfaces
+// only `pd-pair` as a topology edge (others — sidecar / init / peer — exist
+// in the contract but lack a dedicated visual; we drop them on the wire to
+// keep the rendered graph readable). Source / target are pod names within
+// the same workload.
+type WorkloadRelation struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	Type string `json:"type"`
+}
+
 // TopologyInputs is the bundle of preloaded fixtures BuildTopology consumes.
 // Callers (mock.GetTopology and any future source) populate it from their own
 // caches; the aggregator never reaches for disk.
@@ -128,6 +198,19 @@ type TopologyInputs struct {
 	// payload self-consistent for the frontend renderer).
 	Switches []NetworkSwitch
 	Links    []NetworkLink
+
+	// IncludeWorkloads, when true (P1-T-213, ADR-0005), asks BuildTopology to
+	// emit workload + pod nodes plus binds-to / pd-pair edges. When false the
+	// output is byte-equivalent to the T102 / T211 graph; Workloads is ignored
+	// entirely (zero-regression contract). See ADR-0005.
+	IncludeWorkloads bool
+
+	// Workloads are consumed only when IncludeWorkloads is true. Pod → slice
+	// binds-to edges drop silently when the slice id isn't already present in
+	// the graph (defensive: matches the orphan-NPU guard for the same
+	// self-consistency reason). pd-pair relations drop silently when either
+	// pod isn't represented.
+	Workloads []WorkloadInput
 
 	// GeneratedAt seeds Topology.meta.generatedAt. Optional — when zero we
 	// stamp time.Now().UTC() so the wire payload always carries one.
@@ -218,8 +301,13 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 		// Fabric (switches + links) is depth-agnostic per ADR-0004 — when
 		// requested we emit it even at depth=node so the Overview page can
 		// show "cluster + nodes + switches + links" without having to ask
-		// for depth=npu/slice. Same logic at the end of npu / slice depth.
+		// for depth=npu/slice. Workloads are depth-agnostic for the same
+		// reason (ADR-0005). Same logic at the end of npu / slice depth.
 		appendFabric(out, in, nodeIDs)
+		// At depth=node no slices were emitted, so the empty sliceIDs map
+		// drops all binds-to edges — workload + pod nodes still surface so
+		// the Overview can render "show workloads" cleanly without slices.
+		appendWorkloads(out, in, map[string]struct{}{})
 		return out
 	}
 
@@ -258,10 +346,17 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 
 	if depth == DepthNPU {
 		appendFabric(out, in, nodeIDs)
+		// At depth=npu no slices were emitted; the empty sliceIDs map drops
+		// all binds-to edges, but workload + pod nodes still render.
+		appendWorkloads(out, in, map[string]struct{}{})
 		return out
 	}
 
 	// 4) slice nodes + edges. Filter to slices whose parentNPU is in scope.
+	// We track emitted slice ids so the workload branch's binds-to edges can
+	// drop silently when a pod points at an out-of-scope (or non-existent)
+	// slice — same self-consistency guard as fabric links.
+	sliceIDs := make(map[string]struct{}, len(in.Slices))
 	for _, sl := range in.Slices {
 		if _, ok := npuIDs[sl.ParentNPU]; !ok {
 			continue
@@ -291,12 +386,21 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 			Target: sl.ID,
 			Type:   edgeTypeContains,
 		})
+		sliceIDs[sl.ID] = struct{}{}
 	}
 
-	// 5) fabric (ADR-0004) — appended last so depth-trimmed graphs keep
-	// switches grouped after the deepest tree-layer node. The order is wire-
-	// stable but the frontend renderer is order-insensitive.
+	// 5) fabric (ADR-0004) — appended after the deepest tree-layer node so
+	// depth-trimmed graphs keep switches grouped at the tail. The order is
+	// wire-stable but the frontend renderer is order-insensitive.
 	appendFabric(out, in, nodeIDs)
+
+	// 6) workloads (ADR-0005) — appended last. Workload branch is depth-
+	// agnostic: even at depth=node we still emit workload + pod nodes, since
+	// the user has explicitly asked for them. binds-to edges silently drop
+	// when the target slice isn't in scope at that depth (e.g. depth=node
+	// emits no slices, so all binds-to fall away — consistent with how the
+	// rest of the depth filter works).
+	appendWorkloads(out, in, sliceIDs)
 	return out
 }
 
@@ -376,6 +480,151 @@ func endpointInScope(id string, nodeIDs, switchIDs map[string]struct{}) bool {
 	}
 	_, ok := switchIDs[id]
 	return ok
+}
+
+// appendWorkloads emits workload + pod nodes and binds-to + pd-pair edges
+// when IncludeWorkloads is true. No-op otherwise — preserving the
+// T102 / T211 byte-equivalent contract.
+//
+// Emission rules:
+//   - One node per workload (id = "workload/<namespace>/<name>"). Empty
+//     namespace or name → skip silently (defensive against malformed
+//     fixtures).
+//   - One node per pod (id = "pod/<namespace>/<podName>") with parentId
+//     stashed in Attributes (model.TopologyNode has no ParentID field).
+//     Pod nodes whose workload was skipped don't materialize. Pods with
+//     empty names skip silently.
+//   - One binds-to edge per (pod, sliceId) pair drawn from pod.bindings. The
+//     edge drops when the slice id isn't already present in the graph
+//     (sliceIDs). This is the orphan-binding guard mirroring fabric/NPU
+//     orphan handling — keeps the wire payload self-consistent for the
+//     renderer.
+//   - For workload.relations entries with type=pd-pair, one pd-pair edge
+//     between the two pod node ids. Other relation types (sidecar / init /
+//     peer) are skipped in Phase 1 — the contract enumerates them but the
+//     frontend has no dedicated styling, so we omit rather than emit
+//     unrendered noise. Pd-pair edges drop when either pod isn't in the
+//     emitted set (same self-consistency reason).
+//
+// The id schemes intentionally include the namespace+kind prefix so a
+// workload and a pod with colliding short names can never produce the same
+// topology node id.
+func appendWorkloads(out *model.Topology, in TopologyInputs, sliceIDs map[string]struct{}) {
+	if !in.IncludeWorkloads {
+		return
+	}
+
+	for _, wl := range in.Workloads {
+		if wl.Name == "" || wl.Namespace == "" {
+			continue
+		}
+		wid := workloadNodeID(wl.Namespace, wl.Name)
+		wattrs := map[string]interface{}{
+			"namespace": wl.Namespace,
+			"kind":      wl.Kind,
+			"type":      wl.Type,
+			"nodeNames": wl.NodeNames,
+		}
+		if wl.Replicas != nil {
+			wattrs["replicas"] = map[string]interface{}{
+				"desired": wl.Replicas.Desired,
+				"ready":   wl.Replicas.Ready,
+			}
+		}
+		out.Nodes = append(out.Nodes, model.TopologyNode{
+			ID:         wid,
+			Type:       nodeTypeWorkload,
+			Label:      wl.Namespace + "/" + wl.Name,
+			Status:     wl.Status,
+			Attributes: wattrs,
+		})
+
+		// 2) pods — one node per pod, parentId points at the workload.
+		// Local index of this workload's pod names → pod node id so the
+		// relations loop below can resolve from/to without re-scanning.
+		wlPodIDs := make(map[string]string, len(wl.Pods))
+		for _, pod := range wl.Pods {
+			if pod.Name == "" {
+				continue
+			}
+			pid := podNodeID(wl.Namespace, pod.Name)
+			out.Nodes = append(out.Nodes, model.TopologyNode{
+				ID:     pid,
+				Type:   nodeTypePod,
+				Label:  pod.Name,
+				Status: pod.Status,
+				Attributes: map[string]interface{}{
+					"namespace": pod.Namespace,
+					"nodeName":  pod.NodeName,
+					"parentId":  wid, // parent workload id (model.TopologyNode has no ParentID column; frontend reads attributes.parentId)
+					"workload":  wid,
+				},
+			})
+			wlPodIDs[pod.Name] = pid
+
+			// 3) binds-to — one edge per pod binding to a slice already
+			// emitted earlier. Out-of-scope slice ids drop silently. The
+			// edge attributes carry role + index so the frontend can label
+			// "prefill" / "decode" / "primary" / "sidecar" without a join.
+			for _, b := range pod.Bindings {
+				if b.SliceID == "" {
+					continue
+				}
+				if _, ok := sliceIDs[b.SliceID]; !ok {
+					continue
+				}
+				out.Edges = append(out.Edges, model.TopologyEdge{
+					Source: pid,
+					Target: b.SliceID,
+					Type:   edgeTypeBindsTo,
+					Attributes: map[string]interface{}{
+						"role":       b.Role,
+						"indexInPod": b.IndexInPod,
+					},
+				})
+			}
+		}
+
+		// 4) pd-pair edges — phase 1 surfaces only the pd-pair relation
+		// type. from/to must both resolve to pod ids we just emitted within
+		// this workload (the relation field is workload-scoped per
+		// schema.json $defs.PodRelation). Cross-workload relations don't
+		// happen today; we keep the lookup local for clarity and to avoid
+		// accidental name collisions.
+		for _, rel := range wl.Relations {
+			if rel.Type != "pd-pair" {
+				continue
+			}
+			fromID, fromOK := wlPodIDs[rel.From]
+			toID, toOK := wlPodIDs[rel.To]
+			if !fromOK || !toOK {
+				continue
+			}
+			out.Edges = append(out.Edges, model.TopologyEdge{
+				Source: fromID,
+				Target: toID,
+				Type:   edgeTypePDPair,
+				Attributes: map[string]interface{}{
+					"workload": wid,
+				},
+			})
+		}
+	}
+}
+
+// workloadNodeID composes the topology node id for a workload. Namespaced
+// to avoid collisions when the same workload short name lives in different
+// namespaces (e.g. "ai-inference/qwen-8b" vs "training/qwen-8b").
+func workloadNodeID(namespace, name string) string {
+	return "workload/" + namespace + "/" + name
+}
+
+// podNodeID composes the topology node id for a pod. Pod names are unique
+// within a namespace per kubernetes semantics, so namespace+name is enough.
+// The "pod/" prefix prevents collision with workload ids that share the
+// same namespace+name.
+func podNodeID(namespace, podName string) string {
+	return "pod/" + namespace + "/" + podName
 }
 
 // switchLabel formats a switch label as its Name, falling back to ID. Mirrors

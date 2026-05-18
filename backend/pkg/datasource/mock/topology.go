@@ -1,4 +1,4 @@
-// Package mock — topology (P1-T-102, P1-T-211).
+// Package mock — topology (P1-T-102, P1-T-211, P1-T-213).
 //
 // GetTopology composes the cluster→node→npu→slice graph by loading the four
 // underlying fixtures (clusters / nodes / npus / slices) through the existing
@@ -13,6 +13,13 @@
 // switches + links from networkSwitches.json + networkLinks.json. Files are
 // optional — when they're absent the loader returns nil slices (and the
 // aggregator drops the fabric branch silently).
+//
+// P1-T-213 (ADR-0005): GetTopologyWithFabric's TopologyOptions now also
+// carries IncludeWorkloads. When true the loader reads workloads.json with a
+// thin local shape (loadWorkloadsForTopology — captures the `bindings` array
+// the model.Pod struct does not yet promote) and passes the bundle to
+// aggregator.BuildTopology, which appends workload + pod nodes + binds-to /
+// pd-pair edges. When false the response stays byte-equivalent to T102/T211.
 package mock
 
 import (
@@ -148,6 +155,53 @@ func (s *Source) loadLinks() ([]aggregator.NetworkLink, error) {
 	return s.links, s.linksErr
 }
 
+// topologyWorkloadsFixture is the on-disk shape we use to extract workloads
+// for the topology branch. We do NOT reuse model.WorkloadDetail because the
+// model.Pod type doesn't surface the per-pod `bindings` array (T013 added it
+// to the JSON schema but the Go model migration is deferred to a follow-up
+// RFC). Loading into our own type lets the aggregator consume bindings
+// without forcing a model package change inside an aggregator-scoped task.
+type topologyWorkloadsFixture struct {
+	Workloads []aggregator.WorkloadInput `json:"workloads"`
+}
+
+// loadWorkloadsForTopology reads workloads.json into the aggregator.WorkloadInput
+// shape. Independent of loadWorkloads (which feeds the /workloads REST
+// handler with the model.WorkloadDetail shape) so each cache stays decoupled
+// — same pattern as loadNPUs vs loadSlicesFlat both reading slices.json.
+//
+// Empty fixturesPath → nil slice, nil error. Missing file → sticky read
+// error (workloads.json is the central pillar — unlike fabric files, its
+// absence is a real configuration problem).
+func (s *Source) loadWorkloadsForTopology() ([]aggregator.WorkloadInput, error) {
+	s.topoWorkloadsOnce.Do(func() {
+		if s.fixturesPath == "" {
+			s.topoWorkloads = nil
+			return
+		}
+		fp := filepath.Join(s.fixturesPath, workloadsFile)
+		raw, err := os.ReadFile(fp) //nolint:gosec // fp is composed from a config-supplied directory; not user input
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				// Be lenient for tests that exercise topology without
+				// providing workloads.json: an empty workloads slice is a
+				// legal no-op for the workload branch.
+				s.topoWorkloads = nil
+				return
+			}
+			s.topoWorkloadsErr = fmt.Errorf("read workloads fixture %q: %w", fp, err)
+			return
+		}
+		var doc topologyWorkloadsFixture
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			s.topoWorkloadsErr = fmt.Errorf("parse workloads fixture %q: %w", fp, err)
+			return
+		}
+		s.topoWorkloads = doc.Workloads
+	})
+	return s.topoWorkloads, s.topoWorkloadsErr
+}
+
 // GetTopology assembles the topology DTO for the given cluster id (T102
 // signature — fabric-unaware). Delegates to getTopology with the zero-value
 // TopologyOptions so the zero-regression contract is satisfied by
@@ -162,16 +216,19 @@ func (s *Source) GetTopology(ctx context.Context, clusterID string, depth string
 	return s.getTopology(ctx, clusterID, depth, datasource.TopologyOptions{})
 }
 
-// GetTopologyWithFabric is the option-bag variant of GetTopology (P1-T-211).
-// When opts.IncludeFabric is true the response gains `type=switch` nodes
-// (from networkSwitches.json) and `type=fabric-link` edges (from
-// networkLinks.json). When false the response is byte-identical to
-// GetTopology — the AC's zero-regression requirement.
+// GetTopologyWithFabric is the option-bag variant of GetTopology (P1-T-211,
+// P1-T-213). When opts.IncludeFabric is true the response gains `type=switch`
+// nodes (from networkSwitches.json) and `type=fabric-link` edges (from
+// networkLinks.json). When opts.IncludeWorkloads is true (ADR-0005) the
+// response gains `type=workload` + `type=pod` nodes and `type=binds-to` +
+// `type=pd-pair` edges (from workloads.json). When both flags are false the
+// response is byte-identical to GetTopology — the AC's zero-regression
+// requirement. Flags compose independently.
 //
-// Implementation note: opts is the seed for future fabric flags (filter by
-// switch tier, include vlan attributes, etc.). The mock's `Capabilities()`
-// already advertises Topology = true; the existence of GetTopologyWithFabric
-// is an extension, not a gate.
+// Implementation note: opts is the seed for future fabric / workload flags
+// (filter by switch tier, include PVC volumes, etc.). The mock's
+// `Capabilities()` already advertises Topology = true; the existence of
+// GetTopologyWithFabric is an extension, not a gate.
 func (s *Source) GetTopologyWithFabric(ctx context.Context, clusterID string, depth string, opts datasource.TopologyOptions) (*model.Topology, error) {
 	return s.getTopology(ctx, clusterID, depth, opts)
 }
@@ -253,15 +310,28 @@ func (s *Source) getTopology(ctx context.Context, clusterID string, depth string
 		}
 	}
 
+	// 6) Workloads — loaded only when explicitly requested (ADR-0005). Same
+	// load-on-opt-in pattern as fabric so the GetTopology / IncludeFabric=
+	// false / IncludeWorkloads=false path keeps its zero disk-I/O footprint.
+	var workloads []aggregator.WorkloadInput
+	if opts.IncludeWorkloads {
+		workloads, err = s.loadWorkloadsForTopology()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	topo := aggregator.BuildTopology(aggregator.TopologyInputs{
-		Cluster:       cluster,
-		Nodes:         nodes,
-		NPUs:          npus,
-		Slices:        slices,
-		Depth:         depth,
-		IncludeFabric: opts.IncludeFabric,
-		Switches:      switches,
-		Links:         links,
+		Cluster:          cluster,
+		Nodes:            nodes,
+		NPUs:             npus,
+		Slices:           slices,
+		Depth:            depth,
+		IncludeFabric:    opts.IncludeFabric,
+		Switches:         switches,
+		Links:            links,
+		IncludeWorkloads: opts.IncludeWorkloads,
+		Workloads:        workloads,
 	})
 	return topo, nil
 }

@@ -588,3 +588,201 @@ func TestGetClusterTopology_IncludeFabric_BadValueTreatedAsFalse(t *testing.T) {
 	assert.Len(t, topo.Nodes, 8, "bad includeFabric should not add fabric")
 	assert.Len(t, topo.Edges, 7)
 }
+
+// ---- Topology workloads (P1-T-213 / ADR-0005) ----------------------------
+//
+// Workload tests layer a workloads.json fixture (with per-pod bindings + a
+// pd-pair relation) onto the canonical 1-cluster / 2-node / 3-npu / 2-slice
+// tree and assert the response gains workload + pod nodes + binds-to /
+// pd-pair edges. Bindings point at slice ids the tree emits at depth=slice
+// so the binds-to guard surfaces them on the wire.
+
+// topologyWorkloadsFixture mirrors the on-disk shape of
+// configs/mock-data/set-a-small/workloads.json — a top-level `workloads`
+// array. Each pod carries the canonical T013 `bindings` field.
+const topologyWorkloadsFixture = `{
+  "workloads": [
+    {
+      "name": "qwen-8b-pd",
+      "namespace": "ai-inference",
+      "kind": "InferenceService",
+      "type": "inference",
+      "status": "running",
+      "replicas": {"desired": 2, "ready": 2},
+      "nodeNames": ["worker-site-a-01"],
+      "pods": [
+        {
+          "name": "qwen-8b-pd-prefill-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-01",
+          "status": "Running",
+          "bindings": [
+            {"sliceId": "worker-site-a-01-npu-0-slice-0", "role": "prefill", "indexInPod": 0}
+          ]
+        },
+        {
+          "name": "qwen-8b-pd-decode-0",
+          "namespace": "ai-inference",
+          "nodeName": "worker-site-a-01",
+          "status": "Running",
+          "bindings": [
+            {"sliceId": "worker-site-a-01-npu-0-slice-1", "role": "decode", "indexInPod": 0}
+          ]
+        }
+      ],
+      "relations": [
+        {"from": "qwen-8b-pd-prefill-0", "to": "qwen-8b-pd-decode-0", "type": "pd-pair"}
+      ]
+    }
+  ]
+}`
+
+// writeTopologyFixturesWithWorkloads layers workloads.json on top of the
+// T102 tree. Used by the workload-branch happy path.
+func writeTopologyFixturesWithWorkloads(t *testing.T) string {
+	t.Helper()
+	dir := writeTopologyFixtures(t)
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "workloads.json"),
+		[]byte(topologyWorkloadsFixture), 0o600))
+	return dir
+}
+
+// writeTopologyFixturesWithFabricAndWorkloads layers BOTH fabric files AND
+// workloads.json onto the 3-worker tree. Used by the
+// includeFabric+includeWorkloads coexistence test (AC: both flags compose).
+func writeTopologyFixturesWithFabricAndWorkloads(t *testing.T) string {
+	t.Helper()
+	dir := writeTopologyFixturesWithFabric3Workers(t)
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "workloads.json"),
+		[]byte(topologyWorkloadsFixture), 0o600))
+	return dir
+}
+
+func TestGetClusterTopology_IncludeWorkloadsTrue_AddsWorkloadPodEdges(t *testing.T) {
+	// AC: ?includeWorkloads=true at depth=slice → response gains 1 workload
+	// + 2 pod nodes + 2 binds-to edges + 1 pd-pair edge.
+	router := newTopologyRouter(t, writeTopologyFixturesWithWorkloads(t))
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/clusters/cluster-prod-a-01/topology?depth=slice&includeWorkloads=true", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var topo model.Topology
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &topo))
+
+	// T102 base (8 nodes / 7 edges) + 1 workload + 2 pod = 11 nodes.
+	// 7 base edges + 2 binds-to + 1 pd-pair = 10 edges.
+	assert.Len(t, topo.Nodes, 11)
+	assert.Len(t, topo.Edges, 10)
+
+	// Count by type for clarity.
+	typeCounts := map[string]int{}
+	for _, n := range topo.Nodes {
+		typeCounts[n.Type]++
+	}
+	assert.Equal(t, 1, typeCounts["workload"], "expected exactly 1 workload node")
+	assert.Equal(t, 2, typeCounts["pod"], "expected exactly 2 pod nodes")
+
+	edgeTypeCounts := map[string]int{}
+	for _, e := range topo.Edges {
+		edgeTypeCounts[e.Type]++
+	}
+	assert.Equal(t, 2, edgeTypeCounts["binds-to"], "expected exactly 2 binds-to edges")
+	assert.Equal(t, 1, edgeTypeCounts["pd-pair"], "expected exactly 1 pd-pair edge")
+
+	// Spot-check pd-pair connects the two pods (regardless of from/to order).
+	var foundPDPair bool
+	for _, e := range topo.Edges {
+		if e.Type != "pd-pair" {
+			continue
+		}
+		assert.Equal(t, "pod/ai-inference/qwen-8b-pd-prefill-0", e.Source)
+		assert.Equal(t, "pod/ai-inference/qwen-8b-pd-decode-0", e.Target)
+		foundPDPair = true
+	}
+	assert.True(t, foundPDPair, "expected pd-pair edge between prefill/decode pods")
+
+	// Spot-check binds-to carries role attribute.
+	var foundBindsToWithRole bool
+	for _, e := range topo.Edges {
+		if e.Type != "binds-to" {
+			continue
+		}
+		if role, ok := e.Attributes["role"].(string); ok && role != "" {
+			foundBindsToWithRole = true
+		}
+	}
+	assert.True(t, foundBindsToWithRole, "expected at least one binds-to edge with role attr")
+}
+
+func TestGetClusterTopology_IncludeWorkloadsFalse_ZeroRegression(t *testing.T) {
+	// AC: default (?includeWorkloads not set, or =false) is byte-equivalent
+	// to T102 even when workloads.json exists on disk.
+	router := newTopologyRouter(t, writeTopologyFixturesWithWorkloads(t))
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/clusters/cluster-prod-a-01/topology?depth=slice", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var topo model.Topology
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &topo))
+
+	// Same counts as TestGetClusterTopology_DepthSlice_FullGraph.
+	assert.Len(t, topo.Nodes, 8)
+	assert.Len(t, topo.Edges, 7)
+
+	for _, n := range topo.Nodes {
+		assert.NotEqual(t, "workload", n.Type,
+			"workload node leaked into includeWorkloads=false response: %v", n.ID)
+		assert.NotEqual(t, "pod", n.Type,
+			"pod node leaked into includeWorkloads=false response: %v", n.ID)
+	}
+	for _, e := range topo.Edges {
+		assert.NotContains(t, []string{"binds-to", "pd-pair"}, e.Type,
+			"workload-only edge leaked into includeWorkloads=false response: %v", e.Type)
+	}
+}
+
+func TestGetClusterTopology_IncludeFabricAndWorkloads_BothComposeOnSameWire(t *testing.T) {
+	// AC: includeFabric=true AND includeWorkloads=true compose independently
+	// (fabric switch + links AND workload + pod + binds-to/pd-pair land on
+	// the same response). Uses the 3-worker tree so all fabric links
+	// resolve.
+	router := newTopologyRouter(t, writeTopologyFixturesWithFabricAndWorkloads(t))
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/clusters/cluster-prod-a-01/topology?depth=slice&includeFabric=true&includeWorkloads=true", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var topo model.Topology
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &topo))
+
+	// Both layers should be present. Count by type rather than total —
+	// total depends on T102 base which the fabric AC test already pins.
+	typeCounts := map[string]int{}
+	for _, n := range topo.Nodes {
+		typeCounts[n.Type]++
+	}
+	assert.GreaterOrEqual(t, typeCounts["switch"], 1, "expected at least 1 switch (fabric layer present)")
+	assert.GreaterOrEqual(t, typeCounts["workload"], 1, "expected at least 1 workload (workload layer present)")
+	assert.GreaterOrEqual(t, typeCounts["pod"], 2, "expected at least 2 pods (workload layer present)")
+
+	edgeTypeCounts := map[string]int{}
+	for _, e := range topo.Edges {
+		edgeTypeCounts[e.Type]++
+	}
+	assert.GreaterOrEqual(t, edgeTypeCounts["fabric-link"], 1, "fabric-link edges missing")
+	assert.GreaterOrEqual(t, edgeTypeCounts["binds-to"], 2, "binds-to edges missing")
+	assert.Equal(t, 1, edgeTypeCounts["pd-pair"], "pd-pair edge missing")
+}

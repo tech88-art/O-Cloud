@@ -429,3 +429,327 @@ func TestBuildTopology_Fabric_EmptySwitchesNoLinks_NoOp(t *testing.T) {
 	assert.Len(t, topo.Nodes, 8)
 	assert.Len(t, topo.Edges, 7)
 }
+
+// ---- P1-T-213 workload branch tests ------------------------------------
+//
+// Each workload case re-uses fixtureInputs() as the base then layers in
+// Workloads + IncludeWorkloads. Assertions count the delta from the T102
+// base (8 nodes / 7 edges at depth=slice) so a future T102 fixture tweak
+// doesn't ripple in.
+
+// workloadsFixture returns a representative 2-workload bundle:
+//  1. "ai-inference/qwen-8b-pd" — PD pair (prefill + decode) with two pods.
+//     Each pod binds to one slice already emitted by fixtureInputs().
+//  2. "training/llama2-7b" — single pod with no bindings (training Job
+//     with no NPU allocation in its bindings; mirrors the pending-Job
+//     pattern from set-a-small/workloads.json).
+//
+// Note both workloads bind to the same slice id ("node-1-npu-0-slice-0")
+// so the binds-to edges land on a real slice node — fixtureInputs() emits
+// exactly that slice at depth=slice. The unbound second pod ("decode")
+// also binds to "node-1-npu-0-slice-1" so we exercise multiple bindings.
+func workloadsFixture() []WorkloadInput {
+	return []WorkloadInput{
+		{
+			Name:      "qwen-8b-pd",
+			Namespace: "ai-inference",
+			Kind:      "InferenceService",
+			Type:      "inference",
+			Status:    "running",
+			Replicas:  &WorkloadReplicas{Desired: 2, Ready: 2},
+			NodeNames: []string{"node-1"},
+			Pods: []WorkloadPod{
+				{
+					Name:      "qwen-8b-pd-prefill-0",
+					Namespace: "ai-inference",
+					NodeName:  "node-1",
+					Status:    "Running",
+					Bindings: []PodBinding{
+						{SliceID: "node-1-npu-0-slice-0", Role: "prefill", IndexInPod: 0},
+					},
+				},
+				{
+					Name:      "qwen-8b-pd-decode-0",
+					Namespace: "ai-inference",
+					NodeName:  "node-1",
+					Status:    "Running",
+					Bindings: []PodBinding{
+						{SliceID: "node-1-npu-0-slice-1", Role: "decode", IndexInPod: 0},
+					},
+				},
+			},
+			Relations: []WorkloadRelation{
+				{From: "qwen-8b-pd-prefill-0", To: "qwen-8b-pd-decode-0", Type: "pd-pair"},
+			},
+		},
+		{
+			Name:      "llama2-7b",
+			Namespace: "training",
+			Kind:      "Job",
+			Type:      "training",
+			Status:    "pending",
+			Replicas:  &WorkloadReplicas{Desired: 1, Ready: 0},
+			Pods: []WorkloadPod{
+				{Name: "llama2-7b-c4tz9", Namespace: "training", Status: "Pending"},
+			},
+		},
+	}
+}
+
+func TestBuildTopology_Workloads_IncludeWorkloadsFalse_NoOp(t *testing.T) {
+	// AC: IncludeWorkloads=false (default) → output byte-equivalent to
+	// T102/T211. Even when Workloads is populated, no workload / pod /
+	// binds-to / pd-pair lands on the wire.
+	in := fixtureInputs()
+	in.IncludeWorkloads = false
+	in.Workloads = workloadsFixture()
+
+	topo := BuildTopology(in)
+
+	assert.Len(t, topo.Nodes, 8)
+	assert.Len(t, topo.Edges, 7)
+
+	byID := indexNodes(t, topo)
+	for id := range byID {
+		assert.NotEqual(t, "workload", byID[id].Type,
+			"workload node leaked when IncludeWorkloads=false: %v", id)
+		assert.NotEqual(t, "pod", byID[id].Type,
+			"pod node leaked when IncludeWorkloads=false: %v", id)
+	}
+	for _, e := range topo.Edges {
+		assert.NotEqual(t, "binds-to", e.Type,
+			"binds-to edge leaked when IncludeWorkloads=false")
+		assert.NotEqual(t, "pd-pair", e.Type,
+			"pd-pair edge leaked when IncludeWorkloads=false")
+	}
+}
+
+func TestBuildTopology_Workloads_DepthSlice_AddsWorkloadPodEdges(t *testing.T) {
+	// AC: depth=slice, IncludeWorkloads=true → 2 workload + 3 pod nodes
+	// added; 2 binds-to edges (one per pod with a binding to an in-scope
+	// slice) + 1 pd-pair edge added.
+	in := fixtureInputs()
+	in.IncludeWorkloads = true
+	in.Workloads = workloadsFixture()
+
+	topo := BuildTopology(in)
+
+	// T102 base (8 nodes / 7 edges) + 2 workload + 3 pod = 13 nodes total.
+	assert.Len(t, topo.Nodes, 13)
+	// T102 base 7 edges + 2 binds-to + 1 pd-pair = 10 edges total.
+	assert.Len(t, topo.Edges, 10)
+
+	byID := indexNodes(t, topo)
+
+	// Workload + pod nodes are namespaced to avoid name collisions across
+	// namespaces. Verify the canonical id scheme.
+	require.Contains(t, byID, "workload/ai-inference/qwen-8b-pd")
+	require.Contains(t, byID, "workload/training/llama2-7b")
+	require.Contains(t, byID, "pod/ai-inference/qwen-8b-pd-prefill-0")
+	require.Contains(t, byID, "pod/ai-inference/qwen-8b-pd-decode-0")
+	require.Contains(t, byID, "pod/training/llama2-7b-c4tz9")
+
+	wl := byID["workload/ai-inference/qwen-8b-pd"]
+	assert.Equal(t, "workload", wl.Type)
+	assert.Equal(t, "ai-inference/qwen-8b-pd", wl.Label)
+	assert.Equal(t, "running", wl.Status)
+	assert.Equal(t, "InferenceService", wl.Attributes["kind"])
+	rep, ok := wl.Attributes["replicas"].(map[string]interface{})
+	require.True(t, ok, "replicas attr should be a map")
+	assert.Equal(t, 2, rep["desired"])
+	assert.Equal(t, 2, rep["ready"])
+
+	pod := byID["pod/ai-inference/qwen-8b-pd-prefill-0"]
+	assert.Equal(t, "pod", pod.Type)
+	assert.Equal(t, "qwen-8b-pd-prefill-0", pod.Label)
+	assert.Equal(t, "Running", pod.Status)
+	assert.Equal(t, "workload/ai-inference/qwen-8b-pd", pod.Attributes["parentId"])
+
+	edges := indexEdges(topo)
+	// binds-to: prefill → slice-0, decode → slice-1
+	assert.Contains(t, edges, [3]string{
+		"pod/ai-inference/qwen-8b-pd-prefill-0",
+		"node-1-npu-0-slice-0",
+		"binds-to",
+	})
+	assert.Contains(t, edges, [3]string{
+		"pod/ai-inference/qwen-8b-pd-decode-0",
+		"node-1-npu-0-slice-1",
+		"binds-to",
+	})
+	// pd-pair: prefill ↔ decode
+	assert.Contains(t, edges, [3]string{
+		"pod/ai-inference/qwen-8b-pd-prefill-0",
+		"pod/ai-inference/qwen-8b-pd-decode-0",
+		"pd-pair",
+	})
+}
+
+func TestBuildTopology_Workloads_NoBindings_OnlyNodes(t *testing.T) {
+	// AC: workloads with zero bindings still surface workload + pod nodes;
+	// no binds-to / pd-pair edges materialize. Mirrors training Jobs and
+	// pending pods that haven't been bound to a slice yet.
+	in := fixtureInputs()
+	in.IncludeWorkloads = true
+	in.Workloads = []WorkloadInput{
+		{
+			Name:      "pending-train",
+			Namespace: "training",
+			Kind:      "Job",
+			Status:    "pending",
+			Pods: []WorkloadPod{
+				{Name: "pending-train-pod-0", Namespace: "training", Status: "Pending"},
+				{Name: "pending-train-pod-1", Namespace: "training", Status: "Pending"},
+			},
+			// No relations either — just bare pods.
+		},
+	}
+
+	topo := BuildTopology(in)
+
+	// 8 base + 1 workload + 2 pod = 11 nodes; edges unchanged (still 7).
+	assert.Len(t, topo.Nodes, 11)
+	assert.Len(t, topo.Edges, 7)
+
+	byID := indexNodes(t, topo)
+	require.Contains(t, byID, "workload/training/pending-train")
+	require.Contains(t, byID, "pod/training/pending-train-pod-0")
+	require.Contains(t, byID, "pod/training/pending-train-pod-1")
+	for _, e := range topo.Edges {
+		assert.NotEqual(t, "binds-to", e.Type)
+		assert.NotEqual(t, "pd-pair", e.Type)
+	}
+}
+
+func TestBuildTopology_Workloads_OrphanBindingDropped(t *testing.T) {
+	// AC: pod bindings pointing at a slice id not in the graph drop
+	// silently. Mirrors the orphan-NPU / orphan-link guards for the same
+	// self-consistency reason — keeps the wire payload self-consistent for
+	// the frontend renderer.
+	in := fixtureInputs()
+	in.IncludeWorkloads = true
+	in.Workloads = []WorkloadInput{
+		{
+			Name:      "test-wl",
+			Namespace: "default",
+			Status:    "running",
+			Pods: []WorkloadPod{
+				{
+					Name: "test-pod",
+					Bindings: []PodBinding{
+						{SliceID: "node-1-npu-0-slice-0", Role: "primary"}, // in scope
+						{SliceID: "slice-does-not-exist", Role: "primary"}, // orphan → drop
+						{SliceID: "", Role: "primary"},                     // empty → drop
+					},
+				},
+			},
+		},
+	}
+
+	topo := BuildTopology(in)
+
+	byID := indexNodes(t, topo)
+	require.Contains(t, byID, "pod/default/test-pod")
+
+	// Only one binds-to edge: the in-scope one. Other two drop.
+	var bindsToCount int
+	for _, e := range topo.Edges {
+		if e.Type == "binds-to" {
+			bindsToCount++
+		}
+	}
+	assert.Equal(t, 1, bindsToCount, "expected exactly 1 binds-to edge (orphan + empty must drop)")
+
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{
+		"pod/default/test-pod",
+		"node-1-npu-0-slice-0",
+		"binds-to",
+	})
+}
+
+func TestBuildTopology_Workloads_PDPairOrphanRelationDropped(t *testing.T) {
+	// AC corollary: pd-pair relation referencing a pod not in the workload
+	// drops silently. Same self-consistency rule as orphan bindings.
+	in := fixtureInputs()
+	in.IncludeWorkloads = true
+	in.Workloads = []WorkloadInput{
+		{
+			Name:      "broken-pd",
+			Namespace: "ai-inference",
+			Status:    "running",
+			Pods: []WorkloadPod{
+				{Name: "real-prefill", Namespace: "ai-inference", Status: "Running"},
+				// Note: no "ghost-decode" pod actually defined.
+			},
+			Relations: []WorkloadRelation{
+				{From: "real-prefill", To: "ghost-decode", Type: "pd-pair"},
+			},
+		},
+	}
+
+	topo := BuildTopology(in)
+
+	for _, e := range topo.Edges {
+		assert.NotEqual(t, "pd-pair", e.Type,
+			"pd-pair edge leaked when target pod was orphan")
+	}
+}
+
+func TestBuildTopology_Workloads_FabricCoexists(t *testing.T) {
+	// AC: includeFabric=true AND includeWorkloads=true compose
+	// independently. Switch + fabric-link AND workload + pod + binds-to /
+	// pd-pair all land on the same wire payload.
+	in := fixtureInputs()
+	in.IncludeFabric = true
+	switches, links := fabricFixture()
+	in.Switches = switches
+	in.Links = links
+	in.IncludeWorkloads = true
+	in.Workloads = workloadsFixture()
+
+	topo := BuildTopology(in)
+
+	// 8 base + 1 switch + 2 workload + 3 pod = 14 nodes total.
+	assert.Len(t, topo.Nodes, 14)
+	// 7 base + 2 fabric-link + 2 binds-to + 1 pd-pair = 12 edges total.
+	assert.Len(t, topo.Edges, 12)
+
+	byID := indexNodes(t, topo)
+	require.Contains(t, byID, "switch-tor-a-01")
+	require.Contains(t, byID, "workload/ai-inference/qwen-8b-pd")
+
+	edges := indexEdges(topo)
+	// Fabric layer still intact.
+	assert.Contains(t, edges, [3]string{"switch-tor-a-01", "node-1", "fabric-link"})
+	// Workload layer intact alongside it.
+	assert.Contains(t, edges, [3]string{
+		"pod/ai-inference/qwen-8b-pd-prefill-0",
+		"pod/ai-inference/qwen-8b-pd-decode-0",
+		"pd-pair",
+	})
+}
+
+func TestBuildTopology_Workloads_DepthNode_PodsPresentBindsToDropped(t *testing.T) {
+	// AC variant: at depth=node no slices are emitted, so all binds-to
+	// edges silently drop — workload + pod nodes still surface so the
+	// frontend can render the "include workloads" toggle at shallow depth.
+	// pd-pair edges still land because they connect pods (which are
+	// present at every depth when IncludeWorkloads=true).
+	in := fixtureInputs()
+	in.Depth = DepthNode
+	in.IncludeWorkloads = true
+	in.Workloads = workloadsFixture()
+
+	topo := BuildTopology(in)
+
+	// 1 cluster + 2 nodes + 2 workload + 3 pod = 8 nodes.
+	assert.Len(t, topo.Nodes, 8)
+	// 2 cluster→node + 1 pd-pair = 3 edges. No binds-to (no slice exists).
+	assert.Len(t, topo.Edges, 3)
+
+	for _, e := range topo.Edges {
+		assert.NotEqual(t, "binds-to", e.Type,
+			"binds-to should drop at depth=node (no slice nodes to target)")
+	}
+}

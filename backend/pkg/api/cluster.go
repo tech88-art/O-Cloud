@@ -110,6 +110,12 @@ func (h *Handler) GetCluster(c *gin.Context) {
 //     from the source's fabric fixtures. Default false preserves T102
 //     bytes (zero-regression AC). Truthy parsing follows strconv.ParseBool —
 //     a bad value yields false rather than 400 (frontend-typo grace).
+//   - includeWorkloads (bool, default false; P1-T-213 / ADR-0005): when true
+//     the response gains `type=workload` + `type=pod` nodes plus
+//     `type=binds-to` (pod→slice) and `type=pd-pair` (pod↔pod) edges drawn
+//     from the source's workloads fixture. Default false preserves
+//     T102/T211 bytes. Same lenient bool parsing as includeFabric.
+//     includeFabric and includeWorkloads compose independently.
 //
 // Errors:
 //   - cluster id unknown → 404 with the canonical Error envelope.
@@ -126,7 +132,8 @@ func (h *Handler) GetClusterTopology(c *gin.Context) {
 	}
 
 	depth := c.DefaultQuery("depth", defaultTopologyDepth)
-	includeFabric := parseIncludeFabric(c.Query("includeFabric"))
+	includeFabric := parseTopologyBool(c.Query("includeFabric"))
+	includeWorkloads := parseTopologyBool(c.Query("includeWorkloads"))
 
 	src := h.topologySource()
 	if src == nil {
@@ -136,15 +143,18 @@ func (h *Handler) GetClusterTopology(c *gin.Context) {
 		return
 	}
 
-	// Dispatch: when fabric is requested we go through the option-bag
-	// signature; otherwise we keep calling the legacy GetTopology so any
-	// test double that overrides only that method (e.g.
+	// Dispatch: when either fabric or workloads is requested we go through
+	// the option-bag signature; otherwise we keep calling the legacy
+	// GetTopology so any test double that overrides only that method (e.g.
 	// erroringTopologySource) still funnels its sentinel error through.
 	var topo *model.Topology
 	var err error
-	if includeFabric {
+	if includeFabric || includeWorkloads {
 		topo, err = src.GetTopologyWithFabric(c.Request.Context(), id, depth,
-			datasource.TopologyOptions{IncludeFabric: true})
+			datasource.TopologyOptions{
+				IncludeFabric:    includeFabric,
+				IncludeWorkloads: includeWorkloads,
+			})
 	} else {
 		topo, err = src.GetTopology(c.Request.Context(), id, depth)
 	}
@@ -163,6 +173,7 @@ func (h *Handler) GetClusterTopology(c *gin.Context) {
 			zap.String("clusterId", id),
 			zap.String("depth", depth),
 			zap.Bool("includeFabric", includeFabric),
+			zap.Bool("includeWorkloads", includeWorkloads),
 			zap.Error(err))
 		respondError(c, http.StatusInternalServerError, CodeInternalError,
 			"failed to get topology", nil)
@@ -171,11 +182,12 @@ func (h *Handler) GetClusterTopology(c *gin.Context) {
 	c.JSON(http.StatusOK, topo)
 }
 
-// parseIncludeFabric converts the raw `?includeFabric=` value into a bool.
-// Empty / missing / unparseable → false. Accepts the same truthy spellings
-// strconv.ParseBool does (1/t/T/TRUE/true/True). Bad values do NOT 400 — see
-// the depth handling note for the rationale.
-func parseIncludeFabric(raw string) bool {
+// parseTopologyBool converts a raw query param value (e.g. `?includeFabric=`,
+// `?includeWorkloads=`) into a bool. Empty / missing / unparseable → false.
+// Accepts the same truthy spellings strconv.ParseBool does (1/t/T/TRUE/true/
+// True). Bad values do NOT 400 — see the depth handling note for the
+// rationale (frontend typos shouldn't break the page).
+func parseTopologyBool(raw string) bool {
 	if raw == "" {
 		return false
 	}
