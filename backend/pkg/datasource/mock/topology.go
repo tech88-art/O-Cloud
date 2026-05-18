@@ -1,4 +1,4 @@
-// Package mock — topology (P1-T-102).
+// Package mock — topology (P1-T-102, P1-T-211).
 //
 // GetTopology composes the cluster→node→npu→slice graph by loading the four
 // underlying fixtures (clusters / nodes / npus / slices) through the existing
@@ -8,6 +8,11 @@
 // loadNPUs already reads slices.json but discards the flat array (it attaches
 // slices onto their parent NPU). Topology needs the flat array; we load it
 // independently here.
+//
+// P1-T-211 (ADR-0004): GetTopologyWithFabric optionally folds in fabric
+// switches + links from networkSwitches.json + networkLinks.json. Files are
+// optional — when they're absent the loader returns nil slices (and the
+// aggregator drops the fabric branch silently).
 package mock
 
 import (
@@ -19,8 +24,28 @@ import (
 	"path/filepath"
 
 	"github.com/example/ocloud-edge/backend/pkg/aggregator"
+	"github.com/example/ocloud-edge/backend/pkg/datasource"
 	"github.com/example/ocloud-edge/backend/pkg/model"
 )
+
+// networkSwitchesFile / networkLinksFile are the JSON fixture names ADR-0004
+// adds under fixturesPath. Both are optional: missing files yield empty
+// slices, not errors (different fixture sets ship different scopes — set-c-
+// stress will probably not bother).
+const (
+	networkSwitchesFile = "networkSwitches.json"
+	networkLinksFile    = "networkLinks.json"
+)
+
+// networkSwitchesFixture / networkLinksFixture mirror the on-disk shape — the
+// composite document at configs/mock-data/set-a-small/{networkSwitches,
+// networkLinks}.json with a single top-level keyed array.
+type networkSwitchesFixture struct {
+	NetworkSwitches []aggregator.NetworkSwitch `json:"networkSwitches"`
+}
+type networkLinksFixture struct {
+	NetworkLinks []aggregator.NetworkLink `json:"networkLinks"`
+}
 
 // ErrTopologyClusterNotFound is the topology-specific 404 sentinel. We don't
 // reuse ErrClusterNotFound from cluster.go because the topology handler maps
@@ -59,20 +84,114 @@ func (s *Source) loadSlicesFlat() ([]model.NPUSlice, error) {
 	return s.slices, s.slicesErr
 }
 
-// GetTopology assembles the topology DTO for the given cluster id.
+// loadSwitches reads networkSwitches.json at most once per Source. The file
+// is OPTIONAL — when missing we return a nil slice + nil error rather than
+// propagating the read error. This mirrors how ADR-0004 explicitly notes that
+// fixture sets ship fabric data on opt-in basis (set-a-small does, but
+// set-c-stress might skip).
+//
+// Empty fixturesPath → nil slice + nil error (matches loadClusters semantics).
+// Parse failures ARE sticky errors because a malformed JSON file is a clear
+// fixture bug we don't want to mask.
+func (s *Source) loadSwitches() ([]aggregator.NetworkSwitch, error) {
+	s.switchesOnce.Do(func() {
+		if s.fixturesPath == "" {
+			s.switches = nil
+			return
+		}
+		fp := filepath.Join(s.fixturesPath, networkSwitchesFile)
+		raw, err := os.ReadFile(fp) //nolint:gosec // fp is composed from a config-supplied directory; not user input
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				// Optional fixture absent — fabric just gets an empty list.
+				s.switches = nil
+				return
+			}
+			s.switchesErr = fmt.Errorf("read networkSwitches fixture %q: %w", fp, err)
+			return
+		}
+		var doc networkSwitchesFixture
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			s.switchesErr = fmt.Errorf("parse networkSwitches fixture %q: %w", fp, err)
+			return
+		}
+		s.switches = doc.NetworkSwitches
+	})
+	return s.switches, s.switchesErr
+}
+
+// loadLinks reads networkLinks.json at most once per Source. Same semantics
+// as loadSwitches (optional file → nil + nil; parse error → sticky).
+func (s *Source) loadLinks() ([]aggregator.NetworkLink, error) {
+	s.linksOnce.Do(func() {
+		if s.fixturesPath == "" {
+			s.links = nil
+			return
+		}
+		fp := filepath.Join(s.fixturesPath, networkLinksFile)
+		raw, err := os.ReadFile(fp) //nolint:gosec // fp is composed from a config-supplied directory; not user input
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				s.links = nil
+				return
+			}
+			s.linksErr = fmt.Errorf("read networkLinks fixture %q: %w", fp, err)
+			return
+		}
+		var doc networkLinksFixture
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			s.linksErr = fmt.Errorf("parse networkLinks fixture %q: %w", fp, err)
+			return
+		}
+		s.links = doc.NetworkLinks
+	})
+	return s.links, s.linksErr
+}
+
+// GetTopology assembles the topology DTO for the given cluster id (T102
+// signature — fabric-unaware). Delegates to getTopology with the zero-value
+// TopologyOptions so the zero-regression contract is satisfied by
+// construction: GetTopology bytes ≡ GetTopologyWithFabric(opts{}) bytes.
 //
 // Errors:
 //   - ctx.Err() is propagated verbatim (request cancellation).
 //   - When the cluster id is unknown, returns ErrTopologyClusterNotFound
 //     (handler maps to 404).
 //   - Fixture load failures bubble up untyped (handler maps to 500).
+func (s *Source) GetTopology(ctx context.Context, clusterID string, depth string) (*model.Topology, error) {
+	return s.getTopology(ctx, clusterID, depth, datasource.TopologyOptions{})
+}
+
+// GetTopologyWithFabric is the option-bag variant of GetTopology (P1-T-211).
+// When opts.IncludeFabric is true the response gains `type=switch` nodes
+// (from networkSwitches.json) and `type=fabric-link` edges (from
+// networkLinks.json). When false the response is byte-identical to
+// GetTopology — the AC's zero-regression requirement.
+//
+// Implementation note: opts is the seed for future fabric flags (filter by
+// switch tier, include vlan attributes, etc.). The mock's `Capabilities()`
+// already advertises Topology = true; the existence of GetTopologyWithFabric
+// is an extension, not a gate.
+func (s *Source) GetTopologyWithFabric(ctx context.Context, clusterID string, depth string, opts datasource.TopologyOptions) (*model.Topology, error) {
+	return s.getTopology(ctx, clusterID, depth, opts)
+}
+
+// getTopology is the shared implementation behind GetTopology and
+// GetTopologyWithFabric. Keeps fixture loading + aggregator delegation in one
+// place so the two public entry points can never drift on the depth=… code
+// path (the AC explicitly requires byte-equivalence when opts.IncludeFabric is
+// false).
 //
 // Implementation chooses pre-filtering NPUs/slices by what the depth needs:
 // loadNPUs and loadSlicesFlat both cost the full file regardless of depth,
 // but aggregator.BuildTopology then prunes by depth. Net cost is bounded by
 // set-a-small fixture size (24 NPUs / ~18 slices) — no point optimizing
 // further until set-c-stress arrives.
-func (s *Source) GetTopology(ctx context.Context, clusterID string, depth string) (*model.Topology, error) {
+//
+// Fabric loaders (loadSwitches / loadLinks) are gated on opts.IncludeFabric
+// so the legacy GetTopology path skips them entirely — preserving its
+// disk-I/O footprint as a byproduct of the same gate.
+func (s *Source) getTopology(ctx context.Context, clusterID string, depth string, opts datasource.TopologyOptions) (*model.Topology, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -120,12 +239,29 @@ func (s *Source) GetTopology(ctx context.Context, clusterID string, depth string
 		}
 	}
 
+	// 5) Fabric — loaded only when explicitly requested.
+	var switches []aggregator.NetworkSwitch
+	var links []aggregator.NetworkLink
+	if opts.IncludeFabric {
+		switches, err = s.loadSwitches()
+		if err != nil {
+			return nil, err
+		}
+		links, err = s.loadLinks()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	topo := aggregator.BuildTopology(aggregator.TopologyInputs{
-		Cluster: cluster,
-		Nodes:   nodes,
-		NPUs:    npus,
-		Slices:  slices,
-		Depth:   depth,
+		Cluster:       cluster,
+		Nodes:         nodes,
+		NPUs:          npus,
+		Slices:        slices,
+		Depth:         depth,
+		IncludeFabric: opts.IncludeFabric,
+		Switches:      switches,
+		Links:         links,
 	})
 	return topo, nil
 }

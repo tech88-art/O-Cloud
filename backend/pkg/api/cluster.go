@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -104,6 +105,11 @@ func (h *Handler) GetCluster(c *gin.Context) {
 //     emit 400 here because the OpenAPI spec marks the param as enum +
 //     default rather than strict, and a frontend typo shouldn't break the
 //     page.
+//   - includeFabric (bool, default false; P1-T-211 / ADR-0004): when true the
+//     response gains `type=switch` nodes + `type=fabric-link` edges drawn
+//     from the source's fabric fixtures. Default false preserves T102
+//     bytes (zero-regression AC). Truthy parsing follows strconv.ParseBool —
+//     a bad value yields false rather than 400 (frontend-typo grace).
 //
 // Errors:
 //   - cluster id unknown → 404 with the canonical Error envelope.
@@ -120,6 +126,7 @@ func (h *Handler) GetClusterTopology(c *gin.Context) {
 	}
 
 	depth := c.DefaultQuery("depth", defaultTopologyDepth)
+	includeFabric := parseIncludeFabric(c.Query("includeFabric"))
 
 	src := h.topologySource()
 	if src == nil {
@@ -129,7 +136,18 @@ func (h *Handler) GetClusterTopology(c *gin.Context) {
 		return
 	}
 
-	topo, err := src.GetTopology(c.Request.Context(), id, depth)
+	// Dispatch: when fabric is requested we go through the option-bag
+	// signature; otherwise we keep calling the legacy GetTopology so any
+	// test double that overrides only that method (e.g.
+	// erroringTopologySource) still funnels its sentinel error through.
+	var topo *model.Topology
+	var err error
+	if includeFabric {
+		topo, err = src.GetTopologyWithFabric(c.Request.Context(), id, depth,
+			datasource.TopologyOptions{IncludeFabric: true})
+	} else {
+		topo, err = src.GetTopology(c.Request.Context(), id, depth)
+	}
 	if err != nil {
 		// ErrTopologyClusterNotFound wraps ErrClusterNotFound, so a single
 		// errors.Is on the leaf sentinel catches both. Order matters less
@@ -144,12 +162,28 @@ func (h *Handler) GetClusterTopology(c *gin.Context) {
 			zap.String("source", src.Name()),
 			zap.String("clusterId", id),
 			zap.String("depth", depth),
+			zap.Bool("includeFabric", includeFabric),
 			zap.Error(err))
 		respondError(c, http.StatusInternalServerError, CodeInternalError,
 			"failed to get topology", nil)
 		return
 	}
 	c.JSON(http.StatusOK, topo)
+}
+
+// parseIncludeFabric converts the raw `?includeFabric=` value into a bool.
+// Empty / missing / unparseable → false. Accepts the same truthy spellings
+// strconv.ParseBool does (1/t/T/TRUE/true/True). Bad values do NOT 400 — see
+// the depth handling note for the rationale.
+func parseIncludeFabric(raw string) bool {
+	if raw == "" {
+		return false
+	}
+	v, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false
+	}
+	return v
 }
 
 // topologySource resolves the source backing /clusters/:id/topology. Prefers

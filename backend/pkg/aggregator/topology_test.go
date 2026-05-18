@@ -279,3 +279,153 @@ func TestBuildTopology_GeneratedAtAutoStampedWhenZero(t *testing.T) {
 	delta := time.Since(*topo.Meta.GeneratedAt)
 	assert.Less(t, delta, time.Minute, "auto-stamped generatedAt should be recent")
 }
+
+// ---- P1-T-211 fabric branch tests --------------------------------------
+//
+// Each fabric case re-uses fixtureInputs() as the base then layers in
+// switches/links + IncludeFabric. We assert against the *delta* from the
+// T102 base counts (8 nodes / 7 edges at depth=slice; 3 / 2 at depth=node)
+// so a future T102 fixture tweak doesn't ripple into these tests.
+
+// fabricFixture returns the canonical 1 ToR switch + 3 node↔switch link
+// fixture mirroring configs/mock-data/set-a-small/networkSwitches.json +
+// networkLinks.json. node-1 and node-2 are present in fixtureInputs(); the
+// link to "node-3" tests that orphan endpoints get dropped.
+func fabricFixture() ([]NetworkSwitch, []NetworkLink) {
+	switches := []NetworkSwitch{
+		{
+			ID: "switch-tor-a-01", Name: "ToR-Site-A-01", Type: "tor",
+			Location: "site-a", PortsTotal: 48, PortsUsed: 6,
+			BandwidthGbps: 100, VLANs: []string{"vlan-100-mgmt"}, Status: "up",
+		},
+	}
+	links := []NetworkLink{
+		{ID: "link-1", From: "switch-tor-a-01", To: "node-1", BandwidthGbps: 100, Medium: "fiber", Utilization: 18.5, RTTUs: 5.4},
+		{ID: "link-2", From: "switch-tor-a-01", To: "node-2", BandwidthGbps: 100, Medium: "fiber", Utilization: 32.1, RTTUs: 6.2},
+	}
+	return switches, links
+}
+
+func TestBuildTopology_Fabric_IncludeFabricFalse_NoSwitchesNoLinks(t *testing.T) {
+	// Zero-regression contract (AC): IncludeFabric=false → output is byte-
+	// equivalent to T102. Even when Switches/Links are populated, they MUST
+	// be ignored.
+	switches, links := fabricFixture()
+	in := fixtureInputs()
+	in.IncludeFabric = false
+	in.Switches = switches
+	in.Links = links
+
+	topo := BuildTopology(in)
+	// Same counts as TestBuildTopology_DepthSlice_FullTree.
+	assert.Len(t, topo.Nodes, 8)
+	assert.Len(t, topo.Edges, 7)
+
+	byID := indexNodes(t, topo)
+	assert.NotContains(t, byID, "switch-tor-a-01",
+		"switch node leaked when IncludeFabric=false")
+	for _, e := range topo.Edges {
+		assert.NotEqual(t, "fabric-link", e.Type,
+			"fabric-link edge leaked when IncludeFabric=false")
+	}
+}
+
+func TestBuildTopology_Fabric_DepthNode_AddsSwitchAndLinks(t *testing.T) {
+	// AC: ?depth=node&includeFabric=true → 1 cluster + 2 nodes + 1 switch
+	// + 2 cluster→node edges + 2 fabric-link edges. (fixtureInputs() has
+	// 2 nodes; the canonical set-a-small uses 3 — same shape, different N.)
+	switches, links := fabricFixture()
+	in := fixtureInputs()
+	in.Depth = DepthNode
+	in.IncludeFabric = true
+	in.Switches = switches
+	in.Links = links
+
+	topo := BuildTopology(in)
+
+	// 1 cluster + 2 node + 1 switch = 4 nodes.
+	assert.Len(t, topo.Nodes, 4)
+	// 2 cluster→node + 2 fabric-link = 4 edges.
+	assert.Len(t, topo.Edges, 4)
+
+	byID := indexNodes(t, topo)
+	require.Contains(t, byID, "switch-tor-a-01")
+	sw := byID["switch-tor-a-01"]
+	assert.Equal(t, "switch", sw.Type)
+	assert.Equal(t, "ToR-Site-A-01", sw.Label)
+	assert.Equal(t, "up", sw.Status)
+	assert.Equal(t, "tor", sw.Attributes["switchType"])
+	assert.EqualValues(t, 100, sw.Attributes["bandwidthGbps"])
+
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{"switch-tor-a-01", "node-1", "fabric-link"})
+	assert.Contains(t, edges, [3]string{"switch-tor-a-01", "node-2", "fabric-link"})
+}
+
+func TestBuildTopology_Fabric_DepthSlice_FabricCoexistsWithNPUTree(t *testing.T) {
+	// Fabric is depth-agnostic — at depth=slice we should see the full
+	// cluster→node→npu→slice tree AND the switch + fabric-link layer.
+	switches, links := fabricFixture()
+	in := fixtureInputs()
+	in.Depth = DepthSlice
+	in.IncludeFabric = true
+	in.Switches = switches
+	in.Links = links
+
+	topo := BuildTopology(in)
+
+	// T102 base (8 nodes / 7 edges) + 1 switch + 2 fabric-link = 9 / 9.
+	assert.Len(t, topo.Nodes, 9)
+	assert.Len(t, topo.Edges, 9)
+
+	// Spot-check the tree wiring stayed intact.
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{"cluster-a", "node-1", "contains"})
+	assert.Contains(t, edges, [3]string{"node-1-npu-0", "node-1-npu-0-slice-0", "contains"})
+	// And the new fabric layer.
+	assert.Contains(t, edges, [3]string{"switch-tor-a-01", "node-1", "fabric-link"})
+}
+
+func TestBuildTopology_Fabric_OrphanLinkEndpointsDropped(t *testing.T) {
+	// Links whose endpoints aren't in the graph must be dropped silently —
+	// keeps the wire payload self-consistent and matches how
+	// FiltersOrphanNPUsAndSlices behaves for the slice/npu layers.
+	in := fixtureInputs()
+	in.Depth = DepthNode
+	in.IncludeFabric = true
+	in.Switches = []NetworkSwitch{
+		{ID: "switch-tor-a-01", Name: "ToR-Site-A-01", Type: "tor", Status: "up"},
+	}
+	in.Links = []NetworkLink{
+		{ID: "link-good", From: "switch-tor-a-01", To: "node-1", BandwidthGbps: 100},
+		{ID: "link-orphan-node", From: "switch-tor-a-01", To: "node-99", BandwidthGbps: 100},
+		{ID: "link-orphan-switch", From: "switch-nonexistent", To: "node-1", BandwidthGbps: 100},
+		{ID: "link-no-from", From: "", To: "node-1", BandwidthGbps: 100},
+	}
+
+	topo := BuildTopology(in)
+
+	// 1 cluster + 2 nodes + 1 switch = 4 nodes.
+	assert.Len(t, topo.Nodes, 4)
+	// Only link-good materializes alongside the 2 cluster→node edges = 3.
+	assert.Len(t, topo.Edges, 3)
+
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{"switch-tor-a-01", "node-1", "fabric-link"})
+	assert.NotContains(t, edges, [3]string{"switch-tor-a-01", "node-99", "fabric-link"})
+	assert.NotContains(t, edges, [3]string{"switch-nonexistent", "node-1", "fabric-link"})
+}
+
+func TestBuildTopology_Fabric_EmptySwitchesNoLinks_NoOp(t *testing.T) {
+	// IncludeFabric=true with zero switches AND zero links → graph stays at
+	// the T102 baseline. Guards against accidental shape changes when a
+	// future fixture set drops fabric files (they're optional per ADR-0004).
+	in := fixtureInputs()
+	in.IncludeFabric = true
+	// Switches / Links left zero-valued.
+
+	topo := BuildTopology(in)
+
+	assert.Len(t, topo.Nodes, 8)
+	assert.Len(t, topo.Edges, 7)
+}

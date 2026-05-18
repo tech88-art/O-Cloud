@@ -412,3 +412,179 @@ type erroringTopologySource struct {
 func (e *erroringTopologySource) GetTopology(_ context.Context, _ string, _ string) (*model.Topology, error) {
 	return nil, errBoom
 }
+
+// ---- Topology fabric (P1-T-211 / ADR-0004) ------------------------------
+//
+// Fabric tests reuse writeTopologyFixtures + the canonical 1-cluster /
+// 2-node / 3-npu / 2-slice tree, layering in networkSwitches.json +
+// networkLinks.json that the new loader picks up.
+
+const topologyNetworkSwitchesFixture = `{
+  "networkSwitches": [
+    {
+      "id": "switch-tor-a-01",
+      "name": "ToR-Site-A-01",
+      "type": "tor",
+      "location": "site-a",
+      "portsTotal": 48,
+      "portsUsed": 6,
+      "bandwidthGbps": 100,
+      "vlans": ["vlan-100-mgmt", "vlan-200-fabric"],
+      "status": "up"
+    }
+  ]
+}`
+
+// topologyNetworkLinksFixture covers 3 ToR↔worker links — matches the
+// canonical set-a-small shape the AC count (3 fabric-link edges) refers to.
+// Note "worker-site-a-03" appears here but NOT in topologyNodeFixture; the
+// orphan-endpoint guard SHOULD drop it. To exercise the "1 cluster + 3
+// nodes + 1 switch + 3 fabric-link" AC count we add a 3rd worker via
+// topologyNodeFixture3Workers used by the fabric tests.
+const topologyNetworkLinksFixture = `{
+  "networkLinks": [
+    {"id": "link-tor01-worker01", "from": "switch-tor-a-01", "to": "worker-site-a-01", "bandwidthGbps": 100, "medium": "fiber", "utilization": 18.5, "rttUs": 5.4},
+    {"id": "link-tor01-worker02", "from": "switch-tor-a-01", "to": "worker-site-a-02", "bandwidthGbps": 100, "medium": "fiber", "utilization": 32.1, "rttUs": 6.2},
+    {"id": "link-tor01-worker03", "from": "switch-tor-a-01", "to": "worker-site-a-03", "bandwidthGbps": 100, "medium": "fiber", "utilization": 12.7, "rttUs": 5.1}
+  ]
+}`
+
+// topologyNodeFixture3Workers is the 3-worker variant mirroring the
+// canonical set-a-small/nodes.json shape (the original
+// topologyNodeFixture only has 2 workers so the T102 zero-regression test
+// stays a tight 2-worker case). Used by the fabric AC test that asserts
+// the "1 cluster + 3 nodes + 1 switch + 3 fabric-link" count.
+const topologyNodeFixture3Workers = `{
+  "nodes": [
+    {"name": "worker-site-a-01", "clusterId": "cluster-prod-a-01", "role": ["worker"], "status": "Ready", "arch": "amd64", "os": "Ubuntu 22.04", "npuCount": 2},
+    {"name": "worker-site-a-02", "clusterId": "cluster-prod-a-01", "role": ["worker"], "status": "Ready", "arch": "amd64", "os": "Ubuntu 22.04", "npuCount": 1},
+    {"name": "worker-site-a-03", "clusterId": "cluster-prod-a-01", "role": ["worker"], "status": "Ready", "arch": "amd64", "os": "Ubuntu 22.04", "npuCount": 0}
+  ]
+}`
+
+// writeTopologyFixturesWithFabric layers fabric fixtures on top of the T102
+// tree (2 workers). Used by zero-regression / bad-value tests where the
+// orphan-endpoint guard correctly drops the 3rd link.
+func writeTopologyFixturesWithFabric(t *testing.T) string {
+	t.Helper()
+	dir := writeTopologyFixtures(t)
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "networkSwitches.json"),
+		[]byte(topologyNetworkSwitchesFixture), 0o600))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "networkLinks.json"),
+		[]byte(topologyNetworkLinksFixture), 0o600))
+	return dir
+}
+
+// writeTopologyFixturesWithFabric3Workers swaps in the 3-worker nodes
+// fixture so all three links resolve. Used by the AC-count test asserting
+// "1 cluster + 3 nodes + 1 switch + 3 fabric-link".
+func writeTopologyFixturesWithFabric3Workers(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for name, payload := range map[string]string{
+		"clusters.json":        fixturePayload,
+		"nodes.json":           topologyNodeFixture3Workers,
+		"npus.json":            topologyNPUFixture,
+		"slices.json":          topologySliceFixture,
+		"networkSwitches.json": topologyNetworkSwitchesFixture,
+		"networkLinks.json":    topologyNetworkLinksFixture,
+	} {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(payload), 0o600))
+	}
+	return dir
+}
+
+func TestGetClusterTopology_IncludeFabricTrue_DepthNode_AddsSwitchAndLinks(t *testing.T) {
+	// AC verbatim: "?depth=node&includeFabric=true → 4 nodes (1 cluster +
+	// 3 nodes) + 1 switch + 3 fabric-link edges". The 3-worker fixture
+	// matches the canonical set-a-small shape so all 3 ToR links resolve.
+	router := newTopologyRouter(t, writeTopologyFixturesWithFabric3Workers(t))
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/clusters/cluster-prod-a-01/topology?depth=node&includeFabric=true", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var topo model.Topology
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &topo))
+
+	// 1 cluster + 3 nodes + 1 switch = 5 nodes total.
+	// 3 cluster→node "contains" + 3 fabric-link = 6 edges total.
+	assert.Len(t, topo.Nodes, 5)
+	assert.Len(t, topo.Edges, 6)
+
+	// Count fabric-link edges specifically — the AC's "3 fabric-link edges".
+	var fabricEdges int
+	for _, e := range topo.Edges {
+		if e.Type == "fabric-link" {
+			fabricEdges++
+		}
+	}
+	assert.Equal(t, 3, fabricEdges, "expected 3 fabric-link edges")
+
+	// Count switch nodes specifically — the AC's "1 switch".
+	var switches int
+	var theSwitch model.TopologyNode
+	for _, n := range topo.Nodes {
+		if n.Type == "switch" {
+			switches++
+			theSwitch = n
+		}
+	}
+	assert.Equal(t, 1, switches, "expected exactly 1 switch node")
+	assert.Equal(t, "switch-tor-a-01", theSwitch.ID)
+	assert.Equal(t, "ToR-Site-A-01", theSwitch.Label)
+	assert.Equal(t, "up", theSwitch.Status)
+	assert.Equal(t, "tor", theSwitch.Attributes["switchType"])
+}
+
+func TestGetClusterTopology_IncludeFabricFalse_ZeroRegression(t *testing.T) {
+	// AC: default (?includeFabric=false) is byte-equivalent to T102 even
+	// when networkSwitches.json / networkLinks.json exist on disk.
+	router := newTopologyRouter(t, writeTopologyFixturesWithFabric(t))
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/clusters/cluster-prod-a-01/topology?depth=slice", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var topo model.Topology
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &topo))
+
+	// Same counts as TestGetClusterTopology_DepthSlice_FullGraph.
+	assert.Len(t, topo.Nodes, 8)
+	assert.Len(t, topo.Edges, 7)
+
+	for _, n := range topo.Nodes {
+		assert.NotEqual(t, "switch", n.Type,
+			"switch node leaked into includeFabric=false response: %v", n.ID)
+	}
+	for _, e := range topo.Edges {
+		assert.NotEqual(t, "fabric-link", e.Type,
+			"fabric-link edge leaked into includeFabric=false response")
+	}
+}
+
+func TestGetClusterTopology_IncludeFabric_BadValueTreatedAsFalse(t *testing.T) {
+	// AC quality-of-life: a frontend typo like ?includeFabric=yes shouldn't
+	// 400; it should fall through to false (zero-regression).
+	router := newTopologyRouter(t, writeTopologyFixturesWithFabric(t))
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/clusters/cluster-prod-a-01/topology?depth=slice&includeFabric=yes", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var topo model.Topology
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &topo))
+	assert.Len(t, topo.Nodes, 8, "bad includeFabric should not add fabric")
+	assert.Len(t, topo.Edges, 7)
+}

@@ -7,11 +7,14 @@
 // can feed it preloaded slices and reuse the same wire shape.
 //
 // Wire shape: see docs/api-contract.yaml components.schemas.{Topology,
-// TopologyNode, TopologyEdge}. TopologyNode.Type ∈ {cluster, node, npu, slice}
-// (we don't emit nodepool / network here; those join later phases).
-// TopologyEdge.Type is always "contains" for the parent → child relations
-// BuildTopology emits; later tasks may add "hccs" / "allocated" via separate
-// helpers.
+// TopologyNode, TopologyEdge}. TopologyNode.Type ∈ {cluster, node, npu, slice,
+// switch} (we don't emit nodepool here; that joins later phases).
+// TopologyEdge.Type is "contains" for the parent → child relations and
+// "fabric-link" when ADR-0004 fabric extension is enabled.
+//
+// P1-T-211 extends the input bundle with Switches/Links + IncludeFabric flag.
+// When IncludeFabric is false (default) the output graph is byte-equivalent
+// to the T102 build — zero regression for the depth=node/npu/slice paths.
 package aggregator
 
 import (
@@ -20,6 +23,20 @@ import (
 	"time"
 
 	"github.com/example/ocloud-edge/backend/pkg/model"
+)
+
+// Topology node / edge type constants. Stringly-typed in the contract; we
+// hoist them as constants so aggregator and any future helper share the same
+// spelling.
+const (
+	nodeTypeCluster = "cluster"
+	nodeTypeNode    = "node"
+	nodeTypeNPU     = "npu"
+	nodeTypeSlice   = "slice"
+	nodeTypeSwitch  = "switch" // ADR-0004 fabric: a network switch in the inter-node fabric
+
+	edgeTypeContains    = "contains"
+	edgeTypeFabricLink  = "fabric-link" // ADR-0004 fabric: a node↔switch (or switch↔switch) link
 )
 
 // Topology depth values. Matches the `depth` query param enum in
@@ -50,6 +67,41 @@ func normalizeDepth(depth string) string {
 	}
 }
 
+// NetworkSwitch mirrors the on-disk shape of configs/mock-data/schema.json
+// $defs.NetworkSwitch (ADR-0004). Lives in the aggregator package because (a)
+// BuildTopology is its sole consumer today and (b) the backend's model/
+// package — owned by the API DTO layer — does not yet promote fabric types
+// to its public surface (Phase 2 will, when k8s-source fabric discovery lands
+// and a real DTO is needed on the /api/v1/network endpoint).
+//
+// All fields except Type are optional from the schema's perspective. We keep
+// JSON tags identical to the schema so the mock loader can unmarshal directly.
+type NetworkSwitch struct {
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Type          string   `json:"type"` // tor | leaf | spine | access
+	Location      string   `json:"location,omitempty"`
+	PortsTotal    int      `json:"portsTotal,omitempty"`
+	PortsUsed     int      `json:"portsUsed,omitempty"`
+	BandwidthGbps int      `json:"bandwidthGbps,omitempty"`
+	VLANs         []string `json:"vlans,omitempty"`
+	Status        string   `json:"status"` // up | degraded | down
+}
+
+// NetworkLink mirrors $defs.NetworkLink. From / To carry node id or switch id —
+// the aggregator does not enforce which (the mock fixtures decide); both ends
+// must already exist as Topology nodes for the link to materialize as a fabric
+// edge.
+type NetworkLink struct {
+	ID            string  `json:"id"`
+	From          string  `json:"from"`
+	To            string  `json:"to"`
+	BandwidthGbps int     `json:"bandwidthGbps"`
+	Medium        string  `json:"medium,omitempty"`      // copper | fiber | dac | optical
+	Utilization   float64 `json:"utilization,omitempty"` // 0-100
+	RTTUs         float64 `json:"rttUs,omitempty"`
+}
+
 // TopologyInputs is the bundle of preloaded fixtures BuildTopology consumes.
 // Callers (mock.GetTopology and any future source) populate it from their own
 // caches; the aggregator never reaches for disk.
@@ -63,6 +115,19 @@ type TopologyInputs struct {
 	NPUs    []*model.NPU
 	Slices  []model.NPUSlice
 	Depth   string // node | npu | slice (empty → slice)
+
+	// IncludeFabric, when true, asks BuildTopology to emit `type=switch`
+	// nodes (from Switches) and `type=fabric-link` edges (from Links). When
+	// false the output is byte-equivalent to the T102 graph; Switches / Links
+	// are ignored entirely. See ADR-0004.
+	IncludeFabric bool
+
+	// Switches / Links are consumed only when IncludeFabric is true. The
+	// aggregator drops any link whose endpoints don't resolve to a node id
+	// or switch id already present in the graph (defensive: keeps the wire
+	// payload self-consistent for the frontend renderer).
+	Switches []NetworkSwitch
+	Links    []NetworkLink
 
 	// GeneratedAt seeds Topology.meta.generatedAt. Optional — when zero we
 	// stamp time.Now().UTC() so the wire payload always carries one.
@@ -107,7 +172,7 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 	// 1) cluster node — always present.
 	out.Nodes = append(out.Nodes, model.TopologyNode{
 		ID:     in.Cluster.ID,
-		Type:   "cluster",
+		Type:   nodeTypeCluster,
 		Label:  clusterLabel(in.Cluster),
 		Status: in.Cluster.Status,
 		Attributes: map[string]interface{}{
@@ -131,7 +196,7 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 		}
 		out.Nodes = append(out.Nodes, model.TopologyNode{
 			ID:     nd.Name,
-			Type:   "node",
+			Type:   nodeTypeNode,
 			Label:  nd.Name,
 			Status: nd.Status,
 			Attributes: map[string]interface{}{
@@ -144,12 +209,17 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 		out.Edges = append(out.Edges, model.TopologyEdge{
 			Source: clusterID,
 			Target: nd.Name,
-			Type:   "contains",
+			Type:   edgeTypeContains,
 		})
 		nodeIDs[nd.Name] = struct{}{}
 	}
 
 	if depth == DepthNode {
+		// Fabric (switches + links) is depth-agnostic per ADR-0004 — when
+		// requested we emit it even at depth=node so the Overview page can
+		// show "cluster + nodes + switches + links" without having to ask
+		// for depth=npu/slice. Same logic at the end of npu / slice depth.
+		appendFabric(out, in, nodeIDs)
 		return out
 	}
 
@@ -166,7 +236,7 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 		}
 		out.Nodes = append(out.Nodes, model.TopologyNode{
 			ID:     npu.ID,
-			Type:   "npu",
+			Type:   nodeTypeNPU,
 			Label:  npuLabel(npu),
 			Status: npu.Status,
 			Attributes: map[string]interface{}{
@@ -181,12 +251,13 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 		out.Edges = append(out.Edges, model.TopologyEdge{
 			Source: npu.NodeName,
 			Target: npu.ID,
-			Type:   "contains",
+			Type:   edgeTypeContains,
 		})
 		npuIDs[npu.ID] = struct{}{}
 	}
 
 	if depth == DepthNPU {
+		appendFabric(out, in, nodeIDs)
 		return out
 	}
 
@@ -210,7 +281,7 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 		}
 		out.Nodes = append(out.Nodes, model.TopologyNode{
 			ID:         sl.ID,
-			Type:       "slice",
+			Type:       nodeTypeSlice,
 			Label:      sl.ID,
 			Status:     sl.Status,
 			Attributes: attrs,
@@ -218,11 +289,102 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 		out.Edges = append(out.Edges, model.TopologyEdge{
 			Source: sl.ParentNPU,
 			Target: sl.ID,
-			Type:   "contains",
+			Type:   edgeTypeContains,
 		})
 	}
 
+	// 5) fabric (ADR-0004) — appended last so depth-trimmed graphs keep
+	// switches grouped after the deepest tree-layer node. The order is wire-
+	// stable but the frontend renderer is order-insensitive.
+	appendFabric(out, in, nodeIDs)
 	return out
+}
+
+// appendFabric emits `type=switch` nodes (one per NetworkSwitch) and
+// `type=fabric-link` edges (one per NetworkLink whose endpoints resolve).
+// No-op when IncludeFabric is false — this is the zero-regression contract
+// the AC depends on.
+//
+// Endpoint resolution rules:
+//   - link.from / link.to must point at either an in-scope node id (i.e.,
+//     present in nodeIDs after cluster filtering) or a switch id we just
+//     emitted (i.e., in switchIDs). Otherwise the link is dropped silently.
+//   - The aggregator does not enforce direction (from/to are symmetric for
+//     a fabric link), but we preserve the JSON order on the wire so the G6
+//     renderer can pick whichever side it draws as source.
+//
+// switchIDs is built lazily here rather than carried in TopologyInputs because
+// the input struct is the caller's contract — switches arrive as a slice,
+// and indexing them is the aggregator's responsibility.
+func appendFabric(out *model.Topology, in TopologyInputs, nodeIDs map[string]struct{}) {
+	if !in.IncludeFabric {
+		return
+	}
+
+	switchIDs := make(map[string]struct{}, len(in.Switches))
+	for _, sw := range in.Switches {
+		if sw.ID == "" {
+			continue
+		}
+		out.Nodes = append(out.Nodes, model.TopologyNode{
+			ID:     sw.ID,
+			Type:   nodeTypeSwitch,
+			Label:  switchLabel(sw),
+			Status: sw.Status,
+			Attributes: map[string]interface{}{
+				"switchType":    sw.Type, // "type" is the wire-level node type already; use "switchType" for the tor/leaf/spine/access distinction
+				"location":      sw.Location,
+				"portsTotal":    sw.PortsTotal,
+				"portsUsed":     sw.PortsUsed,
+				"bandwidthGbps": sw.BandwidthGbps,
+				"vlans":         sw.VLANs,
+			},
+		})
+		switchIDs[sw.ID] = struct{}{}
+	}
+
+	for _, lk := range in.Links {
+		if lk.ID == "" || lk.From == "" || lk.To == "" {
+			continue
+		}
+		if !endpointInScope(lk.From, nodeIDs, switchIDs) {
+			continue
+		}
+		if !endpointInScope(lk.To, nodeIDs, switchIDs) {
+			continue
+		}
+		out.Edges = append(out.Edges, model.TopologyEdge{
+			Source: lk.From,
+			Target: lk.To,
+			Type:   edgeTypeFabricLink,
+			Attributes: map[string]interface{}{
+				"id":            lk.ID,
+				"bandwidthGbps": lk.BandwidthGbps,
+				"medium":        lk.Medium,
+				"utilization":   lk.Utilization,
+				"rttUs":         lk.RTTUs,
+			},
+		})
+	}
+}
+
+// endpointInScope reports whether id is a node we emitted or a switch we just
+// emitted. Either qualifies for a fabric link endpoint.
+func endpointInScope(id string, nodeIDs, switchIDs map[string]struct{}) bool {
+	if _, ok := nodeIDs[id]; ok {
+		return true
+	}
+	_, ok := switchIDs[id]
+	return ok
+}
+
+// switchLabel formats a switch label as its Name, falling back to ID. Mirrors
+// clusterLabel / npuLabel conventions so the G6 render never blanks a node.
+func switchLabel(sw NetworkSwitch) string {
+	if sw.Name != "" {
+		return sw.Name
+	}
+	return sw.ID
 }
 
 // clusterLabel picks a human label for the cluster topology node. Falls back

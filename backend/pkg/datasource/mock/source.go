@@ -9,6 +9,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/example/ocloud-edge/backend/pkg/aggregator"
 	"github.com/example/ocloud-edge/backend/pkg/datasource"
 	"github.com/example/ocloud-edge/backend/pkg/model"
 )
@@ -55,6 +56,20 @@ type Source struct {
 	slicesOnce sync.Once
 	slices     []model.NPUSlice
 	slicesErr  error
+
+	// Switches / Links caches (P1-T-211, ADR-0004). Loaded lazily only when a
+	// caller asks for GetTopologyWithFabric — the GetTopology path never
+	// triggers these, so the zero-regression contract is preserved at load
+	// level too (no extra disk I/O on the legacy code path). Files are
+	// optional: missing networkSwitches.json / networkLinks.json yields a nil
+	// slice + nil error (some fixture sets won't ship them).
+	switchesOnce sync.Once
+	switches     []aggregator.NetworkSwitch
+	switchesErr  error
+
+	linksOnce sync.Once
+	links     []aggregator.NetworkLink
+	linksErr  error
 
 	// Events cache (P1-T-105). Loaded once from events.json; StreamEvents
 	// reads from this slice and replays each entry at its declared offset

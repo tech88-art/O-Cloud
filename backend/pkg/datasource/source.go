@@ -12,6 +12,20 @@ import (
 	"github.com/example/ocloud-edge/backend/pkg/model"
 )
 
+// TopologyOptions carries optional flags accepted by GetTopologyWithFabric.
+//
+// We chose a struct (instead of additional positional args) so future fabric-
+// related flags — e.g. `IncludeBindings`, fabric tier filters — can land
+// without changing the interface signature again. See ADR-0004 §"Topology API
+// extension" for the design intent.
+type TopologyOptions struct {
+	// IncludeFabric, when true, asks the source to add `type=switch` nodes
+	// and `type=fabric-link` edges to the returned topology. When false, the
+	// returned graph is byte-equivalent to GetTopology(ctx, id, depth) — a
+	// zero-regression contract callers can rely on.
+	IncludeFabric bool
+}
+
 // Capabilities is the self-declared set of methods a Source supports.
 //
 // A Source returns false for methods it stubs (returns ErrNotImplemented).
@@ -45,6 +59,16 @@ type Source interface {
 	ListClusters(ctx context.Context) ([]*model.Cluster, error)
 	GetCluster(ctx context.Context, id string) (*model.Cluster, error)
 	GetTopology(ctx context.Context, clusterID string, depth string) (*model.Topology, error)
+	// GetTopologyWithFabric is the option-bag variant of GetTopology. It is
+	// kept as a separate method (rather than extending GetTopology's
+	// signature) so existing call sites and test doubles that override
+	// GetTopology stay binary-compatible. Implementations MUST return the
+	// same bytes as GetTopology(ctx, clusterID, depth) when opts is the zero
+	// value — P1-T-211 AC depends on this zero-regression contract.
+	//
+	// PHASE-2: when a future fabric flag joins TopologyOptions, callers
+	// migrate by adding the option; the legacy GetTopology stays untouched.
+	GetTopologyWithFabric(ctx context.Context, clusterID string, depth string, opts TopologyOptions) (*model.Topology, error)
 
 	// Node / NPU / Slice
 	ListNodes(ctx context.Context, filter model.NodeFilter) ([]*model.Node, error)
