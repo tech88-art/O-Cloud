@@ -15,6 +15,35 @@
 #
 # Phase-1 (P1-T-005) reads these fields but only mounts /healthz + /version
 # until T101+ wires concrete handlers.
+#
+# ============================================================================
+# P1-T-303 — DATASET SWAP CONTRACT
+# ============================================================================
+# "数据源切换只改配置" — the demo backend supports switching the active
+# mock fixture directory without recompiling the binary. Two recipes:
+#
+#   1. SAME-NAMED SOURCE, DIFFERENT PATH (simplest):
+#      Edit `datasources.mock.path` below, restart the process. The factory
+#      hands the new path to mock.NewSource on startup; existing react-query
+#      caches in the frontend invalidate on the next refresh.
+#
+#        datasources.mock.path: "./configs/mock-data/set-b-small"
+#
+#   2. NAMED VARIANTS (forward-looking; multi-source support is P1-T-307+):
+#      Register multiple mock instances and flip `mapping.<resource>` between
+#      them. main.go currently only wires "mock", but factory.go itself
+#      handles mock-a / mock-b naming — see backend/pkg/datasource/factory_
+#      test.go for the formal proof.
+#
+#        datasources:
+#          mock-a: { enabled: true, path: "./configs/mock-data/set-a-small" }
+#          mock-b: { enabled: true, path: "./configs/mock-data/set-b-small" }
+#        mapping:
+#          clusters: mock-a   # site-a infrastructure view
+#          workloads: mock-b  # site-b workload view (mix-and-match for demos)
+#
+# The set-b-small fixture lands with P1-T-307 (演示数据集). Until then, the
+# swap demo runs against set-a-small with itself.
 
 server:
   port: 8080
@@ -31,6 +60,8 @@ grafana:
 datasources:
   mock:
     enabled: true
+    # Swap path → swap dataset. set-a-small ships with W1; set-b-small lands
+    # with P1-T-307. See header comment for the named-variants pattern.
     path: "./configs/mock-data/set-a-small"
   k8s:
     enabled: false
@@ -44,6 +75,8 @@ datasources:
     enabled: false
 
 # resource → source-name. factory.SourceFor("clusters") consults this map.
+# Same name throughout (Phase 1) → all resources from the same mock instance.
+# For multi-source mixes see the header recipe #2.
 mapping:
   clusters: mock
   topology: mock

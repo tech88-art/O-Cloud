@@ -30,16 +30,26 @@ func (r *Registry) SourceFor(resource string) Source {
 }
 
 // Build constructs a Registry from a config + a pre-built map of sources
-// (keyed by datasource name, e.g. "mock"). Source construction lives in
-// main (or test code) to avoid an import cycle: each concrete source
-// package (datasource/mock, datasource/k8s, ...) imports datasource for
-// the Source interface, so datasource cannot import them back.
+// (keyed by datasource name, e.g. "mock", "mock-a", "mock-b"). Source
+// construction lives in main (or test code) to avoid an import cycle: each
+// concrete source package (datasource/mock, datasource/k8s, ...) imports
+// datasource for the Source interface, so datasource cannot import them back.
 //
-// PHASE-1: only "mock" is wired (P1-T-005 + P1-T-101/103 follow-up).
-// PHASE-2: k8s / crd / prometheus / configmap join.
+// PHASE-1: only the "mock" family is wired (P1-T-005 + P1-T-101/103
+// follow-up). Multiple mock instances (mock-a / mock-b / ...) are supported
+// per the P1-T-303 dataset-swap contract — main.go uses each datasources
+// entry's `path` field to point the corresponding mock.Source at its own
+// fixture directory. PHASE-2: k8s / crd / prometheus / configmap join.
 //
 // Build only registers sources whose corresponding datasources entry has
-// enabled=true (silently dropping the others). Mapping is copied verbatim.
+// enabled=true (silently dropping the others). Mapping is copied verbatim;
+// the SourceFor resolver returns nil for any mapping entry whose target
+// source isn't in the registered set (handlers must defend against nil).
+//
+// "数据源切换只改配置" (P1-T-303): swapping the active dataset is a yaml-
+// only edit — change `datasources.mock.path` or flip `mapping.<resource>`
+// between `mock-a` / `mock-b`, restart, no recompile. See factory_test.go
+// for the pinned invariant.
 func Build(cfg *config.Config, sources map[string]Source) (*Registry, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("nil config")

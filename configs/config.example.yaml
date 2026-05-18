@@ -1,0 +1,56 @@
+# O-Cloud Edge Cloud — top-level config example (P1-T-303).
+#
+# This file is a convenience reference for operators who run the demo
+# binary from the repository root, e.g.
+#
+#     ./backend/bin/demo-backend.exe -c configs/config.example.yaml
+#
+# The canonical schema lives in `backend/configs/config.example.yaml`; this
+# file mirrors it with the paths adjusted to the repo-root cwd (relative
+# `configs/mock-data/...` instead of `../configs/mock-data/...`). Diff the
+# two files to spot drift.
+#
+# ============================================================================
+# DATASET SWAP CONTRACT
+# ============================================================================
+# Two ways to switch the active mock dataset without rebuilding:
+#
+#   1. Edit `datasources.mock.path` below and restart.
+#
+#   2. Keep two config files side by side (this one + a sibling) and pick
+#      with `-c <file>`:
+#
+#        ./demo-backend -c configs/config.set-a.yaml
+#        ./demo-backend -c configs/config.set-b.yaml   # after T307 lands
+#
+# Both routes verify the P1-T-303 "数据源切换只改配置" contract — proven
+# by backend/pkg/datasource/factory_test.go.
+
+server:
+  port: 8080
+  enableCORS: true
+
+logging:
+  level: info
+
+grafana:
+  baseUrl: "http://localhost:3001"  # dev docker-compose grafana
+
+datasources:
+  mock:
+    enabled: true
+    # Active dataset. Phase 1 ships set-a-small; T307 will add set-b-small
+    # for the affinity-vs-non-affinity demo (spec D6).
+    path: "./configs/mock-data/set-a-small"
+
+mapping:
+  clusters: mock
+  topology: mock
+  nodes: mock
+  npus: mock
+  pools: mock
+  workloads: mock
+  metrics: mock
+  presets: mock
+  deploy: mock
+  logs: mock
