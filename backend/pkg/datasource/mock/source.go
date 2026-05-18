@@ -63,6 +63,13 @@ type Source struct {
 	eventsOnce sync.Once
 	events     []model.Event
 	eventsErr  error
+
+	// Presets cache (P1-T-203). Lazy load from presets.json — entries are
+	// stored as the PresetDetail superset so GetPreset returns the manifest
+	// while ListPresets projects out the slim Preset view.
+	presetsOnce sync.Once
+	presets     []*model.PresetDetail
+	presetsErr  error
 }
 
 // NewSource returns a fresh mock.Source. fixturesPath is the directory of
@@ -81,13 +88,14 @@ func (s *Source) Name() string { return "mock" }
 
 func (s *Source) Capabilities() datasource.Capabilities {
 	// PHASE-1: T101 enables Clusters, T102 enables Topology, T103 enables
-	// Nodes, T104 enables NPUs, T105 enables Events. Others flip on as
-	// later tasks land.
+	// Nodes, T104 enables NPUs, T105 enables Events, T203 enables Presets.
+	// Others flip on as later tasks land.
 	return datasource.Capabilities{
 		Clusters: true,
 		Topology: true,
 		Nodes:    true,
 		NPUs:     true,
+		Presets:  true,
 		Events:   true,
 	}
 }
@@ -122,14 +130,8 @@ func (s *Source) GetWorkloadLogs(ctx context.Context, namespace, name string, op
 }
 
 // ---- Deploy ----
-
-func (s *Source) ListPresets(ctx context.Context) ([]*model.Preset, error) {
-	return nil, ErrNotImplemented
-}
-
-func (s *Source) GetPreset(ctx context.Context, id string) (*model.PresetDetail, error) {
-	return nil, ErrNotImplemented
-}
+//
+// ListPresets / GetPreset moved to preset.go (P1-T-203).
 
 func (s *Source) Deploy(ctx context.Context, req *model.DeployRequest) (*model.DeployResponse, error) {
 	return nil, ErrNotImplemented

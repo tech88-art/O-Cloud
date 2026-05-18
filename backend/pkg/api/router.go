@@ -75,8 +75,11 @@ func NewRouter(h *Handler, opts RouterOptions) *gin.Engine {
 		// NPUs (P1-T-104)
 		v1.GET("/nodes/:nodeName/npus", h.ListNPUs)
 
-		// PHASE-1: T102+ extends this block with /clusters/:id/topology,
-		// /workloads, /presets, ...
+		// Presets (P1-T-203)
+		v1.GET("/presets", h.ListPresets)
+		v1.GET("/presets/:presetId", h.GetPreset)
+
+		// PHASE-1: later tasks extend this block with /workloads, /deploy, ...
 	}
 
 	// WebSocket endpoints sit OUTSIDE /api/v1 per docs/api-contract.yaml
