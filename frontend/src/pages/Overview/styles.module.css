@@ -1,0 +1,81 @@
+/**
+ * Overview page layout — three-column grid:
+ *
+ *   ┌──────────┬─────────────────────┬─────────────┐
+ *   │  Tree    │  TopologyView       │  DetailPanel│
+ *   │  (240px) │  (flex 1)           │  (320px)    │
+ *   └──────────┴─────────────────────┴─────────────┘
+ *
+ * T-108a delivers tree + center. The 320px right slot is reserved for
+ * T-108b's DetailPanel (rendered empty / hidden in T-108a).
+ *
+ * Per frontend/CLAUDE.md §6 — CSS Modules, no inline styles for layout,
+ * no CSS-in-JS libraries.
+ */
+
+.page {
+  display: grid;
+  grid-template-columns: 240px 1fr 320px;
+  gap: 12px;
+  /*
+   * Fill viewport below the AppLayout header (~64px). Picked over `100vh`
+   * minus a header constant so the layout responds if the header height
+   * changes. AppLayout already constrains the content slot's height; we
+   * just expand to fill it.
+   */
+  height: calc(100vh - 96px);
+  min-height: 480px;
+}
+
+.treePane {
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  padding: 12px;
+  overflow: auto;
+}
+
+.treePaneHeader {
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #1f1f1f;
+}
+
+.centerPane {
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  /*
+   * The graph needs a defined height — ReactFlow won't compute one for
+   * 100%-height children, it just collapses to 0. We use min-height + flex
+   * so the pane fills the grid cell.
+   */
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.centerStateOverlay {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.detailPane {
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  padding: 12px;
+  overflow: auto;
+}
+
+.detailPanePlaceholder {
+  color: #8c8c8c;
+  font-size: 12px;
+  text-align: center;
+  padding: 24px 8px;
+}

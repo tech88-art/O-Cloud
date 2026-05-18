@@ -33,6 +33,16 @@
       "placeholder": "日志页面 — W2 即将上线"
     }
   },
+  "overview": {
+    "tree": {
+      "title": "资源树"
+    },
+    "loading": "正在加载拓扑",
+    "errorTitle": "加载拓扑失败",
+    "noData": "暂无拓扑数据",
+    "selectCluster": "请选择集群",
+    "detailPanePending": "选中节点查看详情（T108b 后启用）"
+  },
   "header": {
     "toggleSider": "折叠/展开侧边栏",
     "language": "切换语言",

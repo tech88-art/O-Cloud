@@ -33,6 +33,16 @@
       "placeholder": "Logs page — coming W2"
     }
   },
+  "overview": {
+    "tree": {
+      "title": "Resource Tree"
+    },
+    "loading": "Loading topology",
+    "errorTitle": "Failed to load topology",
+    "noData": "No topology data",
+    "selectCluster": "Select a cluster",
+    "detailPanePending": "Select a node to view details (enabled in T108b)"
+  },
   "header": {
     "toggleSider": "Toggle sider",
     "language": "Switch language",
