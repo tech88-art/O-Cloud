@@ -120,22 +120,25 @@ replay vs 180s real-time). `WsStatusChip` also gained a
 
 ---
 
-## 6. `data:` URL Grafana fallback when Grafana isn't running
+## 6. ~~`data:` URL Grafana fallback when Grafana isn't running~~ ✓ RESOLVED
 
-**Symptom**: When the Grafana service isn't reachable, the iframe
-falls through to a placeholder src and the panel renders blank.
+**Resolved**: 2026-05-18. `GrafanaPanel` now runs a reachability
+probe (Image() against `/public/img/fav32.png` with 3s timeout) before
+mounting the iframe. Outcomes:
 
-**Root cause**: `frontend/src/components/GrafanaPanel/index.tsx`
-attempts a HEAD probe, but in CORS-restricted dev environments the
-probe fails silently and the iframe is given a placeholder URL.
+- probing → AntD `<Spin>` placeholder
+- reachable → iframe renders as before
+- unreachable → AntD warning `Alert` with a clear "Grafana not
+  reachable" message and the docker-compose start hint, both i18n'd
+  in zh-CN and en-US
 
-**Workaround**: bring Grafana up via the `deploy/dev/docker-compose.yaml`
-profile (it ships pre-provisioned with the 5 Phase-1 dashboards).
-
-**Resolution path**: surface a more obvious "Grafana not reachable"
-state in the panel (currently it's just blank). Cosmetic.
-
-**Lands**: opportunistic frontend polish.
+New `data-testid="grafana-panel-unreachable"` lets tests pin the
+state directly. Vitest gained a `FakeImage` stub (in
+`src/components/GrafanaPanel/index.test.tsx` and `tests/Metrics.test.tsx`)
+so jsdom-driven test environments default to "reachable" (matching
+the docker-compose flow); the new "renders the unreachable Alert when
+the probe fails" case in GrafanaPanel/index.test.tsx exercises the
+negative branch.
 
 ---
 
@@ -148,7 +151,9 @@ state in the panel (currently it's just blank). Cosmetic.
 | 3 | medium  | no | yes(was) → **resolved** (generator emits fabric + bindings + D6 workloads) |
 | 4 | medium  | no | maybe (depends on whether stress fidelity matters early) | open |
 | 5 | trivial | no | no | **resolved** (WS `?fastforward=N` + frontend `?ffwd=` opt-in; E2E unskipped) |
-| 6 | trivial | no | no | open |
+| 6 | trivial | no | no | **resolved** (reachability probe + Unreachable Alert) |
 
-After ADR-0006 + generator parity, no Phase 2 entry blockers remain.
-#4-#6 are optional polish; none are demo-blocking.
+After ADR-0006 + generator parity + #5/#6 polish, only #4
+(set-c-stress) remains — a Phase 2 stretch goal exercising the
+ADR-0005 fallback condition (800-NPU FPS budget). No Phase 2 entry
+blockers remain.

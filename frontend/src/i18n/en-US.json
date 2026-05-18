@@ -87,6 +87,11 @@
     "includeWorkloads": "Include Workloads",
     "workloadsToggleHint": "Show workload/pod nodes and pd-pair / binds-to edges (ADR-0005, off by default)"
   },
+  "grafanaPanel": {
+    "errorTitle": "Grafana panel error",
+    "unreachableTitle": "Grafana not reachable",
+    "unreachableDescription": "Cannot reach the Grafana service at {{base}}. Make sure the dev docker-compose stack is up: docker compose -f deploy/dev/docker-compose.yaml up -d grafana"
+  },
   "detailPanel": {
     "selectNode": "Select a node to view details",
     "staleSelection": "Selection is stale — pick another node",

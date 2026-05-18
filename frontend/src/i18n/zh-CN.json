@@ -87,6 +87,11 @@
     "includeWorkloads": "显示工作负载",
     "workloadsToggleHint": "包含 Workload/Pod 节点与 PD 对/绑定边（ADR-0005，默认关闭）"
   },
+  "grafanaPanel": {
+    "errorTitle": "Grafana 面板异常",
+    "unreachableTitle": "Grafana 不可达",
+    "unreachableDescription": "无法连接到 Grafana 服务（{{base}}）。请确认 docker-compose 已启动且 Grafana 容器运行中：docker compose -f deploy/dev/docker-compose.yaml up -d grafana"
+  },
   "detailPanel": {
     "selectNode": "选中一个节点查看详情",
     "staleSelection": "选中节点已失效，请重新选择",

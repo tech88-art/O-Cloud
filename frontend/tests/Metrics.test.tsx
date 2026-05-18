@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -7,6 +7,26 @@ import { ConfigProvider } from 'antd';
 import i18n from '@/i18n';
 import { loadRuntimeConfig } from '@/config/runtime';
 import type { components } from '@/services/types';
+
+/**
+ * Stub the global Image so GrafanaPanel's reachability probe
+ * (known-issues #6) resolves immediately in jsdom — every probe
+ * "succeeds" by default, which matches the dev compose flow where
+ * Grafana IS up. Without this stub the iframe never mounts and the
+ * URL assertions below time out.
+ */
+class FakeImage {
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  private _src = '';
+  set src(_value: string) {
+    this._src = _value;
+    queueMicrotask(() => this.onload?.());
+  }
+  get src() {
+    return this._src;
+  }
+}
 
 /**
  * P1-T-208 Metrics page tests.
@@ -106,6 +126,8 @@ async function getIframeSrc(): Promise<string> {
   return src;
 }
 
+const originalImage = globalThis.Image;
+
 beforeEach(async () => {
   mockGet.mockReset();
   mockGet.mockImplementation(defaultMockImpl);
@@ -113,6 +135,12 @@ beforeEach(async () => {
   await act(async () => {
     await i18n.changeLanguage('zh-CN');
   });
+  // @ts-expect-error — partial Image stub for jsdom (Vitest test env).
+  globalThis.Image = FakeImage;
+});
+
+afterEach(() => {
+  globalThis.Image = originalImage;
 });
 
 describe('MetricsPage — initial render', () => {

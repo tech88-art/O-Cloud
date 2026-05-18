@@ -1,5 +1,6 @@
 import { Alert, Spin } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getRuntimeConfig } from '@/config/runtime';
 import { buildPocUrl } from './urlBuilder';
 import type { GrafanaPanelProps } from './types';
@@ -11,6 +12,12 @@ import type { GrafanaPanelProps } from './types';
  * - Frontend on http://localhost:3000, Grafana on http://localhost:3001
  * - Grafana sets GF_SECURITY_ALLOW_EMBEDDING=true (deploy/dev/docker-compose.yaml)
  * - Grafana anonymous Viewer enabled so iframe needs no login (POC only)
+ *
+ * Reachability (known-issues #6): pre-probe the Grafana host before
+ * mounting the iframe. The probe loads Grafana's stock favicon via an
+ * Image() — succeeds when reachable, fails on connection refused / 404
+ * / opaque cross-origin block. Replaces the "blank iframe + cryptic
+ * browser error page" experience when Grafana isn't running.
  *
  * Production path (Phase 2+):
  * - Backend signs short-lived URLs (P1-T-205, /api/v1/grafana/url)
@@ -27,8 +34,13 @@ export function GrafanaPanel({
   height = 600,
   kiosk = 'tv',
 }: GrafanaPanelProps) {
+  const { t } = useTranslation();
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reachable, setReachable] = useState<'probing' | 'reachable' | 'unreachable'>(
+    'probing',
+  );
+  const [grafanaBase, setGrafanaBase] = useState<string | null>(null);
 
   // Stable serialization so the effect doesn't re-run on identical objects.
   const varsKey = useMemo(
@@ -48,6 +60,7 @@ export function GrafanaPanel({
       );
       return;
     }
+    setGrafanaBase(cfg.grafanaBaseURL);
     const computed = buildPocUrl(
       cfg.grafanaBaseURL,
       dashboard,
@@ -65,19 +78,68 @@ export function GrafanaPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboard, varsKey, kiosk]);
 
+  // Reachability probe (known-issues #6). Image-based so we don't need
+  // CORS headers on Grafana; the stock /public/img/fav32.png ships with
+  // every Grafana install. onload → reachable; onerror / 3s timeout →
+  // unreachable. Re-runs whenever the base URL changes (rare).
+  useEffect(() => {
+    if (!grafanaBase) return;
+    setReachable('probing');
+    const trimmed = grafanaBase.endsWith('/') ? grafanaBase.slice(0, -1) : grafanaBase;
+    const probe = new Image();
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      probe.onload = null;
+      probe.onerror = null;
+      setReachable(ok ? 'reachable' : 'unreachable');
+    };
+    const timer = window.setTimeout(() => finish(false), 3_000);
+    probe.onload = () => {
+      window.clearTimeout(timer);
+      finish(true);
+    };
+    probe.onerror = () => {
+      window.clearTimeout(timer);
+      finish(false);
+    };
+    // Cache-bust so a previously-failed probe doesn't pin the negative
+    // result in the browser cache when Grafana comes up later.
+    probe.src = `${trimmed}/public/img/fav32.png?_=${Date.now()}`;
+    return () => {
+      window.clearTimeout(timer);
+      probe.onload = null;
+      probe.onerror = null;
+    };
+  }, [grafanaBase]);
+
   if (error) {
     return (
       <Alert
         type="error"
-        message="Grafana panel error"
+        message={t('grafanaPanel.errorTitle')}
         description={error}
         showIcon
         data-testid="grafana-panel-error"
       />
     );
   }
-  if (!url) {
+  if (!url || reachable === 'probing') {
     return <Spin data-testid="grafana-panel-loading" />;
+  }
+  if (reachable === 'unreachable') {
+    return (
+      <Alert
+        type="warning"
+        message={t('grafanaPanel.unreachableTitle')}
+        description={t('grafanaPanel.unreachableDescription', {
+          base: grafanaBase ?? '',
+        })}
+        showIcon
+        data-testid="grafana-panel-unreachable"
+      />
+    );
   }
   return (
     <iframe
