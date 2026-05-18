@@ -89,6 +89,14 @@ type Source interface {
 	ListWorkloads(ctx context.Context, filter model.WorkloadFilter) ([]*model.Workload, error)
 	GetWorkloadDetail(ctx context.Context, namespace, name string) (*model.WorkloadDetail, error)
 	GetWorkloadLogs(ctx context.Context, namespace, name string, opts model.LogOptions) (*model.LogPage, error)
+	// StreamWorkloadLogs (P1-T-301) returns a receive-only channel that emits
+	// LogLine entries as they arrive. Channel closes when (a) the underlying
+	// stream is drained, or (b) ctx is cancelled. Callers MUST drain to
+	// close — same goroutine-leak contract as StreamEvents.
+	//
+	// PHASE-1 mock: synthesizes log lines at a steady cadence; PHASE-2 k8s
+	// source will adapt to kubelet log streaming.
+	StreamWorkloadLogs(ctx context.Context, namespace, name string, opts model.LogStreamOptions) (<-chan *model.LogLine, error)
 
 	// Deploy
 	ListPresets(ctx context.Context) ([]*model.Preset, error)

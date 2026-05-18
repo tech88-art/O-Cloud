@@ -84,6 +84,10 @@ func NewRouter(h *Handler, opts RouterOptions) *gin.Engine {
 		v1.GET("/workloads", h.ListWorkloads)
 		v1.GET("/workloads/:namespace/:name", h.GetWorkloadDetail)
 
+		// Workload logs REST (P1-T-301) — tail + filter; WS stream lives
+		// at /ws/logs/:ns/:name outside the /api/v1 group.
+		v1.GET("/workloads/:namespace/:name/logs", h.GetWorkloadLogs)
+
 		// Presets (P1-T-203)
 		v1.GET("/presets", h.ListPresets)
 		v1.GET("/presets/:presetId", h.GetPreset)
@@ -106,8 +110,10 @@ func NewRouter(h *Handler, opts RouterOptions) *gin.Engine {
 
 	// WebSocket endpoints sit OUTSIDE /api/v1 per docs/api-contract.yaml
 	// (comment block §"WebSocket 通道"). P1-T-105 mounts /ws/topology;
-	// later phases add /ws/workloads, /ws/logs/*, /ws/metrics.
+	// P1-T-301 adds /ws/logs/:ns/:name; later phases add /ws/workloads,
+	// /ws/metrics.
 	r.GET("/ws/topology", h.WSTopology)
+	r.GET("/ws/logs/:namespace/:name", h.WSLogs)
 
 	return r
 }

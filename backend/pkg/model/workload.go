@@ -83,6 +83,14 @@ type LogOptions struct {
 	Since     string // ISO-8601, raw passthrough
 }
 
+// LogStreamOptions is the Go-side aggregate of /ws/logs/... query params
+// (P1-T-301). Mirrors LogOptions but without Tail — streaming is forward
+// only; the REST endpoint covers historical tail.
+type LogStreamOptions struct {
+	Container string
+	Since     string // ISO-8601, raw passthrough
+}
+
 // LogPage mirrors components.schemas.LogPage.
 type LogPage struct {
 	Lines      []LogLine `json:"lines"`

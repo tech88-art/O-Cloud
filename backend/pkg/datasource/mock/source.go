@@ -146,6 +146,7 @@ func (s *Source) Capabilities() datasource.Capabilities {
 		NPUs:      true,
 		Events:    true,
 		Workloads: true,
+		Logs:      true,
 		Presets:   true,
 		Deploy:    true,
 		Metrics:   true,
@@ -170,11 +171,7 @@ func (s *Source) ListNPUSlicePools(ctx context.Context) ([]*model.NPUSlicePool, 
 // ---- Workload ----
 //
 // ListWorkloads + GetWorkloadDetail moved to workload.go (P1-T-201).
-// GetWorkloadLogs lands with T301.
-
-func (s *Source) GetWorkloadLogs(ctx context.Context, namespace, name string, opts model.LogOptions) (*model.LogPage, error) {
-	return nil, ErrNotImplemented
-}
+// GetWorkloadLogs + StreamWorkloadLogs moved to logs.go (P1-T-301).
 
 // ---- Deploy ----
 //
