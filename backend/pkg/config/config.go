@@ -27,6 +27,7 @@ type Config struct {
 	Datasources map[string]DatasourceConfig `mapstructure:"datasources"`
 	Mapping     map[string]string           `mapstructure:"mapping"`
 	Logging     LoggingConfig               `mapstructure:"logging"`
+	Grafana     GrafanaConfig               `mapstructure:"grafana"`
 }
 
 // ServerConfig is the http-server section.
@@ -47,6 +48,16 @@ type DatasourceConfig struct {
 // LoggingConfig controls zap (see middleware/logging.go).
 type LoggingConfig struct {
 	Level string `mapstructure:"level"` // debug | info | warn | error
+}
+
+// GrafanaConfig drives the /api/v1/grafana/url handler (P1-T-205).
+//
+// BaseURL is what gets prefixed onto the signed iframe URL — typically the
+// host the browser reaches Grafana on (NOT the in-cluster service DNS),
+// because the URL is consumed by the frontend iframe directly. Leave empty
+// to fall back to api.defaultGrafanaBaseURL.
+type GrafanaConfig struct {
+	BaseURL string `mapstructure:"baseUrl"`
 }
 
 // Load reads config from configFile (if non-empty) or the search path.
@@ -88,4 +99,8 @@ func applyDefaults(v *viper.Viper) {
 	v.SetDefault("logging.level", DefaultLogLevel)
 	v.SetDefault("datasources", map[string]interface{}{})
 	v.SetDefault("mapping", map[string]string{})
+	// grafana.baseUrl defaults to "" — the api.GetGrafanaURL handler
+	// substitutes api.defaultGrafanaBaseURL on the read side so tests can
+	// build a router without populating this field.
+	v.SetDefault("grafana.baseUrl", "")
 }

@@ -23,6 +23,11 @@ server:
 logging:
   level: info  # debug | info | warn | error
 
+# Grafana embed URL (consumed by /api/v1/grafana/url, P1-T-205).
+# Leave empty to fall back to http://localhost:3001 (dev docker-compose).
+grafana:
+  baseUrl: ""
+
 datasources:
   mock:
     enabled: true

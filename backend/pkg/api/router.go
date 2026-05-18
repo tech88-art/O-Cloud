@@ -17,9 +17,14 @@ const APIPrefix = "/api/v1"
 
 // Handler bundles the dependencies handlers reach for. Pass it once at startup
 // and let routes close over it — never use package globals for these.
+//
+// GrafanaBaseURL is read by the /grafana/url handler (P1-T-205). An empty
+// value falls back to defaultGrafanaBaseURL — see grafana.go. Set this via
+// main after config.Load so production picks up config.yaml's grafana.baseUrl.
 type Handler struct {
-	Registry *datasource.Registry
-	Logger   *zap.Logger
+	Registry       *datasource.Registry
+	Logger         *zap.Logger
+	GrafanaBaseURL string
 }
 
 // NewHandler is the canonical constructor. logger may be nil — we substitute
@@ -88,7 +93,10 @@ func NewRouter(h *Handler, opts RouterOptions) *gin.Engine {
 		v1.GET("/metrics/query", h.QueryMetric)
 		v1.GET("/metrics/templates", h.ListTemplates)
 
-		// PHASE-1: later tasks extend with /deploy, /grafana/url, ...
+		// Grafana embed URL (P1-T-205)
+		v1.GET("/grafana/url", h.GetGrafanaURL)
+
+		// PHASE-1: later tasks extend with /deploy, /logs, ...
 	}
 
 	// WebSocket endpoints sit OUTSIDE /api/v1 per docs/api-contract.yaml

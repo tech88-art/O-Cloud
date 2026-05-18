@@ -8,6 +8,10 @@ server:
 logging:
   level: debug
 
+# Grafana embed URL — dev docker-compose stack runs Grafana on :3001.
+grafana:
+  baseUrl: "http://localhost:3001"
+
 datasources:
   mock:
     enabled: true
