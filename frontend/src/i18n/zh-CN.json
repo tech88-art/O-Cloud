@@ -149,5 +149,17 @@
     "conflict": "资源冲突,请调整切片选择",
     "error": "部署失败:{{message}}",
     "deploying": "正在提交部署..."
+  },
+  "metrics": {
+    "title": "性能指标",
+    "clusterOverview": "集群总览",
+    "nodeDetail": "节点详情",
+    "npuDetail": "NPU 详情",
+    "workloadBusiness": "业务指标",
+    "workloadResource": "资源指标",
+    "selectNode": "选择节点",
+    "selectNPU": "选择 NPU",
+    "selectSlice": "选择切片",
+    "selectWorkload": "选择工作负载"
   }
 }

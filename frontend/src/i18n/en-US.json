@@ -149,5 +149,17 @@
     "conflict": "Resource conflict — adjust the slice selection",
     "error": "Deploy failed: {{message}}",
     "deploying": "Submitting deploy…"
+  },
+  "metrics": {
+    "title": "Metrics",
+    "clusterOverview": "Cluster Overview",
+    "nodeDetail": "Node Detail",
+    "npuDetail": "NPU Detail",
+    "workloadBusiness": "Workload Business",
+    "workloadResource": "Workload Resource",
+    "selectNode": "Select node",
+    "selectNPU": "Select NPU",
+    "selectSlice": "Select slice",
+    "selectWorkload": "Select workload"
   }
 }

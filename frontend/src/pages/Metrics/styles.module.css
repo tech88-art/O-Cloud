@@ -1,0 +1,76 @@
+/**
+ * Metrics page layout — top toolbar (tabs + variable selectors) over a full
+ * Grafana iframe panel.
+ *
+ *   ┌──────────────────────────────────────────────────────┐
+ *   │ Tabs: [Cluster] [Node] [NPU] [WL Biz] [WL Resource]  │
+ *   ├──────────────────────────────────────────────────────┤
+ *   │ Selectors (cond on tab)                              │
+ *   ├──────────────────────────────────────────────────────┤
+ *   │                                                      │
+ *   │           <GrafanaPanel /> iframe (flex 1)           │
+ *   │                                                      │
+ *   └──────────────────────────────────────────────────────┘
+ *
+ * Per frontend/CLAUDE.md §6 — CSS Modules, no inline layout styles, no
+ * CSS-in-JS libraries.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: calc(100vh - 96px);
+  min-height: 480px;
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+}
+
+.tabsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.selectorsRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.selectorLabel {
+  font-size: 12px;
+  color: #595959;
+  white-space: nowrap;
+}
+
+.panel {
+  flex: 1;
+  min-height: 360px;
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  padding: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panelEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
