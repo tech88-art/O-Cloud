@@ -33,6 +33,36 @@
       "placeholder": "Logs page — coming W2"
     }
   },
+  "workloads": {
+    "title": "Workloads",
+    "filter": "Filter",
+    "status": "Status",
+    "namespace": "Namespace",
+    "type": "Type",
+    "name": "Name",
+    "ready": "Ready/Desired",
+    "nodeNames": "Nodes",
+    "createdAt": "Created",
+    "empty": "No workloads",
+    "errorTitle": "Failed to load workloads"
+  },
+  "workloadDetail": {
+    "titleFallback": "Workload detail",
+    "basics": "Basics",
+    "kind": "Kind",
+    "pods": "Pods",
+    "containers": "Containers",
+    "command": "Command",
+    "args": "Args",
+    "resources": "Resources",
+    "relations": "Relations",
+    "viewMetrics": "View metrics →",
+    "empty": "Select a workload to view its detail",
+    "errorTitle": "Failed to load workload detail",
+    "noPods": "No pods",
+    "noContainers": "No containers",
+    "noRelations": "No relations"
+  },
   "overview": {
     "tree": {
       "title": "Resource Tree"

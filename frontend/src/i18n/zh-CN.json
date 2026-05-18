@@ -33,6 +33,36 @@
       "placeholder": "日志页面 — W2 即将上线"
     }
   },
+  "workloads": {
+    "title": "工作负载",
+    "filter": "筛选",
+    "status": "状态",
+    "namespace": "命名空间",
+    "type": "类型",
+    "name": "名称",
+    "ready": "就绪/期望",
+    "nodeNames": "节点",
+    "createdAt": "创建时间",
+    "empty": "暂无工作负载",
+    "errorTitle": "加载工作负载失败"
+  },
+  "workloadDetail": {
+    "titleFallback": "工作负载详情",
+    "basics": "基本信息",
+    "kind": "Kind",
+    "pods": "Pods",
+    "containers": "容器",
+    "command": "启动命令",
+    "args": "参数",
+    "resources": "资源",
+    "relations": "关系",
+    "viewMetrics": "查看指标 →",
+    "empty": "请选中一个工作负载查看详情",
+    "errorTitle": "加载工作负载详情失败",
+    "noPods": "暂无 Pod",
+    "noContainers": "暂无容器",
+    "noRelations": "暂无关系"
+  },
   "overview": {
     "tree": {
       "title": "资源树"
