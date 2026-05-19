@@ -793,9 +793,9 @@ ocloud-edge-platform/
 | Phase | 评审 flag | 检查动作 |
 |---|---|---|
 | Phase 4 | DRA mapping 详表(§6.6→§6.7)需展开 | Phase 4 启动前补 `NPUSlicePool ↔ ResourceSlice/ResourceClaim/DeviceClass` 字段映射表 · 2026-05-19 P4-T-001 落地 **ADR-0001 v3**(双轨路径) + P4-T-105 落地 ADR-0009(详表) |
-| Phase 5 | `NPUSliceAllocation` / `Quota` 对象设计(§6.8) | Phase 5 启动前补 CRD 设计 + inference-operator 集成方案 · 2026-05-19 P4-T-105 ADR-0009 §5 已列入 Phase 5 实施要点(greedy first-fit allocator + NPUSliceAllocation owner reference) |
-| Phase 5 | npu-dra-driver allocation logic + DeviceClass 注册 per ADR-0009 | Phase 5 启动检查 · 替换 T006 AllocationDeferred annotation 路径,写真实 status.devices[] 分配 | ADR-0009 |
-| Phase 5 | PD Router webhook impl per ADR-0008(`npu.huawei.com/slice-bindings` annotation 写入路径,mutating webhook · failurePolicy=Fail · cert-manager 依赖) | Phase 5 启动前实施,与 inference-operator 同 binary 出 |
+| Phase 5 | `NPUSliceAllocation` / `Quota` 对象设计(§6.8) | **landed** (2026-05-19 · P5-T-004 / 8173e83) — CRD types + scheme + 3 round-trip tests; controller + audit lifecycle landed at P5-T-005 / c283e94. Phase 9 quota controller reads this CRD as substrate. |
+| Phase 5 | npu-dra-driver allocation logic + DeviceClass 注册 per ADR-0009 | **landed** (2026-05-19 · P5-T-001 / 41cd04e DeviceClass helm template + P5-T-002 / a423dd9 real allocator greedy first-fit + P5-T-003 / 6ef715d allocator tests + BestFit) — claim controller writes status.allocation + status.devices[Ready=True]; Phase 4 annotation path DEPRECATED |
+| Phase 5 | PD Router webhook impl per ADR-0008(`npu.huawei.com/slice-bindings` annotation 写入路径,mutating webhook · failurePolicy=Fail · cert-manager 依赖) | **landed** (2026-05-19 · P5-T-101 c3452d3 cert-manager + P5-T-102 94c7c99 webhook scaffold + P5-T-103 ca81ead mutating logic + P5-T-104 1300f30 envtest) — same binary as inference-operator (ADR-0008 design choice) |
 | Phase 7 | 动态切分若 fallback "多模板组合" 削弱设计目标 | Phase 7 启动前 ADR,明确触发 fallback 的条件 |
 | Phase 9 | 多站点 demo backend 缓存重构(LRU 进程内 → Redis/singleton/stateless) | Phase 9 启动前 ADR + 重构路径 |
 | Phase 9 | 安全模型(authn/z + multi-tenancy RBAC + NPUSlicePool admission policy) | Phase 9 启动前完整安全设计 + Karmada RBAC 联动 |

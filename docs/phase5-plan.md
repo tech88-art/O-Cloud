@@ -676,4 +676,26 @@ Before P5-T-001 starts, the meeting confirms:
 
 ---
 
+---
+
+## Phase 5 actual landing
+
+**Phase 5 lands as `phase-5-complete` at commit `<filled by T107
+checkpoint commit>`; T107 ran 2026-05-19.**
+
+All 15 W1+W2 tasks completed in plan order. Test posture:
+- `go test ./...` across `operators/npu-dra-driver/` →
+  api/v1alpha1 + allocator + controller + publisher packages green
+- `go test ./...` across `operators/inference-operator/` →
+  controller + webhook packages green (14 + 18 = 32 tests)
+- `helm lint --strict` on both `deploy/helm-charts/npu-dra-driver/`
+  and `deploy/helm-charts/inference-operator/` → 0 failed
+- kind smoke E2E extension (T106) deferred to GitHub Actions CI
+
+See `docs/checkpoint-phase5.md` for the full deliverables table,
+test counts per surface, DoD reconciliation, and Phase 6 handoff
+brief.
+
+---
+
 **END of Phase 5 plan**
