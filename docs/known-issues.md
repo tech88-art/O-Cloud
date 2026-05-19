@@ -164,15 +164,16 @@ negative branch.
 | 4 | medium  | no | maybe | **fixture delivered**; FPS run remains operator-side |
 | 5 | trivial | no | no | **resolved** (WS `?fastforward=N` + frontend `?ffwd=` opt-in; E2E unskipped) |
 | 6 | trivial | no | no | **resolved** (reachability probe + Unreachable Alert) |
-| 7 | trivial | no | no | **accepted** (Phase 3 — helm lint will run in Linux CI; values.yaml + Chart.yaml validated via python-yaml on the Windows dev host) |
+| 7 | trivial | no | no | **RESOLVED** (2026-05-19, P3-T-103 — `.github/workflows/helm-lint.yml` runs `helm lint --strict` + `helm template` on every PR touching `deploy/helm-charts/**`) |
 | 8 | medium  | no | yes(Phase 3) | **accepted** (real-cluster E2E suite is Phase 3 scope; Phase 2 verifies via fake clientset + Playwright against mock backend) |
-| 9 | trivial | no | no | **accepted** (Phase 2 ascend exporter dev stub serves static metrics — real silicon required for live numbers; community v6.0.0 used in production helm chart) |
+| 9 | trivial | no | no | **RESOLVED** (2026-05-19, P3-T-103 — dev stub retired; `deploy/dev/docker-compose.yaml`'s `ascend-npu-exporter-plus` service now runs the self-built exporter binary in simulator mode against the checked-in `testdata/simulator-set-a-small.json` seed) |
 
 After ADR-0006, generator parity (#3), WS fastforward (#5),
 GrafanaPanel unreachable UX (#6), and set-c-stress fixture (#4), all
 six Phase 1 known issues have engineering resolutions. Phase 2 added
-three new entries (#7-#9), all accepted with explicit owners and Phase
-3 follow-ups.
+three new entries (#7-#9); P3-T-103 (2026-05-19) closes #7 (helm lint
+CI) and #9 (dev stub retired in favour of `ascend-npu-exporter-plus`
+in simulator mode). #8 remains accepted, scheduled for Phase 3.
 
 ---
 
@@ -180,19 +181,23 @@ three new entries (#7-#9), all accepted with explicit owners and Phase
 
 ### #7 — helm lint not run on the Windows dev host
 
-Severity: trivial · Status: **accepted** (Phase 3 CI work).
+Severity: trivial · Status: **RESOLVED** (2026-05-19, P3-T-103).
 
 `deploy/helm-charts/ascend-npu-exporter/` was developed without `helm`
-on the Windows authoring box. Authoring path:
+on the Windows authoring box. Phase 2 authoring path:
 
 1. `python -c "import yaml; yaml.safe_load(open(...))"` on `Chart.yaml`
    and `values.yaml`.
 2. Hand inspection of `templates/*.yaml` against the helm template
    helpers in `_helpers.tpl`.
 
-Phase 3 work: GitHub Action job `helm-lint` runs `helm lint` + `helm
-template` on every PR touching `deploy/helm-charts/**`. Tracked under
-P3-T-XXX (placeholder — owner TBD at Phase 3 kickoff).
+**Resolution**: `.github/workflows/helm-lint.yml` (lands with P3-T-103)
+runs `helm lint --strict` + `helm template ci-render` on every chart
+under `deploy/helm-charts/*/` whenever a PR touches that path or the
+workflow itself. The community chart it was originally written against
+was simultaneously retired in favour of the self-built
+`deploy/helm-charts/ascend-npu-exporter-plus/`; the new workflow lints
+the new chart from its first commit.
 
 ### #8 — Real-cluster E2E not yet automated
 
@@ -209,15 +214,23 @@ five frontend pages) is desirable but explicitly Phase 3 scope. Phase
 
 ### #9 — ascend exporter dev stub serves static metrics only
 
-Severity: trivial · Status: **accepted** (operator-aware).
+Severity: trivial · Status: **RESOLVED** (2026-05-19, P3-T-103).
 
-Without an Ascend host the dev stub
-(`deploy/dev/ascend-exporter-stub/`) serves a canned `/metrics`
-response — flat lines on Grafana panels. The production helm chart
-(`deploy/helm-charts/ascend-npu-exporter`) brings up the real
-community v6.0.0 exporter and produces live numbers on hosts with
-`huawei.com/Ascend910B` capacity.
+The Phase 2 dev stub (`deploy/dev/ascend-exporter-stub/`) was an nginx
+container that served a canned `/metrics` body — flat lines on Grafana.
 
-Operators using the demo box for live data need either:
-- A real Ascend node + the helm chart, OR
-- Phase 3+ `ascend-npu-exporter-plus` (self-built) once it ships.
+**Resolution**: P3-T-103 retired both the stub directory and the
+community helm chart. The `ascend-npu-exporter-plus` service in
+`deploy/dev/docker-compose.yaml` (profile `ascend`) now runs the
+self-built exporter binary in simulator mode against
+`exporters/ascend-npu-exporter-plus/testdata/simulator-set-a-small.json`,
+which mirrors `configs/mock-data/set-a-small/` (3 nodes × 8 NPUs = 24
+devices, 12 slices). Numbers vary across NPUs/slices but are still
+time-static (no synthetic load curves yet — that lands in Phase 4
+when DCMI sources replace simulator mode).
+
+For live numbers from real silicon, deploy the new helm chart
+(`deploy/helm-charts/ascend-npu-exporter-plus/`) onto a cluster with
+`huawei.com/Ascend910B`-labeled nodes; the chart's `simulator.enabled:
+false` switch flips the exporter to its DCMI/npu-smi backend once
+P4-T-2xx lands those sources.

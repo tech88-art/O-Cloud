@@ -2,17 +2,17 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "ascend-npu-exporter.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "ascend-npu-exporter-plus.fullname" . }}
+  namespace: {{ .Values.serviceMonitor.namespace | default .Release.Namespace }}
   labels:
-    {{- include "ascend-npu-exporter.labels" . | nindent 4 }}
+    {{- include "ascend-npu-exporter-plus.labels" . | nindent 4 }}
     {{- with .Values.serviceMonitor.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
   selector:
     matchLabels:
-      {{- include "ascend-npu-exporter.selectorLabels" . | nindent 6 }}
+      {{- include "ascend-npu-exporter-plus.selectorLabels" . | nindent 6 }}
   namespaceSelector:
     matchNames:
       - {{ .Release.Namespace }}

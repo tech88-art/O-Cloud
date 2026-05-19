@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "ascend-npu-exporter-plus.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ascend-npu-exporter-plus.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ascend-npu-exporter-plus.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ascend-npu-exporter-plus.selectorLabels" . | nindent 8 }}
+      annotations:
+        # Roll the pods when values change in a way that affects the
+        # rendered spec.
+        checksum/values: {{ .Values | toYaml | sha256sum }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # hostPID is only needed for real /proc workload correlation. In
+      # simulator mode (workloadCorrelation.simRoot is set) the exporter
+      # reads a fake-fs ConfigMap, so the pod stays unprivileged.
+      hostPID: {{ and .Values.workloadCorrelation.enabled (not .Values.simulator.enabled) }}
+      containers:
+        - name: exporter
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --listen=:{{ .Values.service.port }}
+            {{- if and .Values.simulator.enabled .Values.simulator.configMap }}
+            - --simulator={{ .Values.simulator.mountPath }}/sim.json
+            {{- else if and .Values.simulator.enabled .Values.simulator.fallbackTestdata }}
+            - --simulator={{ .Values.simulator.fallbackTestdata }}
+            {{- end }}
+            {{- if .Values.workloadCorrelation.enabled }}
+            - --enable-workload-correlation
+            {{- if .Values.workloadCorrelation.simRoot }}
+            - --workload-sim-root={{ .Values.workloadCorrelation.simRoot }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.simulator.enabled .Values.simulator.configMap }}
+          volumeMounts:
+            - name: sim-data
+              mountPath: {{ .Values.simulator.mountPath }}
+              readOnly: true
+          {{- end }}
+      {{- if and .Values.simulator.enabled .Values.simulator.configMap }}
+      volumes:
+        - name: sim-data
+          configMap:
+            name: {{ .Values.simulator.configMap }}
+      {{- end }}

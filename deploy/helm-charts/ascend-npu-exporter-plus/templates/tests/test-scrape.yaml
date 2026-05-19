@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "ascend-npu-exporter-plus.fullname" . }}-test-scrape
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ascend-npu-exporter-plus.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: scrape
+      image: "{{ .Values.testImage.repository }}:{{ .Values.testImage.tag }}"
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          # Hit the chart's Service (DaemonSet pods are headless from a
+          # client view — the Service load-balances onto whichever pod
+          # is Ready). Service exposes /metrics on .Values.service.port.
+          URL="http://{{ include "ascend-npu-exporter-plus.fullname" . }}:{{ .Values.service.port }}/metrics"
+          echo "scraping $URL"
+          curl -fsS "$URL" > /tmp/metrics.txt
+          echo "--- HEAD ---"
+          head -20 /tmp/metrics.txt
+          echo "--- ASSERTS ---"
+          # AC1: exporter_build_info family present (always emitted by
+          # registry.New() — see P3-T-006).
+          grep -E '^exporter_build_info\{' /tmp/metrics.txt
+          # AC2: at least one ascend_npu_* series (simulator default ON
+          # emits the NPU collector — see exporters/CLAUDE.md §3.4 + the
+          # P3-T-007 collector).
+          grep -E '^ascend_npu_' /tmp/metrics.txt | head -1
+          echo "OK"

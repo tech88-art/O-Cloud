@@ -29,16 +29,17 @@ scrape_configs:
         labels:
           service: demo-backend
 
-  # Ascend NPU exporter — community v6.0.0 in production (helm chart at
-  # deploy/helm-charts/ascend-npu-exporter), dev stub via the compose
-  # `--profile ascend` (see docker-compose.yaml). Without the stub the
-  # target stays `up=0` and Grafana shows "No data" — that's expected
-  # on hosts with no Ascend silicon (P2-T-008).
+  # Ascend NPU exporter — self-built `ascend-npu-exporter-plus` running
+  # in simulator mode (P3-T-103, retired the P2-T-008 community chart +
+  # nginx static-metrics stub). Opt in via the compose `--profile ascend`
+  # (see docker-compose.yaml). Without the profile the target stays
+  # `up=0` and Grafana shows "No data" — expected on hosts with no
+  # Ascend silicon and no opt-in.
   - job_name: ascend-npu-exporter
     metrics_path: /metrics
     static_configs:
       - targets:
-          - ascend-npu-exporter-stub:8082
+          - ascend-npu-exporter-plus:9100
         labels:
-          service: ascend-npu-exporter
-          source: dev-stub
+          service: ascend-npu-exporter-plus
+          source: dev-simulator

@@ -20,7 +20,7 @@ prometheus:
     # Avoid scraping the chart's own ServiceMonitor in a tight loop.
     scrapeInterval: 30s
     evaluationInterval: 30s
-    # Pick up the ascend-npu-exporter ServiceMonitor across namespaces.
+    # Pick up the ascend-npu-exporter-plus ServiceMonitor across namespaces.
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     # Small request floor so kube-scheduler can place us on a 4-core box.

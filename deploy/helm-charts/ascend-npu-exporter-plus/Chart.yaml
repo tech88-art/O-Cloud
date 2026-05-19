@@ -1,0 +1,29 @@
+apiVersion: v2
+name: ascend-npu-exporter-plus
+description: |
+  O-Cloud self-built Prometheus exporter for Ascend 910B NPU devices.
+  Emits NPU device-level (`ascend_npu_*`), vNPU slice-level
+  (`ascend_slice_*`), and (opt-in) PID-level workload (`ascend_pid_*`)
+  metrics. Replaces the Phase 2 community `ascend-npu-exporter v6.0.0`
+  chart and the `deploy/dev/ascend-exporter-stub/` static-metrics dev
+  fake (see docs/known-issues.md #7 + #9, both closed by P3-T-103).
+type: application
+# Chart version — bump on every chart-shape change.
+version: 0.1.0
+# Application (exporter-plus binary) version — keep in lock-step with
+# exporters/ascend-npu-exporter-plus/internal/version.Version.
+appVersion: "0.1.0"
+keywords:
+  - ascend
+  - npu
+  - prometheus
+  - exporter
+  - ocloud
+  - slice
+  - vnpu
+home: https://github.com/example/o-cloud
+sources:
+  - https://github.com/example/o-cloud/tree/main/exporters/ascend-npu-exporter-plus
+maintainers:
+  - name: O-Cloud team
+    url: https://github.com/example/o-cloud

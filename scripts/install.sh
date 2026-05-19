@@ -56,12 +56,14 @@ readonly MIN_GO_VERSION="1.22"
 readonly MIN_NODE_VERSION="20"
 
 # Helm / kube-prometheus-stack — used only by --with-prometheus (P2-T-106).
+# P3-T-103 retired the community exporter chart + dev stub; the
+# self-built ascend-npu-exporter-plus chart is installed alongside KPS.
 readonly KPS_RELEASE_NAME="${OCEDGE_KPS_RELEASE:-kube-prometheus-stack}"
 readonly KPS_NAMESPACE="${OCEDGE_KPS_NAMESPACE:-monitoring}"
 readonly KPS_VALUES_FILE="${OCEDGE_KPS_VALUES:-deploy/single-node/values-kps.yaml}"
-readonly ASCEND_RELEASE_NAME="${OCEDGE_ASCEND_RELEASE:-ascend-npu-exporter}"
-readonly ASCEND_NAMESPACE="${OCEDGE_ASCEND_NAMESPACE:-ocloud-system}"
-readonly ASCEND_CHART_PATH="${OCEDGE_ASCEND_CHART:-deploy/helm-charts/ascend-npu-exporter}"
+readonly ASCEND_RELEASE_NAME="${OCEDGE_ASCEND_RELEASE:-ascend-npu-exporter-plus}"
+readonly ASCEND_NAMESPACE="${OCEDGE_ASCEND_NAMESPACE:-monitoring}"
+readonly ASCEND_CHART_PATH="${OCEDGE_ASCEND_CHART:-deploy/helm-charts/ascend-npu-exporter-plus}"
 
 log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }
 warn() { printf '[%s] \033[33mWARN\033[0m %s\n' "$(date '+%H:%M:%S')" "$*" >&2; }
@@ -387,7 +389,7 @@ $SCRIPT_NAME — single-node O-Cloud Edge demo installer
 Options:
   --image-only        skip source build; pull pre-built images via docker compose
   --no-start          build artifacts but don't bring up the compose stack
-  --with-prometheus   helm-install kube-prometheus-stack + ascend-npu-exporter
+  --with-prometheus   helm-install kube-prometheus-stack + ascend-npu-exporter-plus
                       into the current kubeconfig context (P2-T-106; composable
                       with the other flags)
   --uninstall         tear down the compose stack + any kps/ascend releases
@@ -399,9 +401,9 @@ Env vars:
   OCEDGE_KPS_RELEASE       kube-prometheus-stack release name (default: kube-prometheus-stack)
   OCEDGE_KPS_NAMESPACE     kube-prometheus-stack namespace (default: monitoring)
   OCEDGE_KPS_VALUES        kube-prometheus-stack values file (default: deploy/single-node/values-kps.yaml)
-  OCEDGE_ASCEND_RELEASE    ascend-npu-exporter release name (default: ascend-npu-exporter)
-  OCEDGE_ASCEND_NAMESPACE  ascend-npu-exporter namespace (default: ocloud-system)
-  OCEDGE_ASCEND_CHART      ascend-npu-exporter chart path (default: deploy/helm-charts/ascend-npu-exporter)
+  OCEDGE_ASCEND_RELEASE    ascend-npu-exporter-plus release name (default: ascend-npu-exporter-plus)
+  OCEDGE_ASCEND_NAMESPACE  ascend-npu-exporter-plus namespace (default: monitoring)
+  OCEDGE_ASCEND_CHART      ascend-npu-exporter-plus chart path (default: deploy/helm-charts/ascend-npu-exporter-plus)
 EOF
 }
 

@@ -1,0 +1,72 @@
+# Helm chart lint + dry-render CI (closes known-issues #7).
+#
+# Triggered on any PR/push that touches deploy/helm-charts/** or this
+# workflow file. Iterates every chart directory under deploy/helm-charts/,
+# runs `helm lint` (strict — all info-level lints elevated), then runs
+# `helm template` to catch render-time errors that lint alone misses
+# (e.g. broken {{ include }} references).
+#
+# Phase 3 background: P2-T-008's community chart was authored on a
+# Windows box without `helm` on PATH; Phase 2 known-issue #7 deferred
+# lint to Phase 3 CI. P3-T-103 lands the new self-built
+# `ascend-npu-exporter-plus` chart and this workflow simultaneously, so
+# the lint that was deferred runs from the first commit of the new chart.
+
+name: helm-lint
+
+on:
+  pull_request:
+    paths:
+      - 'deploy/helm-charts/**'
+      - '.github/workflows/helm-lint.yml'
+  push:
+    branches: [dev, main]
+    paths:
+      - 'deploy/helm-charts/**'
+      - '.github/workflows/helm-lint.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  helm-lint:
+    name: Helm lint + template
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.0
+
+      - name: helm version
+        run: helm version
+
+      - name: helm lint (strict) on every chart
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          charts=(deploy/helm-charts/*/)
+          if [[ ${#charts[@]} -eq 0 ]]; then
+            echo "No helm charts under deploy/helm-charts/; nothing to lint."
+            exit 0
+          fi
+          for chart in "${charts[@]}"; do
+            echo "::group::helm lint --strict $chart"
+            helm lint --strict "$chart"
+            echo "::endgroup::"
+          done
+
+      - name: helm template (dry render) on every chart
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          charts=(deploy/helm-charts/*/)
+          for chart in "${charts[@]}"; do
+            echo "::group::helm template ci-render $chart"
+            # Render with default values; `--validate` would require a
+            # live cluster, so we stop at template syntax + Helm semantics.
+            helm template ci-render "$chart" > /dev/null
+            echo "::endgroup::"
+          done

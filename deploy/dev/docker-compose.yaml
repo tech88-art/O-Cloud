@@ -147,30 +147,39 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # --------------------------------------------------- ascend-exporter-stub (opt-in)
-  # Fake Ascend NPU exporter for dev hosts without real 910B silicon.
-  # Serves a static /metrics body that matches the wire shape of
-  # `swr.cn-south-1.myhuaweicloud.com/ascendhub/ascend-npu-exporter:v6.0.0`,
-  # so the existing Grafana panels render non-empty during demo prep
-  # (P2-T-008). Off by default; opt in with `--profile ascend`.
-  ascend-npu-exporter-stub:
-    image: nginx:1.27-alpine
-    container_name: ocloud-dev-ascend-exporter-stub
+  # --------------------------------------------------- ascend-npu-exporter-plus (opt-in)
+  # Self-built Ascend NPU exporter (P3-T-103) running in simulator mode.
+  # Replaces the P2-T-008 nginx static-metrics stub (known-issues #9).
+  # The image is built locally via `make -C exporters/ascend-npu-exporter-plus
+  # docker-build` and pinned at tag `dev`; the `pull_policy: never` keeps
+  # docker compose from trying to fetch it from a remote registry.
+  #
+  # The exporter listens on :9100 (matches the helm chart default —
+  # deploy/helm-charts/ascend-npu-exporter-plus/values.yaml service.port).
+  # /metrics is exposed to the host on 8082 to preserve the port that
+  # deploy/dev/prometheus/prometheus.yml's scrape config already targets,
+  # so Grafana panels keep working without a Prometheus reload.
+  #
+  # Off by default; opt in with `--profile ascend`.
+  ascend-npu-exporter-plus:
+    image: ascend-npu-exporter-plus:dev
+    pull_policy: never
+    container_name: ocloud-dev-ascend-npu-exporter-plus
+    command:
+      - --listen=:9100
+      - --simulator=/etc/ascend-exporter-plus/sim.json
     volumes:
-      - ./ascend-exporter-stub/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ascend-exporter-stub/metrics.txt:/usr/share/nginx/html/metrics.txt:ro
+      # Mount the exporter-plus checked-in simulator seed (mirrors
+      # configs/mock-data/set-a-small/ — 3 nodes * 8 NPUs = 24, 12 slices).
+      - ../../exporters/ascend-npu-exporter-plus/testdata/simulator-set-a-small.json:/etc/ascend-exporter-plus/sim.json:ro
     ports:
-      - "8082:8082"
+      # Preserve the historical host-side port 8082 so prometheus.yml's
+      # static scrape target stays valid; container listens on 9100.
+      - "8082:9100"
     networks:
       - ocloud-dev
     profiles:
       - ascend
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8082/healthz"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 5s
     restart: unless-stopped
 
   # ------------------------------------------------------------------ loki (opt-in)

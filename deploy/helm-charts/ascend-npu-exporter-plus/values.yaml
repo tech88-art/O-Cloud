@@ -1,0 +1,130 @@
+# Default values for ascend-npu-exporter-plus.
+#
+# Phase 3 status:
+#   - `simulator.enabled: true` is the default — the exporter loads NPU /
+#     slice seeds from a simulator JSON (mirrors configs/mock-data/set-a-*)
+#     so dashboards render without real Ascend silicon.
+#   - `workloadCorrelation.enabled: false` by default — PID-level metrics
+#     are opt-in (see exporters/CLAUDE.md §8 — /proc scan cost on idle
+#     hosts). Flip ON for Phase 5 PD Router demos.
+#
+# Phase 4+ upgrade path:
+#   - Set `simulator.enabled: false` to switch the exporter to the real
+#     DCMI / npu-smi sources (binary already has the flag wired; sources
+#     land in P4-T-2xx).
+#   - When `simulator.enabled: false` + `workloadCorrelation.enabled: true`,
+#     `workloadCorrelation.simRoot` is ignored; the exporter scans real
+#     `/proc` and a hostPath mount becomes required.
+
+image:
+  # Locally-built image — `make docker-build` in exporters/ascend-npu-exporter-plus/
+  # produces `ascend-npu-exporter-plus:dev`. CI replaces tag with a SHA on
+  # release. Set repository to a registry path (e.g.
+  # `registry.example.com/ocloud/ascend-npu-exporter-plus`) for cluster
+  # deploys.
+  repository: ascend-npu-exporter-plus
+  tag: "dev"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# DaemonSet placement: only schedule onto nodes the device-plugin marks
+# with `huawei.com/Ascend910B`. Override to `huawei.com/Ascend910` (no
+# `B`) on first-gen 910 silicon.
+nodeSelector:
+  huawei.com/Ascend910B: "true"
+
+tolerations:
+  - key: huawei.com/Ascend910B
+    operator: Exists
+    effect: NoSchedule
+
+# Pod-level securityContext. The exporter-plus image runs as `nonroot`
+# from distroless; no extra capabilities are needed unless DCMI mode
+# requires /dev/davinci* access (Phase 4+).
+podSecurityContext: {}
+securityContext: {}
+
+# Resource shape — exporter-plus is small (no CGo, no GPU calls in
+# simulator mode). Tune up if you enable workload correlation on hosts
+# with hundreds of pods.
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# /metrics endpoint port. Matches the binary's --listen default and the
+# exporters/ascend-npu-exporter-plus/Dockerfile EXPOSE 9100.
+service:
+  type: ClusterIP
+  port: 9100
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9100"
+
+# Extra args appended verbatim to the exporter-plus argv. The chart
+# already wires --listen and the simulator/workload-correlation flags
+# below; use this for ad-hoc debugging (e.g. ["--v=4"]) or future flags
+# the chart doesn't yet model.
+extraArgs: []
+
+# ---------------------------------------------------------------- Simulator
+# Phase 3 default: ON. Loads NPU + slice seeds from a JSON file mounted
+# from a ConfigMap (or the image's built-in testdata when configMap is
+# empty).
+simulator:
+  enabled: true
+  # Path inside the container that --simulator points at. The default
+  # ("/etc/ascend-exporter-plus/sim.json") is mounted from `configMap`
+  # below when configMap is non-empty; otherwise --simulator is set to
+  # the image's bundled testdata path.
+  mountPath: /etc/ascend-exporter-plus
+  # Name of a ConfigMap holding `sim.json` (key "sim.json"). Empty falls
+  # back to the binary's bundled `testdata/simulator-set-a-small.json`
+  # via --simulator pointing at the in-image copy (image already ships
+  # the testdata for unit tests; mounting overrides it).
+  configMap: ""
+  # Default in-image testdata path — used when configMap is empty. Keep
+  # this in sync with the Dockerfile (the image copies the whole repo,
+  # so testdata/ is at /src; the build stage doesn't preserve it, only
+  # the binary survives — so configMap="" today means --simulator is
+  # left unset and the exporter starts in DCMI-stub mode).
+  fallbackTestdata: ""
+
+# ------------------------------------------------------ Workload correlation
+# Off by default per exporters/CLAUDE.md §8. Flip ON for PD Router demos
+# (Phase 5+).
+workloadCorrelation:
+  enabled: false
+  # Simulator cgroup fake-fs root path inside the container. Only used
+  # when both `enabled: true` and `simulator.enabled: true`. A
+  # cgroup-sim ConfigMap (or initContainer that bootstraps the tree)
+  # is the operator's responsibility — chart only wires the flag.
+  simRoot: ""
+
+# -------------------------------------------------------------- ServiceMonitor
+# kube-prometheus-stack auto-discovery. Disable when there's no
+# Prometheus Operator in the cluster.
+serviceMonitor:
+  enabled: true
+  # Default to the kube-prometheus-stack monitoring namespace. Override
+  # if your KPS lives elsewhere; `namespace: ""` falls through to the
+  # chart's release namespace.
+  namespace: monitoring
+  interval: 15s
+  scrapeTimeout: 10s
+  labels: {}
+  metricRelabelings: []
+
+# ------------------------------------------------------------ helm test image
+# Image used by the `helm test` hook (templates/tests/test-scrape.yaml).
+# Override to a private mirror when air-gapped.
+testImage:
+  repository: curlimages/curl
+  tag: "8.5.0"
