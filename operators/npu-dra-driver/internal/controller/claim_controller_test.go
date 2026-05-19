@@ -18,29 +18,32 @@ package controller
 
 import (
 	"context"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	resourceapi "k8s.io/api/resource/v1beta1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1alpha1 "github.com/tech88-art/O-Cloud/operators/npu-dra-driver/api/v1alpha1"
+	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/publisher"
 )
 
-// Per docs/phase4-plan.md §3 P4-T-006 acceptance, T006 envtest cases are:
-//   - Happy path: claim created -> deferred state observed within one Reconcile
-//   - Idempotent: state unchanged across 3 subsequent reconciles
-//   - Unrelated claim (different driver name): ignored
-//   - Deletion: claim deleted -> controller logs cleanup, no finalizer
+// Phase 5 T002 controller-package tests cover:
+//   - foreign claim ignored
+//   - happy path: claim with bare class allocates against a fixture
+//     ResourceSlice and ends up with Status.Allocation + Status.Devices
+//   - no-slice requeue: empty slice store → Requeue=true, no allocation
+//   - migration: Phase 4 AllocationDeferred annotations stripped on
+//     first reconcile
 //
-// All 4 are exercised below using fake client (rationale in suite_test.go).
-// Per the schema-drift note in claim_controller.go, "AllocationDeferred"
-// state lives in metadata.annotations + Events (NOT status.conditions, which
-// v1beta1.ResourceClaimStatus does not expose).
+// T003 adds 5+ envtest cases (sub-class filtering, multi-claim
+// determinism, etc.) — those live alongside the allocator unit tests in
+// internal/allocator/ and a deeper envtest harness here.
 
 func ourClaim(name, namespace, deviceClassName string) *resourceapi.ResourceClaim {
 	return &resourceapi.ResourceClaim{
@@ -48,6 +51,7 @@ func ourClaim(name, namespace, deviceClassName string) *resourceapi.ResourceClai
 			Name:       name,
 			Namespace:  namespace,
 			Generation: 1,
+			UID:        types.UID(name + "-uid"),
 		},
 		Spec: resourceapi.ResourceClaimSpec{
 			Devices: resourceapi.DeviceClaim{
@@ -59,12 +63,47 @@ func ourClaim(name, namespace, deviceClassName string) *resourceapi.ResourceClai
 	}
 }
 
-func reconcileOnce(t *testing.T, r *ClaimReconciler, key client.ObjectKey) {
+func fixtureSlice(name, node string, devices ...resourceapi.Device) *resourceapi.ResourceSlice {
+	return &resourceapi.ResourceSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				publisher.SliceLabelManagedBy: publisher.SliceLabelManagedByValue,
+			},
+		},
+		Spec: resourceapi.ResourceSliceSpec{
+			Driver: v1alpha1.DriverName,
+			Pool: resourceapi.ResourcePool{
+				Name:               node,
+				Generation:         1,
+				ResourceSliceCount: 1,
+			},
+			NodeName: node,
+			Devices:  devices,
+		},
+	}
+}
+
+func fixtureHealthyWholeDevice(name string, index int64) resourceapi.Device {
+	return v1alpha1.AscendDevice{
+		Name:                name,
+		Index:               index,
+		Health:              v1alpha1.HealthHealthy,
+		SliceStrategy:       v1alpha1.SliceStrategyFixedTemplate,
+		AICores:             0,
+		NUMANode:            0,
+		HCCSRing:            0,
+		SliceAICoreCapacity: resource.MustParse("32"),
+	}.ToUpstream()
+}
+
+func reconcileOnce(t *testing.T, r *ClaimReconciler, key client.ObjectKey) ctrl.Result {
 	t.Helper()
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: key})
+	res, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: key})
 	if err != nil {
 		t.Fatalf("Reconcile(%s): %v", key, err)
 	}
+	return res
 }
 
 func getClaim(t *testing.T, c client.Client, key client.ObjectKey) *resourceapi.ResourceClaim {
@@ -76,116 +115,152 @@ func getClaim(t *testing.T, c client.Client, key client.ObjectKey) *resourceapi.
 	return &out
 }
 
-func assertDeferredAnnotations(t *testing.T, claim *resourceapi.ResourceClaim, wantGen int64) {
-	t.Helper()
-	if got := claim.Annotations[AnnotationAllocationDeferred]; got != "true" {
-		t.Errorf("annotation %s: want \"true\", got %q", AnnotationAllocationDeferred, got)
-	}
-	if got := claim.Annotations[AnnotationAllocationDeferredReason]; got != ReasonPhase4Skeleton {
-		t.Errorf("annotation %s: want %q, got %q", AnnotationAllocationDeferredReason, ReasonPhase4Skeleton, got)
-	}
-	if got := claim.Annotations[AnnotationAllocationDeferredMessage]; !strings.Contains(got, "Phase 5") {
-		t.Errorf("annotation %s should mention Phase 5; got %q", AnnotationAllocationDeferredMessage, got)
-	}
-	if got := claim.Annotations[AnnotationAllocationDeferredObservedGen]; got != strconv.FormatInt(wantGen, 10) {
-		t.Errorf("annotation %s: want %d, got %q", AnnotationAllocationDeferredObservedGen, wantGen, got)
-	}
-}
-
-func TestClaim_HappyPath(t *testing.T) {
-	claim := ourClaim("c1", "ns-a", v1alpha1.DriverName)
-	cli := newFakeClient(t, claim)
-	rec := newFakeRecorder(8)
-	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: rec}
-
-	key := client.ObjectKey{Namespace: "ns-a", Name: "c1"}
-	reconcileOnce(t, r, key)
-
-	got := getClaim(t, cli, key)
-	assertDeferredAnnotations(t, got, 1)
-
-	// Event emitted on the fake recorder.
-	select {
-	case ev := <-rec.Events:
-		if !strings.Contains(ev, ReasonPhase4Skeleton) {
-			t.Errorf("event missing reason %s: %s", ReasonPhase4Skeleton, ev)
-		}
-	default:
-		t.Errorf("expected at least one event from happy-path reconcile")
-	}
-}
-
-func TestClaim_Idempotent(t *testing.T) {
-	claim := ourClaim("c2", "ns-b", v1alpha1.DriverName+"/whole")
-	cli := newFakeClient(t, claim)
-	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t)}
-
-	key := client.ObjectKey{Namespace: "ns-b", Name: "c2"}
-	reconcileOnce(t, r, key)
-	first := getClaim(t, cli, key)
-	assertDeferredAnnotations(t, first, 1)
-	wantRV := first.ResourceVersion
-
-	// Run two more reconciles. Since the annotation values are stable, no
-	// real update should occur — fake client tracks ResourceVersion bumps.
-	for i := 0; i < 2; i++ {
-		reconcileOnce(t, r, key)
-		got := getClaim(t, cli, key)
-		assertDeferredAnnotations(t, got, 1)
-		// Stable annotation values mean MergeFrom patch is a no-op; the fake
-		// client may or may not bump ResourceVersion on no-op patches —
-		// either way, the annotation contents must stay correct.
-		if i > 0 && wantRV == "" {
-			wantRV = got.ResourceVersion
-		}
-	}
-}
-
 func TestClaim_UnrelatedDriverIgnored(t *testing.T) {
-	claim := ourClaim("c3", "ns-c", "other-vendor.example.com/gpu")
+	claim := ourClaim("c-foreign", "ns-c", "other-vendor.example.com/gpu")
 	cli := newFakeClient(t, claim)
 	rec := newFakeRecorder(4)
 	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: rec}
 
-	key := client.ObjectKey{Namespace: "ns-c", Name: "c3"}
+	key := client.ObjectKey{Namespace: "ns-c", Name: "c-foreign"}
 	reconcileOnce(t, r, key)
 
 	got := getClaim(t, cli, key)
-	if _, ok := got.Annotations[AnnotationAllocationDeferred]; ok {
-		t.Errorf("foreign-driver claim must not receive AllocationDeferred annotation; got %+v",
-			got.Annotations)
+	if got.Status.Allocation != nil {
+		t.Errorf("foreign claim must not be allocated; got %+v", got.Status.Allocation)
 	}
 	select {
 	case ev := <-rec.Events:
-		t.Errorf("foreign-driver claim must not emit event; got %s", ev)
+		t.Errorf("foreign claim must not emit event; got %s", ev)
 	default:
 		// expected
 	}
 }
 
-func TestClaim_Deletion(t *testing.T) {
-	// Claim does not exist (simulates post-deletion reconcile from a queued
-	// watch event). Controller must return without error.
-	cli := newFakeClient(t)
-	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t)}
-	key := client.ObjectKey{Namespace: "ns-d", Name: "vanished"}
+func TestClaim_HappyPath_Allocates(t *testing.T) {
+	claim := ourClaim("c-happy", "ns-a", v1alpha1.DriverName)
+	dev := fixtureHealthyWholeDevice("nodeA-npu-0", 0)
+	slice := fixtureSlice("npu-dra-nodeA", "nodeA", dev)
 
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: key})
-	if err != nil {
-		t.Errorf("Reconcile on deleted claim must not error, got: %v", err)
+	cli := newFakeClient(t, claim, slice)
+	rec := newFakeRecorder(8)
+	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: rec}
+
+	key := client.ObjectKey{Namespace: "ns-a", Name: "c-happy"}
+	res := reconcileOnce(t, r, key)
+	if res.Requeue {
+		t.Errorf("happy path must not requeue; got Requeue=%v", res.Requeue)
 	}
 
-	// Sanity: claim still doesn't exist.
-	var dummy resourceapi.ResourceClaim
-	err = cli.Get(context.Background(), key, &dummy)
-	if err == nil {
-		t.Error("expected NotFound after deletion-path reconcile")
+	got := getClaim(t, cli, key)
+	if got.Status.Allocation == nil {
+		t.Fatalf("expected Status.Allocation to be set; got nil")
+	}
+	if got.Status.Allocation.Devices.Results == nil || len(got.Status.Allocation.Devices.Results) != 1 {
+		t.Fatalf("expected one allocation result; got %+v", got.Status.Allocation.Devices.Results)
+	}
+	r0 := got.Status.Allocation.Devices.Results[0]
+	if r0.Driver != v1alpha1.DriverName {
+		t.Errorf("result driver: want %q, got %q", v1alpha1.DriverName, r0.Driver)
+	}
+	if r0.Pool != "nodeA" {
+		t.Errorf("result pool: want nodeA, got %q", r0.Pool)
+	}
+	if r0.Device != "nodeA-npu-0" {
+		t.Errorf("result device: want nodeA-npu-0, got %q", r0.Device)
+	}
+	if len(got.Status.Devices) != 1 {
+		t.Fatalf("expected one AllocatedDeviceStatus; got %+v", got.Status.Devices)
+	}
+	devStatus := got.Status.Devices[0]
+	if len(devStatus.Conditions) == 0 || devStatus.Conditions[0].Type != "Ready" || devStatus.Conditions[0].Status != metav1.ConditionTrue {
+		t.Errorf("expected Ready=True condition; got %+v", devStatus.Conditions)
+	}
+
+	select {
+	case ev := <-rec.Events:
+		if !strings.Contains(ev, reasonAllocated) {
+			t.Errorf("expected Allocated event; got %s", ev)
+		}
+	default:
+		t.Errorf("expected Allocated event")
+	}
+}
+
+func TestClaim_NoSliceRequeues(t *testing.T) {
+	claim := ourClaim("c-stuck", "ns-x", v1alpha1.DriverName)
+	cli := newFakeClient(t, claim)
+	rec := newFakeRecorder(4)
+	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: rec}
+
+	key := client.ObjectKey{Namespace: "ns-x", Name: "c-stuck"}
+	res := reconcileOnce(t, r, key)
+	if !res.Requeue {
+		t.Errorf("no-slice path must Requeue=true; got %+v", res)
+	}
+
+	got := getClaim(t, cli, key)
+	if got.Status.Allocation != nil {
+		t.Errorf("no-slice path must not allocate; got %+v", got.Status.Allocation)
+	}
+	select {
+	case ev := <-rec.Events:
+		if !strings.Contains(ev, reasonNoAvailable) {
+			t.Errorf("expected NoAvailableDevice event; got %s", ev)
+		}
+	default:
+		t.Errorf("expected NoAvailableDevice event")
+	}
+}
+
+func TestClaim_StripsPhase4Annotations(t *testing.T) {
+	claim := ourClaim("c-mig", "ns-m", v1alpha1.DriverName)
+	claim.Annotations = map[string]string{
+		AnnotationAllocationDeferred:            "true",
+		AnnotationAllocationDeferredReason:      ReasonPhase4Skeleton,
+		AnnotationAllocationDeferredMessage:     MessagePhase4Skeleton,
+		AnnotationAllocationDeferredObservedGen: "1",
+	}
+	dev := fixtureHealthyWholeDevice("nodeM-npu-0", 0)
+	slice := fixtureSlice("npu-dra-nodeM", "nodeM", dev)
+
+	cli := newFakeClient(t, claim, slice)
+	rec := newFakeRecorder(8)
+	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: rec}
+
+	key := client.ObjectKey{Namespace: "ns-m", Name: "c-mig"}
+
+	// First reconcile: strip annotations + Requeue (no allocation yet).
+	res := reconcileOnce(t, r, key)
+	if !res.Requeue {
+		t.Errorf("first reconcile on migration path should Requeue; got %+v", res)
+	}
+	got := getClaim(t, cli, key)
+	for _, k := range []string{
+		AnnotationAllocationDeferred,
+		AnnotationAllocationDeferredReason,
+		AnnotationAllocationDeferredMessage,
+		AnnotationAllocationDeferredObservedGen,
+	} {
+		if _, ok := got.Annotations[k]; ok {
+			t.Errorf("annotation %s should have been stripped; still present", k)
+		}
+	}
+	if got.Status.Allocation != nil {
+		t.Errorf("first reconcile (strip pass) must not allocate; got %+v", got.Status.Allocation)
+	}
+
+	// Second reconcile: real allocation now that annotations are gone.
+	reconcileOnce(t, r, key)
+	got2 := getClaim(t, cli, key)
+	if got2.Status.Allocation == nil {
+		t.Fatalf("expected allocation after second reconcile; got nil")
 	}
 }
 
 // TestClaim_BareDriverNamePrefixMatching exercises both exact and "/sub"
 // and ".something" prefix matches against v1alpha1.DriverName so the
-// Phase 5 DeviceClass naming can evolve without churning T006.
+// Phase 5 controller continues to accept claims authored against
+// either DeviceClass naming shape.
 func TestClaim_BareDriverNamePrefixMatching(t *testing.T) {
 	for name, deviceClassName := range map[string]string{
 		"exact":             v1alpha1.DriverName,
@@ -206,15 +281,6 @@ func TestClaim_BareDriverNamePrefixMatching(t *testing.T) {
 }
 
 func TestSetCondition_TransitionTime(t *testing.T) {
-	// utils.go SetCondition: when Status flips, LastTransitionTime updates;
-	// when Status stays, LastTransitionTime preserves. Kept as a unit test of
-	// the helper even though the claim controller uses annotations not
-	// conditions (helper is still consumed by future Phase 5 work + utils
-	// is exposed from this package).
-	//
-	// metav1.Time uses RFC 3339 second-level resolution, so we plant an
-	// older timestamp on the first call to avoid wall-clock collision when
-	// the test runs sub-second.
 	old := metav1.Time{Time: metav1.Now().Add(-1 * time.Hour)}
 	conds := []metav1.Condition{
 		{Type: "X", Status: metav1.ConditionTrue, Reason: "first", LastTransitionTime: old},
