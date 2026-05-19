@@ -92,9 +92,33 @@ jobs:
           kubectl -n pool-operator-system rollout restart deploy/pool-operator-controller-manager
           kubectl -n monitoring rollout restart ds/ascend-npu-exporter-plus
           kubectl -n ocloud-system rollout restart deploy/demo-backend
+          kubectl -n ocloud-system rollout restart deploy/npu-dra-driver
           kubectl -n pool-operator-system rollout status deploy/pool-operator-controller-manager --timeout=3m
           kubectl -n monitoring rollout status ds/ascend-npu-exporter-plus --timeout=2m
           kubectl -n ocloud-system rollout status deploy/demo-backend --timeout=2m
+          kubectl -n ocloud-system rollout status deploy/npu-dra-driver --timeout=2m
+
+      - name: assert ResourceSlice publication (P4-T-104)
+        # Phase 4: the npu-dra-driver simulator publisher should have emitted
+        # one ResourceSlice per node from set-a-small/npus.json (3 nodes ×
+        # 8 NPUs per node). The dra_publish_test.sh script asserts:
+        #   - at least 1 ResourceSlice
+        #   - at least 1 with driver=npu.ocloud.edge.example.com
+        #   - at least 8 devices in the first matching slice
+        #   - at least one device carrying the npu.huawei.com/index attribute
+        # Allows up to 60s for the publisher's first reconcile pass.
+        run: |
+          set -e
+          echo "waiting for npu-dra-driver to publish at least one ResourceSlice..."
+          for i in $(seq 1 12); do
+            n=$(kubectl get resourceslices -o jsonpath='{range .items[?(@.spec.driver=="npu.ocloud.edge.example.com")]}{.metadata.name}{"\n"}{end}' 2>/dev/null | grep -c . || echo 0)
+            echo "  attempt ${i}: matching slices=${n}"
+            if [ "${n:-0}" -ge 1 ]; then
+              break
+            fi
+            sleep 5
+          done
+          bash tests/e2e/kind/dra_publish_test.sh
 
       - name: seed pool CRDs + mock workload
         run: bash tests/e2e/kind/seed-resources.sh
@@ -161,6 +185,12 @@ jobs:
           echo "::endgroup::"
           echo "::group::backend logs"
           kubectl -n ocloud-system logs deploy/demo-backend --tail=200 || true
+          echo "::endgroup::"
+          echo "::group::npu-dra-driver logs (P4-T-104)"
+          kubectl -n ocloud-system logs deploy/npu-dra-driver --tail=300 || true
+          echo "::endgroup::"
+          echo "::group::ResourceSlices (P4-T-104)"
+          kubectl get resourceslices -o yaml || true
           echo "::endgroup::"
 
   e2e-mock-regression:

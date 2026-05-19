@@ -34,6 +34,13 @@
 #                                         # (requires K3s/K8s + helm; replaces the
 #                                         # docker-compose Grafana for K8s demos).
 #                                         # Composable with the other flags.
+#   ./scripts/install.sh --with-dra-driver
+#                                         # helm-install the Phase 4 npu-dra-driver
+#                                         # chart into the current kubeconfig context.
+#                                         # Requires kubectl + helm + K8s 1.30+ (DRA v1beta1).
+#                                         # Composable with --with-prometheus.
+#   ./scripts/install.sh --all-phase-4    # aggregate: --with-prometheus +
+#                                         # ascend-npu-exporter-plus + --with-dra-driver
 #   ./scripts/install.sh --uninstall      # tear down compose + remove project dir
 #
 # Env-var overrides:
@@ -64,6 +71,11 @@ readonly KPS_VALUES_FILE="${OCEDGE_KPS_VALUES:-deploy/single-node/values-kps.yam
 readonly ASCEND_RELEASE_NAME="${OCEDGE_ASCEND_RELEASE:-ascend-npu-exporter-plus}"
 readonly ASCEND_NAMESPACE="${OCEDGE_ASCEND_NAMESPACE:-monitoring}"
 readonly ASCEND_CHART_PATH="${OCEDGE_ASCEND_CHART:-deploy/helm-charts/ascend-npu-exporter-plus}"
+
+# Phase 4 P4-T-104 — npu-dra-driver chart wiring for --with-dra-driver.
+readonly NPU_DRA_RELEASE_NAME="${OCEDGE_NPU_DRA_RELEASE:-npu-dra-driver}"
+readonly NPU_DRA_NAMESPACE="${OCEDGE_NPU_DRA_NAMESPACE:-ocloud-system}"
+readonly NPU_DRA_CHART_PATH="${OCEDGE_NPU_DRA_CHART:-deploy/helm-charts/npu-dra-driver}"
 
 log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }
 warn() { printf '[%s] \033[33mWARN\033[0m %s\n' "$(date '+%H:%M:%S')" "$*" >&2; }
@@ -363,6 +375,41 @@ install_prometheus_stack() {
     log "kube-prometheus-stack ready; Grafana NodePort: 30001 (admin/admin)"
 }
 
+# --with-dra-driver implementation (P4-T-104). Targets the current
+# kubeconfig context — caller is responsible for pointing $KUBECONFIG
+# at the right cluster. Idempotent: a second run upgrades in place.
+install_npu_dra_driver() {
+    if ! command -v kubectl >/dev/null 2>&1; then
+        err "--with-dra-driver needs kubectl on PATH (and a working kubeconfig)"
+    fi
+    if ! kubectl cluster-info >/dev/null 2>&1; then
+        err "kubectl cluster-info failed — check kubeconfig before re-running"
+    fi
+    install_helm
+
+    if [[ ! -d "$REPO_DIR/$NPU_DRA_CHART_PATH" ]]; then
+        err "npu-dra-driver chart not found at $NPU_DRA_CHART_PATH"
+    fi
+
+    log "upgrading/installing $NPU_DRA_RELEASE_NAME into namespace $NPU_DRA_NAMESPACE"
+    helm upgrade --install "$NPU_DRA_RELEASE_NAME" \
+        "$REPO_DIR/$NPU_DRA_CHART_PATH" \
+        --namespace "$NPU_DRA_NAMESPACE" \
+        --create-namespace \
+        --wait --timeout 5m
+
+    log "npu-dra-driver ready; resourceslices visible via: kubectl get resourceslices"
+}
+
+uninstall_npu_dra_driver() {
+    if ! command -v helm >/dev/null 2>&1; then
+        warn "helm not installed; nothing to uninstall"
+        return
+    fi
+    log "uninstalling $NPU_DRA_RELEASE_NAME (best-effort)"
+    helm uninstall "$NPU_DRA_RELEASE_NAME" --namespace "$NPU_DRA_NAMESPACE" 2>/dev/null || true
+}
+
 uninstall_prometheus_stack() {
     if ! command -v helm >/dev/null 2>&1; then
         warn "helm not installed; nothing to uninstall"
@@ -378,6 +425,7 @@ uninstall() {
     pushd "$REPO_DIR" >/dev/null
     $SUDO docker compose -f "$COMPOSE_FILE" down -v --remove-orphans || true
     popd >/dev/null
+    uninstall_npu_dra_driver
     uninstall_prometheus_stack
     log "uninstall complete. Repository directory left in place; remove manually if desired."
 }
@@ -392,7 +440,12 @@ Options:
   --with-prometheus   helm-install kube-prometheus-stack + ascend-npu-exporter-plus
                       into the current kubeconfig context (P2-T-106; composable
                       with the other flags)
-  --uninstall         tear down the compose stack + any kps/ascend releases
+  --with-dra-driver   helm-install the Phase 4 npu-dra-driver chart into the
+                      current kubeconfig context (P4-T-104; composable). Requires
+                      kubectl + helm + a K8s 1.30+ cluster with DRA v1beta1 enabled.
+  --all-phase-4       aggregate flag: --with-prometheus + --with-dra-driver.
+                      Phase 4 "single-command stand up everything" knob.
+  --uninstall         tear down the compose stack + any kps/ascend/dra releases
   --help / -h         show this message
 
 Env vars:
@@ -414,12 +467,20 @@ main() {
     local no_start=false
     local do_uninstall=false
     local with_prometheus=false
+    local with_dra_driver=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --image-only) image_only=true ;;
             --no-start) no_start=true ;;
             --with-prometheus) with_prometheus=true ;;
+            --with-dra-driver) with_dra_driver=true ;;
+            --all-phase-4)
+                # Aggregate convenience flag (P4-T-104). Composes with the
+                # other --with-* flags so callers can still add more.
+                with_prometheus=true
+                with_dra_driver=true
+                ;;
             --uninstall) do_uninstall=true ;;
             --help | -h)
                 usage
@@ -460,6 +521,10 @@ main() {
 
     if [[ "$with_prometheus" == "true" ]]; then
         install_prometheus_stack
+    fi
+
+    if [[ "$with_dra_driver" == "true" ]]; then
+        install_npu_dra_driver
     fi
 }
 

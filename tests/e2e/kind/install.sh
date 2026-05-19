@@ -53,6 +53,11 @@ POOL_OPERATOR_IMG="${POOL_OPERATOR_IMG:-ocloud/pool-operator:e2e}"
 DEMO_BACKEND_IMG="${DEMO_BACKEND_IMG:-ocloud/demo-backend:e2e}"
 EXPORTER_IMG_REPO="${EXPORTER_IMG_REPO:-ocloud/ascend-npu-exporter-plus}"
 EXPORTER_IMG_TAG="${EXPORTER_IMG_TAG:-e2e}"
+# P4-T-104: npu-dra-driver image — built + loaded at build-images time,
+# helm-installed during `up` so kubectl get resourceslices proves the
+# simulator publisher (P4-T-005) reconciliation fired end-to-end against
+# a live kube-apiserver.
+NPU_DRA_IMG="${NPU_DRA_IMG:-ocloud/npu-dra-driver:e2e}"
 
 # Resolve repo root regardless of where this script was invoked from.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -71,6 +76,10 @@ cmd_build_images() {
   (cd "${REPO_ROOT}/exporters/ascend-npu-exporter-plus" && \
     make docker-build IMG="${EXPORTER_IMG_REPO}:${EXPORTER_IMG_TAG}" VERSION=0.1.0)
   kind load docker-image "${EXPORTER_IMG_REPO}:${EXPORTER_IMG_TAG}" --name "${KIND_CLUSTER}"
+
+  echo "== build npu-dra-driver image (P4-T-104) =="
+  (cd "${REPO_ROOT}/operators/npu-dra-driver" && make docker-build IMG="${NPU_DRA_IMG}")
+  kind load docker-image "${NPU_DRA_IMG}" --name "${KIND_CLUSTER}"
 }
 
 cmd_up() {
@@ -151,6 +160,22 @@ YAML
   echo "== install demo-backend =="
   kubectl apply -f "${SCRIPT_DIR}/manifests/demo-backend.yaml"
   kubectl -n "${NS}" rollout status deploy/demo-backend --timeout=2m
+
+  echo "== install npu-dra-driver via helm (P4-T-104) =="
+  # Phase 4: simulator-first publisher reads the bundled
+  # configs/mock-data/set-a-small/npus.json (embedded into the chart's
+  # mock ConfigMap via .Files.Get at install time). Claim controller
+  # records AllocationDeferred=Phase4Skeleton annotations on matching
+  # ResourceClaims. Both behaviours land in the same Deployment behind
+  # values toggles.
+  helm upgrade --install npu-dra-driver \
+    "${REPO_ROOT}/deploy/helm-charts/npu-dra-driver/" \
+    --namespace "${NS}" \
+    --set image.repository="$(echo "${NPU_DRA_IMG}" | cut -d: -f1)" \
+    --set image.tag="$(echo "${NPU_DRA_IMG}" | cut -d: -f2)" \
+    --set image.pullPolicy=IfNotPresent \
+    --wait --timeout 3m
+  kubectl -n "${NS}" rollout status deploy/npu-dra-driver --timeout=2m
 
   echo "== up complete =="
 }
