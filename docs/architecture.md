@@ -514,7 +514,7 @@ type ClusterPoolStatus struct {
 
 **Phase 1-2 缓解**:任务包 + 部署模板硬约束所有 `NPUSlicePool` 落在 `ocloud-system` 命名空间。**by convention only**。
 
-**Phase 3 修复**:加 ValidatingAdmissionPolicy skeleton(`operators/pool-operator/config/admission/`)。
+**Phase 3 修复**:✅ skeleton landed(P3-T-005 · `operators/pool-operator/config/admission/{validating-admission-policy,validating-admission-policy-binding,kustomization}.yaml` + e2e 测试在 `operators/pool-operator/test/e2e/admission/` · CEL expression `metadata.namespace == 'ocloud-system' || labels['npu.huawei.com/multi-tenancy-bypass'] == 'true'` · `failurePolicy: Fail`)。
 
 **Phase 9 完整**:multi-tenancy + Karmada RBAC 联动。
 
@@ -789,6 +789,7 @@ ocloud-edge-platform/
 |---|---|---|
 | Phase 4 | DRA mapping 详表(§6.6→§6.7)需展开 | Phase 4 启动前补 `NPUSlicePool ↔ ResourceSlice/ResourceClaim/DeviceClass` 字段映射表 |
 | Phase 5 | `NPUSliceAllocation` / `Quota` 对象设计(§6.8) | Phase 5 启动前补 CRD 设计 + inference-operator 集成方案 |
+| Phase 5 | PD Router webhook impl per ADR-0008(`npu.huawei.com/slice-bindings` annotation 写入路径,mutating webhook · failurePolicy=Fail · cert-manager 依赖) | Phase 5 启动前实施,与 inference-operator 同 binary 出 |
 | Phase 7 | 动态切分若 fallback "多模板组合" 削弱设计目标 | Phase 7 启动前 ADR,明确触发 fallback 的条件 |
 | Phase 9 | 多站点 demo backend 缓存重构(LRU 进程内 → Redis/singleton/stateless) | Phase 9 启动前 ADR + 重构路径 |
 | Phase 9 | 安全模型(authn/z + multi-tenancy RBAC + NPUSlicePool admission policy) | Phase 9 启动前完整安全设计 + Karmada RBAC 联动 |
