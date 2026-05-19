@@ -1,0 +1,18 @@
+{{- if and .Values.publisher.enabled .Values.mockConfigMap.create -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "npu-dra-driver.mockConfigMapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "npu-dra-driver.labels" . | nindent 4 }}
+data:
+  # The simulator NPU JSON. Source of truth lives at
+  # configs/mock-data/set-a-small/npus.json in the project repo; the
+  # chart packager `make chart-package` copies the file into the chart's
+  # files/ directory before `helm package`. The ConfigMap is mounted at
+  # /etc/npu-dra-driver/mock/npus.json in the manager pod (see
+  # templates/deployment.yaml volume mounts).
+  npus.json: |-
+{{ .Files.Get (printf "files/%s" .Values.mockConfigMap.fileName) | indent 4 }}
+{{- end }}

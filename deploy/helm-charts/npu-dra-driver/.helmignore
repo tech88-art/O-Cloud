@@ -1,0 +1,16 @@
+# Patterns to ignore when building helm packages.
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+# Various IDEs
+.project
+.idea/
+*.tmproj
+.vscode/
+# Helm tooling
+.git/
+.gitignore
+.DS_Store
+README.md.bak

@@ -1,0 +1,137 @@
+# Default values for npu-dra-driver.
+#
+# Phase 4 status:
+#   - `publisher.enabled: true` — simulator publisher reads
+#     /etc/npu-dra-driver/mock/npus.json (mounted from the ConfigMap
+#     templates/configmap.yaml embeds from configs/mock-data/set-a-small/).
+#   - `claimController.enabled: true` — records AllocationDeferred
+#     annotations on matching ResourceClaims.
+#
+# Phase 5+ upgrade path:
+#   - Replace the ConfigMap-backed mock with a real Ascend driver source.
+#     The publisher's Source interface decouples the JSON loader from
+#     the manager — Phase 5 lands an additional Source impl.
+#   - Claim controller gains real allocation logic + status writes.
+
+image:
+  # Locally-built image — `make docker-build IMG=npu-dra-driver:v0.1.0`
+  # in operators/npu-dra-driver/ produces the image. CI replaces tag with
+  # a SHA on release. Set repository to a registry path (e.g.
+  # `registry.example.com/ocloud/npu-dra-driver`) for cluster deploys.
+  repository: npu-dra-driver
+  tag: "v0.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Number of manager replicas. Leader election is enabled (chart sets the
+# --leader-elect flag), so >1 replicas yields HA without dual writes.
+# Phase 4 default is 1 since the simulator publisher is idempotent and
+# the claim controller has no real allocation to coordinate.
+replicaCount: 1
+
+# Node placement. Phase 4 manager has no Ascend hardware dependency
+# (simulator-first) so by default it can run on any control-plane or
+# worker node. Override `nodeSelector` for Phase 5+ when the driver
+# colocates with real NPU hosts.
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Pod-level securityContext. The image runs as nonroot (uid 65532) from
+# distroless; no extra capabilities required.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+# Resource shape — manager is small (no CGo, no NPU calls in simulator
+# mode). Tune up if you enable claim allocation on busy clusters (Phase 5+).
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Manager probes — defaults match the binary's --health-probe-bind-address.
+healthProbeBindAddress: ":8081"
+metricsBindAddress: ":8082"
+
+# ---------------------------------------------------------------- Publisher
+# Phase 4 default: ON. Loads NPU seeds from a simulator JSON file mounted
+# from a ConfigMap (templates/configmap.yaml). Phase 5+ Replace by a real
+# Ascend Source impl behind the same Source interface.
+publisher:
+  enabled: true
+  # Path inside the container the manager's --mock-data-path points at.
+  # Matches templates/configmap.yaml + deployment.yaml volume mount.
+  mockDataPath: /etc/npu-dra-driver/mock/npus.json
+
+# ----------------------------------------------------------- ConfigMap (mock)
+# When `publisher.enabled: true`, the chart mounts a ConfigMap containing
+# the simulator NPU JSON. By default the chart embeds
+# configs/mock-data/set-a-small/npus.json via `Files.Get` at chart-install
+# time so the simulator works in a kind cluster without a host bind-mount.
+#
+# To override at install time, set `mockConfigMap.create: false` and
+# point `mockConfigMap.name` at an externally-managed ConfigMap with key
+# "npus.json".
+mockConfigMap:
+  create: true
+  name: ""  # auto-named when empty
+  # When create: true, this is the file the chart reads from the chart
+  # directory (note: helm `Files.Get` is bounded to chart-relative paths,
+  # so the file is embedded into the chart at templates/configmap.yaml
+  # via a chart-time copy; see chart README).
+  fileName: "npus.json"
+
+# ---------------------------------------------------- ResourceClaim controller
+claimController:
+  enabled: true
+
+# -------------------------------------------------------------- Leader election
+leaderElect: true
+
+# --------------------------------------------------------------- ServiceAccount
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # The name of the service account to use. If not set and create is true,
+  # a name is generated using the fullname template.
+  name: ""
+  annotations: {}
+
+# --------------------------------------------------------------- RBAC
+# The driver needs read+write on resource.k8s.io/v1beta1 ResourceSlices
+# (publish) and read+patch on ResourceClaims (record AllocationDeferred
+# annotations). Exact verbs are pinned in templates/rbac.yaml.
+rbac:
+  create: true
+
+# ---------------------------------------------------- Extra args / pod-level
+# Verbatim args appended to the manager argv. Useful for --v=4 debugging
+# or future flags the chart doesn't yet model.
+extraArgs: []
+
+# Extra env vars appended to the manager container. Useful for
+# POD_NAMESPACE / POD_NAME projections (downward API).
+extraEnv: []
+
+# Pod annotations — merged with chart-managed annotations.
+podAnnotations: {}
+
+# Pod labels — merged with chart-managed labels.
+podLabels: {}

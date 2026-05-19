@@ -1,8 +1,10 @@
-# Phase 4 T003 scaffold stub. Real multi-stage build lands in P4-T-101
-# (deploy/helm-charts/npu-dra-driver/ + distroless runtime).
+# Phase 4 T101 multi-stage image build. Mirrors
+# operators/pool-operator/Dockerfile + exporters/ascend-npu-exporter-plus
+# patterns: golang builder + distroless static runtime, linux/amd64 only
+# (arch §1.2: no arm64 / 鲲鹏 support).
 #
-# This stub mirrors operators/pool-operator/Dockerfile so `make docker-build`
-# in T003 already works (single image, no chart yet).
+# Built by `make docker-build IMG=...`. The helm chart at
+# deploy/helm-charts/npu-dra-driver/ references this image by repo+tag.
 
 FROM golang:1.25 AS builder
 ARG TARGETOS
@@ -21,6 +23,14 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
 
 # Distroless static minimal runtime.
 FROM gcr.io/distroless/static:nonroot
+
+# OCI labels (P4-T-101). Helm chart annotations match these on the
+# Deployment template so kubectl describe surfaces the image origin.
+LABEL org.opencontainers.image.title="npu-dra-driver"
+LABEL org.opencontainers.image.description="O-Cloud Ascend NPU DRA driver (Phase 4 simulator-first; real Ascend integration Phase 5+)"
+LABEL org.opencontainers.image.source="https://github.com/tech88-art/O-Cloud"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+
 WORKDIR /
 COPY --from=builder /workspace/manager .
 USER 65532:65532

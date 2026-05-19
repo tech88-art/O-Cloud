@@ -1,0 +1,29 @@
+apiVersion: v2
+name: npu-dra-driver
+description: |
+  O-Cloud self-built NPU Dynamic Resource Allocation (DRA) driver for
+  Ascend 910B silicon. Phase 4 is simulator-first — the publisher reads
+  configs/mock-data/set-a-small/npus.json (mounted via a ConfigMap) and
+  publishes synthetic resource.k8s.io/v1beta1 ResourceSlices; the claim
+  controller records AllocationDeferred=Phase4Skeleton annotations on
+  matching ResourceClaims. Real Ascend driver integration + actual
+  claim allocation logic land Phase 5+ per ADR-0001 v3 §5 + ADR-0009.
+type: application
+# Chart version — bump on every chart-shape change.
+version: 0.1.0
+# Application (manager binary) version — keep in lock-step with
+# operators/npu-dra-driver/PROJECT + helm chart appVersion.
+appVersion: "0.1.0"
+keywords:
+  - ascend
+  - npu
+  - dra
+  - resource-claim
+  - resource-slice
+  - ocloud
+home: https://github.com/tech88-art/O-Cloud
+sources:
+  - https://github.com/tech88-art/O-Cloud/tree/main/operators/npu-dra-driver
+maintainers:
+  - name: O-Cloud team
+    url: https://github.com/tech88-art/O-Cloud

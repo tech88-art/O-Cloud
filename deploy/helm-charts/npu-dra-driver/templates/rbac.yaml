@@ -1,0 +1,57 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "npu-dra-driver.fullname" . }}
+  labels:
+    {{- include "npu-dra-driver.labels" . | nindent 4 }}
+rules:
+  # ResourceSlice — publisher fully owns its slices.
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["resourceslices"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # ResourceClaim — claim controller reads + records AllocationDeferred
+  # annotations. No delete: Phase 4 controller holds no finalizer and
+  # does not own the claim lifecycle. Phase 5 may revisit when real
+  # allocation lands.
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["resourceclaims"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  # ResourceClaim status — used if Phase 5 lifts allocation onto the
+  # status subresource. Phase 4 annotations-based deferral lives on
+  # metadata, but registering this verb avoids a chart bump later.
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["resourceclaims/status"]
+    verbs: ["update", "patch"]
+  # DeviceClass — Phase 5 registers the npu-dra-driver class itself.
+  # Pre-granted here so the upgrade doesn't require a chart bump.
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["deviceclasses"]
+    verbs: ["get", "list", "watch"]
+  # Leader election lease.
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Event emission — claim controller emits Phase4Skeleton events.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  # Standard controller-runtime healthz/metrics probes pull no extra
+  # API resources; the manager's --metrics-bind-address is unauthn'd
+  # so no metrics-server RBAC is needed.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "npu-dra-driver.fullname" . }}
+  labels:
+    {{- include "npu-dra-driver.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "npu-dra-driver.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "npu-dra-driver.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
