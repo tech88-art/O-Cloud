@@ -799,7 +799,7 @@ ocloud-edge-platform/
 | Phase 7 | 动态切分若 fallback "多模板组合" 削弱设计目标 | Phase 7 启动前 ADR,明确触发 fallback 的条件 |
 | Phase 9 | 多站点 demo backend 缓存重构(LRU 进程内 → Redis/singleton/stateless) | Phase 9 启动前 ADR + 重构路径 |
 | Phase 9 | 安全模型(authn/z + multi-tenancy RBAC + NPUSlicePool admission policy) | Phase 9 启动前完整安全设计 + Karmada RBAC 联动 |
-| Phase 5+ | NPU pod 网络考量(CNI + HCCL RDMA / RoCE / IPoIB 兼容) | Phase 5 启动前调研 + 选型 |
+| Phase 5+ | NPU pod 网络考量(CNI + HCCL RDMA / RoCE / IPoIB 兼容) | research doc landed (P5-T-105 · `docs/cni-hccl-research.md`); selection deferred to Phase 6 scheduler-plugin entry |
 
 **2026-05-18 RFC-003(spec 对齐补)追加**:
 
