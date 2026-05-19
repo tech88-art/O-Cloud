@@ -25,6 +25,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	resourceapi "k8s.io/api/resource/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -49,6 +50,10 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(imsv1alpha1.AddToScheme(scheme))
+	// P4-T-102: register resource.k8s.io/v1beta1 so the NPUSlicePool
+	// Reconciler can list ResourceSlice objects (cross-controller awareness)
+	// and the Watches secondary informer can fire.
+	utilruntime.Must(resourceapi.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 

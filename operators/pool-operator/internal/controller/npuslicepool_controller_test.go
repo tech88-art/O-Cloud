@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
+	resourceapi "k8s.io/api/resource/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,6 +36,36 @@ import (
 	imsv1alpha1 "github.com/example/ocloud-edge/operators/pool-operator/api/v1alpha1"
 	"github.com/example/ocloud-edge/operators/pool-operator/internal/controller"
 )
+
+// makeResourceSlice creates a cluster-scoped resource.k8s.io/v1beta1.ResourceSlice
+// owned by the given driver, attached to a node. Used by the P4-T-102
+// cross-controller-awareness specs below.
+func makeResourceSlice(ctx context.Context, k8sClient client.Client, name, nodeName, driverName string, deviceCount int) *resourceapi.ResourceSlice {
+	devices := make([]resourceapi.Device, deviceCount)
+	for i := range devices {
+		devices[i] = resourceapi.Device{
+			Name: fmt.Sprintf("%s-dev-%d", name, i),
+			Basic: &resourceapi.BasicDevice{
+				Attributes: map[resourceapi.QualifiedName]resourceapi.DeviceAttribute{},
+			},
+		}
+	}
+	sl := &resourceapi.ResourceSlice{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: resourceapi.ResourceSliceSpec{
+			Driver: driverName,
+			Pool: resourceapi.ResourcePool{
+				Name:               nodeName,
+				Generation:         1,
+				ResourceSliceCount: 1,
+			},
+			NodeName: nodeName,
+			Devices:  devices,
+		},
+	}
+	Expect(k8sClient.Create(ctx, sl)).To(Succeed())
+	return sl
+}
 
 // nsCounter gives each spec a unique namespace name without bringing in a
 // uuid dependency. time.Now().UnixNano() is enough resolution because Ginkgo
@@ -341,5 +372,97 @@ var _ = Describe("NPUSlicePool Reconcile", func() {
 		err = k8sClient.Get(ctx, key, &afterDelete)
 		Expect(apierrors.IsNotFound(err)).To(BeTrue(),
 			"object should be GCed by the apiserver once the last finalizer is removed; got err=%v", err)
+	})
+})
+
+// =============================================================================
+// P4-T-102: NPUSlicePool ↔ ResourceSlice cross-controller observability smoke
+// =============================================================================
+
+var _ = Describe("NPUSlicePool ResourceSlice cross-observation (P4-T-102)", func() {
+	var (
+		ctx        context.Context
+		reconciler *controller.NPUSlicePoolReconciler
+		ns         string
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		reconciler = &controller.NPUSlicePoolReconciler{
+			Client: k8sClient,
+			Scheme: k8sClient.Scheme(),
+		}
+		ns = uniqueNS()
+		Expect(k8sClient.Create(ctx, &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{Name: ns},
+		})).To(Succeed())
+	})
+
+	makeSlicePoolWithOneNode := func(slicePoolName, nodeLabelValue string) types.NamespacedName {
+		nodeLabel := map[string]string{"pool": nodeLabelValue}
+		makeNPUNode(ctx, k8sClient, uniqueName("node-csw"), 1, nodeLabel)
+		npuPoolName := uniqueName("npupool-csw")
+		Expect(k8sClient.Create(ctx, &imsv1alpha1.NPUPool{
+			ObjectMeta: metav1.ObjectMeta{Name: npuPoolName},
+			Spec: imsv1alpha1.NPUPoolSpec{
+				NodePoolRef:   corev1.LocalObjectReference{Name: "test-nodepool"},
+				NPUModel:      "Ascend910B",
+				Selector:      &metav1.LabelSelector{MatchLabels: nodeLabel},
+				SliceStrategy: nodeLabelValue,
+			},
+		})).To(Succeed())
+		slicePool := &imsv1alpha1.NPUSlicePool{
+			ObjectMeta: metav1.ObjectMeta{Name: slicePoolName, Namespace: ns},
+			Spec: imsv1alpha1.NPUSlicePoolSpec{
+				NPUPoolRef: corev1.LocalObjectReference{Name: npuPoolName},
+				Strategy:   imsv1alpha1.SliceStrategyFixedTemplate,
+				FixedTemplates: []imsv1alpha1.SliceTemplate{
+					{Name: "vir04", AICoreCount: 4, MemoryMiB: 16384},
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, slicePool)).To(Succeed())
+		return types.NamespacedName{Name: slicePool.Name, Namespace: ns}
+	}
+
+	It("Happy: 1 pool + 2 matching ResourceSlices -> status.resourceSlicesObserved == 2", func() {
+		key := makeSlicePoolWithOneNode("happy-csw", "happy-csw")
+
+		// Publish 2 ResourceSlices owned by npu-dra-driver
+		makeResourceSlice(ctx, k8sClient, uniqueName("npu-dra-slice"), "node-a", "npu.ocloud.edge.example.com", 8)
+		makeResourceSlice(ctx, k8sClient, uniqueName("npu-dra-slice"), "node-b", "npu.ocloud.edge.example.com", 8)
+
+		reconcileUntilStable(ctx, reconciler, key, 5)
+		var got imsv1alpha1.NPUSlicePool
+		Expect(k8sClient.Get(ctx, key, &got)).To(Succeed())
+		Expect(got.Status.ResourceSlicesObserved).To(Equal(int32(2)),
+			"both ResourceSlices owned by npu-dra-driver should be counted")
+	})
+
+	It("No slices: status.resourceSlicesObserved == 0 (no panic)", func() {
+		key := makeSlicePoolWithOneNode("empty-csw", "empty-csw")
+		// No ResourceSlices created.
+
+		reconcileUntilStable(ctx, reconciler, key, 5)
+		var got imsv1alpha1.NPUSlicePool
+		Expect(k8sClient.Get(ctx, key, &got)).To(Succeed())
+		Expect(got.Status.ResourceSlicesObserved).To(Equal(int32(0)),
+			"with zero ResourceSlices, the observed count must be 0 (not nil, not panic)")
+	})
+
+	It("Multiple drivers: only npu.ocloud.edge.example.com slices counted", func() {
+		key := makeSlicePoolWithOneNode("multidriver-csw", "multidriver-csw")
+
+		// 1 slice from npu-dra-driver — should count
+		makeResourceSlice(ctx, k8sClient, uniqueName("npu-dra-slice"), "node-our", "npu.ocloud.edge.example.com", 8)
+		// 2 slices from foreign drivers — must NOT count
+		makeResourceSlice(ctx, k8sClient, uniqueName("nv-gpu-slice"), "node-gpu", "gpu.nvidia.com", 4)
+		makeResourceSlice(ctx, k8sClient, uniqueName("amd-gpu-slice"), "node-amd", "gpu.amd.com", 2)
+
+		reconcileUntilStable(ctx, reconciler, key, 5)
+		var got imsv1alpha1.NPUSlicePool
+		Expect(k8sClient.Get(ctx, key, &got)).To(Succeed())
+		Expect(got.Status.ResourceSlicesObserved).To(Equal(int32(1)),
+			"foreign-driver ResourceSlices must NOT inflate the npu-dra-driver count")
 	})
 })

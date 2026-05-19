@@ -68,6 +68,22 @@ type NPUSlicePoolStatus struct {
 	// +kubebuilder:validation:Minimum=0
 	AvailableSlices int32 `json:"availableSlices,omitempty"`
 
+	// ResourceSlicesObserved is the count of resource.k8s.io/v1beta1
+	// ResourceSlice objects whose driver name is `npu.ocloud.edge.example.com`
+	// (the npu-dra-driver published slice surface) — Phase 4 P4-T-102
+	// cross-controller observability smoke.
+	//
+	// Source: live list from the K8s API at every Reconcile pass + an
+	// informer watch that re-triggers Reconcile when matching ResourceSlices
+	// change. Filtered by driver name so a future inference-operator
+	// publisher (or any third-party DRA driver) does not inflate this count.
+	//
+	// Phase 5+: this field may grow into a structured ResourceSliceRefs
+	// list once npu-dra-driver's slice-name convention stabilises.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	ResourceSlicesObserved int32 `json:"resourceSlicesObserved,omitempty"`
+
 	// Slices is the per-instance live state of every slice in this pool.
 	// +optional
 	// +listType=map

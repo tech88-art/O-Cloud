@@ -21,16 +21,30 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	resourceapi "k8s.io/api/resource/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	imsv1alpha1 "github.com/example/ocloud-edge/operators/pool-operator/api/v1alpha1"
 )
+
+// npuDraDriverName is the resource.k8s.io DriverName the npu-dra-driver
+// publishes slices under. Phase 4 P4-T-102: the NPUSlicePool Reconcile
+// counts ResourceSlices carrying this driver name into
+// status.resourceSlicesObserved. Kept as a const in this package so the
+// cross-watch filter and the post-list match use the same string;
+// operators/npu-dra-driver/api/v1alpha1.DriverName holds the same value
+// but we deliberately do not cross-module import (per operators/CLAUDE.md
+// §1 "module path 不交叉依赖").
+const npuDraDriverName = "npu.ocloud.edge.example.com"
 
 const (
 	// aiCoreTotalAscend910B is the AI Core count per physical NPU device.
@@ -136,25 +150,68 @@ func (r *NPUSlicePoolReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return r.markNotReady(ctx, &pool, rerr.reason, rerr.message)
 	}
 
-	// 6. Write status (totalSlices / availableSlices / Ready=True).
+	// 6. Cross-controller observability (P4-T-102): count ResourceSlices
+	//    whose driver matches npu-dra-driver. Filtered post-list because
+	//    resource.k8s.io/v1beta1 does not currently support a server-side
+	//    field selector on `spec.driver` (DRA-1.34 field-selector enablement
+	//    is gated behind feature flags in some clusters); a client-side
+	//    filter is portable and the slice population is bounded (one entry
+	//    per node × driver) so the list is cheap.
+	observed, rerr := r.countNPUDRAResourceSlices(ctx)
+	if rerr != nil {
+		log.Info("npuslicepool: cannot list ResourceSlices (cross-watch)",
+			"reason", rerr.reason, "message", rerr.message)
+		// Non-fatal — record 0 but keep going. ResourceSlice API may be
+		// disabled in older kubelets (KubeEdge / K8s < 1.31); the rest of
+		// the Reconcile is still useful.
+		observed = 0
+	}
+
+	// 7. Write status (totalSlices / availableSlices / resourceSlicesObserved
+	//    / Ready=True).
 	pool.Status.TotalSlices = totalSlices
 	avail := totalSlices - pool.Status.AllocatedSlices
 	if avail < 0 {
 		avail = 0
 	}
 	pool.Status.AvailableSlices = avail
+	pool.Status.ResourceSlicesObserved = observed
 	SetCondition(&pool.Status.Conditions, metav1.Condition{
 		Type:               npuSlicePoolReadyConditionType,
 		Status:             metav1.ConditionTrue,
 		ObservedGeneration: pool.Generation,
 		Reason:             "Reconciled",
-		Message:            fmt.Sprintf("Pool capacity computed: totalSlices=%d, npuCount=%d", totalSlices, npuCount),
+		Message: fmt.Sprintf(
+			"Pool capacity computed: totalSlices=%d, npuCount=%d, resourceSlicesObserved=%d",
+			totalSlices, npuCount, observed),
 	})
 	if err := r.Status().Update(ctx, &pool); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// countNPUDRAResourceSlices lists ResourceSlices cluster-wide and returns
+// the count of those whose Spec.Driver matches npu-dra-driver's published
+// name. The filter is post-list because v1beta1 lacks a portable
+// server-side selector on Spec.Driver.
+//
+// Returns (count, nil) on success; (0, reconcileErr) on list error. The
+// caller treats list errors as "ResourceSlice API unavailable" and records
+// 0 without short-circuiting the rest of the reconcile.
+func (r *NPUSlicePoolReconciler) countNPUDRAResourceSlices(ctx context.Context) (int32, *reconcileErr) {
+	var slices resourceapi.ResourceSliceList
+	if err := r.List(ctx, &slices); err != nil {
+		return 0, &reconcileErr{reason: "ResourceSliceListFailed", message: err.Error()}
+	}
+	var n int32
+	for _, sl := range slices.Items {
+		if sl.Spec.Driver == npuDraDriverName {
+			n++
+		}
+	}
+	return n, nil
 }
 
 // markNotReady writes Ready=False with the given reason/message and returns
@@ -271,12 +328,52 @@ func computeTotalSlices(spec *imsv1alpha1.NPUSlicePoolSpec, npuCount int32) (int
 }
 
 // SetupWithManager wires the reconciler into mgr, watching the NPUSlicePool
-// primary resource only. Secondary watches (parent NPUPool changes, Node
-// label changes) trigger a re-list on the next periodic resync; explicit
-// Watches/Owns are deferred to P3-T-003 once NPUPool Reconcile lands.
+// primary resource plus a secondary watch on resource.k8s.io/v1beta1
+// ResourceSlice (P4-T-102 cross-controller awareness — when any matching
+// slice changes, re-enqueue every NPUSlicePool so status.resourceSlicesObserved
+// stays current).
+//
+// Parent NPUPool changes + Node label changes still rely on periodic resync;
+// explicit Owns are deferred to P3-T-003 once NPUPool Reconcile lands.
 func (r *NPUSlicePoolReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&imsv1alpha1.NPUSlicePool{}).
+		Watches(
+			&resourceapi.ResourceSlice{},
+			handler.EnqueueRequestsFromMapFunc(r.mapResourceSliceToPools),
+		).
 		Named("npuslicepool").
 		Complete(r)
+}
+
+// mapResourceSliceToPools is the EnqueueRequestsFromMapFunc that fans out
+// a ResourceSlice change to every NPUSlicePool. Cheap to compute because
+// pool count stays small (Phase 4 < 100 pools per cluster); skipping the
+// fan-out for unrelated drivers is a Phase 5 optimisation once the slice
+// volume scales.
+func (r *NPUSlicePoolReconciler) mapResourceSliceToPools(ctx context.Context, obj client.Object) []reconcile.Request {
+	slice, ok := obj.(*resourceapi.ResourceSlice)
+	if !ok {
+		return nil
+	}
+	// Filter: skip enqueue when the slice is from a foreign driver — keeps
+	// the workqueue quiet when inference-operator (Phase 5) or third-party
+	// drivers publish their own slices.
+	if slice.Spec.Driver != npuDraDriverName {
+		return nil
+	}
+	var pools imsv1alpha1.NPUSlicePoolList
+	if err := r.List(ctx, &pools); err != nil {
+		return nil
+	}
+	out := make([]reconcile.Request, 0, len(pools.Items))
+	for _, p := range pools.Items {
+		out = append(out, reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      p.Name,
+				Namespace: p.Namespace,
+			},
+		})
+	}
+	return out
 }
