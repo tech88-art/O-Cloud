@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/controller"
 	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/publisher"
 	// +kubebuilder:scaffold:imports
 )
@@ -79,8 +80,9 @@ func main() {
 		"Enable the simulator-first ResourceSlice publisher (P4-T-005). "+
 			"Requires --mock-data-path.")
 	flag.BoolVar(&enableClaimController, "enable-claim-controller", false,
-		"Reserved (P4-T-006): enable the ResourceClaim controller skeleton. "+
-			"Phase 4 T005: flag declared but no-op (controller skeleton arrives T006).")
+		"Enable the ResourceClaim controller skeleton (P4-T-006). "+
+			"Records AllocationDeferred=Phase4Skeleton on claims requesting the "+
+			"npu-dra-driver class family. No real allocation (Phase 5+).")
 	flag.StringVar(&mockDataPath, "mock-data-path", "",
 		"Path to the simulator NPU JSON (e.g. /etc/npu-dra-driver/mock/npus.json "+
 			"or configs/mock-data/set-a-small/npus.json on host dev). "+
@@ -134,8 +136,16 @@ func main() {
 		setupLog.Info("Publisher registered", "task", "P4-T-005", "mock-data-path", mockDataPath)
 	}
 	if enableClaimController {
-		setupLog.Info("--enable-claim-controller set but T006 ResourceClaim controller not yet wired",
-			"phase", "4-scaffold", "task", "P4-T-005")
+		cr := &controller.ClaimReconciler{
+			Client:   mgr.GetClient(),
+			Scheme:   mgr.GetScheme(),
+			Recorder: mgr.GetEventRecorderFor("npu-dra-claim-controller"),
+		}
+		if err := cr.SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to register ClaimReconciler with manager")
+			os.Exit(1)
+		}
+		setupLog.Info("ClaimReconciler registered", "task", "P4-T-006")
 	}
 	// +kubebuilder:scaffold:builder
 
@@ -150,7 +160,7 @@ func main() {
 
 	setupLog.Info("Starting manager",
 		"phase", "4",
-		"latest-task", "P4-T-005",
+		"latest-task", "P4-T-006",
 		"publisher-enabled", enablePublisher,
 		"claim-controller-enabled", enableClaimController)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
