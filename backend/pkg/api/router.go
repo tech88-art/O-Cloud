@@ -6,6 +6,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
 	"github.com/example/ocloud-edge/backend/pkg/datasource"
@@ -25,6 +26,13 @@ type Handler struct {
 	Registry       *datasource.Registry
 	Logger         *zap.Logger
 	GrafanaBaseURL string
+
+	// MetricsRegistry is the Prometheus self-metrics registry (P4-T-007).
+	// Mounted at the gin engine root via /metrics, OUTSIDE /api/v1 so
+	// Phase 9 RBAC middleware on /api/v1 does NOT cover Prometheus scrapes.
+	// May be nil — router.go's /metrics handler returns 503 in that case.
+	// Production callers in cmd/demo-backend always set this.
+	MetricsRegistry *prometheus.Registry
 }
 
 // NewHandler is the canonical constructor. logger may be nil — we substitute
@@ -114,6 +122,13 @@ func NewRouter(h *Handler, opts RouterOptions) *gin.Engine {
 	// /ws/metrics.
 	r.GET("/ws/topology", h.WSTopology)
 	r.GET("/ws/logs/:namespace/:name", h.WSLogs)
+
+	// Prometheus self-metrics scrape (P4-T-007). Mounted at the engine
+	// ROOT (not under /api/v1) so when Phase 9 RBAC middleware lands on
+	// /api/v1 it does NOT cover Prometheus scrapes. The path does not
+	// collide with the existing frontend-facing /api/v1/metrics/* routes
+	// because /metrics has no /api/v1 prefix.
+	r.GET(metricsRoutePath, h.metricsRoute())
 
 	return r
 }

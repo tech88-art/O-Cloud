@@ -160,6 +160,11 @@ func runServer(ctx context.Context, configFile string) error {
 	if cfg.Grafana.BaseURL != "" {
 		handler.GrafanaBaseURL = cfg.Grafana.BaseURL
 	}
+	// P4-T-007: initialize the Prometheus self-metrics registry before
+	// NewRouter so /metrics has the default Go runtime + process collectors
+	// ready. P4-T-008 will register the Ocloud cache/dispatch counters
+	// against this same registry.
+	handler.MetricsRegistry = api.NewMetricsRegistry()
 	router := api.NewRouter(handler, api.RouterOptions{EnableCORS: cfg.Server.EnableCORS})
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
