@@ -157,6 +157,31 @@ jobs:
           kubectl -n pool-operator-system logs deploy/pool-operator-controller-manager --tail=200 || true
           exit 1
 
+      - name: Phase 5 — install cert-manager (P5-T-106)
+        # cert-manager v1.16+ is a hard prereq for the inference-operator
+        # webhook TLS plumbing (docs/known-issues.md #10). The install
+        # script applies upstream manifests + waits for cert-manager
+        # Deployments Available within 90s.
+        run: bash tests/e2e/kind/phase5/install.sh install-cert-manager
+
+      - name: Phase 5 — build + load inference-operator image
+        run: bash tests/e2e/kind/phase5/install.sh build-inference-operator
+
+      - name: Phase 5 — install inference-operator chart
+        # Helm install + wait for Deployment Available + Certificate
+        # Ready. Bails with describe/logs on failure for fast triage.
+        run: bash tests/e2e/kind/phase5/install.sh install-inference-operator
+
+      - name: Phase 5 — apply ModelService + assert PD pair + annotation
+        # Per plan T106 acceptance: ModelService phase advances within 30s,
+        # Prefill + Decode Deployments materialised within 60s, Pods carry
+        # the npu.huawei.com/slice-bindings annotation injected by the
+        # PD Router webhook (T103). ResourceClaim count check is warning-
+        # only (claim allocation depends on the npu-dra-driver T002
+        # allocator running, which is exercised by Phase 4 dra_publish_test
+        # already).
+        run: bash tests/e2e/kind/phase5/assert.sh
+
       - name: install Playwright deps
         working-directory: tests/e2e
         run: |
@@ -200,6 +225,23 @@ jobs:
           echo "::endgroup::"
           echo "::group::ResourceSlices (P4-T-104)"
           kubectl get resourceslices -o yaml || true
+          echo "::endgroup::"
+          echo "::group::Phase 5 — cert-manager (P5-T-106)"
+          kubectl -n cert-manager get pods -o wide || true
+          kubectl -n cert-manager logs deploy/cert-manager --tail=200 || true
+          echo "::endgroup::"
+          echo "::group::Phase 5 — inference-operator (P5-T-106)"
+          kubectl -n ocloud-system describe deploy inference-operator || true
+          kubectl -n ocloud-system logs deploy/inference-operator --tail=300 || true
+          kubectl -n ocloud-system describe certificate || true
+          kubectl -n ocloud-system describe issuer || true
+          echo "::endgroup::"
+          echo "::group::Phase 5 — ModelService + children"
+          kubectl -n ocloud-system describe ms smoke-ms || true
+          kubectl -n ocloud-system get deploy -l 'inference.ocloud.edge.example.com/model-service=ocloud-system/smoke-ms' -o yaml || true
+          kubectl -n ocloud-system get resourceclaims -o yaml || true
+          kubectl -n ocloud-system get npusliceallocations -o yaml || true
+          kubectl -n ocloud-system get pods -l 'inference.ocloud.edge.example.com/model-service=ocloud-system/smoke-ms' -o yaml || true
           echo "::endgroup::"
 
   e2e-mock-regression:
