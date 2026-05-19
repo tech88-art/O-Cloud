@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	imsv1alpha1 "github.com/example/ocloud-edge/operators/pool-operator/api/v1alpha1"
+	"github.com/example/ocloud-edge/operators/pool-operator/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -67,6 +68,10 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	var enableControllers uint
+	flag.UintVar(&enableControllers, "enable-controllers",
+		0,
+		"Bitmask of controllers to enable: 1=NPUSlicePool, 2=NPUPool, 4=NodePool, 8=ClusterPool. Default 0 = none.")
 	flag.BoolVar(&secureMetrics, "metrics-secure", true,
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	flag.StringVar(&webhookCertPath, "webhook-cert-path", "", "The directory that contains the webhook certificate.")
@@ -177,6 +182,42 @@ func main() {
 		os.Exit(1)
 	}
 
+	if controller.IsEnabled(uint32(enableControllers), controller.BitNPUSlicePool) {
+		if err := (&controller.NPUSlicePoolReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to set up controller", "controller", "NPUSlicePool")
+			os.Exit(1)
+		}
+	}
+	if controller.IsEnabled(uint32(enableControllers), controller.BitNPUPool) {
+		if err := (&controller.NPUPoolReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to set up controller", "controller", "NPUPool")
+			os.Exit(1)
+		}
+	}
+	if controller.IsEnabled(uint32(enableControllers), controller.BitNodePool) {
+		if err := (&controller.NodePoolReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to set up controller", "controller", "NodePool")
+			os.Exit(1)
+		}
+	}
+	if controller.IsEnabled(uint32(enableControllers), controller.BitClusterPool) {
+		if err := (&controller.ClusterPoolReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to set up controller", "controller", "ClusterPool")
+			os.Exit(1)
+		}
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

@@ -1,11 +1,41 @@
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/name: pool-operator
-    app.kubernetes.io/managed-by: kustomize
   name: manager-role
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - ims.ocloud.edge.example.com
+  resources:
+  - clusterpools
+  - nodepools
+  - npupools
+  - npuslicepools
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ims.ocloud.edge.example.com
+  resources:
+  - clusterpools/finalizers
+  - nodepools/finalizers
+  - npupools/finalizers
+  - npuslicepools/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ims.ocloud.edge.example.com
+  resources:
+  - clusterpools/status
+  - nodepools/status
+  - npupools/status
+  - npuslicepools/status
+  verbs:
+  - get
+  - patch
+  - update
