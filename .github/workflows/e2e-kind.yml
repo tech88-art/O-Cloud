@@ -1,0 +1,221 @@
+# Phase 3 P3-T-104 — real-cluster end-to-end smoke on kind.
+#
+# Closes known-issues #8. Two jobs run independently on every PR + dev push:
+#
+#   e2e-kind            real-cluster smoke. Spins up a kind cluster
+#                       (1 control-plane + 2 workers), patches fake
+#                       Ascend910 capacity onto each worker, installs
+#                       cert-manager + pool-operator + ascend-npu-
+#                       exporter-plus + demo-backend, seeds the
+#                       NodePool/NPUPool/NPUSlicePool hierarchy + a mock
+#                       workload Pod, waits for
+#                       NPUSlicePool.status.totalSlices > 0 to prove
+#                       the operator Reconcile loops fired against a
+#                       live API server, then runs the three smokes in
+#                       tests/e2e/specs/kind-smoke.spec.ts.
+#
+#   e2e-mock-regression rebuilds the demo-backend in mock mode and runs
+#                       the existing Phase 1 mock-backed Playwright
+#                       suite (playwright.config.ts). Stays green when
+#                       the kind job lands — guards against
+#                       accidental regressions in the mock-backed
+#                       contract that the kind work might tempt.
+#
+# Acceptance from docs/phase3-plan.md §3 T104:
+#   - real cluster spin-up + reconcile proof + exporter + Playwright
+#   - wall-clock budget < 15 min (we set timeout to 25 min to absorb
+#     image build + Playwright install overhead)
+#   - Phase 1 mock suite continues to run in a separate job
+
+name: e2e-kind
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-kind:
+    name: kind smoke (real cluster)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup go (for operator + backend image builds)
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: false
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: setup helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.0
+
+      - name: install kind
+        uses: helm/kind-action@v1.10.0
+        with:
+          install_only: true
+          version: v0.24.0
+
+      - name: kind create cluster + install components
+        # install.sh `up` is idempotent — it skips cluster creation if
+        # one already exists, and helm upgrade --install / kubectl apply
+        # tolerate repeats. We split build-images out of `up` so kind
+        # exists before `kind load docker-image` runs.
+        run: bash tests/e2e/kind/install.sh up
+
+      - name: build component images + load into kind
+        run: bash tests/e2e/kind/install.sh build-images
+
+      - name: refresh deployments with the freshly-loaded images
+        # `up` deploys before `build-images` runs (kind needs the cluster
+        # to exist before we can `kind load` into it), so the initial
+        # rollouts may have pulled stale tags from the registry cache.
+        # A rolling restart pulls the now-loaded e2e tag.
+        run: |
+          kubectl -n pool-operator-system rollout restart deploy/pool-operator-controller-manager
+          kubectl -n monitoring rollout restart ds/ascend-npu-exporter-plus
+          kubectl -n ocloud-system rollout restart deploy/demo-backend
+          kubectl -n pool-operator-system rollout status deploy/pool-operator-controller-manager --timeout=3m
+          kubectl -n monitoring rollout status ds/ascend-npu-exporter-plus --timeout=2m
+          kubectl -n ocloud-system rollout status deploy/demo-backend --timeout=2m
+
+      - name: seed pool CRDs + mock workload
+        run: bash tests/e2e/kind/seed-resources.sh
+
+      - name: wait for NPUSlicePool reconcile (totalSlices > 0)
+        # This is the load-bearing proof that the operator's Reconcile
+        # loops (T002 NPUSlicePool, T003 NPUPool, T004 NodePool) fired
+        # against the live API server — not just envtest. We poll
+        # .status.totalSlices because that's the field whose value
+        # depends end-to-end on Reconcile actually reading the seeded
+        # CR, walking the parent NPUPool ref, and materialising the
+        # FixedTemplate slices.
+        run: |
+          set -e
+          echo "waiting for NPUSlicePool smoke-pool .status.totalSlices > 0..."
+          for i in $(seq 1 30); do
+            total=$(kubectl get npuslicepool -n ocloud-system smoke-pool -o jsonpath='{.status.totalSlices}' 2>/dev/null || echo 0)
+            echo "  attempt ${i}: totalSlices=${total}"
+            if [ "${total:-0}" -gt 0 ]; then
+              echo "Reconcile produced ${total} slices."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::NPUSlicePool.status.totalSlices did not become > 0 within 150s"
+          kubectl -n ocloud-system describe npuslicepool smoke-pool || true
+          kubectl -n pool-operator-system logs deploy/pool-operator-controller-manager --tail=200 || true
+          exit 1
+
+      - name: install Playwright deps
+        working-directory: tests/e2e
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+
+      - name: run kind smoke spec
+        working-directory: tests/e2e
+        run: pnpm exec playwright test --config=playwright.config.kind.ts
+
+      - name: upload Playwright report (kind)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-kind
+          path: tests/e2e/playwright-report/
+          retention-days: 7
+
+      - name: dump cluster on failure
+        if: failure()
+        run: |
+          echo "::group::all resources"
+          kubectl get all -A || true
+          echo "::endgroup::"
+          echo "::group::pool CRDs"
+          kubectl -n ocloud-system describe npuslicepool || true
+          kubectl describe nodepool || true
+          kubectl describe npupool || true
+          echo "::endgroup::"
+          echo "::group::operator logs"
+          kubectl -n pool-operator-system logs deploy/pool-operator-controller-manager --tail=300 || true
+          echo "::endgroup::"
+          echo "::group::exporter logs"
+          kubectl -n monitoring logs ds/ascend-npu-exporter-plus --tail=200 || true
+          echo "::endgroup::"
+          echo "::group::backend logs"
+          kubectl -n ocloud-system logs deploy/demo-backend --tail=200 || true
+          echo "::endgroup::"
+
+  e2e-mock-regression:
+    name: Phase 1 mock-backed Playwright (no regression)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: false
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: build backend (mock mode)
+        # The Phase 1 Playwright suite's webServer block spawns the
+        # backend binary from ./bin/demo-backend (or .exe on Windows).
+        # We pre-build it here so reuseExistingServer: true picks the
+        # baked binary without waiting on a `go run` cold start.
+        working-directory: backend
+        run: |
+          go mod download
+          go build -o bin/demo-backend ./cmd/demo-backend
+
+      - name: install frontend deps
+        # The mock Playwright suite spawns `pnpm dev`; the frontend's
+        # node_modules need to exist before that.
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: install Playwright deps
+        working-directory: tests/e2e
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+
+      - name: run Phase 1 mock suite
+        working-directory: tests/e2e
+        run: pnpm exec playwright test
+
+      - name: upload Playwright report (mock)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-mock
+          path: tests/e2e/playwright-report/
+          retention-days: 7

@@ -1,0 +1,67 @@
+# P3-T-104 — kind cluster shape for the real-cluster E2E smoke job.
+#
+# Layout
+# ------
+#   1 control-plane + 2 workers. The control-plane stays untainted in
+#   kind by default; we only need the workers to look like Ascend910B
+#   hosts so that:
+#     * the exporter-plus DaemonSet's nodeSelector
+#       (huawei.com/Ascend910B: "true") schedules onto them, and
+#     * the seeded smoke-workload Pod, which requests
+#       huawei.com/Ascend910=1, has a node to land on once
+#       tests/e2e/kind/install.sh patches the fake extended-resource
+#       capacity into each worker's status subresource.
+#
+# Why the labels live here but the capacity lives in install.sh
+# -------------------------------------------------------------
+#   kind v0.24 supports `nodes[*].labels` natively (set at kubelet
+#   startup) but **does not** support setting `status.capacity` /
+#   `status.allocatable` extended resources via the config file —
+#   those have to be patched through the API server's status
+#   subresource after node registration. install.sh's `up` step
+#   does that with `kubectl patch node --subresource=status`.
+#
+# Port mappings
+# -------------
+#   30080 — demo-backend NodePort (manifests/demo-backend.yaml).
+#   30090 — extra NodePort Service for ascend-npu-exporter-plus
+#           created inline by install.sh (the chart's Service is
+#           ClusterIP and doesn't expose a nodePort knob).
+#   Both ports are mapped on the CONTROL-PLANE node only; kind
+#   routes NodePort traffic to whichever pod hosts the Service
+#   irrespective of which node the host port lands on.
+#
+# Image pin
+# ---------
+#   kindest/node:v1.30.4 — Kubernetes 1.30 is the first GA release
+#   of ValidatingAdmissionPolicy (the operator's admission/ kustomize
+#   skeleton from T005 lands an NPUSlicePool namespace-scope policy).
+#   Older nodes won't accept the policy CRD and the operator
+#   kustomize apply would fail.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ocloud-e2e
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.30.4
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 30080
+        protocol: TCP
+      - containerPort: 30090
+        hostPort: 30090
+        protocol: TCP
+  - role: worker
+    image: kindest/node:v1.30.4
+    labels:
+      huawei.com/Ascend910B: "true"
+      huawei.com/Ascend910-Health: "Healthy"
+      site: site-a
+      role: edge
+  - role: worker
+    image: kindest/node:v1.30.4
+    labels:
+      huawei.com/Ascend910B: "true"
+      huawei.com/Ascend910-Health: "Healthy"
+      site: site-a
+      role: edge

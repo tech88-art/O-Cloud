@@ -165,7 +165,7 @@ negative branch.
 | 5 | trivial | no | no | **resolved** (WS `?fastforward=N` + frontend `?ffwd=` opt-in; E2E unskipped) |
 | 6 | trivial | no | no | **resolved** (reachability probe + Unreachable Alert) |
 | 7 | trivial | no | no | **RESOLVED** (2026-05-19, P3-T-103 — `.github/workflows/helm-lint.yml` runs `helm lint --strict` + `helm template` on every PR touching `deploy/helm-charts/**`) |
-| 8 | medium  | no | yes(Phase 3) | **accepted** (real-cluster E2E suite is Phase 3 scope; Phase 2 verifies via fake clientset + Playwright against mock backend) |
+| 8 | medium  | no | yes(was) → **RESOLVED** (2026-05-19, P3-T-104 — `.github/workflows/e2e-kind.yml` spins up kind + cert-manager + pool-operator + ascend-npu-exporter-plus + demo-backend, seeds the pool hierarchy, waits for `NPUSlicePool.status.totalSlices > 0` and runs three Playwright API smokes) |
 | 9 | trivial | no | no | **RESOLVED** (2026-05-19, P3-T-103 — dev stub retired; `deploy/dev/docker-compose.yaml`'s `ascend-npu-exporter-plus` service now runs the self-built exporter binary in simulator mode against the checked-in `testdata/simulator-set-a-small.json` seed) |
 
 After ADR-0006, generator parity (#3), WS fastforward (#5),
@@ -173,7 +173,9 @@ GrafanaPanel unreachable UX (#6), and set-c-stress fixture (#4), all
 six Phase 1 known issues have engineering resolutions. Phase 2 added
 three new entries (#7-#9); P3-T-103 (2026-05-19) closes #7 (helm lint
 CI) and #9 (dev stub retired in favour of `ascend-npu-exporter-plus`
-in simulator mode). #8 remains accepted, scheduled for Phase 3.
+in simulator mode), and P3-T-104 (2026-05-19) closes #8 (kind-based
+real-cluster smoke workflow). All Phase 2 known issues now carry
+engineering resolutions.
 
 ---
 
@@ -201,16 +203,54 @@ the new chart from its first commit.
 
 ### #8 — Real-cluster E2E not yet automated
 
-Severity: medium · Status: **accepted** (Phase 3 scope).
+Severity: medium · Status: **RESOLVED** (2026-05-19, P3-T-104).
 
-Phase 2 unit tests cover the K8s/Prometheus/CRD/ConfigMap sources via
-`k8s.io/client-go/kubernetes/fake` + `httptest.NewServer` + dynamic
-fake. Playwright still runs against the mock-backed binary.
+Phase 2 unit tests covered the K8s/Prometheus/CRD/ConfigMap sources
+via `k8s.io/client-go/kubernetes/fake` + `httptest.NewServer` +
+dynamic fake. Playwright ran against the mock-backed binary only.
 
-A real-K3s E2E pipeline (`kind`-based, ascend-npu-exporter stub + the
-five frontend pages) is desirable but explicitly Phase 3 scope. Phase
-2 ships with the manual verification path documented in
-`docs/demo.md` §Phase 2 appendix.
+**Resolution**: `.github/workflows/e2e-kind.yml` (lands with P3-T-104)
+runs on every PR + dev push. The `e2e-kind` job:
+
+1. spins up a kind v0.24 cluster (1 control-plane + 2 workers,
+   `kindest/node:v1.30.4` for ValidatingAdmissionPolicy GA) via
+   `tests/e2e/kind/kind-config.yaml`;
+2. patches fake `huawei.com/Ascend910=8` capacity onto each worker
+   (`kubectl patch node --subresource=status`) since kind config
+   cannot set extended-resource capacity directly;
+3. builds the pool-operator, demo-backend, and
+   ascend-npu-exporter-plus images and `kind load`s them;
+4. installs cert-manager v1.16 (helm), pool-operator (kustomize
+   via `make deploy`), exporter-plus (helm with simulator JSON as
+   a ConfigMap), and demo-backend (manifest with
+   `mapping.pools=crd` + `mapping.workloads=k8s`);
+5. seeds NodePool + NPUPool + NPUSlicePool (in `ocloud-system` per
+   the T005 admission policy) + a mock workload Pod requesting
+   `huawei.com/Ascend910=1`;
+6. waits up to 150s for `NPUSlicePool.status.totalSlices > 0`
+   (proves Reconcile loops T002-T004 fired);
+7. runs three Playwright API smokes
+   (`tests/e2e/specs/kind-smoke.spec.ts`):
+   - `/api/v1/clusters` returns >= 1 entry (backend boot + router);
+   - `/api/v1/workloads` surfaces the seeded `smoke-workload` Pod
+     via k8s.Source;
+   - direct scrape of `ascend-npu-exporter-plus:9100/metrics`
+     (NodePort 30090) returns
+     `ascend_npu_utilization_percent > 0` from the simulator seed.
+
+The separate `e2e-mock-regression` job in the same workflow rebuilds
+the demo-backend in mock mode and reruns the existing
+`playwright.config.ts` mock suite to prove Phase 1 paths continue to
+hold while the new real-cluster job lands.
+
+Frontend rendering inside kind is intentionally not exercised — the
+React build + nginx serve pipeline would add a node image build step
+without coverage that the existing mock-backed Playwright suite
+doesn't already provide. The kind smoke's unique value is proving the
+*server-side* chain (Reconcile -> exporter -> backend datasources ->
+JSON), which is what the API-level smokes assert. See
+`tests/e2e/specs/kind-smoke.spec.ts` header comment for the full
+trade-off.
 
 ### #9 — ascend exporter dev stub serves static metrics only
 

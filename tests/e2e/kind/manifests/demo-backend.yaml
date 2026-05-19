@@ -1,0 +1,197 @@
+# P3-T-104 — demo-backend manifest for the kind smoke job.
+#
+# Wires
+# -----
+#   ConfigMap demo-backend-config (mapping: pools=crd, workloads=k8s,
+#     metrics=prometheus pointing at the ascend-npu-exporter-plus
+#     ClusterIP Service in the monitoring namespace).
+#   ServiceAccount demo-backend + ClusterRole + ClusterRoleBinding
+#     so the in-cluster k8s.Source can List nodes / pods / services
+#     and the crd.Source can List the four pool CRDs.
+#   Deployment demo-backend pulling the locally-built
+#     ocloud/demo-backend:e2e image kind-loaded by install.sh.
+#   Service demo-backend (NodePort 30080) so the host mapping in
+#     kind-config.yaml lets Playwright reach the backend at
+#     http://localhost:30080.
+#
+# Image config path
+# -----------------
+#   The backend Dockerfile bakes /app/configs/config.yaml from
+#   backend/configs/config.example.yaml. We mount our ConfigMap onto
+#   the SAME path so the file is overwritten without changing the
+#   container's CMD. The mount uses subPath to drop just config.yaml
+#   into the existing directory; otherwise the whole /app/configs
+#   directory would be replaced and the entrypoint would still find
+#   the file but no other bundled files (we don't ship any others,
+#   so subPath is belt-and-suspenders).
+#
+# Why mapping.topology stays on mock
+# ----------------------------------
+#   crd.Source.GetTopology and k8s.Source.GetTopology both return
+#   datasource.ErrCapabilityUnavailable in Phase 3 (see backend/pkg/
+#   datasource/{crd,k8s}/source.go). Phase 4+ tasks plumb topology
+#   off the live cluster; for now the smoke spec only asserts on
+#   /clusters / /workloads / exporter metrics, none of which depend
+#   on the topology source — so leaving mock on a path that the
+#   spec doesn't touch is harmless and avoids a 500.
+#
+# Why mapping.metrics stays on prometheus
+# ---------------------------------------
+#   The smoke spec scrapes the exporter directly through the
+#   NodePort 30090 Service set up by install.sh — it does not call
+#   /api/v1/metrics/query. The prometheus mapping is left on
+#   `prometheus` here as a forward-compat hook: the URL points at
+#   the in-cluster ascend-npu-exporter-plus Service so the backend
+#   boots without errors, but no Prometheus API server is available
+#   in this kind topology (kube-prometheus-stack is Phase 4+ work).
+#   The smoke spec deliberately bypasses backend-as-metric-proxy in
+#   this task; see tests/e2e/specs/kind-smoke.spec.ts for the
+#   rationale.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-backend-config
+  namespace: ocloud-system
+data:
+  config.yaml: |
+    server:
+      port: 8080
+      enableCORS: true
+    logging:
+      level: info
+    datasources:
+      mock:
+        enabled: true
+        path: "./configs/mock-data/set-a-small"
+      k8s:
+        enabled: true
+        kubeconfig: ""
+      crd:
+        enabled: true
+        kubeconfig: ""
+      prometheus:
+        enabled: true
+        url: "http://ascend-npu-exporter-plus.monitoring.svc:9100"
+    mapping:
+      clusters: mock
+      topology: mock
+      nodes: k8s
+      npus: k8s
+      pools: crd
+      workloads: k8s
+      metrics: prometheus
+      presets: mock
+      deploy: mock
+      logs: k8s
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: demo-backend
+  namespace: ocloud-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: demo-backend
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "pods", "services", "namespaces", "events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["ims.ocloud.edge.example.com"]
+    resources:
+      - clusterpools
+      - nodepools
+      - npupools
+      - npuslicepools
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: demo-backend
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: demo-backend
+subjects:
+  - kind: ServiceAccount
+    name: demo-backend
+    namespace: ocloud-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-backend
+  namespace: ocloud-system
+  labels:
+    app: demo-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-backend
+  template:
+    metadata:
+      labels:
+        app: demo-backend
+    spec:
+      serviceAccountName: demo-backend
+      containers:
+        - name: backend
+          image: ocloud/demo-backend:e2e
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /app/configs/config.yaml
+              subPath: config.yaml
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: demo-backend-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-backend
+  namespace: ocloud-system
+  labels:
+    app: demo-backend
+spec:
+  type: NodePort
+  selector:
+    app: demo-backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      nodePort: 30080
+      protocol: TCP
