@@ -472,3 +472,85 @@ bash tests/e2e/kind/install.sh down
 Phase 3 final tag: `phase-3-complete`. Per-task commit map:
 `docs/checkpoint-phase3.md`. The same flow runs unattended in
 `.github/workflows/e2e-kind.yml` on every PR.
+
+---
+
+## Phase 4 demo appendix — npu-dra-driver + backend metrics
+
+> Adds the **simulator-first NPU DRA driver** and the **demo-backend
+> `/metrics` Prometheus self-endpoint** on top of the Phase 3 kind
+> smoke. Same simulator-first stance — no Ascend silicon required.
+
+### What's new in Phase 4 (vs Phase 3 demo)
+
+| Surface                                  | Phase 3                       | Phase 4                                                                            |
+| ---------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------- |
+| `operators/npu-dra-driver/`              | does not exist                | scaffold + simulator publisher + claim controller skeleton + Helm chart            |
+| `resource.k8s.io/v1beta1` ResourceSlices | none                          | 3 slices × 8 devices (set-a-small/npus.json) under driver `npu.ocloud.edge.example.com` |
+| pool-operator NPUSlicePool.status        | TotalSlices / AvailableSlices | + ResourceSlicesObserved (cross-watch — counts slices owned by npu-dra-driver)     |
+| Backend `/metrics`                       | absent                        | gin engine root (outside `/api/v1`) + 3 ocloud_backend_* counters + go_/process_*  |
+| `operators/inference-operator/`          | does not exist                | scaffold + ModelService CRD types (Phase 5 controller body)                        |
+| Phase docs                               | ADR-0001 v2                   | + ADR-0001 v3 (dual-path) + ADR-0009 (npu-dra-driver design) + cann-driver-matrix  |
+
+### Bring up
+
+```bash
+# Same install.sh up flow as Phase 3, now with npu-dra-driver added.
+bash tests/e2e/kind/install.sh up
+bash tests/e2e/kind/install.sh build-images
+```
+
+### Verify NPU DRA publication (P4-T-104 assertion)
+
+```bash
+kubectl get resourceslices
+# expected: 3 ResourceSlices, driver=npu.ocloud.edge.example.com, ≥8 devices each
+
+# CI assertion script (also runs in .github/workflows/e2e-kind.yml):
+bash tests/e2e/kind/dra_publish_test.sh
+```
+
+### Verify pool-operator ↔ npu-dra-driver cross-observation (P4-T-102)
+
+```bash
+kubectl -n ocloud-system get npuslicepool smoke-pool -o jsonpath='{.status.resourceSlicesObserved}'
+# expected: 3 (one ResourceSlice per simulated node)
+```
+
+### Verify backend /metrics + ocloud_backend_* counters (P4-T-106)
+
+```bash
+# Warm the dispatch counter.
+for ep in clusters nodes presets workloads; do
+  curl -fsS "http://localhost:30080/api/v1/$ep" >/dev/null
+done
+
+curl -fsS http://localhost:30080/metrics | grep ocloud_backend_
+# expected: at least 4 lines like
+# ocloud_backend_dispatch_calls_total{datasource="mock",endpoint="clusters"} 1
+# ocloud_backend_dispatch_calls_total{datasource="mock",endpoint="nodes"} 1
+# ...
+
+# CI assertion script:
+BACKEND_URL=http://localhost:30080 bash tests/e2e/kind/backend_metrics_test.sh
+```
+
+### What's NOT demonstrated in Phase 4
+
+- Real Ascend silicon (Phase 7 — see `docs/cann-driver-matrix.md` §4)
+- Real ResourceClaim allocation (Phase 5 per ADR-0009 §5)
+- inference-operator ModelService Reconcile (Phase 5)
+- PD Router mutating admission webhook (Phase 5 per ADR-0008)
+- HCCS-ring topology-aware scheduling (Phase 6 scheduler-plugin)
+- Karmada multi-cluster ModelService sync (Phase 9)
+
+### Teardown
+
+```bash
+bash tests/e2e/kind/install.sh down
+```
+
+Phase 4 final tag: `phase-4-complete`. Per-task commit map:
+`docs/checkpoint-phase4.md`. The same flow runs unattended in
+`.github/workflows/e2e-kind.yml` on every PR with assertions for
+ResourceSlice publication (P4-T-104) and backend metrics (P4-T-106).
