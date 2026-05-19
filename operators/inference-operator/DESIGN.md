@@ -281,6 +281,52 @@ main.go main()
    │ mgr.Start(...)
 ```
 
+### 4.2.2 P5-T-007 Deployment + Claim materialisation (operative)
+
+Per-side resources created/updated by `reconcileChildren()` on every
+pool-found pass:
+
+1. **ResourceClaimTemplate** (per side): named `<ms.name>-<side>-claim`
+   in `ms.namespace`. Spec carries:
+   - `Spec.Spec.Devices.Requests[0].DeviceClassName = "npu.ocloud.edge.example.com"`
+     (T001 DeviceClass registered by npu-dra-driver chart)
+   - `Spec.ObjectMeta.Annotations`:
+     - `ocloud.edge.example.com/model-service-ref = <ns>/<name>`
+     - `ocloud.edge.example.com/preferred-pool = <spec.npuSlicePoolRef.name>`
+   These annotations propagate to each per-replica ResourceClaim that
+   K8s creates from the template at Pod scheduling — npu-dra-driver
+   T002 reads them during allocation.
+2. **Deployment** (per side): named `<ms.name>-<side>` in
+   `ms.namespace`. Spec:
+   - `Replicas = ms.Spec.PDPair.<side>.Replicas`
+   - Selector + Pod template labels include
+     `<routerLabel> = <side>` (default key
+     `inference.ocloud.edge.example.com/pd-role`) and
+     `inference.ocloud.edge.example.com/model-service = <ns>/<name>`
+   - `Spec.Template.Spec.ResourceClaims[0]`:
+     - `Name = "npu-slice"`
+     - `ResourceClaimTemplateName = <template-name>`
+     - Container.Resources.Claims references the same `"npu-slice"` alias
+   - Container image = `ms.Spec.Model.Image`
+   - Container args: `--model-path=<ms.Spec.Model.ModelPath>` +
+     `--pd-role=<side>`
+   - OwnerRef → ModelService (Controller=true, BlockOwnerDeletion=true)
+
+Drift detection (idempotent reconcile):
+- Replica count change → in-place Deployment update (no recreate).
+- Image change → in-place container update; rolling-update strategy
+  fires automatically via Deployment defaults.
+- ResourceClaimTemplate.Spec.Spec is immutable per upstream contract;
+  Phase 5 T007 leaves Spec drift alone and only refreshes labels.
+  T008 may delete + recreate on a model-spec change.
+
+"Per-replica ResourceClaim" satisfied via the standard DRA pattern:
+ResourceClaimTemplate produces one ResourceClaim per Pod replica at
+admission time. The plan acceptance "Per-replica ResourceClaims
+created" is met because K8s — not the inference-operator — owns the
+expansion. The inference-operator's responsibility ends at the
+template.
+
 ### 4.2.1 P5-T-006 ModelService Reconciler scaffold (operative)
 
 ```

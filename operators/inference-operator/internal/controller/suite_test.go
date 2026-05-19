@@ -29,6 +29,8 @@ package controller
 import (
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
+	resourceapi "k8s.io/api/resource/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -53,6 +55,12 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 	}
 	if err := inferencev1alpha1.AddToScheme(s); err != nil {
 		t.Fatalf("add inference v1alpha1 scheme: %v", err)
+	}
+	if err := appsv1.AddToScheme(s); err != nil {
+		t.Fatalf("add apps/v1 scheme: %v", err)
+	}
+	if err := resourceapi.AddToScheme(s); err != nil {
+		t.Fatalf("add resource/v1beta1 scheme: %v", err)
 	}
 	return s
 }

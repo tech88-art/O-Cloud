@@ -19,8 +19,11 @@ package controller
 import (
 	"context"
 	"fmt"
+	"reflect"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	resourceapi "k8s.io/api/resource/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -148,7 +151,100 @@ func (r *ModelServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return r.markWaitingForPool(ctx, &ms, pool)
 	}
 
+	if err := r.reconcileChildren(ctx, &ms); err != nil {
+		return ctrl.Result{}, fmt.Errorf("reconcile children: %w", err)
+	}
+
 	return r.markProvisioning(ctx, &ms, pool)
+}
+
+// reconcileChildren creates or updates the Prefill + Decode
+// Deployments and the per-side ResourceClaimTemplate. Idempotent.
+// Phase 5 T007: create/update only; T008 adds owner-ref-based GC
+// for stale templates / Deployments left behind by replica or image
+// changes.
+func (r *ModelServiceReconciler) reconcileChildren(ctx context.Context, ms *inferencev1alpha1.ModelService) error {
+	for _, side := range []PDSide{PDSidePrefill, PDSideDecode} {
+		if err := r.reconcileResourceClaimTemplate(ctx, ms, side); err != nil {
+			return err
+		}
+		if err := r.reconcileDeployment(ctx, ms, side); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *ModelServiceReconciler) reconcileResourceClaimTemplate(ctx context.Context, ms *inferencev1alpha1.ModelService, side PDSide) error {
+	desired := buildResourceClaimTemplate(ms, side)
+	if err := controllerutil.SetControllerReference(ms, desired, r.Scheme); err != nil {
+		return fmt.Errorf("set controller ref on ResourceClaimTemplate %s/%s: %w", desired.Namespace, desired.Name, err)
+	}
+
+	var existing resourceapi.ResourceClaimTemplate
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: desired.Namespace, Name: desired.Name}, &existing)
+	if apierrors.IsNotFound(err) {
+		return r.Client.Create(ctx, desired)
+	}
+	if err != nil {
+		return err
+	}
+	// ResourceClaimTemplate.Spec is immutable per upstream contract.
+	// Phase 5 T007 leaves Spec drift alone; T008 may delete + recreate
+	// on a model-spec change. For now, refresh only labels/annotations
+	// at the top-level metadata (Spec stays as the existing template).
+	if !reflect.DeepEqual(existing.Labels, desired.Labels) {
+		existing.Labels = desired.Labels
+		return r.Client.Update(ctx, &existing)
+	}
+	return nil
+}
+
+func (r *ModelServiceReconciler) reconcileDeployment(ctx context.Context, ms *inferencev1alpha1.ModelService, side PDSide) error {
+	desired := buildDeployment(ms, side)
+	if err := controllerutil.SetControllerReference(ms, desired, r.Scheme); err != nil {
+		return fmt.Errorf("set controller ref on Deployment %s/%s: %w", desired.Namespace, desired.Name, err)
+	}
+
+	var existing appsv1.Deployment
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: desired.Namespace, Name: desired.Name}, &existing)
+	if apierrors.IsNotFound(err) {
+		return r.Client.Create(ctx, desired)
+	}
+	if err != nil {
+		return err
+	}
+
+	// Replica / image / args drift → update in place. The Pod template
+	// + selectors stay otherwise unchanged so a rolling update fires
+	// only when needed.
+	changed := false
+	if !ptrInt32Equal(existing.Spec.Replicas, desired.Spec.Replicas) {
+		existing.Spec.Replicas = desired.Spec.Replicas
+		changed = true
+	}
+	if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers, desired.Spec.Template.Spec.Containers) {
+		existing.Spec.Template.Spec.Containers = desired.Spec.Template.Spec.Containers
+		changed = true
+	}
+	if !reflect.DeepEqual(existing.Spec.Template.Spec.ResourceClaims, desired.Spec.Template.Spec.ResourceClaims) {
+		existing.Spec.Template.Spec.ResourceClaims = desired.Spec.Template.Spec.ResourceClaims
+		changed = true
+	}
+	if changed {
+		return r.Client.Update(ctx, &existing)
+	}
+	return nil
+}
+
+func ptrInt32Equal(a, b *int32) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
 }
 
 // resolveNPUSlicePool reads the named pool via the unstructured client.

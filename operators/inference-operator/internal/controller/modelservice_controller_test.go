@@ -20,7 +20,9 @@ import (
 	"context"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	resourceapi "k8s.io/api/resource/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -198,6 +200,162 @@ func TestReconcile_Deletion_FinalizerRemoved(t *testing.T) {
 		}
 	}
 	// NotFound is also acceptable (fake client GC kicked in).
+}
+
+// --- P5-T-007 PD Deployments + ResourceClaimTemplate ---
+
+func TestReconcile_T007_CreatesPDDeploymentsAndClaimTemplates(t *testing.T) {
+	ms := newModelService("ms-pd", "ns-pd", "pool-pd")
+	ms.Finalizers = []string{FinalizerName}
+	pool := newPoolFixture("ns-pd", "pool-pd", 8)
+	cli := newFakeClient(t, ms, pool)
+	r := &ModelServiceReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: newFakeRecorder(4)}
+
+	reconcile(t, r, client.ObjectKey{Namespace: "ns-pd", Name: "ms-pd"})
+
+	// Two Deployments: one prefill, one decode.
+	for _, side := range []PDSide{PDSidePrefill, PDSideDecode} {
+		dn := deploymentName(ms, side)
+		var dep appsv1.Deployment
+		if err := cli.Get(context.Background(), client.ObjectKey{Namespace: "ns-pd", Name: dn}, &dep); err != nil {
+			t.Fatalf("missing Deployment %s: %v", dn, err)
+		}
+		if dep.Spec.Template.Labels[routerLabelKey(ms)] != string(side) {
+			t.Errorf("Deployment %s missing pd-role label %s=%s; got %+v",
+				dn, routerLabelKey(ms), side, dep.Spec.Template.Labels)
+		}
+		if dep.Spec.Template.Labels[LabelModelService] != "ns-pd/ms-pd" {
+			t.Errorf("Deployment %s missing model-service label; got %+v", dn, dep.Spec.Template.Labels)
+		}
+		// OwnerRef → ModelService
+		if len(dep.OwnerReferences) != 1 || dep.OwnerReferences[0].Kind != "ModelService" {
+			t.Errorf("Deployment %s missing ModelService ownerRef; got %+v", dn, dep.OwnerReferences)
+		}
+		// PodResourceClaim references the template
+		if len(dep.Spec.Template.Spec.ResourceClaims) != 1 ||
+			dep.Spec.Template.Spec.ResourceClaims[0].ResourceClaimTemplateName == nil ||
+			*dep.Spec.Template.Spec.ResourceClaims[0].ResourceClaimTemplateName != claimTemplateName(ms, side) {
+			t.Errorf("Deployment %s pod template missing claim template ref; got %+v",
+				dn, dep.Spec.Template.Spec.ResourceClaims)
+		}
+
+		// ResourceClaimTemplate exists with the right deviceClassName + annotations
+		var tpl resourceapi.ResourceClaimTemplate
+		if err := cli.Get(context.Background(), client.ObjectKey{Namespace: "ns-pd", Name: claimTemplateName(ms, side)}, &tpl); err != nil {
+			t.Fatalf("missing ResourceClaimTemplate for %s: %v", side, err)
+		}
+		reqs := tpl.Spec.Spec.Devices.Requests
+		if len(reqs) != 1 || reqs[0].DeviceClassName != NPUDeviceClassName {
+			t.Errorf("template %s wrong deviceClassName: want %s, got %+v",
+				tpl.Name, NPUDeviceClassName, reqs)
+		}
+		anns := tpl.Spec.ObjectMeta.Annotations
+		if anns[AnnotationModelServiceRef] != "ns-pd/ms-pd" {
+			t.Errorf("template %s missing model-service-ref annotation; got %+v", tpl.Name, anns)
+		}
+		if anns[AnnotationPreferredPool] != "pool-pd" {
+			t.Errorf("template %s missing preferred-pool annotation; got %+v", tpl.Name, anns)
+		}
+	}
+}
+
+func TestReconcile_T007_PrefillOnly_ZeroDecodeReplicas(t *testing.T) {
+	ms := newModelService("ms-pf", "ns-pf", "pool-x")
+	ms.Finalizers = []string{FinalizerName}
+	ms.Spec.PDPair.Prefill.Replicas = 3
+	ms.Spec.PDPair.Decode.Replicas = 0
+	pool := newPoolFixture("ns-pf", "pool-x", 8)
+	cli := newFakeClient(t, ms, pool)
+	r := &ModelServiceReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: newFakeRecorder(4)}
+
+	reconcile(t, r, client.ObjectKey{Namespace: "ns-pf", Name: "ms-pf"})
+
+	var prefill appsv1.Deployment
+	if err := cli.Get(context.Background(), client.ObjectKey{Namespace: "ns-pf", Name: deploymentName(ms, PDSidePrefill)}, &prefill); err != nil {
+		t.Fatalf("prefill deployment missing: %v", err)
+	}
+	if prefill.Spec.Replicas == nil || *prefill.Spec.Replicas != 3 {
+		t.Errorf("prefill replicas: want 3, got %v", prefill.Spec.Replicas)
+	}
+	var decode appsv1.Deployment
+	if err := cli.Get(context.Background(), client.ObjectKey{Namespace: "ns-pf", Name: deploymentName(ms, PDSideDecode)}, &decode); err != nil {
+		t.Fatalf("decode deployment missing: %v", err)
+	}
+	if decode.Spec.Replicas == nil || *decode.Spec.Replicas != 0 {
+		t.Errorf("decode replicas: want 0, got %v", decode.Spec.Replicas)
+	}
+}
+
+func TestReconcile_T007_ReplicaCountChange_ScalesInPlace(t *testing.T) {
+	ms := newModelService("ms-scale", "ns-scale", "pool-y")
+	ms.Finalizers = []string{FinalizerName}
+	ms.Spec.PDPair.Prefill.Replicas = 1
+	pool := newPoolFixture("ns-scale", "pool-y", 8)
+	cli := newFakeClient(t, ms, pool)
+	r := &ModelServiceReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: newFakeRecorder(4)}
+
+	reconcile(t, r, client.ObjectKey{Namespace: "ns-scale", Name: "ms-scale"})
+
+	// Bump prefill replicas to 3
+	got := getModelService(t, cli, client.ObjectKey{Namespace: "ns-scale", Name: "ms-scale"})
+	got.Spec.PDPair.Prefill.Replicas = 3
+	if err := cli.Update(context.Background(), got); err != nil {
+		t.Fatalf("bump replicas: %v", err)
+	}
+	reconcile(t, r, client.ObjectKey{Namespace: "ns-scale", Name: "ms-scale"})
+
+	var dep appsv1.Deployment
+	if err := cli.Get(context.Background(), client.ObjectKey{Namespace: "ns-scale", Name: deploymentName(ms, PDSidePrefill)}, &dep); err != nil {
+		t.Fatalf("get prefill: %v", err)
+	}
+	if dep.Spec.Replicas == nil || *dep.Spec.Replicas != 3 {
+		t.Errorf("prefill replicas after bump: want 3, got %v", dep.Spec.Replicas)
+	}
+}
+
+func TestReconcile_T007_ImageChange_UpdatesContainer(t *testing.T) {
+	ms := newModelService("ms-img", "ns-img", "pool-z")
+	ms.Finalizers = []string{FinalizerName}
+	pool := newPoolFixture("ns-img", "pool-z", 8)
+	cli := newFakeClient(t, ms, pool)
+	r := &ModelServiceReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: newFakeRecorder(4)}
+
+	reconcile(t, r, client.ObjectKey{Namespace: "ns-img", Name: "ms-img"})
+
+	got := getModelService(t, cli, client.ObjectKey{Namespace: "ns-img", Name: "ms-img"})
+	got.Spec.Model.Image = "vllm-ascend:v0.12.0"
+	if err := cli.Update(context.Background(), got); err != nil {
+		t.Fatalf("update image: %v", err)
+	}
+	reconcile(t, r, client.ObjectKey{Namespace: "ns-img", Name: "ms-img"})
+
+	var dep appsv1.Deployment
+	if err := cli.Get(context.Background(), client.ObjectKey{Namespace: "ns-img", Name: deploymentName(ms, PDSidePrefill)}, &dep); err != nil {
+		t.Fatalf("get prefill: %v", err)
+	}
+	if dep.Spec.Template.Spec.Containers[0].Image != "vllm-ascend:v0.12.0" {
+		t.Errorf("image not updated; got %s", dep.Spec.Template.Spec.Containers[0].Image)
+	}
+}
+
+func TestReconcile_T007_Idempotent(t *testing.T) {
+	ms := newModelService("ms-idem", "ns-idem", "pool-idem")
+	ms.Finalizers = []string{FinalizerName}
+	pool := newPoolFixture("ns-idem", "pool-idem", 8)
+	cli := newFakeClient(t, ms, pool)
+	r := &ModelServiceReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: newFakeRecorder(4)}
+
+	// 3 reconciles in a row — no errors, same state.
+	for i := 0; i < 3; i++ {
+		reconcile(t, r, client.ObjectKey{Namespace: "ns-idem", Name: "ms-idem"})
+	}
+	var dep appsv1.Deployment
+	if err := cli.Get(context.Background(), client.ObjectKey{Namespace: "ns-idem", Name: deploymentName(ms, PDSidePrefill)}, &dep); err != nil {
+		t.Fatalf("get prefill after 3 reconciles: %v", err)
+	}
+	if dep.Spec.Replicas == nil || *dep.Spec.Replicas != 1 {
+		t.Errorf("prefill replicas after idempotent reconcile: %v", dep.Spec.Replicas)
+	}
 }
 
 func TestSetCondition_SmokeFromInferenceOperator(t *testing.T) {
