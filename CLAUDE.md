@@ -234,4 +234,52 @@ Agent 想改契约 → 开 issue (title: RFC: xxx) → 协调者评估 → 批�
 
 ---
 
+## 14. 开发日志与模块详细设计文档(2026-05-19 起 · 用户补充要求)
+
+### 14.1 devlog 约定(per task)
+
+**每个 task commit 必带 devlog 文件**,记录"commit message 不便携带的调试轨迹"(false starts / 错误链 / 路径偏离 / 设计决策的 why)。
+
+落地位置:`docs/devlog/phase-<phase>-t<task-id>.md`。
+
+每次 task commit 的 commit message 末尾(co-author 之上)加一行:
+```
+Devlog: docs/devlog/phase-N-tNNN.md
+```
+
+devlog 文件模板与详细约定见 `docs/devlog/README.md` §1。**每个文件 20-80 行**;不重复 commit message,只补 trail / 决策。
+
+**Phase 4 之前已完成的 phase**:不要追溯写 devlog(Phase 1-3 已沉淀在 checkpoint 文档 + commit history,够用)。**Phase 4 是 retroactive batch**(已在 2026-05-19 phase-4-complete 后回填),**Phase 5 起严格 per-task 同步写入**。
+
+### 14.2 模块详细设计文档约定(per module)
+
+**每个新模块在落地"完整功能"(不仅 scaffold)时写 DESIGN.md**,放在模块根目录:
+- `<module>/DESIGN.md`(operators / exporters / 其他独立模块)
+- `backend/docs/<topic>.md`(backend 多主题,放在 docs/ 子目录)
+- `frontend/docs/<topic>.md`(同上)
+
+内容必含:
+1. **架构概览**:模块在系统中的位置(arch §对应章节);数据流(谁 read / 谁 write / 何时触发)
+2. **接口契约**:对外暴露的 API / CRD types / Go interface;每个字段语义 + 不变量
+3. **生命周期**:启动 / 运行 / 关闭;Reconcile 触发 + 退出条件;依赖资源
+4. **错误处理**:可恢复 vs 不可恢复;重试策略;状态机
+5. **扩展点**:Phase N+ 演进路径(哪些字段预留 / 哪些组件可插拔)
+6. **集成示例**:典型上游 / 下游调用示例;cross-controller awareness 模式
+7. **参考**:相关 ADR / CLAUDE.md / phase plan / 代码路径
+
+**Phase 4 新模块**(已在 2026-05-19 phase-4-complete 后回填):
+- `operators/npu-dra-driver/DESIGN.md`
+- `operators/inference-operator/DESIGN.md`
+- `backend/docs/observability.md`
+
+**Phase 5 起所有"完整功能"模块入 dev 分支前必带 DESIGN.md**。仅 scaffold (api/v1alpha1 types only) 可在 scaffold task commit message 注 "DESIGN.md deferred to controller-body task"。
+
+### 14.3 验收
+
+- PR 审阅(协调者 / 集成 agent):检查 commit footer Devlog 行 + devlog 文件存在性;新增模块检查 DESIGN.md 落地。
+- Phase 入口 plan 起草(N+1 plan 文件): 草拟 checkpoint 时校验 devlog 覆盖率 = task 数(15/15 for Phase 4)。
+- CI hook(Phase 5+ 候选,非阻塞):`.github/workflows/devlog-coverage.yml` 可 grep commit footer + 检查文件存在性 — 待 Phase 5 起草时定夺。
+
+---
+
 **END of root CLAUDE.md**
