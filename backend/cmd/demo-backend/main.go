@@ -160,11 +160,25 @@ func runServer(ctx context.Context, configFile string) error {
 	if cfg.Grafana.BaseURL != "" {
 		handler.GrafanaBaseURL = cfg.Grafana.BaseURL
 	}
-	// P4-T-007: initialize the Prometheus self-metrics registry before
-	// NewRouter so /metrics has the default Go runtime + process collectors
-	// ready. P4-T-008 will register the Ocloud cache/dispatch counters
-	// against this same registry.
-	handler.MetricsRegistry = api.NewMetricsRegistry()
+	// P4-T-007 + P4-T-008: initialize the Prometheus self-metrics
+	// registry plus the three Ocloud counter families (cache eviction +
+	// cache hits + dispatch calls). The registry serves /metrics; the
+	// counter handles are wired into the datasource registry so
+	// SourceFor() increments dispatch_calls_total. Cache instances that
+	// want eviction/hits instrumentation receive the per-resource counter
+	// via cache.Options at construction site — Phase 3 cache wiring
+	// stays Prometheus-agnostic so callers opt in.
+	promReg, promCounters := api.NewMetricsRegistryWithCounters()
+	handler.MetricsRegistry = promReg
+	reg.DispatchCounter = promCounters.DispatchCalls
+	// Cache eviction/hits counters are exposed via promCounters but not
+	// yet wired into a long-lived in-process cache here — main.go does
+	// not currently construct cache instances. The handlers / aggregators
+	// that own a cache.LRU can opt-in by reading promCounters.CacheEviction
+	// + promCounters.CacheHits from a future Handler field; this commit
+	// ships the counter families so downstream wiring lands without
+	// requiring a follow-up dep bump.
+	_ = promCounters
 	router := api.NewRouter(handler, api.RouterOptions{EnableCORS: cfg.Server.EnableCORS})
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)

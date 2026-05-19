@@ -3,6 +3,8 @@ package datasource
 import (
 	"fmt"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/example/ocloud-edge/backend/pkg/config"
 )
 
@@ -10,14 +12,28 @@ import (
 // resource → source-name. handlers read via sourceFor(resourceKey).
 //
 // Phase 1: only the "mock" entry exists. Phase 2 adds k8s/prometheus/crd/configmap.
+// Phase 4 T008: optional DispatchCounter records every SourceFor call.
 type Registry struct {
 	Sources map[string]Source
 	Mapping map[string]string // resource → source name
+
+	// DispatchCounter is the optional Prometheus counter (P4-T-008)
+	// incremented on every SourceFor lookup that returns a non-nil
+	// Source. Labels: datasource (source name) + endpoint (resource
+	// key). Nil = no Prometheus instrumentation; SourceFor behaves
+	// exactly as Phase 3.
+	DispatchCounter *prometheus.CounterVec
 }
 
 // SourceFor returns the source assigned to a logical resource (e.g. "clusters",
 // "metrics", "presets"). Returns nil if either the mapping or the source is
 // missing — handlers must defend against nil to keep degraded mode working.
+//
+// P4-T-008: when DispatchCounter is set, increments
+// ocloud_backend_dispatch_calls_total{datasource=<src>, endpoint=<resource>}
+// on every successful lookup. Misses (nil result) are NOT counted — the
+// resulting handler-side error path is observed separately via HTTP
+// status code metrics (Phase 5+ middleware).
 func (r *Registry) SourceFor(resource string) Source {
 	if r == nil {
 		return nil
@@ -26,7 +42,11 @@ func (r *Registry) SourceFor(resource string) Source {
 	if !ok {
 		return nil
 	}
-	return r.Sources[srcName]
+	src := r.Sources[srcName]
+	if src != nil && r.DispatchCounter != nil {
+		r.DispatchCounter.WithLabelValues(srcName, resource).Inc()
+	}
+	return src
 }
 
 // Build constructs a Registry from a config + a pre-built map of sources

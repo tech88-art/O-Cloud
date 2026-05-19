@@ -4,6 +4,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 // ============================================================================
@@ -300,5 +303,120 @@ func TestEvictReason_String(t *testing.T) {
 	}
 	if got := EvictReason(99).String(); got != "unknown(99)" {
 		t.Errorf("unknown.String() = %q; want unknown(99)", got)
+	}
+}
+
+// ============================================================================
+// P4-T-008 Prometheus instrumentation: nil-safe + non-nil observable.
+// ============================================================================
+
+func newTestCounter(t *testing.T, name string) *prometheus.CounterVec {
+	t.Helper()
+	return prometheus.NewCounterVec(prometheus.CounterOpts{Name: name},
+		[]string{"resource"})
+}
+
+func TestLRU_PrometheusCounters_NilSafe(t *testing.T) {
+	// Plan acceptance: passing nil retains Phase 3 behaviour with no panic.
+	c, err := New[string, int](Options{MaxEntries: 2}) // no counters
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	c.Add("a", 1)
+	c.Add("b", 2)
+	c.Add("c", 3) // evicts "a"
+	if got, _ := c.Get("b"); got != 2 {
+		t.Errorf("nil-safe Get hit returned %d, want 2", got)
+	}
+	if got := c.Counter().Total(); got != 1 {
+		t.Errorf("nil-safe eviction counter Total = %d, want 1", got)
+	}
+}
+
+func TestLRU_PrometheusCounters_EvictionObservable(t *testing.T) {
+	evictCounter := newTestCounter(t, "ocloud_backend_cache_eviction_total")
+	c, err := New[string, int](Options{
+		MaxEntries:         2,
+		EvictionCounterVec: evictCounter,
+		Resource:           "test-topology",
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	c.Add("a", 1)
+	c.Add("b", 2)
+	c.Add("c", 3) // evicts "a" → counter +1
+	c.Add("d", 4) // evicts "b" → counter +1
+
+	if got := testutil.ToFloat64(evictCounter.WithLabelValues("test-topology")); got != 2 {
+		t.Errorf("eviction counter for resource=test-topology = %v, want 2", got)
+	}
+	// Other resources should not have been touched.
+	if got := testutil.CollectAndCount(evictCounter); got != 1 {
+		t.Errorf("only one labelset should exist, got %d", got)
+	}
+}
+
+func TestLRU_PrometheusCounters_HitsObservable(t *testing.T) {
+	hitsCounter := newTestCounter(t, "ocloud_backend_cache_hits_total")
+	c, err := New[string, int](Options{
+		MaxEntries:     4,
+		HitsCounterVec: hitsCounter,
+		Resource:       "presets",
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	c.Add("a", 1)
+	c.Add("b", 2)
+	// 3 hits on "a".
+	for i := 0; i < 3; i++ {
+		if v, ok := c.Get("a"); !ok || v != 1 {
+			t.Fatalf("hit Get iteration %d: ok=%v v=%v", i, ok, v)
+		}
+	}
+	// 1 miss — should NOT increment the hits counter.
+	if _, ok := c.Get("nonexistent"); ok {
+		t.Fatal("miss should not return ok=true")
+	}
+
+	if got := testutil.ToFloat64(hitsCounter.WithLabelValues("presets")); got != 3 {
+		t.Errorf("hits counter = %v, want 3 (misses must NOT increment hits)", got)
+	}
+}
+
+func TestLRU_PrometheusCounters_ResourceLabelRequired(t *testing.T) {
+	// Validate: when a counter is set, Resource must be too.
+	evict := newTestCounter(t, "x_evict")
+	_, err := New[string, int](Options{
+		MaxEntries:         2,
+		EvictionCounterVec: evict,
+		// Resource intentionally empty
+	})
+	if err == nil {
+		t.Fatal("expected validation error when counter set but Resource empty")
+	}
+}
+
+func TestLRU_PrometheusCounters_TTLEvictionCounted(t *testing.T) {
+	// Plan acceptance: counter increments for every eviction regardless of
+	// cause. Exercise the TTL path explicitly.
+	evictCounter := newTestCounter(t, "ocloud_backend_cache_eviction_total")
+	c, err := New[string, int](Options{
+		MaxEntries:         4,
+		TTL:                10 * time.Millisecond,
+		EvictionCounterVec: evictCounter,
+		Resource:           "topology",
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	c.Add("a", 1)
+	time.Sleep(30 * time.Millisecond)
+	if _, ok := c.Get("a"); ok {
+		t.Fatal("TTL-expired Get must return miss")
+	}
+	if got := testutil.ToFloat64(evictCounter.WithLabelValues("topology")); got != 1 {
+		t.Errorf("TTL eviction counter = %v, want 1", got)
 	}
 }

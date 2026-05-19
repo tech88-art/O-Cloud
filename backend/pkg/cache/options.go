@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Options configures a cache. Pass to New() to construct an LRU with
@@ -27,6 +29,22 @@ type Options struct {
 	// capacity, or explicit). Receives the key + value + reason.
 	// nil = no callback.
 	OnEvict func(key any, value any, reason EvictReason)
+
+	// EvictionCounterVec is an optional Prometheus counter (P4-T-008)
+	// the cache increments per eviction. Label "resource" is set to
+	// Options.Resource. Nil = no Prometheus instrumentation (Phase 3
+	// behaviour preserved — no panic).
+	EvictionCounterVec *prometheus.CounterVec
+
+	// HitsCounterVec is an optional Prometheus counter (P4-T-008) the
+	// cache increments per Get() hit. Label "resource" is set to
+	// Options.Resource. Nil = no Prometheus instrumentation.
+	HitsCounterVec *prometheus.CounterVec
+
+	// Resource is the label value used for EvictionCounterVec and
+	// HitsCounterVec. Required when either counter is non-nil; empty
+	// when both are nil (Phase 3 behaviour).
+	Resource string
 }
 
 // EvictReason annotates the cause of an eviction passed to OnEvict.
@@ -62,6 +80,9 @@ func (o Options) Validate() error {
 	}
 	if o.TTL < 0 {
 		return errors.New("cache: TTL must be >= 0 (use 0 to disable TTL)")
+	}
+	if (o.EvictionCounterVec != nil || o.HitsCounterVec != nil) && o.Resource == "" {
+		return errors.New("cache: Resource label required when prometheus counters are set")
 	}
 	return nil
 }

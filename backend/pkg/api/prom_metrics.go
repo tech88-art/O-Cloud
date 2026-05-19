@@ -22,19 +22,93 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// Ocloud-prefixed counter family names (P4-T-008).
+const (
+	// MetricCacheEvictionTotal counts cache evictions across all
+	// in-process cache instances, labelled by logical resource.
+	MetricCacheEvictionTotal = "ocloud_backend_cache_eviction_total"
+
+	// MetricCacheHitsTotal counts cache hits across all in-process cache
+	// instances, labelled by logical resource.
+	MetricCacheHitsTotal = "ocloud_backend_cache_hits_total"
+
+	// MetricDispatchCallsTotal counts Source dispatches (datasource
+	// selections) per resource endpoint. Increments on every
+	// Registry.SourceFor call regardless of whether the cache layer
+	// later short-circuits with a hit — cache hits are tracked
+	// separately via MetricCacheHitsTotal.
+	MetricDispatchCallsTotal = "ocloud_backend_dispatch_calls_total"
+)
+
+// Ocloud-prefixed counter handles (P4-T-008). Constructed by
+// NewMetricsRegistry; consumed by downstream packages via the returned
+// MetricsCounters struct.
+type MetricsCounters struct {
+	// CacheEviction labels: resource (logical cache name, e.g.
+	// "topology" / "workloads" / "presets"). Incremented per evicted
+	// entry regardless of cause (capacity / TTL / explicit).
+	CacheEviction *prometheus.CounterVec
+
+	// CacheHits labels: resource. Incremented for every Get() that
+	// resolved from cache; misses are NOT counted here (the dispatch
+	// counter captures the resulting source call).
+	CacheHits *prometheus.CounterVec
+
+	// DispatchCalls labels: datasource (source name, e.g. "mock" /
+	// "k8s") + endpoint (logical resource key, e.g. "clusters" /
+	// "topology"). Incremented for every Registry.SourceFor lookup that
+	// returns a non-nil Source. Label is "endpoint" per plan §3 P4-T-008;
+	// here it carries the logical resource key (not the HTTP path)
+	// because dispatch is selected by resource, not by URL.
+	DispatchCalls *prometheus.CounterVec
+}
+
 // NewMetricsRegistry returns a Prometheus registry pre-populated with the
-// default Go runtime + process collectors. Phase 4 T007 ships only the
-// defaults; T008 adds the three Ocloud cache/dispatch counter families.
+// default Go runtime + process collectors plus the three Ocloud counter
+// families introduced at P4-T-008.
 //
 // The registry is intentionally a *new* registry (not the global
 // prometheus.DefaultRegisterer) so the backend's metrics are isolated
 // from any in-tree library that might register against the default
 // registry at init() time.
+//
+// Callers receive the registry plus a MetricsCounters handle. main.go
+// passes MetricsCounters into the cache + datasource subsystems so
+// counter increments happen at the source.
 func NewMetricsRegistry() *prometheus.Registry {
+	reg, _ := newRegistryWithCounters()
+	return reg
+}
+
+// NewMetricsRegistryWithCounters is the variant main.go uses when it
+// needs the MetricsCounters handle. The single-return NewMetricsRegistry
+// is preserved for test ergonomics + Phase 3 callers that don't yet
+// instrument cache/dispatch.
+func NewMetricsRegistryWithCounters() (*prometheus.Registry, MetricsCounters) {
+	return newRegistryWithCounters()
+}
+
+func newRegistryWithCounters() (*prometheus.Registry, MetricsCounters) {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(collectors.NewGoCollector())
 	reg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-	return reg
+
+	mc := MetricsCounters{
+		CacheEviction: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: MetricCacheEvictionTotal,
+			Help: "Number of cache evictions (capacity / TTL / explicit) per logical resource.",
+		}, []string{"resource"}),
+		CacheHits: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: MetricCacheHitsTotal,
+			Help: "Number of cache hits per logical resource. Cache misses are not counted here; the resulting source dispatch is counted by " + MetricDispatchCallsTotal + ".",
+		}, []string{"resource"}),
+		DispatchCalls: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: MetricDispatchCallsTotal,
+			Help: "Number of Source dispatches (Registry.SourceFor returning non-nil) per datasource and logical resource endpoint. Increments regardless of cache hit/miss — pair with " + MetricCacheHitsTotal + " to read the cache-hit ratio.",
+		}, []string{"datasource", "endpoint"}),
+	}
+	reg.MustRegister(mc.CacheEviction, mc.CacheHits, mc.DispatchCalls)
+	return reg, mc
 }
 
 // MetricsHandler returns a gin handler that serves the prometheus HTTP

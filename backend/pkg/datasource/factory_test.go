@@ -12,12 +12,26 @@ import (
 	"context"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/example/ocloud-edge/backend/pkg/config"
 	"github.com/example/ocloud-edge/backend/pkg/model"
 )
+
+func newDispatchTestCounter(t *testing.T) *prometheus.CounterVec {
+	t.Helper()
+	return prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "ocloud_backend_dispatch_calls_total_test",
+	}, []string{"datasource", "endpoint"})
+}
+
+func dispatchCount(t *testing.T, c *prometheus.CounterVec, datasource, endpoint string) float64 {
+	t.Helper()
+	return testutil.ToFloat64(c.WithLabelValues(datasource, endpoint))
+}
 
 // stubSource is a hollow Source implementation used only for the wiring
 // tests below. It carries a name() distinguisher so the assertions can tell
@@ -205,4 +219,46 @@ func TestSourceFor_NilRegistry(t *testing.T) {
 func TestSourceFor_MissingMapping(t *testing.T) {
 	reg := &Registry{Sources: map[string]Source{}, Mapping: map[string]string{}}
 	assert.Nil(t, reg.SourceFor("clusters"))
+}
+
+func TestSourceFor_DispatchCounter_NilSafe(t *testing.T) {
+	// Plan acceptance: Phase 3 behaviour preserved when DispatchCounter is nil.
+	src := &stubSource{id: "mock"}
+	reg := &Registry{
+		Sources: map[string]Source{"mock": src},
+		Mapping: map[string]string{"clusters": "mock"},
+	}
+	if got := reg.SourceFor("clusters"); got != src {
+		t.Errorf("nil counter must not change lookup behaviour")
+	}
+}
+
+func TestSourceFor_DispatchCounter_Observable(t *testing.T) {
+	counter := newDispatchTestCounter(t)
+	src := &stubSource{id: "mock"}
+	reg := &Registry{
+		Sources:         map[string]Source{"mock": src},
+		Mapping:         map[string]string{"clusters": "mock", "nodes": "mock"},
+		DispatchCounter: counter,
+	}
+
+	// 3 calls on /clusters + 2 calls on /nodes.
+	for i := 0; i < 3; i++ {
+		_ = reg.SourceFor("clusters")
+	}
+	for i := 0; i < 2; i++ {
+		_ = reg.SourceFor("nodes")
+	}
+	// 1 lookup for unmapped resource — must NOT increment any label set
+	// (Phase 4 only counts successful dispatches).
+	if got := reg.SourceFor("unmapped"); got != nil {
+		t.Errorf("unmapped resource should yield nil")
+	}
+
+	if got := dispatchCount(t, counter, "mock", "clusters"); got != 3 {
+		t.Errorf("dispatch counter for mock/clusters = %v, want 3", got)
+	}
+	if got := dispatchCount(t, counter, "mock", "nodes"); got != 2 {
+		t.Errorf("dispatch counter for mock/nodes = %v, want 2", got)
+	}
 }

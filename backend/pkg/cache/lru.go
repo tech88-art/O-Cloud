@@ -65,7 +65,8 @@ func New[K comparable, V any](opts Options) (*LRU[K, V], error) {
 		out.addedAt = make(map[K]time.Time)
 	}
 
-	// Wire hashicorp's per-eviction callback into our counter + OnEvict.
+	// Wire hashicorp's per-eviction callback into our counter + OnEvict
+	// + optional Prometheus instrumentation (P4-T-008).
 	// hashicorp invokes this synchronously inside Add/Remove/Purge while
 	// the caller still holds our mu (we serialize all mutating paths).
 	onEvicted := func(k K, v V) {
@@ -73,6 +74,9 @@ func New[K comparable, V any](opts Options) (*LRU[K, V], error) {
 		out.counter.Inc(reason)
 		if out.addedAt != nil {
 			delete(out.addedAt, k)
+		}
+		if opts.EvictionCounterVec != nil {
+			opts.EvictionCounterVec.WithLabelValues(opts.Resource).Inc()
 		}
 		if opts.OnEvict != nil {
 			opts.OnEvict(k, v, reason)
@@ -91,7 +95,8 @@ func New[K comparable, V any](opts Options) (*LRU[K, V], error) {
 func (c *LRU[K, V]) Counter() *EvictionCounter { return c.counter }
 
 // Get returns the cached value if present and not TTL-expired. On TTL
-// expiry, evicts the entry + records the eviction.
+// expiry, evicts the entry + records the eviction. On hit, increments
+// the optional HitsCounterVec (P4-T-008).
 //
 // Get does NOT take mu in the common (non-expired) path; it only locks
 // when a TTL check fails so a stale entry must be evicted.
@@ -111,7 +116,11 @@ func (c *LRU[K, V]) Get(k K) (V, bool) {
 		}
 		c.mu.Unlock()
 	}
-	return c.c.Get(k)
+	v, ok := c.c.Get(k)
+	if ok && c.opts.HitsCounterVec != nil {
+		c.opts.HitsCounterVec.WithLabelValues(c.opts.Resource).Inc()
+	}
+	return v, ok
 }
 
 // Add inserts or replaces v for k. Records timestamp for TTL.
