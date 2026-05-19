@@ -2,9 +2,10 @@
 
 > 基于 O-Cloud 形态的边缘云平台样机，具备**异构算力（昇腾 910B）基础设施管理**与 **AI 推理服务编排部署**两大能力。
 
-**当前阶段**:Phase 2(真实数据源切入)— **完成**(15/15 tasks · tag `phase-2-complete`)
-**上一阶段**:Phase 1(核心样机 + Mock 数据)— 完成(44/44 tasks · tag `phase-1-complete`)
-**下一阶段**:Phase 3(ascend-npu-exporter-plus + inference-operator PD Router + 真集群 E2E · 详见 `docs/checkpoint-phase2.md §6` handoff)
+**当前阶段**:Phase 3 complete — pool controllers + ascend-npu-exporter-plus + first ADR for PD Router webhook (impl Phase 5) — **完成**(15/15 tasks · tag `phase-3-complete`)
+**上一阶段**:Phase 2(真实数据源切入)— 完成(15/15 tasks · tag `phase-2-complete`)
+**早期阶段**:Phase 1(核心样机 + Mock 数据)— 完成(44/44 tasks · tag `phase-1-complete`)
+**下一阶段**:Phase 4(NPU DRA driver scaffold + 设备发现 + CANN 8.1 兼容矩阵 · 详见 `docs/checkpoint-phase3.md §6` handoff)
 
 **协作模式**：协调者 + N 个并行 AI Agent + 集成 Agent（详见 `docs/agent-coordination.md`）
 
