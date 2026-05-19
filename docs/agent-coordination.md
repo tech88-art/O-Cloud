@@ -143,6 +143,94 @@ git branch -D feat/p1-t-XXX-<short>
 
 worktree 失败 / 中断 → main agent 必须 `git worktree remove --force` + 删 stale branch,否则 `git worktree list` 累积垃圾。
 
+### 0a.10 Plan-session vs execute-session 严格分开(Phase 4 起,2026-05-19)
+
+**规则**:写 `docs/phase{N}-plan.md` 的 plan-style session 与实际跑 `T{N}XX` 代码改动的 execute-style session **必须分两个不同的 chat session**。
+
+**Why**:通过 session 边界把"规划"与"执行"的 context 隔离。执行 session 启动时 fresh context 读 plan + 任务包,避免 plan session 里的探索性 reasoning(读了多少参考文档 / 考虑了多少候选 / 为什么选这个 task 划分)挤占执行决策空间。也避免 plan 收尾后"顺便起一个 T001 吧"的滑坡。
+
+**Plan-style session 收尾 = 4 步**:
+1. plan 文件写好(`docs/phase{N}-plan.md` + 必要的 ADR 占位)
+2. `git commit -m "docs: Phase N plan ..."`
+3. 报告 commit hash + task 清单 + 推荐起手 task
+4. **停** — 不主动起 task · 不 push remote · 不 schedule · 不做任何后续 follow-up
+
+用户用 `/clear` 或新 chat 启动 execute session;那时 fresh context 读 plan + 启动 `T{N}XX`。
+
+**与 §0a.11 strict-per-task 的关系**:§0a.11 是 task 内纪律(每 task verify + commit + 停);本节是 phase 级别 plan / execute 跨 session 隔离。**两条互补,不冲突**。
+
+**Plan session 留 uncommitted 工作树是允许的**:若 plan session 在调研中顺手 sketch 了 ADR 或 cross-ref 文档草稿,且这些草稿天然属于 execute session 的某个 T001/T002 task,**留 uncommitted 等 execute session 拿** 是合理的(不强制 git stash / git restore)。**仅 commit plan 主文件**,uncommitted 草稿是给下一 session 的隐式 baton。
+
+**典型反例(2026-05-19 前的旧节奏 → 已 deprecated)**:
+- Phase 2 / 早 Phase 3:plan 写完顺手 "起 T001 一气呵成" → execute 决策被 plan 探索阶段的 context 干扰
+- Phase 3 batch 1-3:plan 与 execute 同 session + batch 派 3 subagent 并发 → batch 4 起改 strict-per-task,Phase 4 起再收紧为 plan/execute 跨 session 分离
+
+### 0a.11 Strict per-task verify(Phase 3 batch 4 起,2026-05-19)
+
+**规则**:Phase 3+ 任务执行模式 = **单 task 串行 + main agent 严格 verify**。不再 batch 派 3 subagent + 末尾 coexistence verify。
+
+**每 task 闭环 = 5 步**:
+1. main agent 派 1 个 subagent(或自己做,见下方"例外")· 给 worktree + Allowed Paths + 严格 spec
+2. subagent 完工 commit + 报告 stdout
+3. **main agent 独立 strict verify**(不只信 subagent 自报):
+   - 编译:`go build` / `go vet`
+   - 测试:`go test` / envtest 真跑(in dev tree 共存,不仅 subagent worktree)
+   - functional:对 binary / endpoint 真发请求(curl `/metrics` / kubectl apply --dry-run / helm lint / helm template / 等)
+   - 文件结构:`git diff --stat` 看实际改动是否匹配 Allowed Paths
+   - 跨引用:workflow 提到的 file path 必须实际存在 等
+4. verify 全过 → 单独 `git merge --squash` + commit + cleanup worktree
+5. **停 — 等用户指明下一 task** · 不主动连下一批
+
+**例外**:
+- **pure docs / 1-file collation 类**(如 main agent 改 cmd/main.go 注册 collector · 写 ADR · 改 README current-phase line)可由 main agent 直接做,不派 subagent;但仍要 strict verify。
+- 用户显式说"批量"/"一起" 才回到 batch 模式。
+
+**为什么改这个**:Phase 3 batch 2(T002/T003 并发)曾因 dup symbol 在 squash 后才暴露,临时 fix 走 da6f416 commit。Batch 4 起改 strict-per-task,batch 4 完成后无 dup fix 需要(anti-dup 在 spec 阶段被预防,verify 在每 task 边界被捕捉)。
+
+**典型 verify 输出示例**(T103 commit message 内嵌):
+```
+helm lint --strict          -> 1 chart(s) linted, 0 chart(s) failed
+helm template (default)     -> 4 kinds rendered
+YAML syntax (chart files)   -> all parse via python yaml.safe_load
+community chart dir gone    -> test ! -d ... = OK
+known-issues #7 + #9        -> grep matches with resolution notes
+```
+
+每条 verify 必带 stdout 实证,**不只"看起来对"就 squash**。
+
+### 0a.12 Push / GitHub creds 协议(2026-05-19)
+
+**Remote**:`origin = https://github.com/tech88-art/O-Cloud.git`(public · master + dev + 7 tags as of phase-3-complete)
+
+**认证**:long-term fine-grained PAT(`Contents=RW` + `Workflows=RW` · only `tech88-art/O-Cloud`)已通过 `git credential approve` 写入 **Windows Git Credential Manager**。非交互 Claude bash shell `git push --dry-run origin dev` 实测 → `Everything up-to-date`(无 `/dev/tty` 提示)。
+
+**使用方式**:
+- ✅ 任意 session 直接 `git push origin <branch>` 即可,无需任何 token 操作
+- ✅ Git 走 `manager` helper → Windows Credential Store 回放 PAT
+
+**Anti-pattern · 不要做**:
+- ❌ **不要** `git remote set-url origin "https://x-access-token:<token>@github.com/..."` embed token 到 URL · cmgr 已经 handle,embed 是 2026-05-19 早期 push 失败时的临时 hack,token 现已 long-term cached
+- ❌ **不要**把 token 值写进 docs / commit message / chat output / memory 文件 · token 仅在 cmgr,memory `reference_github_creds.md` 只记 "在 cmgr 里"
+- ❌ 用户**不要**再贴 token 给 Claude(已 cached,无需重新提供)
+
+**Repo-local git config**(`.git/config` 已设,留着不动):
+```
+http.version = HTTP/1.1       # schannel + 代理 HTTP/2 handshake 抖动 workaround
+http.proxy   = http://127.0.0.1:7897   # 用户 proxy(clash/shadowsocks 类)
+https.proxy  = http://127.0.0.1:7897
+```
+
+若用户 proxy 变了 → main agent 帮 unset(`git config --unset http.proxy ...`)。
+
+**故障恢复**(若 cmgr 丢缓存 / 系统重装):
+1. 用户去 https://github.com/settings/tokens 找到现有 fine-grained PAT(应名称 "O-Cloud" 同类)· 复制 token
+2. 若已 expired / 不见 → 重新生成,scope 必须含 `Contents=RW` + **`Workflows=RW`**(漏 Workflows 会被拒,2026-05-19 第一次 push 失败教训)
+3. Claude bash:
+   ```
+   printf "protocol=https\nhost=github.com\nusername=x-access-token\npassword=<TOKEN>\n\n" | git credential approve
+   ```
+4. 验证:`git push --dry-run origin dev` → `Everything up-to-date` 即成功
+
 ---
 
 ## 1. 任务包格式(Task Package)

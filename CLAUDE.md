@@ -19,9 +19,11 @@
 1. 读 README.md（项目概览）
 2. 读本文件 CLAUDE.md（通用规约）
 3. 读自己模块的 <module>/CLAUDE.md（模块特定规则）
-4. 读 docs/agent-coordination.md（协作协议）
+4. 读 docs/agent-coordination.md（协作协议）·
+   特别 §0a operative + §0a.10-12（2026-05-19 加 · plan/execute
+   session 分离 + strict per-task verify + push 协议)
 5. 读 docs/architecture.md 相关章节（架构基线）
-6. 读分配给你的任务包 docs/tasks/P1-T-XXX.md
+6. 读分配给你的任务包 docs/tasks/P{N}-T-XXX.md
 7. git fetch && git status，确认本地 clean
 8. 检查任务包的 Depends on 是否已 merge 到 dev
 9. 从 dev 拉特性分支：git checkout -b <branch>
@@ -29,6 +31,14 @@
 ```
 
 **禁止**：跳过任一步直接编码。
+
+**项目级 memory 自动加载**（无需手动读）：`C:\Users\Himalayan\.claude\projects\D--code-ai-edge\memory\MEMORY.md`
+索引指向 3 条 essence(2026-05-19 起):
+- `feedback_strict_per_task_verify.md` — `docs/agent-coordination.md §0a.11` 长形式
+- `feedback_plan_vs_execute_session_split.md` — `§0a.10` 长形式
+- `reference_github_creds.md` — `§0a.12` 长形式
+
+memory 是 Claude 视角持久层 · `docs/agent-coordination.md §0a.10-12` 是仓库视角持久层（PR review / 新 contributor / 跨工具均可见）· **两者同源**,memory 改了 docs 也改,反之亦然。
 
 ---
 
