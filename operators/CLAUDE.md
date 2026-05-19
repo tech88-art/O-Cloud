@@ -1,6 +1,6 @@
 # Operators CLAUDE.md — Kubebuilder Operators 协作指南
 
-> Operators 模块涵盖 `pool-operator`（池化 CRD，Phase 3）和 `inference-operator`（推理服务 CRD，Phase 5）。
+> Operators 模块涵盖 `pool-operator`（池化 CRD，Phase 3）、`npu-dra-driver`（DRA driver scaffold，Phase 4）和 `inference-operator`（推理服务 CRD scaffold Phase 4 / controller body Phase 5）。
 
 ---
 
@@ -9,8 +9,11 @@
 ```
 operators/
 ├── pool-operator/        4 级池化 CRD（ClusterPool / NodePool / NPUPool / NPUSlicePool）
-└── inference-operator/   推理服务 CRD（ModelService）
+├── npu-dra-driver/       Ascend NPU DRA driver(Phase 4 scaffold; allocation logic Phase 5+)
+└── inference-operator/   推理服务 CRD（ModelService · scaffold Phase 4 T103 / controller Phase 5）
 ```
+
+**Phase 4 W1 引入 npu-dra-driver(P4-T-003)**:Kubebuilder v4 scaffold + 预留 `--enable-publisher` / `--enable-claim-controller` flags;simulator-first(读 `configs/mock-data/set-a-small/npus.json`),不接触真实 NPU。详见 `docs/phase4-plan.md` §3 P4-T-003 与 `operators/npu-dra-driver/README.md`。三个 sub-project 共享本 CLAUDE.md 的工程约定(§3.x),但各自维护独立 `go.mod`(module path 不交叉依赖)。
 
 **Phase 1 范围**：
 - 只完成 **CRD 类型定义**（`api/v1alpha1/*.go`），**不**实现 Controller
