@@ -83,8 +83,14 @@ datasources:
   prometheus:
     enabled: false
     url: "http://prometheus:9090"
+  # P2-T-101: crd.Source serves the Pools resource by reading
+  # NPUSlicePool / NPUPool / NodePool / ClusterPool CRDs via the
+  # dynamic client. Same kubeconfig chain as `k8s` (in-cluster SA
+  # when path empty). Operators must apply the CRDs from
+  # operators/pool-operator/config/crd/bases/ first.
   crd:
     enabled: false
+    kubeconfig: ""
   configmap:
     enabled: false
 

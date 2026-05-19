@@ -20,6 +20,7 @@ import (
 	"github.com/example/ocloud-edge/backend/pkg/api"
 	"github.com/example/ocloud-edge/backend/pkg/config"
 	"github.com/example/ocloud-edge/backend/pkg/datasource"
+	"github.com/example/ocloud-edge/backend/pkg/datasource/crd"
 	"github.com/example/ocloud-edge/backend/pkg/datasource/k8s"
 	"github.com/example/ocloud-edge/backend/pkg/datasource/mock"
 	"github.com/example/ocloud-edge/backend/pkg/datasource/prometheus"
@@ -114,6 +115,20 @@ func runServer(ctx context.Context, configFile string) error {
 		}
 		sources["prometheus"] = pSrc
 		logger.Info("prometheus source wired", zap.String("url", pCfg.URL))
+	}
+	// P2-T-101: wire crd.Source when enabled. Uses the same kubeconfig
+	// chain as k8s.Source (in-cluster SA or path-on-disk). Reads pool
+	// CRDs via dynamic client; operators must have applied the CRDs
+	// before this Source returns anything useful.
+	if cCfg, ok := cfg.Datasources["crd"]; ok && cCfg.Enabled {
+		crdSrc, err := crd.NewSource(crd.Options{
+			KubeconfigPath: cCfg.Kubeconfig,
+		})
+		if err != nil {
+			return fmt.Errorf("build crd source: %w", err)
+		}
+		sources["crd"] = crdSrc
+		logger.Info("crd source wired", zap.String("kubeconfig", cCfg.Kubeconfig))
 	}
 	reg, err := datasource.Build(cfg, sources)
 	if err != nil {
