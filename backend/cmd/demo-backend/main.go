@@ -20,6 +20,7 @@ import (
 	"github.com/example/ocloud-edge/backend/pkg/api"
 	"github.com/example/ocloud-edge/backend/pkg/config"
 	"github.com/example/ocloud-edge/backend/pkg/datasource"
+	"github.com/example/ocloud-edge/backend/pkg/datasource/configmap"
 	"github.com/example/ocloud-edge/backend/pkg/datasource/crd"
 	"github.com/example/ocloud-edge/backend/pkg/datasource/k8s"
 	"github.com/example/ocloud-edge/backend/pkg/datasource/mock"
@@ -130,6 +131,25 @@ func runServer(ctx context.Context, configFile string) error {
 		sources["crd"] = crdSrc
 		logger.Info("crd source wired", zap.String("kubeconfig", cCfg.Kubeconfig))
 	}
+	// P2-T-103: wire configmap.Source when enabled. Reads the preset
+	// catalog from a single ConfigMap (default ocloud-system/ocloud-
+	// presets); operators can override namespace + name via the
+	// `path` config field shaped as `<namespace>/<name>` — see config
+	// example.
+	if cmCfg, ok := cfg.Datasources["configmap"]; ok && cmCfg.Enabled {
+		cmNS, cmName := splitConfigMapRef(cmCfg.Path)
+		cmSrc, err := configmap.NewSource(configmap.Options{
+			KubeconfigPath: cmCfg.Kubeconfig,
+			Namespace:      cmNS,
+			Name:           cmName,
+		})
+		if err != nil {
+			return fmt.Errorf("build configmap source: %w", err)
+		}
+		sources["configmap"] = cmSrc
+		logger.Info("configmap source wired",
+			zap.String("namespace", cmNS), zap.String("name", cmName))
+	}
 	reg, err := datasource.Build(cfg, sources)
 	if err != nil {
 		return fmt.Errorf("build datasource registry: %w", err)
@@ -176,6 +196,24 @@ func runServer(ctx context.Context, configFile string) error {
 	case err := <-errCh:
 		return err
 	}
+}
+
+// splitConfigMapRef parses a "<namespace>/<name>" string. Either
+// side may be empty → defaults applied by configmap.NewSource.
+// Used by P2-T-103 to let operators set the preset ConfigMap
+// reference via `datasources.configmap.path` without inventing new
+// config fields.
+func splitConfigMapRef(s string) (ns, name string) {
+	if s == "" {
+		return "", ""
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] == '/' {
+			return s[:i], s[i+1:]
+		}
+	}
+	// No slash → treat as name only.
+	return "", s
 }
 
 func buildLogger(level string) (*zap.Logger, error) {

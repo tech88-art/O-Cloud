@@ -91,8 +91,15 @@ datasources:
   crd:
     enabled: false
     kubeconfig: ""
+  # P2-T-103: configmap.Source serves the Presets resource by reading
+  # a single ConfigMap whose data keys are JSON-encoded
+  # model.PresetDetail records. `path` here is overloaded as a
+  # `<namespace>/<name>` reference; empty falls back to the
+  # `ocloud-system/ocloud-presets` default.
   configmap:
     enabled: false
+    kubeconfig: ""
+    path: "ocloud-system/ocloud-presets"
 
 # resource → source-name. factory.SourceFor("clusters") consults this map.
 # Same name throughout (Phase 1) → all resources from the same mock instance.
