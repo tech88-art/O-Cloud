@@ -164,9 +164,60 @@ negative branch.
 | 4 | medium  | no | maybe | **fixture delivered**; FPS run remains operator-side |
 | 5 | trivial | no | no | **resolved** (WS `?fastforward=N` + frontend `?ffwd=` opt-in; E2E unskipped) |
 | 6 | trivial | no | no | **resolved** (reachability probe + Unreachable Alert) |
+| 7 | trivial | no | no | **accepted** (Phase 3 — helm lint will run in Linux CI; values.yaml + Chart.yaml validated via python-yaml on the Windows dev host) |
+| 8 | medium  | no | yes(Phase 3) | **accepted** (real-cluster E2E suite is Phase 3 scope; Phase 2 verifies via fake clientset + Playwright against mock backend) |
+| 9 | trivial | no | no | **accepted** (Phase 2 ascend exporter dev stub serves static metrics — real silicon required for live numbers; community v6.0.0 used in production helm chart) |
 
 After ADR-0006, generator parity (#3), WS fastforward (#5),
 GrafanaPanel unreachable UX (#6), and set-c-stress fixture (#4), all
-six known issues have engineering resolutions. The set-c-stress FPS
-budget check is operator-driven (no automation in Phase 1); the
-fixture is in place and ready to drive that check.
+six Phase 1 known issues have engineering resolutions. Phase 2 added
+three new entries (#7-#9), all accepted with explicit owners and Phase
+3 follow-ups.
+
+---
+
+## Phase 2 entries — details
+
+### #7 — helm lint not run on the Windows dev host
+
+Severity: trivial · Status: **accepted** (Phase 3 CI work).
+
+`deploy/helm-charts/ascend-npu-exporter/` was developed without `helm`
+on the Windows authoring box. Authoring path:
+
+1. `python -c "import yaml; yaml.safe_load(open(...))"` on `Chart.yaml`
+   and `values.yaml`.
+2. Hand inspection of `templates/*.yaml` against the helm template
+   helpers in `_helpers.tpl`.
+
+Phase 3 work: GitHub Action job `helm-lint` runs `helm lint` + `helm
+template` on every PR touching `deploy/helm-charts/**`. Tracked under
+P3-T-XXX (placeholder — owner TBD at Phase 3 kickoff).
+
+### #8 — Real-cluster E2E not yet automated
+
+Severity: medium · Status: **accepted** (Phase 3 scope).
+
+Phase 2 unit tests cover the K8s/Prometheus/CRD/ConfigMap sources via
+`k8s.io/client-go/kubernetes/fake` + `httptest.NewServer` + dynamic
+fake. Playwright still runs against the mock-backed binary.
+
+A real-K3s E2E pipeline (`kind`-based, ascend-npu-exporter stub + the
+five frontend pages) is desirable but explicitly Phase 3 scope. Phase
+2 ships with the manual verification path documented in
+`docs/demo.md` §Phase 2 appendix.
+
+### #9 — ascend exporter dev stub serves static metrics only
+
+Severity: trivial · Status: **accepted** (operator-aware).
+
+Without an Ascend host the dev stub
+(`deploy/dev/ascend-exporter-stub/`) serves a canned `/metrics`
+response — flat lines on Grafana panels. The production helm chart
+(`deploy/helm-charts/ascend-npu-exporter`) brings up the real
+community v6.0.0 exporter and produces live numbers on hosts with
+`huawei.com/Ascend910B` capacity.
+
+Operators using the demo box for live data need either:
+- A real Ascend node + the helm chart, OR
+- Phase 3+ `ascend-npu-exporter-plus` (self-built) once it ships.

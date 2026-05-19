@@ -187,3 +187,116 @@ Reviewer takeaways:
    sources without touching the frontend.
 
 Phase 1 final tag: `phase-1-complete`. Recent merge: `9abf56a` (T307).
+
+---
+
+## Phase 2 appendix — real-K8s demo (added 2026-05-18, P2-T-107)
+
+The Phase 1 demo runs against mock JSON; Phase 2 flips the same UI
+onto live K8s + Prometheus + CRD + ConfigMap data without rebuilding
+the frontend. Use this appendix when the demo machine has a real (or
+`kind`/K3s) cluster reachable via kubeconfig.
+
+### Prereqs
+
+| Component | Why |
+|---|---|
+| `kubectl` + valid `KUBECONFIG` | k8s.Source talks to the apiserver |
+| `helm` v3 | only required for `--with-prometheus` |
+| K3s ≥ 1.28 / `kind` ≥ 0.22 | tested matrix |
+| (optional) Ascend node | the dev nginx stub fills in if absent |
+
+### One-liner installer
+
+```bash
+./scripts/install.sh --with-prometheus
+```
+
+This:
+
+1. Builds backend + frontend (or `--image-only` to skip).
+2. Brings up the docker-compose stack (frontend on 3000, demo backend
+   on 8080, prometheus on 9090, grafana on 3001 — Phase 1 path).
+3. Helm-installs `kube-prometheus-stack` into the current kubeconfig
+   context (P2-T-106) — Grafana NodePort 30001, anon viewer + iframe
+   embedding allowed.
+4. Helm-installs `ascend-npu-exporter` (community v6.0.0) — DaemonSet
+   that picks up nodes labelled `huawei.com/Ascend910B=true`.
+
+Re-runnable: helm `upgrade --install` is idempotent.
+
+### Config swap (Phase 1 promise honoured)
+
+`backend/configs/config.yaml` mapping block:
+
+```yaml
+mapping:
+  clusters: k8s          # was mock — now reads from apiserver
+  workloads: k8s         # Deployments + StatefulSets + Jobs
+  metrics: prometheus    # PromQL templates against kps Prometheus
+  pools: crd             # NPUSlicePool + ResolveSlicesForNPUs
+  presets: configmap     # ocloud-system/ocloud-presets
+  topology: aggregator   # k8s + crd + fabric joined server-side
+datasources:
+  k8s:
+    enabled: true
+    kubeconfig: ""       # empty = in-cluster / KUBECONFIG env
+  prometheus:
+    enabled: true
+    url: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+  crd:
+    enabled: true
+    namespace: "ocloud-system"
+  configmap:
+    enabled: true
+    namespace: "ocloud-system"
+    name: "ocloud-presets"
+  fabric:
+    enabled: true
+    path: "/etc/ocloud/fabric.yaml"
+  mock:
+    enabled: false       # retained for E2E / dev — flip on if you
+                         # want the demo dataset alongside
+```
+
+Restart the backend pod (no rebuild required).
+
+### Quick smoke
+
+```bash
+# Cluster source
+curl -s http://localhost:8080/api/v1/clusters | jq '.[0].id'
+#  → "kubernetes" (or your cluster-info ConfigMap's id)
+
+# NPU listing (will be empty until ascend-device-plugin labels nodes)
+curl -s http://localhost:8080/api/v1/nodes/<node>/npus | jq '.[].model'
+
+# Prometheus template
+curl -s 'http://localhost:8080/api/v1/metrics/query?template=npu_utilization&node=<node>' | jq
+
+# CRD-backed slice pools
+curl -s http://localhost:8080/api/v1/pools/npuslicepools | jq '.[].name'
+
+# Preset catalog (driven by ocloud-system/ocloud-presets ConfigMap)
+curl -s http://localhost:8080/api/v1/presets | jq '.[].id'
+```
+
+### Watch the live stream
+
+The WebSocket feed switches from `events.json` replay (mock) to live
+Kubernetes Watch (`k8s.Source.StreamEvents`) automatically when
+`mapping.events: k8s`. Visit the Workloads page and create a
+Deployment via `kubectl create`; the new row appears within ~1s with
+the `workload.created` envelope.
+
+### Limitations (Phase 2 cap)
+
+- Logs follow a single pod — multi-replica log multiplexing is
+  Phase 3+.
+- Fabric data still comes from a static YAML (ADR-0007); LLDP / SONiC
+  discovery is Phase 3+.
+- Cache eviction is per-request; LRU / TTL tuning is Phase 3+ (see
+  known-issues #8 for the real-cluster E2E gap).
+
+Phase 2 final tag: `phase-2-complete`. Recent merge: see
+`docs/checkpoint-phase2.md` for the per-task commit map.
