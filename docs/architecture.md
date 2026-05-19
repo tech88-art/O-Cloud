@@ -219,6 +219,8 @@ flowchart LR
 > ⚠️ **修订 v2(2026-05-17, P1-T-012 驳正)**:**DRA 已 GA in K8s 1.34(2025-09-01)**;K8s 1.36 是 2026-05 当前最新。Phase 4 主路径 = Ascend Device Plugin v1 — 真实理由不再是"DRA 未 GA",而是 **KubeEdge v1.22 无 DRA 支持**(边缘路径无选)+ **无官方 Ascend DRA driver**。standard K8s 小集群可 DRA spike;Phase 7 动态切分等 Partitionable Devices GA(估 K8s 1.37)。详见 ADR-0001 §5 v2 与 `docs/research/k8s-dra.md`。
 >
 > 🔁 **修订 v3(2026-05-19, P4-T-001 · Phase 4 入口)**:参见 **ADR-0001 v3 §5(双轨路径)** — Edge 路径(KubeEdge)stay Device Plugin v1;Standard-K8s small-cluster 路径可选 DRA spike based on **Phase 4 npu-dra-driver scaffold**(P4-T-003+)。CANN 8.1 / Ascend driver ≥ 24.x 兼容矩阵详见 `docs/cann-driver-matrix.md`(P4-T-002 落地)。
+>
+> 🎯 **npu-dra-driver design(2026-05-19, P4-T-105)**:slice ↔ ResourceClaim 语义映射表 + KubeEdge gap + Partitionable Devices(Phase 7)forward note + Phase 5 实施要点详见 **ADR-0009 npu-dra-driver design**。
 
 ### 3.5 监控与日志
 
@@ -790,7 +792,8 @@ ocloud-edge-platform/
 | Phase | 评审 flag | 检查动作 |
 |---|---|---|
 | Phase 4 | DRA mapping 详表(§6.6→§6.7)需展开 | Phase 4 启动前补 `NPUSlicePool ↔ ResourceSlice/ResourceClaim/DeviceClass` 字段映射表 · 2026-05-19 P4-T-001 落地 **ADR-0001 v3**(双轨路径) + P4-T-105 落地 ADR-0009(详表) |
-| Phase 5 | `NPUSliceAllocation` / `Quota` 对象设计(§6.8) | Phase 5 启动前补 CRD 设计 + inference-operator 集成方案 |
+| Phase 5 | `NPUSliceAllocation` / `Quota` 对象设计(§6.8) | Phase 5 启动前补 CRD 设计 + inference-operator 集成方案 · 2026-05-19 P4-T-105 ADR-0009 §5 已列入 Phase 5 实施要点(greedy first-fit allocator + NPUSliceAllocation owner reference) |
+| Phase 5 | npu-dra-driver allocation logic + DeviceClass 注册 per ADR-0009 | Phase 5 启动检查 · 替换 T006 AllocationDeferred annotation 路径,写真实 status.devices[] 分配 | ADR-0009 |
 | Phase 5 | PD Router webhook impl per ADR-0008(`npu.huawei.com/slice-bindings` annotation 写入路径,mutating webhook · failurePolicy=Fail · cert-manager 依赖) | Phase 5 启动前实施,与 inference-operator 同 binary 出 |
 | Phase 7 | 动态切分若 fallback "多模板组合" 削弱设计目标 | Phase 7 启动前 ADR,明确触发 fallback 的条件 |
 | Phase 9 | 多站点 demo backend 缓存重构(LRU 进程内 → Redis/singleton/stateless) | Phase 9 启动前 ADR + 重构路径 |
