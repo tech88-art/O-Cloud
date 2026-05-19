@@ -9,6 +9,7 @@ package config
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -28,6 +29,44 @@ type Config struct {
 	Mapping     map[string]string           `mapstructure:"mapping"`
 	Logging     LoggingConfig               `mapstructure:"logging"`
 	Grafana     GrafanaConfig               `mapstructure:"grafana"`
+	Cache       CacheConfig                 `mapstructure:"cache"`
+}
+
+// CacheConfig is the per-resource cache eviction policy (P3-T-008).
+//
+// Defaults apply when a resource is missing from PerResource. Each
+// resource ends up with its own pkg/cache.LRU instance constructed via
+// cache.New(Options{MaxEntries, TTL}); evictions register in a shared
+// cache.Catalog keyed by resource name.
+//
+// Prometheus instrumentation deferred (T008b / T103).
+type CacheConfig struct {
+	Defaults    ResourceCacheEntry            `mapstructure:"defaults"`
+	PerResource map[string]ResourceCacheEntry `mapstructure:"per_resource"`
+}
+
+// ResourceCacheEntry is the per-resource (or default) cache tuning.
+// TTL accepts Go duration strings like "5m" / "30s"; Viper's default
+// decoder applies StringToTimeDurationHookFunc.
+type ResourceCacheEntry struct {
+	MaxEntries int           `mapstructure:"max_entries"`
+	TTL        time.Duration `mapstructure:"ttl"`
+}
+
+// EntryFor resolves the effective entry for a given resource name,
+// returning defaults when the resource has no explicit override.
+func (c CacheConfig) EntryFor(resource string) ResourceCacheEntry {
+	if e, ok := c.PerResource[resource]; ok {
+		// Per-resource MaxEntries / TTL of 0 means "inherit default".
+		if e.MaxEntries == 0 {
+			e.MaxEntries = c.Defaults.MaxEntries
+		}
+		if e.TTL == 0 {
+			e.TTL = c.Defaults.TTL
+		}
+		return e
+	}
+	return c.Defaults
 }
 
 // ServerConfig is the http-server section.
@@ -103,4 +142,10 @@ func applyDefaults(v *viper.Viper) {
 	// substitutes api.defaultGrafanaBaseURL on the read side so tests can
 	// build a router without populating this field.
 	v.SetDefault("grafana.baseUrl", "")
+	// cache.defaults (P3-T-008). Per-resource overrides land via YAML
+	// `cache.per_resource.<name>.{max_entries,ttl}` — see
+	// configs/config.example.yaml.
+	v.SetDefault("cache.defaults.max_entries", 1024)
+	v.SetDefault("cache.defaults.ttl", "5m")
+	v.SetDefault("cache.per_resource", map[string]interface{}{})
 }

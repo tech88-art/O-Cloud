@@ -115,3 +115,25 @@ mapping:
   presets: mock
   deploy: mock
   logs: mock
+
+# Cache eviction policy (P3-T-008).
+#
+# Each logical resource has its own LRU instance with independent
+# MaxEntries + TTL knobs. `defaults` apply when a per-resource entry
+# is omitted. Per-resource fields of zero inherit from defaults (see
+# pkg/config.CacheConfig.EntryFor).
+#
+# Phase 3: eviction count exposed via the in-process cache.Catalog
+# (cache.NewCatalog().Snapshot()). Per-resource Prometheus labels +
+# /metrics endpoint land with T008b / T103.
+cache:
+  defaults:
+    max_entries: 1024
+    ttl: 5m
+  per_resource:
+    topology:
+      max_entries: 64
+      ttl: 30s
+    workloads:
+      max_entries: 256
+      ttl: 1m
