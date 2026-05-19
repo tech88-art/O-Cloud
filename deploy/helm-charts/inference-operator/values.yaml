@@ -54,6 +54,17 @@ metricsBindAddress: ":8082"
 modelServiceController:
   enabled: true
 
+# ------------------------------------------------- PD Router webhook (T102+)
+# Toggles the PD Router mutating admission webhook. Default ON; flip to
+# false to skip the webhook server entirely (also skips webhook K8s
+# objects Service + MutatingWebhookConfiguration). failurePolicy=Fail
+# per ADR-0008 — production phased-rollouts can override to Ignore
+# while monitoring webhook health.
+pdRouter:
+  enabled: true
+  failurePolicy: Fail
+  timeoutSeconds: 5
+
 # -------------------------------------------------- cert-manager wiring (T101)
 # When enabled, the chart renders a cert-manager Certificate + (optional)
 # Issuer pointing at the PD Router webhook TLS secret. cert-manager (v1.16+)

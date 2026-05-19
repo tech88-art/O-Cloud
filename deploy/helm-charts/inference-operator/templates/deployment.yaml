@@ -47,6 +47,11 @@ spec:
             {{- else }}
             - --enable-modelservice-controller=false
             {{- end }}
+            {{- if .Values.pdRouter.enabled }}
+            - --enable-pd-router-webhook
+            {{- else }}
+            - --enable-pd-router-webhook=false
+            {{- end }}
             {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -61,6 +66,11 @@ spec:
             - name: metrics
               containerPort: 8082
               protocol: TCP
+            {{- if .Values.pdRouter.enabled }}
+            - name: webhook
+              containerPort: 9443
+              protocol: TCP
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /healthz
@@ -77,10 +87,22 @@ spec:
             failureThreshold: 3
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- if and .Values.pdRouter.enabled .Values.certManager.enabled }}
+          volumeMounts:
+            - name: webhook-tls
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+          {{- end }}
           {{- with .Values.extraEnv }}
           env:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+      {{- if and .Values.pdRouter.enabled .Values.certManager.enabled }}
+      volumes:
+        - name: webhook-tls
+          secret:
+            secretName: {{ include "inference-operator.fullname" . }}-webhook-tls
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -281,6 +281,41 @@ main.go main()
    │ mgr.Start(...)
 ```
 
+### 4.3 PD Router webhook (operative, T102 scaffold → T103 mutate)
+
+The PD Router admission webhook lives in the SAME binary as the
+controller (ADR-0008 design choice: one container, one cert lifecycle,
+one helm release). Path `/mutate-pod`. controller-runtime webhook
+server on port 9443.
+
+Wiring (T102 scaffold):
+- `internal/webhook/pd_router.go` ships the `PDRouter` admission
+  Handler. Every request currently returns Allowed without patch;
+  T103 replaces the early-return with annotation-injection logic.
+- `cmd/main.go` registers the handler behind
+  `--enable-pd-router-webhook` flag (default true). Webhook server
+  port wired via `ctrl.Options.WebhookServer = ctrlwebhook.NewServer
+  (Options{Port: 9443})`.
+- Helm chart renders four objects when `pdRouter.enabled=true`:
+  - `Service` — `<release>-inference-operator-webhook`, port 443 →
+    targetPort 9443
+  - `MutatingWebhookConfiguration` — references the Service via
+    `clientConfig.service`, objectSelector keys on
+    `inference.ocloud.edge.example.com/model-service Exists`,
+    `failurePolicy=Fail` per ADR-0008 (override via values)
+  - `Certificate` + `Issuer` (T101) — webhook-tls Secret mounted at
+    `/tmp/k8s-webhook-server/serving-certs/`
+- `cert-manager.io/inject-ca-from` annotation on the
+  MutatingWebhookConfiguration → cert-manager populates
+  `clientConfig.caBundle` at runtime. Chart YAML stays caBundle-free
+  through cert rotations.
+
+T103 replaces the T102 always-Allow body with:
+- decode Pod → read model-service label → look up ModelService →
+  list NPUSliceAllocation by claim-namespace + claim-name labels →
+  build `npu.huawei.com/slice-bindings = <node>/<slice>/<device>:<aiCores>
+  [,...]` → return admission.Patched.
+
 ### 4.2.3 P5-T-008 Phase machine (operative)
 
 ```

@@ -1,0 +1,55 @@
+{{- /*
+MutatingWebhookConfiguration for the PD Router (P5-T-102).
+
+The cert-manager.io/inject-ca-from annotation tells cert-manager
+to inject the Certificate's CA bundle into the webhook's clientConfig
+.caBundle field at runtime — keeping the chart YAML completely
+caBundle-free (it would otherwise need a re-template on every cert
+rotation).
+
+objectSelector pre-filters: only Pods carrying the
+`inference.ocloud.edge.example.com/model-service` label invoke the
+webhook handler. Cluster operators with thousands of Pods/sec admission
+churn benefit from this filter — without it, every Pod create would
+round-trip through the webhook.
+
+failurePolicy defaults to Fail per ADR-0008 "Fail-closed default" —
+admission is blocked if the webhook can't be reached. Override to
+Ignore via values.yaml during phased rollout if needed.
+*/}}
+{{- if .Values.pdRouter.enabled }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "inference-operator.fullname" . }}-pd-router
+  labels:
+    {{- include "inference-operator.labels" . | nindent 4 }}
+  {{- if .Values.certManager.enabled }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "inference-operator.fullname" . }}-webhook
+  {{- end }}
+webhooks:
+  - name: pd-router.inference.ocloud.edge.example.com
+    admissionReviewVersions:
+      - v1
+    sideEffects: None
+    failurePolicy: {{ .Values.pdRouter.failurePolicy | default "Fail" }}
+    matchPolicy: Equivalent
+    timeoutSeconds: {{ .Values.pdRouter.timeoutSeconds | default 5 }}
+    clientConfig:
+      service:
+        namespace: {{ .Release.Namespace }}
+        name: {{ include "inference-operator.fullname" . }}-webhook
+        path: /mutate-pod
+        port: 443
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+        operations: ["CREATE"]
+        scope: "Namespaced"
+    objectSelector:
+      matchExpressions:
+        - key: inference.ocloud.edge.example.com/model-service
+          operator: Exists
+{{- end }}

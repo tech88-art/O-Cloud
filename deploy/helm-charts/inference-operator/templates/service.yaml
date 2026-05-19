@@ -1,0 +1,29 @@
+{{- /*
+Service for the PD Router admission webhook (P5-T-102).
+
+K8s API server reaches the webhook via this Service when the
+MutatingWebhookConfiguration `clientConfig.service` block resolves.
+Port 443 → manager Pod port 9443 (controller-runtime webhook server
+default).
+
+Gated by `pdRouter.enabled` — when off, no Service is rendered and
+the MutatingWebhookConfiguration is also omitted.
+*/}}
+{{- if .Values.pdRouter.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inference-operator.fullname" . }}-webhook
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inference-operator.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "inference-operator.selectorLabels" . | nindent 4 }}
+  ports:
+    - port: 443
+      targetPort: 9443
+      protocol: TCP
+      name: webhook
+{{- end }}

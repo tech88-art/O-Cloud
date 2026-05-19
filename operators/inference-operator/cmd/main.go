@@ -33,6 +33,9 @@ import (
 
 	inferencev1alpha1 "github.com/tech88-art/O-Cloud/operators/inference-operator/api/v1alpha1"
 	"github.com/tech88-art/O-Cloud/operators/inference-operator/internal/controller"
+	"github.com/tech88-art/O-Cloud/operators/inference-operator/internal/webhook"
+	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
+	ctrladmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -54,6 +57,7 @@ func main() {
 	var enableLeaderElection bool
 	var enableHTTP2 bool
 	var enableModelServiceController bool
+	var enablePDRouterWebhook bool
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8082",
 		"The address the metrics endpoint binds to. Set to 0 to disable.")
@@ -67,6 +71,11 @@ func main() {
 		"Enable the ModelService controller (P5-T-006+). Resolves the "+
 			"bound NPUSlicePool, drives Status.Phase through Pending → "+
 			"Provisioning → Ready / Failed. Default true.")
+	flag.BoolVar(&enablePDRouterWebhook, "enable-pd-router-webhook", true,
+		"Enable the PD Router mutating admission webhook (P5-T-102+). "+
+			"Injects npu.huawei.com/slice-bindings annotations onto Pods "+
+			"carrying the inference.ocloud.edge.example.com/model-service "+
+			"label. Default true.")
 
 	opts := zap.Options{Development: true}
 	opts.BindFlags(flag.CommandLine)
@@ -82,9 +91,14 @@ func main() {
 		})
 	}
 
+	webhookServerOpts := ctrlwebhook.Options{
+		TLSOpts: tlsOpts,
+		Port:    9443,
+	}
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: metricsAddr, TLSOpts: tlsOpts},
+		WebhookServer:          ctrlwebhook.NewServer(webhookServerOpts),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "inference-operator.ocloud.edge.example.com",
@@ -106,6 +120,17 @@ func main() {
 		}
 		setupLog.Info("ModelServiceReconciler registered", "task", "P5-T-006")
 	}
+	if enablePDRouterWebhook {
+		h := &webhook.PDRouter{
+			Client:  mgr.GetClient(),
+			Decoder: ctrladmission.NewDecoder(mgr.GetScheme()),
+		}
+		mgr.GetWebhookServer().Register(webhook.PathPDRouterMutate, &ctrladmission.Webhook{Handler: h})
+		setupLog.Info("PDRouter webhook registered",
+			"task", "P5-T-102",
+			"path", webhook.PathPDRouterMutate,
+			"port", 9443)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -119,8 +144,9 @@ func main() {
 
 	setupLog.Info("Starting manager",
 		"phase", "5",
-		"latest-task", "P5-T-006",
-		"modelservice-controller-enabled", enableModelServiceController)
+		"latest-task", "P5-T-102",
+		"modelservice-controller-enabled", enableModelServiceController,
+		"pd-router-webhook-enabled", enablePDRouterWebhook)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "Failed to run manager")
 		os.Exit(1)
