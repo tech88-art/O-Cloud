@@ -82,6 +82,32 @@ O-Cloud 边缘云平台样机启动期。基于昇腾 910B（amd64-only），需
 
 **P1 教训(P3/P1 自查)**:本 ADR §5 v1 修订时,我(协调者)凭过期记忆写"GA 目标 1.32 / 2026-06",未交叉验证。这是 P1 数字必有源 + P6 主动找反证的违反。已通过 T012 subagent 独立验证修正。Future ADRs 必须 cite source。
 
+**2026-05-19 修订 v3(P4-T-001 · Phase 4 启动前对齐)** — v1 与 v2 verbatim 保留作审计轨迹,本节为 v3 终版:
+
+| 事实 | 状态 | 来源 |
+|---|---|---|
+| DRA **GA in K8s 1.34** | 2025-09-01 release | kubernetes.io 1.34 blog |
+| 当前 upstream K8s **1.36** | 2026-05-07 release | k8s release schedule |
+| **KubeEdge v1.22 仍无 DRA 支持**(2026-04-12 latest;依赖 K8s 1.31.x) | **primary edge-path blocker** — 不是 K8s GA 时间 | KubeEdge v1.22 release notes |
+| 无官方 Ascend DRA driver(vendor gap) | 2026-05 仍是 Device Plugin v1 | Huawei Ascend Cloud 仓库 |
+| `kubernetes-sigs/dra-example-driver` v0.2.1 | 2026-01-09 · fork-spirit starting point | repo |
+| Partitionable Devices(KEP-4815)Alpha 1.35 / Beta 1.36 / GA **est. K8s 1.37** | per SIG-node roadmap | KEP 状态 |
+
+**v3 双轨路径(本节 operative · 取代 v2 主路径表述)**:
+
+- **Edge 路径(KubeEdge)** → **Ascend Device Plugin v1**(Phase 3 不变);DRA 升级 gated on KubeEdge DRA readiness(KubeEdge 上游 6 个月内无 DRA → 边缘永久 stay Device Plugin v1)
+- **Standard-K8s small-cluster 路径** → 可选 DRA spike based on **Phase 4 npu-dra-driver scaffold**(P4-T-003+ 落地);real allocation logic arrives **Phase 5+**(per ADR-0009 Phase 5 implementation notes,与 inference-operator 控制器同期)
+- **Phase 7 forward note** → Partitionable Devices GA est. K8s 1.37(SIG-node) · GA 后 npu-dra-driver 切换到原生 partition 表达(取代当前 per-slice ResourceSlice entry)
+
+**Phase 4 scaffold 落地依据**(v3 新增):
+- `operators/npu-dra-driver/` Kubebuilder v4 scaffold(P4-T-003)
+- Ascend ResourceSlice + ResourceClaim types(P4-T-004)
+- simulator-first ResourceSlice publisher 读 `configs/mock-data/set-a-small/`(P4-T-005)
+- ResourceClaim 控制器骨架(P4-T-006 · `AllocationDeferred=Phase4Skeleton` condition)
+- ADR-0009 npu-dra-driver design(P4-T-105)
+
+v3 与 v2 区别:v2 把 "Phase 4 主路径"与"Phase 4 後段"混在一段散文中;v3 明确**双轨**(Edge 与 Standard-K8s 路径互不阻塞)+ scaffold 不再是"未来"而是 Phase 4 实际交付物(P4-T-003+),并新增 §7 Phase 4 落地交叉引用。
+
 ---
 
 ### 6. 边缘 / 多站点：KubeEdge + Karmada
@@ -95,6 +121,21 @@ O-Cloud 边缘云平台样机启动期。基于昇腾 910B（amd64-only），需
 **原因**：MindCluster 黑盒、不可扩展，无法支持自研动态切分；自研 DRA Driver 基于 kubernetes-sigs/dra-example-driver，可控可演进。
 
 **代价**：开发量增加（Phase 4 / Phase 7 范围）。
+
+**2026-05-19 修订(P4-T-001 · Phase 4 scaffold 落地状态)**:
+
+| Phase | 交付物 | Task | 状态 |
+|---|---|---|---|
+| Phase 4 | `operators/npu-dra-driver/` Kubebuilder v4 scaffold | P4-T-003 | Phase 4 W1 计划内 |
+| Phase 4 | Ascend ResourceSlice + ResourceClaim types(`api/v1alpha1`) | P4-T-004 | Phase 4 W1 计划内 |
+| Phase 4 | simulator-first ResourceSlice publisher(读 `configs/mock-data/set-a-small/`) | P4-T-005 | Phase 4 W1 计划内 |
+| Phase 4 | ResourceClaim 控制器骨架(`AllocationDeferred=Phase4Skeleton`) | P4-T-006 | Phase 4 W1 计划内 |
+| Phase 4 | Dockerfile + Helm chart skeleton | P4-T-101 | Phase 4 W2 计划内 |
+| Phase 4 | ADR-0009 npu-dra-driver design(slice ↔ ResourceClaim 映射 + KubeEdge gap) | P4-T-105 | Phase 4 W2 计划内 |
+| Phase 5 | ResourceClaim real allocation logic + inference-operator 集成 | — | Phase 5 入口 |
+| Phase 7 | Partitionable Devices(KEP-4815) GA 后切换到原生 partition 表达 | — | est. K8s 1.37 |
+
+详见 §5 v3(双轨路径)+ `docs/phase4-plan.md` §3 P4-T-003+。
 
 ---
 
