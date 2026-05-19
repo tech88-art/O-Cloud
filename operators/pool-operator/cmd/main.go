@@ -70,8 +70,8 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	var enableControllers uint
 	flag.UintVar(&enableControllers, "enable-controllers",
-		0,
-		"Bitmask of controllers to enable: 1=NPUSlicePool, 2=NPUPool, 4=NodePool, 8=ClusterPool. Default 0 = none.")
+		15,
+		"Bitmask of controllers to enable: 1=NPUSlicePool, 2=NPUPool, 4=NodePool, 8=ClusterPool. Default 15 = all four enabled after Phase 3 W1.")
 	flag.BoolVar(&secureMetrics, "metrics-secure", true,
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	flag.StringVar(&webhookCertPath, "webhook-cert-path", "", "The directory that contains the webhook certificate.")
