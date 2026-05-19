@@ -1,0 +1,5 @@
+{
+  "3a4b5c6d-prefill": {"namespace": "ocloud-system", "pod": "qwen-8b-prefill-0", "container": "vllm-prefill"},
+  "3a4b5c6d-decode":  {"namespace": "ocloud-system", "pod": "qwen-8b-decode-0",  "container": "vllm-decode"},
+  "9f8e7d6c-single":  {"namespace": "default",       "pod": "qwen-3b-single-0",  "container": "vllm-runtime"}
+}
