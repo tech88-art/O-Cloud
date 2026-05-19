@@ -25,6 +25,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	resourceapi "k8s.io/api/resource/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -32,6 +33,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
+	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/publisher"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -42,9 +45,12 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(resourceapi.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
-	// Phase 4 T004 registers npu.ocloud.edge.example.com/v1alpha1 here.
-	// Phase 4 scaffold (T003) intentionally registers no Ocloud groups.
+	// Phase 4 T004/T005 register upstream resource.k8s.io/v1beta1 here so
+	// the publisher (T005) can read/write ResourceSlices via the manager
+	// client. Ocloud's own GroupVersion (npu.ocloud.edge.example.com) has
+	// no CRDs in Phase 4 — only typed helpers in api/v1alpha1.
 }
 
 func main() {
@@ -66,18 +72,19 @@ func main() {
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers.")
 
-	// Phase 4 reserved flags — declared in T003 so dependent task land cleanly.
-	// T005 (simulator publisher) wires --enable-publisher + --mock-data-path.
-	// T006 (claim controller) wires --enable-claim-controller.
+	// Phase 4 reserved flags.
+	// T005 wires --enable-publisher + --mock-data-path to the simulator
+	// ResourceSlice publisher. T006 wires --enable-claim-controller.
 	flag.BoolVar(&enablePublisher, "enable-publisher", false,
-		"Reserved (P4-T-005): enable the simulator-first ResourceSlice publisher. "+
-			"Phase 4 scaffold (T003): flag declared but no-op.")
+		"Enable the simulator-first ResourceSlice publisher (P4-T-005). "+
+			"Requires --mock-data-path.")
 	flag.BoolVar(&enableClaimController, "enable-claim-controller", false,
 		"Reserved (P4-T-006): enable the ResourceClaim controller skeleton. "+
-			"Phase 4 scaffold (T003): flag declared but no-op.")
+			"Phase 4 T005: flag declared but no-op (controller skeleton arrives T006).")
 	flag.StringVar(&mockDataPath, "mock-data-path", "",
-		"Reserved (P4-T-005): path to simulator NPU JSON (configs/mock-data/set-a-small/npus.json). "+
-			"Phase 4 scaffold (T003): flag declared but unused.")
+		"Path to the simulator NPU JSON (e.g. /etc/npu-dra-driver/mock/npus.json "+
+			"or configs/mock-data/set-a-small/npus.json on host dev). "+
+			"Required when --enable-publisher is set.")
 
 	opts := zap.Options{
 		Development: true,
@@ -108,16 +115,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Phase 4 T003 scaffold: no controllers registered yet.
-	// T005 wires the ResourceSlice publisher behind --enable-publisher.
-	// T006 wires the ResourceClaim controller behind --enable-claim-controller.
+	// Phase 4 T005: register the simulator ResourceSlice publisher when
+	// --enable-publisher is set. Phase 4 T006 wires the ResourceClaim
+	// controller behind --enable-claim-controller.
 	if enablePublisher {
-		setupLog.Info("--enable-publisher set but T005 ResourceSlice publisher not yet wired",
-			"phase", "4-scaffold", "task", "P4-T-003", "mock-data-path", mockDataPath)
+		if mockDataPath == "" {
+			setupLog.Error(nil, "--enable-publisher requires --mock-data-path; refusing to start")
+			os.Exit(1)
+		}
+		pub := &publisher.Publisher{
+			Client: mgr.GetClient(),
+			Source: &publisher.SimulatorSource{Path: mockDataPath},
+		}
+		if err := pub.SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to register publisher with manager")
+			os.Exit(1)
+		}
+		setupLog.Info("Publisher registered", "task", "P4-T-005", "mock-data-path", mockDataPath)
 	}
 	if enableClaimController {
 		setupLog.Info("--enable-claim-controller set but T006 ResourceClaim controller not yet wired",
-			"phase", "4-scaffold", "task", "P4-T-003")
+			"phase", "4-scaffold", "task", "P4-T-005")
 	}
 	// +kubebuilder:scaffold:builder
 
@@ -131,9 +149,10 @@ func main() {
 	}
 
 	setupLog.Info("Starting manager",
-		"phase", "4-scaffold",
-		"task", "P4-T-003",
-		"controllers", "none (T003 scaffold; T005/T006 register publisher + claim controller)")
+		"phase", "4",
+		"latest-task", "P4-T-005",
+		"publisher-enabled", enablePublisher,
+		"claim-controller-enabled", enableClaimController)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "Failed to run manager")
 		os.Exit(1)
