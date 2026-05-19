@@ -293,14 +293,71 @@ func TestParseSliceBindingsAnnotation_AbsentReturnsNil(t *testing.T) {
 	}))
 }
 
-func TestParseSliceBindingsAnnotation_JSONFormDeferred(t *testing.T) {
-	// JSON form is reserved for P2-T-105; current impl silently ignores
-	// JSON-looking annotations to avoid half-parsed data.
+func TestParseSliceBindingsAnnotation_JSONForm_CanonicalParse(t *testing.T) {
 	in := map[string]string{
-		"npu.huawei.com/slice-bindings": `[{"sliceId":"foo","role":"prefill"}]`,
+		"npu.huawei.com/slice-bindings": `[
+			{"sliceId":"worker-a-01-npu-0","role":"prefill","indexInPod":0},
+			{"sliceId":"worker-a-01-npu-1","role":"decode","indexInPod":0}
+		]`,
 	}
 	got := parseSliceBindingsAnnotation(in)
-	assert.Nil(t, got)
+	require.Len(t, got, 2)
+	assert.Equal(t, "worker-a-01-npu-0", got[0].SliceID)
+	assert.Equal(t, "prefill", got[0].Role)
+	assert.Equal(t, 0, got[0].IndexInPod)
+	assert.Equal(t, "worker-a-01-npu-1", got[1].SliceID)
+	assert.Equal(t, "decode", got[1].Role)
+}
+
+func TestParseSliceBindingsAnnotation_JSONForm_DropsEntriesWithEmptySliceID(t *testing.T) {
+	in := map[string]string{
+		"npu.huawei.com/slice-bindings": `[
+			{"sliceId":"keeper","role":"primary"},
+			{"role":"orphan"},
+			{"sliceId":"","role":"empty"}
+		]`,
+	}
+	got := parseSliceBindingsAnnotation(in)
+	require.Len(t, got, 1)
+	assert.Equal(t, "keeper", got[0].SliceID)
+}
+
+func TestParseSliceBindingsAnnotation_JSONForm_MalformedReturnsNil(t *testing.T) {
+	cases := []string{
+		`[{not-json`,
+		`[]`, // empty array → no entries → nil
+		`[{"role":"prefill"}]`,
+		`{"sliceId":"x"}`,                  // object not array — JSON decode fails on `[` branch
+		`[{"sliceId":42,"role":"prefill"}]`, // wrong type for sliceId
+	}
+	for _, c := range cases {
+		got := parseSliceBindingsAnnotation(map[string]string{
+			"npu.huawei.com/slice-bindings": c,
+		})
+		// Empty result OR nil — both round-trip to omitted JSON.
+		assert.Empty(t, got, "input %q should yield empty/nil bindings", c)
+	}
+}
+
+func TestParseSliceBindingsAnnotation_JSONForm_TolerantWhitespace(t *testing.T) {
+	// Leading whitespace before the `[` should NOT defeat detection.
+	in := map[string]string{
+		"npu.huawei.com/slice-bindings": "   [{\"sliceId\":\"abc\"}]   ",
+	}
+	got := parseSliceBindingsAnnotation(in)
+	require.Len(t, got, 1)
+	assert.Equal(t, "abc", got[0].SliceID)
+}
+
+func TestParseSliceBindingsAnnotation_SemicolonForm_StillSupported(t *testing.T) {
+	// Back-compat: hand-edit semicolon form keeps working post-T105.
+	in := map[string]string{
+		"npu.huawei.com/slice-bindings": "sliceId=worker-a-01-npu-0,role=prefill;sliceId=worker-a-01-npu-1,role=decode",
+	}
+	got := parseSliceBindingsAnnotation(in)
+	require.Len(t, got, 2)
+	assert.Equal(t, "worker-a-01-npu-0", got[0].SliceID)
+	assert.Equal(t, "worker-a-01-npu-1", got[1].SliceID)
 }
 
 func TestDeriveWorkloadType_FallbackOther(t *testing.T) {

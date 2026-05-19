@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
 	"strconv"
 	"strings"
@@ -454,31 +455,77 @@ func derivePDPairRelations(_ []model.Pod, pods []corev1.Pod) []model.PodRelation
 // ------------------------------------------------------------------ bindings
 
 // parseSliceBindingsAnnotation reads `npu.huawei.com/slice-bindings`
-// — a JSON-encoded array of {sliceId, role, indexInPod}. P2-T-105
-// will tighten this with stricter validation + a richer schema; here
-// we accept the canonical form and silently drop malformed entries.
+// — the scheduler annotation that carries pod ↔ slice bindings (ADR-
+// 0005 Phase 2 §Bindings). P2-T-105 promotes the parser to accept
+// the canonical JSON form (which is what the scheduler extender
+// will emit) while keeping the semicolon-key=value form for hand-
+// edited annotations operators sometimes apply directly.
 //
-// Returns nil when the annotation is absent / blank / malformed —
-// callers must defend against a nil slice (model.Pod.Bindings is
-// json-omitempty, so nil round-trips as absent).
+// Format detection (no extra config):
+//
+//   - First non-space byte is `[` → JSON array form
+//       [{"sliceId":"...","role":"prefill","indexInPod":0}, ...]
+//
+//   - Anything else → semicolon-separated key=value chunks
+//       "sliceId=...,role=...,indexInPod=N;sliceId=...,..."
+//
+// Both shapes feed into the same model.PodBinding slice. Malformed
+// entries (missing sliceId / unparseable JSON / unknown keys) are
+// silently dropped: the alternative — failing the whole annotation
+// over one bad entry — would hide the working bindings from
+// operators chasing the bad one. Returns nil when the annotation is
+// absent / blank / produces zero valid entries (model.Pod.Bindings
+// is json-omitempty so nil round-trips as absent).
 func parseSliceBindingsAnnotation(annotations map[string]string) []model.PodBinding {
-	raw := annotations["npu.huawei.com/slice-bindings"]
+	raw := strings.TrimSpace(annotations["npu.huawei.com/slice-bindings"])
 	if raw == "" {
 		return nil
 	}
-	// Light-touch parser: the annotation is conventionally JSON, but to
-	// avoid pulling encoding/json (this is already in the import set
-	// elsewhere, but keep the function focused) we accept either
-	// canonical JSON OR a semicolon-separated key=value form for the
-	// hand-edited annotations operators sometimes apply directly. P2-T-
-	// 105 promotes this to the strict JSON-only path.
-	out := []model.PodBinding{}
 	if raw[0] == '[' {
-		// JSON path — wired in P2-T-105 with encoding/json; for P2-T-003
-		// we treat the JSON form as "leave for P2-T-105" and skip it
-		// silently. The semicolon form below is the placeholder.
+		return parseSliceBindingsJSON(raw)
+	}
+	return parseSliceBindingsSemicolon(raw)
+}
+
+// parseSliceBindingsJSON is the canonical scheduler-extender path
+// (P2-T-105). encoding/json on a local typed array; entries with an
+// empty sliceId after decode are dropped (defends against partial
+// scheduler emissions). Decode failure → nil (the entire annotation
+// is treated as absent, matching the semicolon fallback's behaviour
+// for an unparseable input).
+func parseSliceBindingsJSON(raw string) []model.PodBinding {
+	type entry struct {
+		SliceID    string `json:"sliceId"`
+		Role       string `json:"role"`
+		IndexInPod int    `json:"indexInPod"`
+	}
+	var arr []entry
+	if err := json.Unmarshal([]byte(raw), &arr); err != nil {
 		return nil
 	}
+	out := make([]model.PodBinding, 0, len(arr))
+	for _, e := range arr {
+		if e.SliceID == "" {
+			continue
+		}
+		out = append(out, model.PodBinding{
+			SliceID:    e.SliceID,
+			Role:       e.Role,
+			IndexInPod: e.IndexInPod,
+		})
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// parseSliceBindingsSemicolon is the hand-edit-friendly path
+// (P2-T-003). Format: `key=value,key=value;key=value,...`. Unknown
+// keys are tolerated (forward-compat with annotation schema
+// additions); chunks without sliceId drop silently.
+func parseSliceBindingsSemicolon(raw string) []model.PodBinding {
+	out := []model.PodBinding{}
 	for _, chunk := range strings.Split(raw, ";") {
 		chunk = strings.TrimSpace(chunk)
 		if chunk == "" {

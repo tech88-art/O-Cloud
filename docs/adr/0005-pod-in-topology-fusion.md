@@ -77,3 +77,21 @@ spec F2: "支持查看集群中的业务信息,包括运行中的 POD、POD 与 
 
 - 实测 set-c-stress(800 NPU)开启 workload 后 FPS < 15 → 改 Workload Drawer mini-graph(降级方案)
 - 用户反馈"图太杂",改为 Workloads 页内独立 mini-graph
+
+## Phase 2 — Bindings 实现路径(P2-T-105)
+
+Pod.Bindings 在 wire 上(ADR-0006 后)由 `Pod.bindings: [{sliceId, role, indexInPod}]` 承载。**Phase 2 scheduler 注释**:
+
+- 注释 key:`npu.huawei.com/slice-bindings`
+- 注释 value 主格式:**JSON array** — `[{"sliceId":"...","role":"prefill","indexInPod":0}, ...]`
+- 注释 value 备用格式:semicolon-key=value(`sliceId=...,role=...;sliceId=...,role=...`),给 operator 手编 `kubectl annotate` 时友好
+
+解析器(`backend/pkg/datasource/k8s/workload.go::parseSliceBindingsAnnotation` + JSON / Semicolon helpers,P2-T-105 commit):
+- 首字符 `[` → JSON 路径(canonical,scheduler extender 走这里)
+- 其他 → semicolon 路径(hand-edit fallback)
+- 任何 malformed 条目 silently drop(优先保证有效 bindings 流通,而不是因为一条坏数据隐藏整个列表)
+- 解析失败 / 空结果 → nil(`json:omitempty` round-trips 为 absent)
+
+Phase 3+ 演进:
+- Scheduler extender(MindCluster Volcano)主动写 annotation;手编路径渐废
+- Phase 5 inference-operator 同时维护 Pod 状态 + binding,可能升格为 PodBindingPolicy CRD(待 Phase 5 ADR)
