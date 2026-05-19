@@ -213,7 +213,7 @@ flowchart LR
 | 推理框架（PD 分离） | **vllm-ascend disaggregated_prefill_v1** + Mooncake/LLMDataDist | 单实例 colocated | Ascend 原生 PD：HCCS 节点内 / Mooncake 节点间；见 `docs/research/vllm-pd-disaggregation.md` §8 |
 | 训练框架 | （Phase 5 不重点） | | |
 | 容器运行时 | containerd + Ascend Container Toolkit | | |
-| **CANN 运行时底座** | **CANN 8.1** | (与 Ascend driver ≥ 24.x 配套;vllm-ascend v0.11.0+ 要求) | RFC-003 (2026-05-18) 锁定;spec "AI运行时:CANN+MindIE 底座" |
+| **CANN 运行时底座** | **CANN 8.1** | (与 Ascend driver ≥ 24.x 配套;vllm-ascend v0.11.0+ 要求) | RFC-003 (2026-05-18) 锁定;spec "AI运行时:CANN+MindIE 底座" · **版本兼容矩阵详见 `docs/cann-driver-matrix.md`**(P4-T-002 落地 2026-05-19) |
 | 虚拟机运行时（隔离性） | KubeVirt | | Phase 5 可选引入 |
 
 > ⚠️ **修订 v2(2026-05-17, P1-T-012 驳正)**:**DRA 已 GA in K8s 1.34(2025-09-01)**;K8s 1.36 是 2026-05 当前最新。Phase 4 主路径 = Ascend Device Plugin v1 — 真实理由不再是"DRA 未 GA",而是 **KubeEdge v1.22 无 DRA 支持**(边缘路径无选)+ **无官方 Ascend DRA driver**。standard K8s 小集群可 DRA spike;Phase 7 动态切分等 Partitionable Devices GA(估 K8s 1.37)。详见 ADR-0001 §5 v2 与 `docs/research/k8s-dra.md`。
@@ -806,7 +806,7 @@ ocloud-edge-platform/
 | Phase 2 | 真实 fabric discovery(LLDP / SNMP / SONiC API 选型) | Phase 2 启动前调研 + ADR | ADR-0004 |
 | Phase 2 | 真实 Pod→slice binding(K8s scheduler annotation) | Phase 2 启动前 | ADR-0005 |
 | Phase 9 | **IMS 7 服务剩 3 项**(资源准备 / 软件管理 / 生命周期)— Option A 拍板(2026-05-18 v2) | Phase 9 起草时落 P9-T-IMS-{1,2,3}:node-lifecycle-operator / software-mgmt / bare-metal-provisioning(参考 StarlingX);Phase 1 不做占位 UI | ADR-0003 v2 Accepted |
-| Phase 4 | CANN 8.1 锁定 + Ascend driver ≥ 24.x 配套验证 | Phase 4 启动前在真机验证矩阵 | architecture §3.4 +RFC-003 |
+| Phase 4 | CANN 8.1 锁定 + Ascend driver ≥ 24.x 配套验证 | 2026-05-19 P4-T-002 **matrix doc landed**(`docs/cann-driver-matrix.md` · 7 列 5 行 · baseline/floor/known-bad/warn 全覆盖);**real-hw verification deferred Phase 7** | architecture §3.4 + `docs/cann-driver-matrix.md` |
 
 ---
 
