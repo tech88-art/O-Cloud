@@ -28,6 +28,15 @@ rules:
   - apiGroups: ["resource.k8s.io"]
     resources: ["deviceclasses"]
     verbs: ["get", "list", "watch"]
+  # NPUSliceAllocation — Phase 5 T005 audit-log CRD. The claim
+  # controller creates one per successful allocation; the allocation
+  # controller updates status.phase + conditions through the lifecycle.
+  - apiGroups: ["npu.ocloud.edge.example.com"]
+    resources: ["npusliceallocations"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["npu.ocloud.edge.example.com"]
+    resources: ["npusliceallocations/status"]
+    verbs: ["get", "update", "patch"]
   # Leader election lease.
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]

@@ -23,6 +23,7 @@ spec:
         # enabled without dumping argv.
         ocloud.edge.example.com/publisher-enabled: {{ .Values.publisher.enabled | quote }}
         ocloud.edge.example.com/claim-controller-enabled: {{ .Values.claimController.enabled | quote }}
+        ocloud.edge.example.com/allocation-controller-enabled: {{ .Values.allocationController.enabled | quote }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -52,6 +53,11 @@ spec:
             {{- end }}
             {{- if .Values.claimController.enabled }}
             - --enable-claim-controller
+            {{- end }}
+            {{- if .Values.allocationController.enabled }}
+            - --enable-allocation-controller
+            {{- else }}
+            - --enable-allocation-controller=false
             {{- end }}
             {{- with .Values.extraArgs }}
             {{- toYaml . | nindent 12 }}

@@ -516,6 +516,56 @@ func (r *ClaimReconciler) Reconcile(ctx, req) (ctrl.Result, error) {
 }
 ```
 
+### 6.3.4 NPUSliceAllocation lifecycle (P5-T-004 + P5-T-005)
+
+`NPUSliceAllocation` is a cluster-scoped CRD that mirrors every
+successful claim allocation as an audit-log entry. It is **not** the
+source of truth for "is this device allocated" — that remains
+`ResourceClaim.Status.Allocation`. NPUSliceAllocation exists to provide:
+
+1. A reverse-lookup index (device → claim) for Phase 6
+   scheduler-plugin co-location decisions.
+2. A per-tenant quota substrate for Phase 9 multi-tenancy (the quota
+   controller lists NPUSliceAllocations by namespace label).
+3. A human-readable audit trail (`kubectl get npua` shows current
+   allocations with claim / device / node / aiCores / phase columns).
+
+Lifecycle states (see api/v1alpha1.NPUSliceAllocationPhase*):
+
+```
+                                                 GC cascade deletes
+                                                 the audit entry
+                                                  (via owner-ref)
+                                                       │
+   create ─► Allocated ──► (claim deleted) ──► Released ──► (Orphaned)
+   (claim_controller       within grace                    after grace
+    + Reconcile)           period                          period
+```
+
+- **Allocated**: claim exists with non-empty Status.Allocation
+  matching this entry's SliceRef. The `Available=True` condition
+  accompanies this phase.
+- **Released**: owner claim was deleted; we are within the
+  OrphanGracePeriod (default 30s) waiting for K8s GC to remove the
+  audit entry. `Available=False/ClaimDeleted`.
+- **Orphaned**: owner claim absent for longer than the grace period.
+  Indicates GC did not run as expected (resource handler error,
+  network partition); a Warning event fires. Operator action: inspect
+  the audit entry + delete it manually.
+
+The cascade is driven by `metadata.ownerReferences[0]` pointing at the
+ResourceClaim with `Controller=true` + `BlockOwnerDeletion=true`. The
+allocation controller never deletes audit entries itself — only K8s GC
+does — so the Orphaned phase is meant for human inspection.
+
+Phase 5 chart wiring:
+- `values.yaml` `allocationController.enabled` toggle (default true)
+- `deployment.yaml` passes `--enable-allocation-controller` per the
+  toggle
+- `rbac.yaml` grants `npusliceallocations get/list/watch/create/
+  update/patch/delete` + `npusliceallocations/status update/patch`
+  on the ServiceAccount
+
 ### 6.4 Partitionable Devices migration (Phase 7, K8s 1.37 GA)
 
 Publisher emits per-partition Device entries instead of one Device

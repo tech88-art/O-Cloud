@@ -46,11 +46,14 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	v1alpha1 "github.com/tech88-art/O-Cloud/operators/npu-dra-driver/api/v1alpha1"
 )
 
 // newTestScheme returns a runtime.Scheme with all schemes the npu-dra-driver
 // controllers operate against (core/v1 for Events + resource/v1beta1 for
-// ResourceClaim).
+// ResourceClaim + npu.ocloud.edge.example.com/v1alpha1 for the Phase 5
+// NPUSliceAllocation CRD landed at P5-T-004).
 func newTestScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
 	s := runtime.NewScheme()
@@ -60,19 +63,23 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 	if err := resourceapi.AddToScheme(s); err != nil {
 		t.Fatalf("add resource v1beta1 scheme: %v", err)
 	}
+	if err := v1alpha1.AddToScheme(s); err != nil {
+		t.Fatalf("add v1alpha1 scheme: %v", err)
+	}
 	return s
 }
 
 // newFakeClient returns a controller-runtime fake client with the status
-// subresource registered for ResourceClaim — required so the claim
-// controller's Status().Update calls take effect under test.
+// subresource registered for ResourceClaim + NPUSliceAllocation — required
+// so the claim controller's Status().Update calls and the allocation
+// controller's Status().Patch calls both take effect under test.
 //
 // Optional `objs` seed the fake client's initial object store.
 func newFakeClient(t *testing.T, objs ...client.Object) client.Client {
 	t.Helper()
 	return fake.NewClientBuilder().
 		WithScheme(newTestScheme(t)).
-		WithStatusSubresource(&resourceapi.ResourceClaim{}).
+		WithStatusSubresource(&resourceapi.ResourceClaim{}, &v1alpha1.NPUSliceAllocation{}).
 		WithObjects(objs...).
 		Build()
 }

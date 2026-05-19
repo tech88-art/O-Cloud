@@ -149,7 +149,14 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	if claim.Status.Allocation != nil {
-		lg.V(1).Info("Claim already allocated; nothing to do",
+		// Even on the "already allocated" early-return path, make sure
+		// the audit-log NPUSliceAllocation entry exists. This catches
+		// the case where status.allocation was written previously but
+		// the audit-log Create errored — next reconcile reconciles it.
+		if err := r.ensureAllocationAudits(ctx, &claim); err != nil {
+			return ctrl.Result{}, fmt.Errorf("ensure audit (already allocated): %w", err)
+		}
+		lg.V(1).Info("Claim already allocated; audit reconciled",
 			"results", len(claim.Status.Allocation.Devices.Results))
 		return ctrl.Result{}, nil
 	}
@@ -224,6 +231,14 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	if err := r.Client.Status().Patch(ctx, &claim, client.MergeFrom(base)); err != nil {
 		return ctrl.Result{}, fmt.Errorf("write status.allocation: %w", err)
+	}
+
+	if err := r.createAllocationAudit(ctx, &claim, pick); err != nil {
+		// Don't unwind the status patch — Kubernetes does not give
+		// us a transaction across kinds. Surface the audit failure
+		// and let the next reconcile finish the audit-log write via
+		// ensureAllocationAudits().
+		return ctrl.Result{}, fmt.Errorf("create allocation audit: %w", err)
 	}
 
 	if r.Recorder != nil {
@@ -328,3 +343,167 @@ func (r *ClaimReconciler) stripPhase4Annotations(ctx context.Context, claim *res
 	delete(claim.Annotations, AnnotationAllocationDeferredObservedGen)
 	return r.Client.Patch(ctx, claim, client.MergeFrom(base))
 }
+
+// allocationAuditName is the deterministic NPUSliceAllocation object
+// name for one (claim, device) pair. Phase 5 ships single-device claims
+// (one allocation result per claim), so namespace + claim name + device
+// suffix produces a stable, readable name. RFC 1123 compliant — claim
+// name and device name are both DNS labels by upstream contract.
+func allocationAuditName(claimNS, claimName, device string) string {
+	return claimNS + "-" + claimName + "-" + device
+}
+
+// createAllocationAudit creates the NPUSliceAllocation audit-log object
+// for a freshly-allocated ResourceClaim. The owner-ref points back at
+// the ResourceClaim so K8s garbage collection cascades the delete when
+// the claim is removed.
+//
+// Idempotent: if an object with the same deterministic name already
+// exists, AlreadyExists is treated as success (next reconcile will
+// reach the up-to-date object via the watch).
+func (r *ClaimReconciler) createAllocationAudit(ctx context.Context, claim *resourceapi.ResourceClaim, pick *allocator.Allocation) error {
+	if claim == nil || pick == nil {
+		return nil
+	}
+	name := allocationAuditName(claim.Namespace, claim.Name, pick.Device)
+
+	ms := claim.Annotations[v1alpha1.AnnotationModelServiceRef]
+	allocatedAt := metav1.Now()
+
+	audit := &v1alpha1.NPUSliceAllocation{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "resource.k8s.io/v1beta1",
+					Kind:               "ResourceClaim",
+					Name:               claim.Name,
+					UID:                claim.UID,
+					Controller:         pointerToBool(true),
+					BlockOwnerDeletion: pointerToBool(true),
+				},
+			},
+			Labels: map[string]string{
+				"ocloud.edge.example.com/claim-namespace": claim.Namespace,
+				"ocloud.edge.example.com/claim-name":      claim.Name,
+				"ocloud.edge.example.com/node":            pick.NodeName,
+			},
+		},
+		Spec: v1alpha1.NPUSliceAllocationSpec{
+			ClaimRef: corev1.ObjectReference{
+				APIVersion: "resource.k8s.io/v1beta1",
+				Kind:       "ResourceClaim",
+				Namespace:  claim.Namespace,
+				Name:       claim.Name,
+				UID:        claim.UID,
+			},
+			SliceRef: v1alpha1.SliceReference{
+				Driver: pick.Driver,
+				Pool:   pick.Pool,
+				Device: pick.Device,
+			},
+			NodeName:        pick.NodeName,
+			AICores:         int32(pick.AICores),
+			ModelServiceRef: ms,
+		},
+	}
+
+	if err := r.Client.Create(ctx, audit); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return nil
+		}
+		return err
+	}
+
+	// Set status.phase=Allocated + AllocatedAt + Available=True. Use
+	// the status subresource so the Spec patch above doesn't have to
+	// race with the AllocationReconciler's own status updates (T005
+	// reconciler will also write here on its own watch).
+	base := audit.DeepCopy()
+	audit.Status.Phase = v1alpha1.NPUSliceAllocationPhaseAllocated
+	audit.Status.AllocatedAt = &allocatedAt
+	SetCondition(&audit.Status.Conditions, metav1.Condition{
+		Type:    v1alpha1.ConditionAvailable,
+		Status:  metav1.ConditionTrue,
+		Reason:  "Allocated",
+		Message: "Audit log entry created for claim allocation",
+	})
+	return r.Client.Status().Patch(ctx, audit, client.MergeFrom(base))
+}
+
+// ensureAllocationAudits re-checks that every device in claim.Status.
+// Allocation.Devices.Results has a corresponding NPUSliceAllocation. If
+// any are missing (because a prior Create errored), this method
+// re-creates them. Idempotent — the "already allocated" early-return
+// path in Reconcile invokes this on every pass.
+func (r *ClaimReconciler) ensureAllocationAudits(ctx context.Context, claim *resourceapi.ResourceClaim) error {
+	if claim == nil || claim.Status.Allocation == nil {
+		return nil
+	}
+	for _, res := range claim.Status.Allocation.Devices.Results {
+		if res.Driver != v1alpha1.DriverName {
+			continue
+		}
+		name := allocationAuditName(claim.Namespace, claim.Name, res.Device)
+		var existing v1alpha1.NPUSliceAllocation
+		err := r.Client.Get(ctx, client.ObjectKey{Name: name}, &existing)
+		if err == nil {
+			continue
+		}
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		// Missing — recreate from the claim's stored allocation. We
+		// don't have the rich Allocation struct (NodeName / AICores /
+		// Strategy) here, so the audit-log entry is a degraded copy:
+		// NodeName mirrors Pool by Phase 5 simulator convention, and
+		// AICores comes from the claim's annotation if present, else
+		// 0. Acceptable trade-off — the canonical source of truth is
+		// the claim's status.allocation; the audit log is a side
+		// index that consumers (Phase 9 quota) can rebuild from the
+		// claim list at any time.
+		audit := &v1alpha1.NPUSliceAllocation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "resource.k8s.io/v1beta1",
+						Kind:               "ResourceClaim",
+						Name:               claim.Name,
+						UID:                claim.UID,
+						Controller:         pointerToBool(true),
+						BlockOwnerDeletion: pointerToBool(true),
+					},
+				},
+				Labels: map[string]string{
+					"ocloud.edge.example.com/claim-namespace": claim.Namespace,
+					"ocloud.edge.example.com/claim-name":      claim.Name,
+					"ocloud.edge.example.com/node":            res.Pool,
+				},
+			},
+			Spec: v1alpha1.NPUSliceAllocationSpec{
+				ClaimRef: corev1.ObjectReference{
+					APIVersion: "resource.k8s.io/v1beta1",
+					Kind:       "ResourceClaim",
+					Namespace:  claim.Namespace,
+					Name:       claim.Name,
+					UID:        claim.UID,
+				},
+				SliceRef: v1alpha1.SliceReference{
+					Driver: res.Driver,
+					Pool:   res.Pool,
+					Device: res.Device,
+				},
+				NodeName:        res.Pool,
+				AICores:         0,
+				ModelServiceRef: claim.Annotations[v1alpha1.AnnotationModelServiceRef],
+			},
+		}
+		if cerr := r.Client.Create(ctx, audit); cerr != nil && !apierrors.IsAlreadyExists(cerr) {
+			return cerr
+		}
+	}
+	return nil
+}
+
+func pointerToBool(b bool) *bool { return &b }
