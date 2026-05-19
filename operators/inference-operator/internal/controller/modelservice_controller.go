@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -65,7 +66,6 @@ const (
 	reasonNPUSlicePoolNotFound = "NPUSlicePoolNotFound"
 	reasonNPUSlicePoolFound    = "NPUSlicePoolFound"
 	reasonWaitingForPool       = "WaitingForPool"
-	reasonScaffold             = "ProvisioningScaffold"
 )
 
 // poolGVK is the GroupVersionKind the controller uses for unstructured
@@ -95,6 +95,18 @@ type ModelServiceReconciler struct {
 	Client   client.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+
+	// Now is overridable for tests so the ProgressDeadline check is
+	// exercisable without manipulating system time. Zero means
+	// time.Now.
+	Now func() time.Time
+}
+
+func (r *ModelServiceReconciler) now() time.Time {
+	if r.Now != nil {
+		return r.Now()
+	}
+	return time.Now()
 }
 
 // Reconcile implements the controller-runtime Reconciler contract.
@@ -155,7 +167,84 @@ func (r *ModelServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, fmt.Errorf("reconcile children: %w", err)
 	}
 
-	return r.markProvisioning(ctx, &ms, pool)
+	return r.reconcilePhase(ctx, &ms, pool)
+}
+
+// reconcilePhase aggregates child state via the phase machine
+// (phases.go) and writes the resulting Phase + Conditions to the
+// ModelService status subresource.
+func (r *ModelServiceReconciler) reconcilePhase(ctx context.Context, ms *inferencev1alpha1.ModelService, pool *unstructured.Unstructured) (ctrl.Result, error) {
+	in, err := r.assemblePhaseInputs(ctx, ms)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("assemble phase inputs: %w", err)
+	}
+	decision := computePhase(in, &ms.Status)
+
+	base := ms.DeepCopy()
+	ms.Status.Phase = decision.Phase
+	ms.Status.ObservedGeneration = ms.Generation
+
+	// PoolUnresolved stays True from the pool-found check we already
+	// did above.
+	SetCondition(&ms.Status.Conditions, metav1.Condition{
+		Type:    ConditionPoolUnresolved,
+		Status:  metav1.ConditionTrue,
+		Reason:  reasonNPUSlicePoolFound,
+		Message: fmt.Sprintf("NPUSlicePool %s/%s observed", ms.Namespace, pool.GetName()),
+	})
+	for _, c := range decision.Conditions {
+		SetCondition(&ms.Status.Conditions, c)
+	}
+	if err := r.Client.Status().Patch(ctx, ms, client.MergeFrom(base)); err != nil {
+		return ctrl.Result{}, fmt.Errorf("patch phase status: %w", err)
+	}
+
+	if r.Recorder != nil && decision.Phase == inferencev1alpha1.PhaseReady && base.Status.Phase != inferencev1alpha1.PhaseReady {
+		r.Recorder.Event(ms, corev1.EventTypeNormal, string(inferencev1alpha1.PhaseReady),
+			"ModelService is Ready (Prefill+Decode pair healthy)")
+	}
+	if r.Recorder != nil && decision.Phase == inferencev1alpha1.PhaseFailed && base.Status.Phase != inferencev1alpha1.PhaseFailed {
+		r.Recorder.Event(ms, corev1.EventTypeWarning, string(inferencev1alpha1.PhaseFailed),
+			"ModelService transitioned to Failed; inspect conditions for details")
+	}
+
+	// Requeue while still Provisioning so we re-check readiness on
+	// the next tick even without an external watch event.
+	if decision.Phase == inferencev1alpha1.PhaseProvisioning {
+		return RequeueAfter(30 * time.Second), nil
+	}
+	return ctrl.Result{}, nil
+}
+
+// assemblePhaseInputs gathers Deployment + ResourceClaim state for
+// this ModelService and returns a PhaseInputs snapshot.
+func (r *ModelServiceReconciler) assemblePhaseInputs(ctx context.Context, ms *inferencev1alpha1.ModelService) (PhaseInputs, error) {
+	in := PhaseInputs{
+		PrefillDesired: ms.Spec.PDPair.Prefill.Replicas,
+		DecodeDesired:  ms.Spec.PDPair.Decode.Replicas,
+		Now:            r.now(),
+	}
+
+	var prefill, decode appsv1.Deployment
+	if err := r.Client.Get(ctx, client.ObjectKey{Namespace: ms.Namespace, Name: deploymentName(ms, PDSidePrefill)}, &prefill); err == nil {
+		in.PrefillReady = prefill.Status.ReadyReplicas
+		in.PrefillProgressing = progressingCondition(&prefill)
+	} else if !apierrors.IsNotFound(err) {
+		return in, err
+	}
+	if err := r.Client.Get(ctx, client.ObjectKey{Namespace: ms.Namespace, Name: deploymentName(ms, PDSideDecode)}, &decode); err == nil {
+		in.DecodeReady = decode.Status.ReadyReplicas
+		in.DecodeProgressing = progressingCondition(&decode)
+	} else if !apierrors.IsNotFound(err) {
+		return in, err
+	}
+
+	var claims resourceapi.ResourceClaimList
+	if err := r.Client.List(ctx, &claims, client.InNamespace(ms.Namespace)); err != nil {
+		return in, err
+	}
+	in.ClaimsTotal, in.ClaimsAllocated = countClaimsAllocated(ms, claims.Items)
+	return in, nil
 }
 
 // reconcileChildren creates or updates the Prefill + Decode
@@ -312,28 +401,6 @@ func (r *ModelServiceReconciler) markWaitingForPool(ctx context.Context, ms *inf
 	if r.Recorder != nil {
 		r.Recorder.Eventf(ms, corev1.EventTypeNormal, reasonWaitingForPool,
 			"NPUSlicePool %s/%s observed but reports 0 slices yet", ms.Namespace, pool.GetName())
-	}
-	return ctrl.Result{}, nil
-}
-
-func (r *ModelServiceReconciler) markProvisioning(ctx context.Context, ms *inferencev1alpha1.ModelService, pool *unstructured.Unstructured) (ctrl.Result, error) {
-	base := ms.DeepCopy()
-	ms.Status.Phase = inferencev1alpha1.PhaseProvisioning
-	ms.Status.ObservedGeneration = ms.Generation
-	SetCondition(&ms.Status.Conditions, metav1.Condition{
-		Type:    ConditionPoolUnresolved,
-		Status:  metav1.ConditionTrue,
-		Reason:  reasonNPUSlicePoolFound,
-		Message: fmt.Sprintf("NPUSlicePool %s/%s observed", ms.Namespace, pool.GetName()),
-	})
-	SetCondition(&ms.Status.Conditions, metav1.Condition{
-		Type:    ConditionAllocationReady,
-		Status:  metav1.ConditionFalse,
-		Reason:  reasonScaffold,
-		Message: "T006 scaffold: Deployments + ResourceClaims arrive in T007",
-	})
-	if err := r.Client.Status().Patch(ctx, ms, client.MergeFrom(base)); err != nil {
-		return ctrl.Result{}, fmt.Errorf("patch provisioning status: %w", err)
 	}
 	return ctrl.Result{}, nil
 }

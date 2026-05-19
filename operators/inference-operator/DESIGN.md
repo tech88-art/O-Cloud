@@ -281,6 +281,72 @@ main.go main()
    │ mgr.Start(...)
 ```
 
+### 4.2.3 P5-T-008 Phase machine (operative)
+
+```
+                    ┌─────────────┐
+   first reconcile  │  Pending    │   (default in CRD; immediately
+   ───────────────► │             │    advanced on first reconcile)
+                    └──────┬──────┘
+                           │
+                  pool not found
+                           │
+            ┌──────────────▼──────────────┐
+            │   Failed (PoolUnresolved)   │   terminal — auto-
+            └──────────────────────────────┘   recovers if spec
+                                               edit changes pool
+                                               ref
+
+                    ┌─────────────┐
+                    │ Provisioning│   (reconcileChildren created
+                    │             │    Deployments + claim templates;
+                    └──────┬──────┘    waiting for readiness)
+                       ┌───┴────────┐
+                       │            │
+              ready    │            │  image-pull error or
+              + claims │            │  >10min progress
+              allocated│            │  deadline exceeded
+                       ▼            ▼
+                    ┌────┐      ┌────────┐
+                    │Ready│     │ Failed │ (auto-recover via
+                    │     │     │        │  spec edit removing
+                    └──┬──┘     └────────┘  the cause)
+                       │
+                       │  spec edit
+                       │  (scale up / image change)
+                       ▼
+                    ┌─────────────┐
+                    │ Provisioning│  ← back, waiting for new
+                    └─────────────┘    replicas to become Ready
+```
+
+Inputs aggregated each reconcile (PhaseInputs in phases.go):
+- `PrefillDesired` / `DecodeDesired` from spec.pdPair
+- `PrefillReady` / `DecodeReady` from Deployment.Status.ReadyReplicas
+- `PrefillProgressing` / `DecodeProgressing` from Deployment.Status
+  .Conditions[Type=Progressing] (image-pull detection)
+- `ClaimsTotal` / `ClaimsAllocated` from ResourceClaim list filtered
+  by `inference.ocloud.edge.example.com/model-service` label;
+  allocated means non-nil Status.Allocation with at least one entry
+  whose Driver == npu.ocloud.edge.example.com
+
+Outputs (Status.Conditions):
+- `Available` — True when phase=Ready; False with reason
+  `ProvisioningInProgress` / `ImagePullError` / `ProgressDeadlineExceeded`
+- `ProgressDeadline` — True when stuck Provisioning > 10min; False
+  during normal Provisioning / Ready
+- `AllocationReady` — True when ClaimsTotal>0 AND ClaimsAllocated ==
+  ClaimsTotal
+
+Reconcile cadence: while phase=Provisioning, requeue 30s so the
+controller polls Deployment + claim readiness without external watch
+events. Ready / Failed leave the queue idle (next reconcile triggered
+by spec edit or watch on owned resources).
+
+ProgressDeadline default 10 minutes; injectable via the Reconciler's
+`Now` field for tests. Image-pull detection reads upstream `Reason`
+strings (`ImagePullBackOff` / `ErrImagePull`).
+
 ### 4.2.2 P5-T-007 Deployment + Claim materialisation (operative)
 
 Per-side resources created/updated by `reconcileChildren()` on every
