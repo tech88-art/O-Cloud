@@ -404,6 +404,93 @@ selector expressions that filter by `device.attributes["npu.huawei.com/slice-str
 ClaimReconciler grows from "log + annotate" to "select device + write
 status.devices[]". Per ADR-0009 §6 pseudocode:
 
+### 6.3.1 Phase 5 allocator algorithm (P5-T-002 + P5-T-003)
+
+The `internal/allocator/` package ships two implementations behind the
+`Allocator` interface:
+
+```go
+type Allocator interface {
+    Allocate(claim, slices, allocated) (*Allocation, error)
+}
+```
+
+**Greedy** (default, T002): scans slices in lexicographic order by
+`Name`, then devices within each slice in lex order by `Name`. The
+first device that (a) belongs to the npu-dra-driver, (b) is not in
+the `AllocatedSet`, (c) reports `Health == Healthy`, and (d) matches
+the request's DeviceClassName sub-class filter is returned. On the
+Phase 4 simulator (3 nodes × 8 NPUs / set-a-small fixture) this
+deterministically picks `nodeA-npu-0` first, then `nodeA-npu-1`, etc.
+
+Invariants:
+- **Determinism**: identical input → identical output. Sort happens on
+  a defensive copy so caller-supplied slices retain their order.
+- **Single-request claims only in Phase 5**. The allocator picks the
+  first `claim.Spec.Devices.Requests[0]` and ignores the rest. Phase 6
+  iterates all requests (multi-device claims).
+- **Health filter inline**. Unhealthy / Unknown devices skipped. No
+  admin-override knob in Phase 5; Phase 7 may add one when real
+  hardware enters the picture.
+
+**BestFit** (T003 feature-flag, default off): ranks every eligible
+candidate device by `SliceAICoreCapacity`, picks the smallest one. On
+heterogeneous fleets (mixed vir04 + vir08 + whole) this minimizes
+fragmentation by reserving larger devices for larger future claims.
+On Phase 5 simulator (uniform capacity) BestFit is observationally
+equal to Greedy; the implementation matters once Phase 7 publishes
+per-partition Device entries via KEP-4815.
+
+Phase 6 supersedes both with topology-aware scoring (NUMA + HCCS-ring
+affinity) inside `kube-scheduler` via a scheduler-plugin — the
+allocator package then becomes a fallback path for clusters not
+running the plugin.
+
+### 6.3.2 Phase 4 annotation path DEPRECATED
+
+The Phase 4 `AllocationDeferred` annotation path
+(`ocloud.edge.example.com/allocation-deferred*`) is no longer set by
+the controller. The annotation key constants in
+`claim_controller.go` carry `// Deprecated:` markers and exist only
+for migration parsing: the Phase 5 controller, on first reconcile of
+a Phase 4-annotated claim, **strips** the four annotations via a
+metadata `Patch(MergeFrom)` and requeues. The next reconcile sees a
+clean claim and runs the real allocator. Test:
+`controller.TestClaim_StripsPhase4Annotations`.
+
+### 6.3.3 ResourceClaim.Status write shape
+
+On successful allocation the controller patches the status
+subresource (`Client.Status().Patch(MergeFrom)`) with two fields:
+
+```go
+status.allocation = &AllocationResult{
+    Devices: DeviceAllocationResult{
+        Results: []DeviceRequestAllocationResult{{
+            Request: pick.Request,
+            Driver:  pick.Driver,
+            Pool:    pick.Pool,
+            Device:  pick.Device,
+        }},
+    },
+}
+status.devices = []AllocatedDeviceStatus{{
+    Driver: pick.Driver, Pool: pick.Pool, Device: pick.Device,
+    Conditions: []metav1.Condition{{
+        Type: "Ready", Status: "True", Reason: "Allocated",
+        Message: "Allocated by npu-dra-driver (strategy=…, aiCores=…)",
+    }},
+}}
+```
+
+The DRA scheduler reads `status.allocation` to bind a Pod to the
+chosen device; consumers (PD Router webhook, inference-operator
+phase machine) read `status.devices[].Conditions[Ready=True]` to
+know when the allocation is materialised.
+
+#### Old §6.3 reference pseudocode (kept for cross-reference)
+
+
 ```go
 func (r *ClaimReconciler) Reconcile(ctx, req) (ctrl.Result, error) {
     claim, err := r.Get(...)

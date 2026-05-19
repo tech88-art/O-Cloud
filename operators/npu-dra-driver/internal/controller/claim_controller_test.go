@@ -97,6 +97,19 @@ func fixtureHealthyWholeDevice(name string, index int64) resourceapi.Device {
 	}.ToUpstream()
 }
 
+func fixtureHealthyDynamicDevice(name string, index, aiCores int64) resourceapi.Device {
+	return v1alpha1.AscendDevice{
+		Name:                name,
+		Index:               index,
+		Health:              v1alpha1.HealthHealthy,
+		SliceStrategy:       v1alpha1.SliceStrategyDynamic,
+		AICores:             aiCores,
+		NUMANode:            0,
+		HCCSRing:            0,
+		SliceAICoreCapacity: resource.MustParse("32"),
+	}.ToUpstream()
+}
+
 func reconcileOnce(t *testing.T, r *ClaimReconciler, key client.ObjectKey) ctrl.Result {
 	t.Helper()
 	res, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: key})
@@ -209,6 +222,113 @@ func TestClaim_NoSliceRequeues(t *testing.T) {
 		}
 	default:
 		t.Errorf("expected NoAvailableDevice event")
+	}
+}
+
+func TestClaim_SubClassWhole_FiltersDynamic(t *testing.T) {
+	// Two devices on the same node: one FixedTemplate (whole), one
+	// Dynamic. A claim asking for the .whole sub-class must only pick
+	// the FixedTemplate device.
+	whole := fixtureHealthyWholeDevice("nodeS-npu-0", 0)
+	dyn := fixtureHealthyDynamicDevice("nodeS-npu-1", 1, 8)
+	slice := fixtureSlice("npu-dra-nodeS", "nodeS", dyn, whole)
+
+	claim := ourClaim("c-whole", "ns-s", v1alpha1.DriverName+".whole")
+	cli := newFakeClient(t, claim, slice)
+	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: newFakeRecorder(4)}
+
+	key := client.ObjectKey{Namespace: "ns-s", Name: "c-whole"}
+	reconcileOnce(t, r, key)
+
+	got := getClaim(t, cli, key)
+	if got.Status.Allocation == nil || len(got.Status.Allocation.Devices.Results) != 1 {
+		t.Fatalf("expected one allocation result; got %+v", got.Status.Allocation)
+	}
+	r0 := got.Status.Allocation.Devices.Results[0]
+	if r0.Device != "nodeS-npu-0" {
+		t.Errorf(".whole must pick the FixedTemplate device nodeS-npu-0; got %s", r0.Device)
+	}
+}
+
+func TestClaim_SubClassDynamic_FiltersWhole(t *testing.T) {
+	// Same fixture as the .whole test but the claim asks for .dynamic
+	// → must pick the Dynamic device.
+	whole := fixtureHealthyWholeDevice("nodeD-npu-0", 0)
+	dyn := fixtureHealthyDynamicDevice("nodeD-npu-1", 1, 8)
+	slice := fixtureSlice("npu-dra-nodeD", "nodeD", whole, dyn)
+
+	claim := ourClaim("c-dyn", "ns-d", v1alpha1.DriverName+".dynamic")
+	cli := newFakeClient(t, claim, slice)
+	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: newFakeRecorder(4)}
+
+	key := client.ObjectKey{Namespace: "ns-d", Name: "c-dyn"}
+	reconcileOnce(t, r, key)
+
+	got := getClaim(t, cli, key)
+	if got.Status.Allocation == nil || len(got.Status.Allocation.Devices.Results) != 1 {
+		t.Fatalf("expected one allocation result; got %+v", got.Status.Allocation)
+	}
+	r0 := got.Status.Allocation.Devices.Results[0]
+	if r0.Device != "nodeD-npu-1" {
+		t.Errorf(".dynamic must pick the Dynamic device nodeD-npu-1; got %s", r0.Device)
+	}
+}
+
+func TestClaim_MultiClaim_DistinctDevices(t *testing.T) {
+	// Two claims, two devices: claim-1 must allocate device-0,
+	// claim-2 must allocate device-1 (deterministic by lex order).
+	d0 := fixtureHealthyWholeDevice("nodeM-npu-0", 0)
+	d1 := fixtureHealthyWholeDevice("nodeM-npu-1", 1)
+	slice := fixtureSlice("npu-dra-nodeM", "nodeM", d0, d1)
+
+	c1 := ourClaim("c-1", "ns", v1alpha1.DriverName)
+	c2 := ourClaim("c-2", "ns", v1alpha1.DriverName)
+	cli := newFakeClient(t, c1, c2, slice)
+	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: newFakeRecorder(8)}
+
+	reconcileOnce(t, r, client.ObjectKey{Namespace: "ns", Name: "c-1"})
+	reconcileOnce(t, r, client.ObjectKey{Namespace: "ns", Name: "c-2"})
+
+	g1 := getClaim(t, cli, client.ObjectKey{Namespace: "ns", Name: "c-1"})
+	g2 := getClaim(t, cli, client.ObjectKey{Namespace: "ns", Name: "c-2"})
+	if g1.Status.Allocation == nil || g2.Status.Allocation == nil {
+		t.Fatalf("expected both claims allocated; got c1=%+v c2=%+v", g1.Status.Allocation, g2.Status.Allocation)
+	}
+	d1Pick := g1.Status.Allocation.Devices.Results[0].Device
+	d2Pick := g2.Status.Allocation.Devices.Results[0].Device
+	if d1Pick == d2Pick {
+		t.Errorf("multi-claim must pick distinct devices; both got %s", d1Pick)
+	}
+	if d1Pick != "nodeM-npu-0" {
+		t.Errorf("c-1 should win nodeM-npu-0 (lex first); got %s", d1Pick)
+	}
+	if d2Pick != "nodeM-npu-1" {
+		t.Errorf("c-2 should get nodeM-npu-1 after c-1 took 0; got %s", d2Pick)
+	}
+}
+
+func TestClaim_AlreadyAllocated_NoChange(t *testing.T) {
+	// Claim already has Status.Allocation set; controller must NOT
+	// re-allocate (avoid clobbering scheduler/kubelet state).
+	claim := ourClaim("c-already", "ns-a", v1alpha1.DriverName)
+	claim.Status.Allocation = &resourceapi.AllocationResult{
+		Devices: resourceapi.DeviceAllocationResult{
+			Results: []resourceapi.DeviceRequestAllocationResult{
+				{Driver: v1alpha1.DriverName, Pool: "preset", Device: "preset-npu-0", Request: "req-0"},
+			},
+		},
+	}
+	dev := fixtureHealthyWholeDevice("nodeA-npu-0", 0)
+	slice := fixtureSlice("npu-dra-nodeA", "nodeA", dev)
+	cli := newFakeClient(t, claim, slice)
+	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: newFakeRecorder(4)}
+
+	reconcileOnce(t, r, client.ObjectKey{Namespace: "ns-a", Name: "c-already"})
+
+	got := getClaim(t, cli, client.ObjectKey{Namespace: "ns-a", Name: "c-already"})
+	if len(got.Status.Allocation.Devices.Results) != 1 ||
+		got.Status.Allocation.Devices.Results[0].Pool != "preset" {
+		t.Errorf("already-allocated claim must be unchanged; got %+v", got.Status.Allocation)
 	}
 }
 
