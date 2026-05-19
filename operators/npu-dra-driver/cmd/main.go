@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	v1alpha1 "github.com/tech88-art/O-Cloud/operators/npu-dra-driver/api/v1alpha1"
 	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/controller"
 	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/publisher"
 	// +kubebuilder:scaffold:imports
@@ -47,11 +48,16 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(resourceapi.AddToScheme(scheme))
+	// Phase 5 T004: register the Ocloud npu.ocloud.edge.example.com group
+	// so the manager's typed client knows about NPUSliceAllocation. T005
+	// adds the controller; T002+T003 readers already use the typed client
+	// directly when they consume slices (via resourceapi) so this line
+	// only matters once NPUSliceAllocation lookups land.
+	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
-	// Phase 4 T004/T005 register upstream resource.k8s.io/v1beta1 here so
-	// the publisher (T005) can read/write ResourceSlices via the manager
-	// client. Ocloud's own GroupVersion (npu.ocloud.edge.example.com) has
-	// no CRDs in Phase 4 — only typed helpers in api/v1alpha1.
+	// Phase 4 T004/T005 registered upstream resource.k8s.io/v1beta1 here so
+	// the publisher (T005) could read/write ResourceSlices via the manager
+	// client.
 }
 
 func main() {
