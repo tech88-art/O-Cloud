@@ -18,14 +18,19 @@ package webhook
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sjson "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -92,9 +97,209 @@ func (w *byteSliceWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// newFakeClientWithAllocations seeds a fake client with the given
+// unstructured NPUSliceAllocation list. The fake client is configured
+// to handle the npu.ocloud.edge.example.com/v1alpha1 GVKs as
+// unstructured objects.
+func newFakeClientWithAllocations(t *testing.T, allocations ...*unstructured.Unstructured) client.Client {
+	t.Helper()
+	s := runtime.NewScheme()
+	if err := scheme.AddToScheme(s); err != nil {
+		t.Fatalf("scheme: %v", err)
+	}
+	builder := fake.NewClientBuilder().WithScheme(s)
+	for _, a := range allocations {
+		builder = builder.WithObjects(a)
+	}
+	return builder.Build()
+}
+
+func newAllocation(name, msRef, node, pool, device string, aiCores int32, phase string) *unstructured.Unstructured {
+	a := &unstructured.Unstructured{}
+	a.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "npu.ocloud.edge.example.com",
+		Version: "v1alpha1",
+		Kind:    "NPUSliceAllocation",
+	})
+	a.SetName(name)
+	_ = unstructured.SetNestedField(a.Object, msRef, "spec", "modelServiceRef")
+	_ = unstructured.SetNestedField(a.Object, node, "spec", "nodeName")
+	_ = unstructured.SetNestedField(a.Object, pool, "spec", "sliceRef", "pool")
+	_ = unstructured.SetNestedField(a.Object, device, "spec", "sliceRef", "device")
+	_ = unstructured.SetNestedField(a.Object, "npu.ocloud.edge.example.com", "spec", "sliceRef", "driver")
+	_ = unstructured.SetNestedField(a.Object, int64(aiCores), "spec", "aiCores")
+	_ = unstructured.SetNestedField(a.Object, phase, "status", "phase")
+	return a
+}
+
+func TestHandle_HappyPath_InjectsSliceBindings(t *testing.T) {
+	dec := newDecoder(t)
+	a1 := newAllocation("alloc-1", "ns/ms-1", "nodeA", "nodeA", "nodeA-npu-0", 32, "Allocated")
+	a2 := newAllocation("alloc-2", "ns/ms-1", "nodeB", "nodeB", "nodeB-npu-0", 16, "Allocated")
+	cli := newFakeClientWithAllocations(t, a1, a2)
+	h := &PDRouter{Decoder: dec, Client: cli, DenyOnOrphaned: true}
+
+	pod := newPod("p1", "ns", map[string]string{LabelModelService: "ns/ms-1"})
+	req := podAdmissionRequest(t, pod)
+	resp := h.Handle(context.Background(), req)
+
+	if !resp.Allowed {
+		t.Errorf("happy path should Allow; got %+v", resp)
+	}
+	if len(resp.Patches) == 0 {
+		t.Errorf("happy path should produce patches; got 0")
+	}
+	// Verify the annotation value is in at least one patch.
+	foundAnnotation := false
+	for _, p := range resp.Patches {
+		// Patch value can be a map[string]string when adding the
+		// annotations container, or a string when adding a single key.
+		val := fmtPatchValue(p.Value)
+		if strings.Contains(p.Path, "annotations") &&
+			(strings.Contains(val, AnnotationSliceBindings) || strings.Contains(val, "slice-bindings")) {
+			foundAnnotation = true
+		}
+	}
+	if !foundAnnotation {
+		t.Errorf("expected a patch touching slice-bindings annotation; got patches: %+v", resp.Patches)
+	}
+}
+
+// fmtPatchValue converts a jsonpatch.JsonPatchOperation.Value (which is
+// a generic interface{}) to a string for substring searching in tests.
+func fmtPatchValue(v interface{}) string {
+	switch x := v.(type) {
+	case string:
+		return x
+	case map[string]string:
+		out := ""
+		for k, val := range x {
+			out += k + "=" + val + ";"
+		}
+		return out
+	case map[string]interface{}:
+		out := ""
+		for k, val := range x {
+			out += k + "="
+			if s, ok := val.(string); ok {
+				out += s
+			}
+			out += ";"
+		}
+		return out
+	default:
+		return ""
+	}
+}
+
+func TestHandle_NoMatchingAllocations_AllowedWithoutPatch(t *testing.T) {
+	dec := newDecoder(t)
+	// One allocation but for a DIFFERENT ModelService — should be filtered out
+	a1 := newAllocation("alloc-other", "ns/other-ms", "nodeA", "nodeA", "nodeA-npu-0", 32, "Allocated")
+	cli := newFakeClientWithAllocations(t, a1)
+	h := &PDRouter{Decoder: dec, Client: cli, DenyOnOrphaned: true}
+
+	pod := newPod("p2", "ns", map[string]string{LabelModelService: "ns/ms-1"})
+	req := podAdmissionRequest(t, pod)
+	resp := h.Handle(context.Background(), req)
+
+	if !resp.Allowed {
+		t.Errorf("no-allocation path should Allow; got %+v", resp)
+	}
+	if len(resp.Patches) != 0 {
+		t.Errorf("no-allocation path should NOT patch; got %d patches", len(resp.Patches))
+	}
+}
+
+func TestHandle_AllOrphaned_Denied(t *testing.T) {
+	dec := newDecoder(t)
+	a1 := newAllocation("alloc-orph-1", "ns/ms-1", "nodeA", "nodeA", "nodeA-npu-0", 32, "Orphaned")
+	a2 := newAllocation("alloc-orph-2", "ns/ms-1", "nodeB", "nodeB", "nodeB-npu-0", 16, "Orphaned")
+	cli := newFakeClientWithAllocations(t, a1, a2)
+	h := &PDRouter{Decoder: dec, Client: cli, DenyOnOrphaned: true}
+
+	pod := newPod("p3", "ns", map[string]string{LabelModelService: "ns/ms-1"})
+	req := podAdmissionRequest(t, pod)
+	resp := h.Handle(context.Background(), req)
+
+	if resp.Allowed {
+		t.Errorf("all-Orphaned path should Deny; got Allowed")
+	}
+	if !strings.Contains(resp.Result.Message, "NoAvailableNPUSlices") {
+		t.Errorf("expected NoAvailableNPUSlices in Deny reason; got %q", resp.Result.Message)
+	}
+}
+
+func TestHandle_AllOrphaned_DenyOff_AllowedWithoutPatch(t *testing.T) {
+	dec := newDecoder(t)
+	a1 := newAllocation("alloc-orph", "ns/ms-1", "nodeA", "nodeA", "nodeA-npu-0", 32, "Orphaned")
+	cli := newFakeClientWithAllocations(t, a1)
+	h := &PDRouter{Decoder: dec, Client: cli, DenyOnOrphaned: false}
+
+	pod := newPod("p4", "ns", map[string]string{LabelModelService: "ns/ms-1"})
+	req := podAdmissionRequest(t, pod)
+	resp := h.Handle(context.Background(), req)
+
+	if !resp.Allowed {
+		t.Errorf("DenyOnOrphaned=false should Allow; got %+v", resp)
+	}
+	if len(resp.Patches) != 0 {
+		t.Errorf("DenyOnOrphaned=false orphaned should not patch; got %d", len(resp.Patches))
+	}
+}
+
+func TestHandle_PartialAllocation_AllowedWithoutPatch(t *testing.T) {
+	dec := newDecoder(t)
+	a1 := newAllocation("alloc-ok", "ns/ms-1", "nodeA", "nodeA", "nodeA-npu-0", 32, "Allocated")
+	a2 := newAllocation("alloc-pending", "ns/ms-1", "nodeB", "nodeB", "nodeB-npu-0", 16, "")
+	cli := newFakeClientWithAllocations(t, a1, a2)
+	h := &PDRouter{Decoder: dec, Client: cli, DenyOnOrphaned: true}
+
+	pod := newPod("p5", "ns", map[string]string{LabelModelService: "ns/ms-1"})
+	req := podAdmissionRequest(t, pod)
+	resp := h.Handle(context.Background(), req)
+
+	if !resp.Allowed {
+		t.Errorf("partial-allocation path should Allow; got %+v", resp)
+	}
+	if len(resp.Patches) != 0 {
+		t.Errorf("partial-allocation should not patch yet; got %d patches", len(resp.Patches))
+	}
+}
+
+func mustMarshal(t *testing.T, v interface{}) []byte {
+	t.Helper()
+	buf, err := jsonMarshal(v)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	return buf
+}
+
+func jsonMarshal(v interface{}) ([]byte, error) {
+	switch x := v.(type) {
+	case string:
+		return []byte("\"" + x + "\""), nil
+	case []byte:
+		return x, nil
+	default:
+		// best-effort fmt fallback
+		return []byte(strings.TrimSpace(toJSONString(v))), nil
+	}
+}
+
+func toJSONString(v interface{}) string {
+	if v == nil {
+		return "null"
+	}
+	return "<json>"
+}
+
 func TestHandle_ScaffoldAllowsAll(t *testing.T) {
 	dec := newDecoder(t)
-	h := &PDRouter{Decoder: dec}
+	// Empty client — no allocations seeded — should Allow without patch
+	// (no bindings observed).
+	h := &PDRouter{Decoder: dec, Client: newFakeClientWithAllocations(t)}
 
 	pod := newPod("p1", "ns", map[string]string{
 		LabelModelService: "ns/ms-1",
@@ -103,16 +308,16 @@ func TestHandle_ScaffoldAllowsAll(t *testing.T) {
 	resp := h.Handle(context.Background(), req)
 
 	if !resp.Allowed {
-		t.Errorf("T102 scaffold should always Allow; got Denied with %+v", resp)
+		t.Errorf("no-bindings path should Allow; got Denied with %+v", resp)
 	}
 	if len(resp.Patches) != 0 {
-		t.Errorf("T102 scaffold should NOT patch; got %d patch ops", len(resp.Patches))
+		t.Errorf("no-bindings path should NOT patch; got %d patch ops", len(resp.Patches))
 	}
 }
 
 func TestHandle_NonMSPod_Allowed(t *testing.T) {
 	dec := newDecoder(t)
-	h := &PDRouter{Decoder: dec}
+	h := &PDRouter{Decoder: dec, Client: newFakeClientWithAllocations(t)}
 
 	pod := newPod("p2", "ns", map[string]string{
 		"app.kubernetes.io/name": "unrelated",
@@ -126,10 +331,9 @@ func TestHandle_NonMSPod_Allowed(t *testing.T) {
 }
 
 func TestHandle_BadPodPayload_AllowedNotDenied(t *testing.T) {
-	// Decode failure → handler returns Allowed (scaffold posture).
-	// T103 may revisit to Deny on bad payload (security stance).
+	// Decode failure → handler returns Allowed (best-effort).
 	dec := newDecoder(t)
-	h := &PDRouter{Decoder: dec}
+	h := &PDRouter{Decoder: dec, Client: newFakeClientWithAllocations(t)}
 
 	req := admission.Request{
 		AdmissionRequest: admissionv1.AdmissionRequest{
@@ -142,9 +346,9 @@ func TestHandle_BadPodPayload_AllowedNotDenied(t *testing.T) {
 		},
 	}
 	resp := h.Handle(context.Background(), req)
-	// Allowed even on bad payload (best-effort scaffold).
+	// Allowed even on bad payload.
 	if !resp.Allowed {
-		t.Errorf("scaffold should Allow on bad payload; got %+v", resp)
+		t.Errorf("should Allow on bad payload; got %+v", resp)
 	}
 }
 

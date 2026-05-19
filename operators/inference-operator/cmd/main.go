@@ -122,14 +122,16 @@ func main() {
 	}
 	if enablePDRouterWebhook {
 		h := &webhook.PDRouter{
-			Client:  mgr.GetClient(),
-			Decoder: ctrladmission.NewDecoder(mgr.GetScheme()),
+			Client:         mgr.GetClient(),
+			Decoder:        ctrladmission.NewDecoder(mgr.GetScheme()),
+			DenyOnOrphaned: true,
 		}
 		mgr.GetWebhookServer().Register(webhook.PathPDRouterMutate, &ctrladmission.Webhook{Handler: h})
 		setupLog.Info("PDRouter webhook registered",
-			"task", "P5-T-102",
+			"task", "P5-T-103",
 			"path", webhook.PathPDRouterMutate,
-			"port", 9443)
+			"port", 9443,
+			"deny-on-orphaned", true)
 	}
 	// +kubebuilder:scaffold:builder
 

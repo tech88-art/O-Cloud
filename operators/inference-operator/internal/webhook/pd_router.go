@@ -16,15 +16,22 @@ limitations under the License.
 
 // Package webhook hosts the inference-operator admission webhooks.
 //
-// T102 scaffold ships the PD Router boilerplate handler — every
-// admission.Request is currently passed through with Allowed. T103
-// lands the slice-bindings annotation injection logic per ADR-0008.
+// T103 ships the PD Router mutating logic: every Pod admission
+// carrying the model-service label is enriched with a
+// `npu.huawei.com/slice-bindings` annotation listing the
+// NPUSliceAllocation entries currently associated with the
+// owning ModelService.
 package webhook
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -46,33 +53,54 @@ const PathPDRouterMutate = "/mutate-pod"
 const LabelModelService = "inference.ocloud.edge.example.com/model-service"
 
 // AnnotationSliceBindings is the annotation key the T103 mutating
-// logic stamps onto each Prefill / Decode Pod. Value format (T103):
-// comma-separated `<node>/<slice>/<device>:<aiCores>` entries.
+// logic stamps onto each Prefill / Decode Pod. Value format:
+// comma-separated `<node>/<pool>/<device>:<aiCores>` entries.
 const AnnotationSliceBindings = "npu.huawei.com/slice-bindings"
 
-// PDRouter is the admission.Handler that injects the slice-bindings
-// annotation onto Pods matching the model-service objectSelector.
-//
-// T102 (this commit) ships the handler skeleton: Pod decode, label
-// presence check, log line. Every request returns Allowed without a
-// patch. T103 replaces the early-return-without-patch with the real
-// annotation injection logic.
-type PDRouter struct {
-	// Client is the controller-runtime client used to look up
-	// ModelService + NPUSliceAllocation objects at admission time
-	// (T103 wires the real lookups).
-	Client client.Client
+// npuSliceAllocationListGVK is the GVK for cluster-wide List of the
+// NPUSliceAllocation audit objects. Cross-module Go imports are
+// forbidden (operators/CLAUDE.md §1), so the webhook reads via
+// unstructured client.
+var npuSliceAllocationListGVK = schema.GroupVersionKind{
+	Group:   "npu.ocloud.edge.example.com",
+	Version: "v1alpha1",
+	Kind:    "NPUSliceAllocationList",
+}
 
-	// Decoder is the admission.Decoder injected by the webhook
-	// server. T102 uses it to parse the incoming Pod from the
-	// admission.Request.
+// DenyOnOrphaned controls whether the handler returns Denied when
+// every NPUSliceAllocation for the ModelService reports phase=Orphaned.
+// Default true honors ADR-0008 "Fail-closed default"; operators
+// override via values.yaml when phasing the webhook in.
+type PDRouter struct {
+	Client  client.Client
 	Decoder admission.Decoder
+
+	// DenyOnOrphaned: when true (default), an all-Orphaned binding
+	// set produces admission.Denied with reason NoAvailableNPUSlices.
+	// When false, the handler logs + returns Allowed without a patch.
+	DenyOnOrphaned bool
 }
 
 // Handle implements admission.Handler.
+//
+// Decision matrix (per plan T103 acceptance):
+//
+//   - Pod missing model-service label: Allowed (defense-in-depth;
+//     objectSelector usually pre-filters).
+//   - Lookup error (list NPUSliceAllocation fails): Allowed
+//     without patch (best-effort enrichment per plan; the webhook
+//     is enrichment, not blocking).
+//   - All claims allocated: Patched with annotation.
+//   - One or more claims pending: Allowed without patch (Pod will
+//     be re-evaluated when claims allocate; eventual-consistency).
+//   - All claims Orphaned: Denied with NoAvailableNPUSlices when
+//     DenyOnOrphaned (default). Otherwise Allowed without patch.
+//   - No allocations yet observed at all (T007 templates created
+//     but K8s hasn't expanded to claims yet, or npu-dra-driver
+//     hasn't allocated yet): Allowed without patch.
 func (h *PDRouter) Handle(ctx context.Context, req admission.Request) admission.Response {
 	lg := log.FromContext(ctx).WithName("pd-router").WithValues(
-		"task", "P5-T-102",
+		"task", "P5-T-103",
 		"pod-namespace", req.Namespace,
 		"pod-name", req.Name,
 		"operation", req.Operation,
@@ -81,34 +109,110 @@ func (h *PDRouter) Handle(ctx context.Context, req admission.Request) admission.
 	pod := &corev1.Pod{}
 	if err := h.Decoder.Decode(req, pod); err != nil {
 		lg.Error(err, "decode Pod failed; allowing without mutation")
-		return admission.Allowed("decode failure tolerated in T102 scaffold")
+		return admission.Allowed("decode failure tolerated")
 	}
 
 	msRef, ok := pod.Labels[LabelModelService]
 	if !ok || msRef == "" {
-		// objectSelector should pre-filter; this branch is
-		// defense-in-depth. Allow without patch.
 		lg.V(1).Info("Pod missing model-service label; allowing without patch")
 		return admission.Allowed("not a ModelService Pod")
 	}
 
-	lg.V(1).Info("Pod matched; T102 scaffold returns Allowed without patch — T103 lands real injection",
-		"model-service-ref", msRef,
-		"pd-role-label", routerLabelValues(pod))
-
-	// T102 contract: always Allowed without patch.
-	return admission.Allowed("T102 scaffold (no mutation yet)")
-}
-
-// routerLabelValues returns the values of every label that looks like
-// a pd-role indicator (`*/pd-role`) — small log helper for the
-// scaffold's V(1) line.
-func routerLabelValues(pod *corev1.Pod) string {
-	for k, v := range pod.Labels {
-		if k == "inference.ocloud.edge.example.com/pd-role" {
-			return v
-		}
+	bindings, err := h.listBindings(ctx, msRef)
+	if err != nil {
+		lg.Error(err, "list NPUSliceAllocation failed; allowing without patch (best-effort enrichment)",
+			"model-service-ref", msRef)
+		return admission.Allowed("allocation lookup failure tolerated")
 	}
-	return ""
+
+	allocated, orphaned, other := CountByPhase(bindings)
+	lg.V(1).Info("Bindings counted",
+		"model-service-ref", msRef,
+		"total", len(bindings),
+		"allocated", allocated,
+		"orphaned", orphaned,
+		"other", other,
+	)
+
+	// All-Orphaned → fail-closed Denied per ADR-0008.
+	if len(bindings) > 0 && allocated == 0 && other == 0 && orphaned == len(bindings) && h.DenyOnOrphaned {
+		return admission.Denied("NoAvailableNPUSlices: all NPUSliceAllocations for ModelService are Orphaned")
+	}
+
+	// Pending claims → best-effort skip until next reconcile.
+	if allocated < len(bindings) {
+		lg.V(1).Info("Some bindings not yet allocated; allowing without patch",
+			"allocated", allocated, "total", len(bindings))
+		return admission.Allowed("waiting for full allocation")
+	}
+
+	// Nothing to inject (no allocations yet → first Pod admission
+	// races with claim allocation; downstream watch event will
+	// re-fire).
+	if len(bindings) == 0 {
+		lg.V(1).Info("No NPUSliceAllocation entries observed for ModelService; allowing without patch",
+			"model-service-ref", msRef)
+		return admission.Allowed("no slice bindings yet")
+	}
+
+	// All allocated → inject annotation.
+	allocatedBindings := FilterAllocated(bindings)
+	value := EncodeBindings(allocatedBindings)
+	patchedPod := pod.DeepCopy()
+	if patchedPod.Annotations == nil {
+		patchedPod.Annotations = make(map[string]string)
+	}
+	patchedPod.Annotations[AnnotationSliceBindings] = value
+
+	marshalled, err := json.Marshal(patchedPod)
+	if err != nil {
+		lg.Error(err, "marshal patched Pod failed; allowing without patch")
+		return admission.Allowed("marshal failure tolerated")
+	}
+	return admission.PatchResponseFromRaw(req.Object.Raw, marshalled)
 }
 
+// listBindings lists every NPUSliceAllocation cluster-wide via
+// unstructured client, filters down to entries whose
+// Spec.modelServiceRef matches msRef, and returns them as
+// SliceBinding rows.
+//
+// Phase 5 design: cluster-wide list is fine — audit count is
+// O(claims) which is O(replicas) which is small. Phase 6 may
+// switch to an indexed field selector once K8s supports them
+// for custom resources.
+func (h *PDRouter) listBindings(ctx context.Context, msRef string) ([]SliceBinding, error) {
+	list := &unstructured.UnstructuredList{}
+	list.SetGroupVersionKind(npuSliceAllocationListGVK)
+	if err := h.Client.List(ctx, list); err != nil {
+		if apierrors.IsNotFound(err) {
+			// CRD not yet registered (cluster freshly bootstrapped
+			// without npu-dra-driver chart applied). Treat as zero
+			// bindings.
+			return nil, nil
+		}
+		return nil, fmt.Errorf("list NPUSliceAllocation: %w", err)
+	}
+
+	out := make([]SliceBinding, 0, len(list.Items))
+	for i := range list.Items {
+		a := &list.Items[i]
+		ref, found, _ := unstructured.NestedString(a.Object, "spec", "modelServiceRef")
+		if !found || ref != msRef {
+			continue
+		}
+		nodeName, _, _ := unstructured.NestedString(a.Object, "spec", "nodeName")
+		pool, _, _ := unstructured.NestedString(a.Object, "spec", "sliceRef", "pool")
+		device, _, _ := unstructured.NestedString(a.Object, "spec", "sliceRef", "device")
+		aiCores, _, _ := unstructured.NestedInt64(a.Object, "spec", "aiCores")
+		phase, _, _ := unstructured.NestedString(a.Object, "status", "phase")
+		out = append(out, SliceBinding{
+			Node:    nodeName,
+			Pool:    pool,
+			Device:  device,
+			AICores: int32(aiCores),
+			Phase:   phase,
+		})
+	}
+	return out, nil
+}
