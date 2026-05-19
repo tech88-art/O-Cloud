@@ -54,6 +54,25 @@ metricsBindAddress: ":8082"
 modelServiceController:
   enabled: true
 
+# -------------------------------------------------- cert-manager wiring (T101)
+# When enabled, the chart renders a cert-manager Certificate + (optional)
+# Issuer pointing at the PD Router webhook TLS secret. cert-manager (v1.16+)
+# MUST be pre-installed in the cluster — this chart does NOT bundle it as a
+# subchart dependency. See docs/known-issues.md #10 for install order.
+certManager:
+  enabled: true
+  # Certificate validity + renewal window (cert-manager defaults: 8760h
+  # and 720h respectively). Override for shorter rotation in CI.
+  duration: 8760h
+  renewBefore: 720h
+  # Issuer configuration. Default: create a self-signed Issuer in the
+  # release namespace (cluster operators with their own CA override
+  # create=false + kind=ClusterIssuer + name=<their issuer>).
+  issuer:
+    create: true
+    kind: Issuer
+    name: ""
+
 # ----------------------------------------------------- Leader election
 leaderElect: true
 

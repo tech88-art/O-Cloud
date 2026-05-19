@@ -22,6 +22,12 @@ MutatingWebhookConfiguration template.
   `npu.ocloud.edge.example.com/v1alpha1.NPUSliceAllocation` being a
   registered CRD; npu-dra-driver also publishes ResourceClaim status
   the inference-operator T007 reads)
+- **cert-manager (v1.16+) pre-installed** when `certManager.enabled=true`
+  (the chart's default). The chart renders a Certificate + Issuer
+  pointing at cert-manager objects but does not ship cert-manager as a
+  subchart. See `docs/known-issues.md` #10 for the recommended install
+  order. Disable via `--set certManager.enabled=false` if you bring
+  your own TLS plumbing for the PD Router webhook (T102+).
 
 ## Quick start
 
@@ -46,6 +52,10 @@ helm install inference-operator deploy/helm-charts/inference-operator \
 | `image.repository`                 | `inference-operator`     | Set to your registry path                        |
 | `image.tag`                        | `v0.1.0`                 | Match the binary's PROJECT version               |
 | `modelServiceController.enabled`   | `true`                   | T006 ModelServiceReconciler toggle               |
+| `certManager.enabled`              | `true`                   | T101 render Certificate + Issuer for webhook TLS |
+| `certManager.issuer.create`        | `true`                   | T101 render self-signed Issuer (set false to BYOI)|
+| `certManager.issuer.kind`          | `Issuer`                 | T101 — `ClusterIssuer` for cluster-wide CAs      |
+| `certManager.issuer.name`          | `""` (auto)              | T101 — explicit issuer name when BYOI            |
 | `replicaCount`                     | `1`                      | Phase 5 default; HA arrives Phase 7+             |
 | `leaderElect`                      | `true`                   | Required when `replicaCount > 1`                 |
 | `serviceAccount.create`/`rbac.create` | `true` / `true`       | ClusterRole scoped to ModelService + dep CRDs    |

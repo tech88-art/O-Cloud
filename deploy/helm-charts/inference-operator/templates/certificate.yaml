@@ -1,0 +1,33 @@
+{{- /*
+Certificate for the PD Router admission webhook (P5-T-101).
+
+cert-manager renders a Secret containing tls.crt + tls.key into
+`spec.secretName` (default `<release>-inference-operator-webhook-tls`).
+The MutatingWebhookConfiguration in T102 references the same secret
+via the `cert-manager.io/inject-ca-from` annotation so cert-manager
+injects the issuer's CA bundle automatically.
+
+DNS names cover the in-cluster Service name + the standard short
+form; production deploys may extend via values.yaml.
+
+cert-manager must be pre-installed; see docs/known-issues.md #10.
+*/}}
+{{- if .Values.certManager.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "inference-operator.fullname" . }}-webhook
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inference-operator.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "inference-operator.fullname" . }}-webhook-tls
+  duration: {{ .Values.certManager.duration | default "8760h" | quote }}
+  renewBefore: {{ .Values.certManager.renewBefore | default "720h" | quote }}
+  dnsNames:
+    - {{ include "inference-operator.fullname" . }}-webhook.{{ .Release.Namespace }}.svc
+    - {{ include "inference-operator.fullname" . }}-webhook.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    kind: {{ .Values.certManager.issuer.kind | default "Issuer" }}
+    name: {{ .Values.certManager.issuer.name | default (printf "%s-selfsigned" (include "inference-operator.fullname" .)) }}
+{{- end }}

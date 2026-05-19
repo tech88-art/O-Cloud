@@ -1,0 +1,23 @@
+{{- /*
+Issuer for the PD Router admission webhook TLS cert (P5-T-101).
+
+Phase 5 default: self-signed Issuer scoped to the release namespace.
+Production deploys override `certManager.issuer.kind` to
+`ClusterIssuer` and point at a real CA (vault-issuer, ca-issuer, etc.).
+The chart still emits the Certificate object so the webhook config can
+reference `cert-manager.io/inject-ca-from` regardless of issuer kind.
+
+cert-manager must be pre-installed (chart does NOT ship cert-manager
+as a subchart per docs/known-issues.md #10).
+*/}}
+{{- if and .Values.certManager.enabled .Values.certManager.issuer.create }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "inference-operator.fullname" . }}-selfsigned
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inference-operator.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+{{- end }}

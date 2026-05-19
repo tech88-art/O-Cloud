@@ -252,6 +252,46 @@ JSON), which is what the API-level smokes assert. See
 `tests/e2e/specs/kind-smoke.spec.ts` header comment for the full
 trade-off.
 
+### #10 — inference-operator helm install order: cert-manager first
+
+Severity: low · Status: **OPEN** (2026-05-19, P5-T-101).
+
+The inference-operator helm chart's `certManager.enabled=true` default
+renders a cert-manager `Certificate` + `Issuer`. The chart assumes
+cert-manager (v1.16+) is **pre-installed** in the cluster — it is NOT
+bundled as a subchart dependency (the alternative was rejected to keep
+version pinning out of this chart's responsibility).
+
+**Required ordering** for `helm install` in a fresh cluster:
+
+```bash
+# 1. Install cert-manager (any supported method)
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.0/cert-manager.yaml
+
+# 2. Wait for cert-manager pods Ready (typically 30-90s in kind)
+kubectl wait --for=condition=Available --timeout=120s -n cert-manager deploy --all
+
+# 3. Install inference-operator
+helm install inference-operator deploy/helm-charts/inference-operator \
+  --namespace ocloud-system --create-namespace
+```
+
+If step 1 is skipped or step 2 doesn't complete before step 3, the
+inference-operator Certificate creation will fail with `no matches
+for kind "Certificate" in version "cert-manager.io/v1"`.
+
+**Workaround**: set `--set certManager.enabled=false` and bring your
+own TLS cert plumbing for the PD Router webhook (T102+); the webhook
+defaults to failurePolicy=Fail so disabling cert wiring effectively
+disables the webhook until you wire up the secret manually.
+
+**Proposed resolution**: Phase 5 T106 kind smoke includes the
+cert-manager install step in `tests/e2e/kind/phase5/install.sh`. A
+future Phase 6+ task may introduce a chart-level dependency or a
+helmfile orchestrator if cluster operators report friction.
+
+---
+
 ### #9 — ascend exporter dev stub serves static metrics only
 
 Severity: trivial · Status: **RESOLVED** (2026-05-19, P3-T-103).
