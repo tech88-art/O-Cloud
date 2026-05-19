@@ -1,7 +1,9 @@
 # inference-operator — module detailed design
 
-> Status: Phase 4 scaffold (T103) — ModelService CRD types only.
-> Controller body + PD Router mutating admission webhook land Phase 5 per ADR-0008 + ADR-0009.
+> Status: Phase 5 T006 — ModelService Reconciler scaffold landed
+> alongside Phase 4 CRD types. T007/T008 expand the Reconcile body
+> (Deployment + ResourceClaim materialisation, phase machine to Ready);
+> T101-T104 add cert-manager + PD Router webhook per ADR-0008.
 
 ## 1. 架构概览
 
@@ -278,6 +280,41 @@ main.go main()
    │     // mgr.GetWebhookServer().Register("/mutate", &webhook.Admission{Handler: ...})
    │ mgr.Start(...)
 ```
+
+### 4.2.1 P5-T-006 ModelService Reconciler scaffold (operative)
+
+```
+Reconcile flow (T006 commit):
+  1. Get ModelService → if NotFound, return (deletion path)
+  2. If DeletionTimestamp != nil:
+        RemoveFinalizer + Update → return
+     (T007/T008 expand this to drain owned Deployments + claims first)
+  3. If !ContainsFinalizer(FinalizerName):
+        AddFinalizer + Update → Requeue (let new RV drive next pass)
+  4. Resolve spec.npuSlicePoolRef via unstructured client:
+       - NotFound:
+            phase=Failed
+            PoolUnresolved=False reason=NPUSlicePoolNotFound
+            Warning event + return
+       - exists but status.totalSlices == 0:
+            phase=Provisioning
+            PoolUnresolved=True reason=NPUSlicePoolFound
+            AllocationReady=False reason=WaitingForPool
+            Normal event + return
+       - exists with status.totalSlices > 0:
+            phase=Provisioning
+            PoolUnresolved=True
+            AllocationReady=False reason=ProvisioningScaffold
+            (T007 promotes AllocationReady once claims allocated)
+```
+
+Cross-module discipline: NPUSlicePool is consumed via
+`unstructured.Unstructured` (operators/CLAUDE.md §1 forbids cross-
+module Go imports). `poolGVK` constant pins the GroupVersionKind.
+
+Finalizer name: `inference.ocloud.edge.example.com/modelservice-cleanup`.
+Phase 5 T008 expands the deletion-drain to wait for owned Deployments
++ ResourceClaims to be GC'd before removing the finalizer.
 
 ### 4.3 ModelService reconcile lifecycle (Phase 5)
 

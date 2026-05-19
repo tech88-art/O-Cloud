@@ -32,6 +32,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	inferencev1alpha1 "github.com/tech88-art/O-Cloud/operators/inference-operator/api/v1alpha1"
+	"github.com/tech88-art/O-Cloud/operators/inference-operator/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -52,6 +53,7 @@ func main() {
 	var probeAddr string
 	var enableLeaderElection bool
 	var enableHTTP2 bool
+	var enableModelServiceController bool
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8082",
 		"The address the metrics endpoint binds to. Set to 0 to disable.")
@@ -61,6 +63,10 @@ func main() {
 		"Enable leader election for controller manager.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers.")
+	flag.BoolVar(&enableModelServiceController, "enable-modelservice-controller", true,
+		"Enable the ModelService controller (P5-T-006+). Resolves the "+
+			"bound NPUSlicePool, drives Status.Phase through Pending → "+
+			"Provisioning → Ready / Failed. Default true.")
 
 	opts := zap.Options{Development: true}
 	opts.BindFlags(flag.CommandLine)
@@ -88,9 +94,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Phase 4 T103 scaffold: no controllers registered.
-	// Phase 5 lands the ModelService controller per ADR-0008 (PD Router
-	// webhook impl) + ADR-0009 (npu-dra-driver allocation logic).
+	if enableModelServiceController {
+		msr := &controller.ModelServiceReconciler{
+			Client:   mgr.GetClient(),
+			Scheme:   mgr.GetScheme(),
+			Recorder: mgr.GetEventRecorderFor("modelservice-controller"),
+		}
+		if err := msr.SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to register ModelServiceReconciler")
+			os.Exit(1)
+		}
+		setupLog.Info("ModelServiceReconciler registered", "task", "P5-T-006")
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -103,9 +118,9 @@ func main() {
 	}
 
 	setupLog.Info("Starting manager",
-		"phase", "4-scaffold",
-		"task", "P4-T-103",
-		"controllers", "none (T103 scaffold; Phase 5 lands ModelService controller per ADR-0008+ADR-0009)")
+		"phase", "5",
+		"latest-task", "P5-T-006",
+		"modelservice-controller-enabled", enableModelServiceController)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "Failed to run manager")
 		os.Exit(1)

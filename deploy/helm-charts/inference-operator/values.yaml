@@ -1,0 +1,85 @@
+# Default values for inference-operator (Phase 5 T006 skeleton).
+#
+# T006 ships the ModelServiceReconciler scaffold (resolve pool, drive
+# phase Pending → Provisioning, manage finalizer). T007 + T008 expand
+# Reconcile to create Deployments + ResourceClaims and walk the phase
+# machine to Ready / Failed. T101 + T102 + T103 add the cert-manager
+# wiring + PD Router webhook.
+
+image:
+  repository: inference-operator
+  tag: "v0.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 1
+
+# Node placement. Default: no constraint — Phase 5 controller has no
+# real-hardware dependency.
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Pod-level securityContext mirrors npu-dra-driver chart (Phase 5 T101).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+healthProbeBindAddress: ":8081"
+metricsBindAddress: ":8082"
+
+# ----------------------------------------------------- ModelService controller
+# T006 toggle. Default ON.
+modelServiceController:
+  enabled: true
+
+# ----------------------------------------------------- Leader election
+leaderElect: true
+
+# ----------------------------------------------------- ServiceAccount
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# ----------------------------------------------------- RBAC
+# Phase 5 T006 grants minimum required:
+#   - modelservices            full CRUD (controller owns the kind)
+#   - modelservices/status     update + patch
+#   - modelservices/finalizers update + patch
+#   - npusliceallocations      read (Phase 5 T103 webhook + T008 phase
+#                              machine read this to compose slice-
+#                              bindings annotation + aggregate Ready)
+#   - resourceclaims           CRUD (T007 creates one per replica)
+#   - npuslicepools            read (T006 resolves pool by reference)
+#   - leases                   leader election
+#   - events                   emit reconcile events
+rbac:
+  create: true
+
+# ----------------------------------------------------- Extras
+extraArgs: []
+extraEnv: []
+podAnnotations: {}
+podLabels: {}

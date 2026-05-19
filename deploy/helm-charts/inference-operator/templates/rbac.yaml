@@ -1,0 +1,73 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "inference-operator.fullname" . }}
+  labels:
+    {{- include "inference-operator.labels" . | nindent 4 }}
+rules:
+  # ModelService — controller owns the kind.
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["modelservices"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["modelservices/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["modelservices/finalizers"]
+    verbs: ["update", "patch"]
+  # NPUSlicePool — read for spec.npuSlicePoolRef resolution. Same-namespace
+  # convention (operators/CLAUDE.md §4 Phase 1-2 isolation-by-convention).
+  - apiGroups: ["ims.ocloud.edge.example.com"]
+    resources: ["npuslicepools"]
+    verbs: ["get", "list", "watch"]
+  # NPUSliceAllocation — read for T103 PD Router slice-binding annotation
+  # composition + T008 phase machine readiness aggregation.
+  - apiGroups: ["npu.ocloud.edge.example.com"]
+    resources: ["npusliceallocations"]
+    verbs: ["get", "list", "watch"]
+  # ResourceClaim — T007 creates one per replica + reads
+  # status.allocation in T008 phase machine.
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["resourceclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["resourceclaims/status"]
+    verbs: ["get"]
+  # Deployments — T007 creates Prefill + Decode.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/status"]
+    verbs: ["get"]
+  # Pods — T103 webhook scope + T008 readiness aggregation (counts via
+  # Deployment status.readyReplicas in practice, but watch granted so the
+  # webhook can pull individual pod metadata if needed).
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Leader election lease.
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Event emission.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "inference-operator.fullname" . }}
+  labels:
+    {{- include "inference-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "inference-operator.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "inference-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

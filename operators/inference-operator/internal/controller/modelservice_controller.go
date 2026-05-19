@@ -1,0 +1,252 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+import (
+	"context"
+	"fmt"
+
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	inferencev1alpha1 "github.com/tech88-art/O-Cloud/operators/inference-operator/api/v1alpha1"
+)
+
+// FinalizerName is the metadata.finalizers entry the ModelService
+// controller stamps onto every observed ModelService. The finalizer
+// blocks deletion until the controller has drained owned resources
+// (Deployments + ResourceClaims created in T007/T008).
+const FinalizerName = "inference.ocloud.edge.example.com/modelservice-cleanup"
+
+// Condition types written to ModelService.Status.Conditions.
+const (
+	// ConditionPoolUnresolved is False with reason NPUSlicePoolNotFound
+	// when the named NPUSlicePool does not exist in the same namespace
+	// as the ModelService.
+	ConditionPoolUnresolved = "PoolUnresolved"
+
+	// ConditionAllocationReady is True once every per-replica
+	// ResourceClaim created by T007 reports an AllocatedDeviceStatus
+	// with Ready=True. Surface signal for ModelService consumers.
+	ConditionAllocationReady = "AllocationReady"
+
+	// ConditionAvailable is True when phase=Ready (PD pair healthy).
+	ConditionAvailable = "Available"
+)
+
+// Reasons used on the conditions above.
+const (
+	reasonNPUSlicePoolNotFound = "NPUSlicePoolNotFound"
+	reasonNPUSlicePoolFound    = "NPUSlicePoolFound"
+	reasonWaitingForPool       = "WaitingForPool"
+	reasonScaffold             = "ProvisioningScaffold"
+)
+
+// poolGVK is the GroupVersionKind the controller uses for unstructured
+// reads against the pool-operator's NPUSlicePool CRD. Cross-module Go
+// imports are forbidden by operators/CLAUDE.md §1 — the unstructured
+// path keeps the build dependency edge clean.
+var poolGVK = schema.GroupVersionKind{
+	Group:   "ims.ocloud.edge.example.com",
+	Version: "v1alpha1",
+	Kind:    "NPUSlicePool",
+}
+
+// ModelServiceReconciler observes
+// inference.ocloud.edge.example.com/v1alpha1.ModelService objects and
+// orchestrates the Phase 5 provisioning flow: resolve the bound
+// NPUSlicePool, create per-replica ResourceClaims (T007), spawn the
+// Prefill + Decode Deployments (T007), drive Status.Phase through
+// Pending → Provisioning → Ready / Failed (T008).
+//
+// T006 (this commit) ships the minimal scaffold:
+//   - finalizer add path (deletion-drain path arrives T008)
+//   - NPUSlicePool resolution via unstructured client
+//   - phase transition: Pending → Provisioning (when pool found and at
+//     least some slices observed) or Failed (when pool not found)
+//   - WaitingForPool event when pool exists but observes 0 slices
+type ModelServiceReconciler struct {
+	Client   client.Client
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
+}
+
+// Reconcile implements the controller-runtime Reconciler contract.
+func (r *ModelServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	lg := log.FromContext(ctx).WithName("modelservice-controller").WithValues(
+		"modelservice", req.NamespacedName, "task", "P5-T-006",
+	)
+
+	var ms inferencev1alpha1.ModelService
+	if err := r.Client.Get(ctx, req.NamespacedName, &ms); err != nil {
+		if apierrors.IsNotFound(err) {
+			lg.V(1).Info("ModelService deleted")
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
+
+	if ms.DeletionTimestamp != nil {
+		// Phase 5 T006: deletion-drain logic is a Phase 5 T008
+		// deliverable. T006 only removes the finalizer when no owned
+		// resources exist (a no-op since T006 doesn't create any).
+		// T007/T008 expand this to wait for Deployments + ResourceClaims
+		// to be GC'd before unblocking deletion.
+		controllerutil.RemoveFinalizer(&ms, FinalizerName)
+		if err := r.Client.Update(ctx, &ms); err != nil {
+			if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
+				return ctrl.Result{}, nil
+			}
+			return ctrl.Result{}, fmt.Errorf("remove finalizer: %w", err)
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if !controllerutil.ContainsFinalizer(&ms, FinalizerName) {
+		controllerutil.AddFinalizer(&ms, FinalizerName)
+		if err := r.Client.Update(ctx, &ms); err != nil {
+			return ctrl.Result{}, fmt.Errorf("add finalizer: %w", err)
+		}
+		// Requeue immediately so the new ResourceVersion drives the
+		// rest of the reconcile pass without the stale finalizer
+		// state interfering.
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	pool, poolErr := r.resolveNPUSlicePool(ctx, ms.Namespace, ms.Spec.NPUSlicePoolRef.Name)
+	switch {
+	case apierrors.IsNotFound(poolErr):
+		return r.markPoolNotFound(ctx, &ms, ms.Spec.NPUSlicePoolRef.Name)
+	case poolErr != nil:
+		return ctrl.Result{}, fmt.Errorf("resolve NPUSlicePool: %w", poolErr)
+	}
+
+	if !poolHasSlices(pool) {
+		return r.markWaitingForPool(ctx, &ms, pool)
+	}
+
+	return r.markProvisioning(ctx, &ms, pool)
+}
+
+// resolveNPUSlicePool reads the named pool via the unstructured client.
+// Returns NotFound when the pool does not exist in the same namespace
+// as the ModelService.
+func (r *ModelServiceReconciler) resolveNPUSlicePool(ctx context.Context, ns, name string) (*unstructured.Unstructured, error) {
+	pool := &unstructured.Unstructured{}
+	pool.SetGroupVersionKind(poolGVK)
+	if err := r.Client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, pool); err != nil {
+		return nil, err
+	}
+	return pool, nil
+}
+
+// poolHasSlices returns true when the pool's status.totalSlices field
+// is > 0 — Phase 5 readiness heuristic. T007 may refine to also
+// require AvailableSlices > requested replica count.
+func poolHasSlices(pool *unstructured.Unstructured) bool {
+	totalI, found, err := unstructured.NestedInt64(pool.Object, "status", "totalSlices")
+	if err != nil || !found {
+		return false
+	}
+	return totalI > 0
+}
+
+func (r *ModelServiceReconciler) markPoolNotFound(ctx context.Context, ms *inferencev1alpha1.ModelService, poolName string) (ctrl.Result, error) {
+	base := ms.DeepCopy()
+	ms.Status.Phase = inferencev1alpha1.PhaseFailed
+	ms.Status.ObservedGeneration = ms.Generation
+	SetCondition(&ms.Status.Conditions, metav1.Condition{
+		Type:    ConditionPoolUnresolved,
+		Status:  metav1.ConditionFalse,
+		Reason:  reasonNPUSlicePoolNotFound,
+		Message: fmt.Sprintf("NPUSlicePool %s/%s not found", ms.Namespace, poolName),
+	})
+	if err := r.Client.Status().Patch(ctx, ms, client.MergeFrom(base)); err != nil {
+		return ctrl.Result{}, fmt.Errorf("patch failed status: %w", err)
+	}
+	if r.Recorder != nil {
+		r.Recorder.Eventf(ms, corev1.EventTypeWarning, reasonNPUSlicePoolNotFound,
+			"NPUSlicePool %s/%s not found", ms.Namespace, poolName)
+	}
+	return ctrl.Result{}, nil
+}
+
+func (r *ModelServiceReconciler) markWaitingForPool(ctx context.Context, ms *inferencev1alpha1.ModelService, pool *unstructured.Unstructured) (ctrl.Result, error) {
+	base := ms.DeepCopy()
+	ms.Status.Phase = inferencev1alpha1.PhaseProvisioning
+	ms.Status.ObservedGeneration = ms.Generation
+	SetCondition(&ms.Status.Conditions, metav1.Condition{
+		Type:    ConditionPoolUnresolved,
+		Status:  metav1.ConditionTrue,
+		Reason:  reasonNPUSlicePoolFound,
+		Message: fmt.Sprintf("NPUSlicePool %s/%s observed; waiting for slices", ms.Namespace, pool.GetName()),
+	})
+	SetCondition(&ms.Status.Conditions, metav1.Condition{
+		Type:    ConditionAllocationReady,
+		Status:  metav1.ConditionFalse,
+		Reason:  reasonWaitingForPool,
+		Message: "Pool has no slices yet; provisioning blocked",
+	})
+	if err := r.Client.Status().Patch(ctx, ms, client.MergeFrom(base)); err != nil {
+		return ctrl.Result{}, fmt.Errorf("patch waiting-for-pool status: %w", err)
+	}
+	if r.Recorder != nil {
+		r.Recorder.Eventf(ms, corev1.EventTypeNormal, reasonWaitingForPool,
+			"NPUSlicePool %s/%s observed but reports 0 slices yet", ms.Namespace, pool.GetName())
+	}
+	return ctrl.Result{}, nil
+}
+
+func (r *ModelServiceReconciler) markProvisioning(ctx context.Context, ms *inferencev1alpha1.ModelService, pool *unstructured.Unstructured) (ctrl.Result, error) {
+	base := ms.DeepCopy()
+	ms.Status.Phase = inferencev1alpha1.PhaseProvisioning
+	ms.Status.ObservedGeneration = ms.Generation
+	SetCondition(&ms.Status.Conditions, metav1.Condition{
+		Type:    ConditionPoolUnresolved,
+		Status:  metav1.ConditionTrue,
+		Reason:  reasonNPUSlicePoolFound,
+		Message: fmt.Sprintf("NPUSlicePool %s/%s observed", ms.Namespace, pool.GetName()),
+	})
+	SetCondition(&ms.Status.Conditions, metav1.Condition{
+		Type:    ConditionAllocationReady,
+		Status:  metav1.ConditionFalse,
+		Reason:  reasonScaffold,
+		Message: "T006 scaffold: Deployments + ResourceClaims arrive in T007",
+	})
+	if err := r.Client.Status().Patch(ctx, ms, client.MergeFrom(base)); err != nil {
+		return ctrl.Result{}, fmt.Errorf("patch provisioning status: %w", err)
+	}
+	return ctrl.Result{}, nil
+}
+
+// SetupWithManager registers this Reconciler with the manager. Watches
+// inference.ocloud.edge.example.com/v1alpha1.ModelService.
+func (r *ModelServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&inferencev1alpha1.ModelService{}).
+		Named("modelservice").
+		Complete(r)
+}

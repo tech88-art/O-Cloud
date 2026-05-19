@@ -1,0 +1,27 @@
+apiVersion: v2
+name: inference-operator
+description: |
+  O-Cloud inference-operator — Phase 5 ModelService controller plus the
+  PD Router mutating admission webhook (ADR-0008). The Reconciler
+  resolves the bound NPUSlicePool, allocates per-replica ResourceClaims
+  via npu-dra-driver, and spawns Prefill + Decode Deployments. The
+  webhook stamps `npu.huawei.com/slice-bindings` onto Pods carrying the
+  `inference.ocloud.edge.example.com/model-service` label so downstream
+  schedulers and the runtime can pin a Pod to its allocated NPU slice.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ascend
+  - npu
+  - inference
+  - vllm
+  - model-service
+  - pd-router
+  - ocloud
+home: https://github.com/tech88-art/O-Cloud
+sources:
+  - https://github.com/tech88-art/O-Cloud/tree/main/operators/inference-operator
+maintainers:
+  - name: O-Cloud team
+    url: https://github.com/tech88-art/O-Cloud
