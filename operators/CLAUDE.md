@@ -8,12 +8,16 @@
 
 ```
 operators/
-├── pool-operator/        4 级池化 CRD（ClusterPool / NodePool / NPUPool / NPUSlicePool）
-├── npu-dra-driver/       Ascend NPU DRA driver(Phase 4 scaffold; allocation logic Phase 5+)
-└── inference-operator/   推理服务 CRD（ModelService · scaffold Phase 4 T103 / controller Phase 5）
+├── pool-operator/        4 级池化 CRD(ClusterPool / NodePool / NPUPool / NPUSlicePool)+ 控制器(Phase 3 完整 + Phase 4 T102 加 ResourceSlice cross-watch)
+├── npu-dra-driver/       Ascend NPU DRA driver(Phase 4 simulator-first; real Ascend + 真分配 Phase 5+)
+└── inference-operator/   推理服务 CRD(ModelService · scaffold Phase 4 T103 / controller Phase 5 per ADR-0008+ADR-0009)
 ```
 
-**Phase 4 W1 引入 npu-dra-driver(P4-T-003)**:Kubebuilder v4 scaffold + 预留 `--enable-publisher` / `--enable-claim-controller` flags;simulator-first(读 `configs/mock-data/set-a-small/npus.json`),不接触真实 NPU。详见 `docs/phase4-plan.md` §3 P4-T-003 与 `operators/npu-dra-driver/README.md`。三个 sub-project 共享本 CLAUDE.md 的工程约定(§3.x),但各自维护独立 `go.mod`(module path 不交叉依赖)。
+**Phase 4 W1 引入 npu-dra-driver(P4-T-003)**:Kubebuilder v4 scaffold + 预留 `--enable-publisher` / `--enable-claim-controller` flags;simulator-first(读 `configs/mock-data/set-a-small/npus.json`),不接触真实 NPU。详见 `docs/phase4-plan.md` §3 P4-T-003 与 `operators/npu-dra-driver/README.md`。
+
+**Phase 4 W2 引入 inference-operator scaffold(P4-T-103)**:Kubebuilder v4 scaffold + ModelService CRD 类型(api/v1alpha1)只 · 不含 controller body。Phase 5 落 controller 实现 per ADR-0008(PD Router 管入 webhook)+ ADR-0009(npu-dra-driver 分配逻辑)。详见 `operators/inference-operator/README.md`。
+
+三个 sub-project 共享本 CLAUDE.md 的工程约定(§3.x),但各自维护独立 `go.mod`(module path 不交叉依赖)— 跨 sub-project 共享代码请走 Go 单独包发布或代码复制(本仓库已有先例:pool-operator + npu-dra-driver/internal/controller/utils.go 是文本复制不是 import,见 §3.x 末尾说明)。
 
 **Phase 1 范围**：
 - 只完成 **CRD 类型定义**（`api/v1alpha1/*.go`），**不**实现 Controller
