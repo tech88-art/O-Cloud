@@ -102,6 +102,27 @@ mockConfigMap:
 claimController:
   enabled: true
 
+# ---------------------------------------------------- DeviceClass registration
+# Phase 5 (P5-T-001) — registers a resource.k8s.io/v1beta1 DeviceClass per
+# ADR-0009 §5 step 1 so ResourceClaim authors can request devices by class
+# name. Three classes are rendered when the corresponding toggle is true:
+#
+#   * `npu.ocloud.edge.example.com`         — bare; matches all NPU devices
+#     published by this driver (driver-name-only selector).
+#   * `npu.ocloud.edge.example.com/whole`   — adds `npu.huawei.com/slice-
+#     strategy = "FixedTemplate"` filter (whole / vir04 / vir08 templates).
+#   * `npu.ocloud.edge.example.com.dynamic` — adds `npu.huawei.com/slice-
+#     strategy = "Dynamic"` filter (free-form AI-core allocation).
+#
+# Sub-class naming follows the `claim_controller.go isOurClass()` prefix
+# convention (`/whole` and `.dynamic` are both accepted suffix shapes).
+# Phase 7 Partitionable Devices may add a `.partition` sub-class here.
+deviceClass:
+  create: true
+  subClasses:
+    whole: true
+    dynamic: true
+
 # -------------------------------------------------------------- Leader election
 leaderElect: true
 

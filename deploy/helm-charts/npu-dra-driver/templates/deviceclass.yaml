@@ -1,0 +1,80 @@
+{{- /*
+DeviceClass registration — Phase 5 (P5-T-001).
+
+The npu-dra-driver publishes ResourceSlice entries with
+`spec.driver = npu.ocloud.edge.example.com` (see
+operators/npu-dra-driver/api/v1alpha1.DriverName). Per ADR-0009 §5 step 1,
+Phase 5 registers a matching `resource.k8s.io/v1beta1.DeviceClass` so
+ResourceClaim authors can request devices by class name instead of
+filtering by driver-name attribute themselves.
+
+Three classes are rendered, each gated by an independent values toggle:
+
+  1. Bare class `npu.ocloud.edge.example.com` — matches every NPU device
+     published by this driver, regardless of slice strategy. Always
+     rendered when `.Values.deviceClass.create` is true (default true).
+
+  2. Sub-class `npu.ocloud.edge.example.com.whole` — adds a CEL filter
+     requiring `npu.huawei.com/slice-strategy = "FixedTemplate"` (i.e.
+     pre-defined templates whole / vir04 / vir08). Rendered when
+     `.Values.deviceClass.subClasses.whole` is true (default true).
+
+  3. Sub-class `npu.ocloud.edge.example.com.dynamic` — adds a CEL filter
+     requiring `npu.huawei.com/slice-strategy = "Dynamic"` (free-form
+     AI-core allocation). Rendered when
+     `.Values.deviceClass.subClasses.dynamic` is true (default true).
+
+The bare-class selector is intentionally driver-name-only (no attribute
+predicate) so the Phase 4 publisher's FixedTemplate-only output stays
+selectable through it without churning when Phase 5+ adds Dynamic
+devices. Sub-class names use the `.<suffix>` form because K8s metadata
+.name must be an RFC 1123 subdomain (the `/<suffix>` form the plan text
+mentions is rejected by API server validation). `claim_controller.go
+isOurClass()` matches both `/` and `.` prefix shapes for forward
+compatibility — claims authored either way still bind correctly.
+
+Phase 7 (Partitionable Devices KEP-4815 GA) may introduce additional
+sub-classes (e.g. `.partition`) — values.yaml is the extension point.
+*/}}
+{{- if .Values.deviceClass.create }}
+apiVersion: resource.k8s.io/v1beta1
+kind: DeviceClass
+metadata:
+  name: npu.ocloud.edge.example.com
+  labels:
+    {{- include "npu-dra-driver.labels" . | nindent 4 }}
+spec:
+  selectors:
+    - cel:
+        expression: device.driver == "npu.ocloud.edge.example.com"
+{{- if .Values.deviceClass.subClasses.whole }}
+---
+apiVersion: resource.k8s.io/v1beta1
+kind: DeviceClass
+metadata:
+  name: npu.ocloud.edge.example.com.whole
+  labels:
+    {{- include "npu-dra-driver.labels" . | nindent 4 }}
+spec:
+  selectors:
+    - cel:
+        expression: |
+          device.driver == "npu.ocloud.edge.example.com" &&
+          device.attributes["npu.huawei.com/slice-strategy"] == "FixedTemplate"
+{{- end }}
+{{- if .Values.deviceClass.subClasses.dynamic }}
+---
+apiVersion: resource.k8s.io/v1beta1
+kind: DeviceClass
+metadata:
+  name: npu.ocloud.edge.example.com.dynamic
+  labels:
+    {{- include "npu-dra-driver.labels" . | nindent 4 }}
+spec:
+  selectors:
+    - cel:
+        expression: |
+          device.driver == "npu.ocloud.edge.example.com" &&
+          device.attributes["npu.huawei.com/slice-strategy"] == "Dynamic"
+{{- end }}
+{{- end }}
