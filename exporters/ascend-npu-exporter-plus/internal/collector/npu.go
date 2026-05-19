@@ -1,0 +1,85 @@
+// Package collector hosts prometheus.Collector implementations.
+//
+// Phase 3 (P3-T-007) lands the NPU-level collector that turns a
+// sources.Source into per-device Prometheus metrics. Slice-level
+// (T101) and PID-level (T102) collectors land on the same Source
+// interface.
+package collector
+
+import (
+	"context"
+	"log"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/example/ocloud-edge/exporters/ascend-npu-exporter-plus/internal/collector/sources"
+	"github.com/example/ocloud-edge/exporters/ascend-npu-exporter-plus/internal/registry"
+)
+
+// NPUCollector emits per-NPU Prometheus metrics by polling a sources.Source
+// on each Collect() call (scrape-time).
+type NPUCollector struct {
+	source sources.Source
+
+	utilization  *prometheus.Desc
+	memoryUsed   *prometheus.Desc
+	hbmBandwidth *prometheus.Desc
+}
+
+// NewNPUCollector constructs an NPUCollector backed by the given Source.
+func NewNPUCollector(source sources.Source) *NPUCollector {
+	return &NPUCollector{
+		source: source,
+		utilization: prometheus.NewDesc(
+			"ascend_npu_utilization_percent",
+			"AI Core utilization of an Ascend NPU device, as a percentage in [0, 100].",
+			[]string{"npu_id", "node", "model"},
+			nil,
+		),
+		memoryUsed: prometheus.NewDesc(
+			"ascend_npu_memory_used_bytes",
+			"HBM memory currently occupied on an Ascend NPU device, in bytes.",
+			[]string{"npu_id", "node"},
+			nil,
+		),
+		hbmBandwidth: prometheus.NewDesc(
+			"ascend_npu_hbm_bandwidth_bytes_per_second",
+			"Realised HBM bandwidth on an Ascend NPU device, in bytes/second.",
+			[]string{"npu_id", "node"},
+			nil,
+		),
+	}
+}
+
+// Describe implements prometheus.Collector.
+func (c *NPUCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- c.utilization
+	ch <- c.memoryUsed
+	ch <- c.hbmBandwidth
+}
+
+// Collect implements prometheus.Collector. Records scrape duration into
+// registry.CollectDuration under the "npu" collector label.
+func (c *NPUCollector) Collect(ch chan<- prometheus.Metric) {
+	start := time.Now()
+	defer func() {
+		if registry.CollectDuration != nil {
+			registry.CollectDuration.WithLabelValues("npu").Observe(time.Since(start).Seconds())
+		}
+	}()
+
+	samples, err := c.source.ReadNPUs(context.Background())
+	if err != nil {
+		log.Printf("NPU collector: source.ReadNPUs failed: %v", err)
+		return
+	}
+	for _, s := range samples {
+		ch <- prometheus.MustNewConstMetric(c.utilization, prometheus.GaugeValue, s.AICore,
+			s.ID, s.NodeName, s.Model)
+		ch <- prometheus.MustNewConstMetric(c.memoryUsed, prometheus.GaugeValue, float64(s.MemoryUsedBytes),
+			s.ID, s.NodeName)
+		ch <- prometheus.MustNewConstMetric(c.hbmBandwidth, prometheus.GaugeValue, float64(s.HBMBandwidthBytesPerSecond),
+			s.ID, s.NodeName)
+	}
+}
