@@ -8,4 +8,17 @@ layout:
 - go.kubebuilder.io/v4
 projectName: npu-dra-driver
 repo: github.com/tech88-art/O-Cloud/operators/npu-dra-driver
+# Phase 4 T004: api/v1alpha1/ contains typed-helper APIs only (NOT CRDs).
+# AscendDevice projects upstream resource.k8s.io/v1beta1 Device.Basic.Attributes.
+# AscendClaimAnnotations projects upstream ResourceClaim.metadata.annotations.
+# crdVersion is intentionally omitted so `make manifests` does not generate
+# empty CRD YAMLs for these helper structs.
+resources:
+- api:
+    namespaced: false
+  domain: npu.ocloud.edge.example.com
+  group: ""
+  kind: AscendDevice
+  path: github.com/tech88-art/O-Cloud/operators/npu-dra-driver/api/v1alpha1
+  version: v1alpha1
 version: "3"
