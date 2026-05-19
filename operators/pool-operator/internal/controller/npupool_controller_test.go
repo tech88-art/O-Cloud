@@ -145,15 +145,7 @@ func reconcileAndFetch(ctx context.Context, reconciler *controller.NPUPoolReconc
 	return updated
 }
 
-// findCondition returns the first condition matching condType, or nil.
-func findCondition(conds []metav1.Condition, condType string) *metav1.Condition {
-	for i := range conds {
-		if conds[i].Type == condType {
-			return &conds[i]
-		}
-	}
-	return nil
-}
+// findCondition is shared with npuslicepool_controller_test.go.
 
 var _ = Describe("NPUPool Reconcile", func() {
 	var (

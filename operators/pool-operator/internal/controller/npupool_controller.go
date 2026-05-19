@@ -31,13 +31,13 @@ import (
 )
 
 // Ascend Device Plugin conventions — see docs/research/ascend-device-plugin.md.
-// huawei.com/Ascend910 is the extended-resource name advertised on Node
-// capacity/allocatable. huawei.com/Ascend910-Health=Healthy is the per-node
-// health label written by the device plugin's health probe.
+// huawei.com/Ascend910-Health=Healthy is the per-node health label written
+// by the device plugin's health probe. The extended-resource name
+// huawei.com/Ascend910 is shared with NPUSlicePool and is declared as
+// npuCapacityResource in npuslicepool_controller.go.
 const (
-	npuCapacityResource   corev1.ResourceName = "huawei.com/Ascend910"
-	npuHealthLabel                            = "huawei.com/Ascend910-Health"
-	npuHealthLabelHealthy                     = "Healthy"
+	npuHealthLabel        = "huawei.com/Ascend910-Health"
+	npuHealthLabelHealthy = "Healthy"
 )
 
 // NPUPoolReconciler reconciles NPUPool resources.
