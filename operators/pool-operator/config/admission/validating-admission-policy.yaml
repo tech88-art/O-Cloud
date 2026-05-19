@@ -1,0 +1,26 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: npuslicepool-namespace-scope
+  annotations:
+    ocloud.edge.example.com/phase: "phase-3-skeleton"
+    ocloud.edge.example.com/notes: |
+      Phase 3 multi-tenancy gap mitigation per docs/architecture.md §6.7.
+      Reject NPUSlicePool CRs outside ocloud-system namespace, unless the
+      object carries label npu.huawei.com/multi-tenancy-bypass=true.
+      Phase 9 will supersede this with full RBAC + Karmada multi-tenancy.
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["ims.ocloud.edge.example.com"]
+        apiVersions: ["v1alpha1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["npuslicepools"]
+  validations:
+    - expression: >-
+        object.metadata.namespace == 'ocloud-system' ||
+        (has(object.metadata.labels) && 'npu.huawei.com/multi-tenancy-bypass' in object.metadata.labels && object.metadata.labels['npu.huawei.com/multi-tenancy-bypass'] == 'true')
+      message: >-
+        NPUSlicePool must be created in ocloud-system namespace (multi-tenancy gap, see architecture.md §6.7); set label npu.huawei.com/multi-tenancy-bypass=true to opt out for Phase 3
+      reason: Forbidden

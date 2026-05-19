@@ -18,6 +18,10 @@ resources:
 - ../crd
 - ../rbac
 - ../manager
+# [ADMISSION] Phase 3 multi-tenancy mitigation: ValidatingAdmissionPolicy
+# rejecting NPUSlicePool CRs outside ocloud-system namespace.
+# See docs/architecture.md §6.7. Phase 9 supersedes this with full RBAC.
+- ../admission
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
 # crd/kustomization.yaml
 #- ../webhook

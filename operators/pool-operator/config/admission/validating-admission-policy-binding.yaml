@@ -1,0 +1,14 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: npuslicepool-namespace-scope-binding
+spec:
+  policyName: npuslicepool-namespace-scope
+  validationActions:
+    - Deny
+  matchResources:
+    resourceRules:
+      - apiGroups: ["ims.ocloud.edge.example.com"]
+        apiVersions: ["v1alpha1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["npuslicepools"]
