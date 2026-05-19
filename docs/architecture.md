@@ -231,6 +231,7 @@ flowchart LR
 | 告警 | Alertmanager | |
 | 日志收集 | Loki + Promtail | 比 EFK 边缘轻 |
 | 链路追踪 | Jaeger 或 OpenTelemetry | Phase 5+ 引入 |
+| **demo-backend 自指标**(Phase 4 T007/T008) | **`/metrics` 端点**(gin engine root, 外 `/api/v1` 组) | 3 个 Ocloud 计数器:`ocloud_backend_cache_eviction_total{resource}` / `ocloud_backend_cache_hits_total{resource}` / `ocloud_backend_dispatch_calls_total{datasource,endpoint}` + Go runtime/process 默认采集器。Phase 9 RBAC 不覆盖。Prometheus 配 `prometheus.io/scrape: "true"` annotation 在 Service 上;详 `backend/README.md §Observability` + ADR-0001 v3 |
 
 ### 3.6 关键拍板决策记录
 

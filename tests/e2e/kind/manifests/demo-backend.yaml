@@ -185,6 +185,14 @@ metadata:
   namespace: ocloud-system
   labels:
     app: demo-backend
+  annotations:
+    # P4-T-106: opt the demo-backend Service into kube-prometheus-stack
+    # auto-discovery. The /metrics endpoint (P4-T-007/T008) is mounted
+    # OUTSIDE /api/v1 at the gin engine root, so future Phase 9 RBAC
+    # on /api/v1 does not block scrapes.
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
 spec:
   type: NodePort
   selector:

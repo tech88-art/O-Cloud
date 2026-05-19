@@ -120,6 +120,15 @@ jobs:
           done
           bash tests/e2e/kind/dra_publish_test.sh
 
+      - name: assert backend /metrics + ocloud_backend_* counters (P4-T-106)
+        # Phase 4 T007 added prometheus/client_golang + /metrics route at the
+        # gin engine root; T008 added the 3 Ocloud counter families. This
+        # step exercises /api/v1/clusters first to warm the dispatch counter
+        # so at least one ocloud_backend_dispatch_calls_total labelset emits
+        # a line; then asserts the standard go_memstats_* + at least one
+        # ocloud_backend_* series.
+        run: bash tests/e2e/kind/backend_metrics_test.sh
+
       - name: seed pool CRDs + mock workload
         run: bash tests/e2e/kind/seed-resources.sh
 
