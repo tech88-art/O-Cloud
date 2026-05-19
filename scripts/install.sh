@@ -25,10 +25,16 @@
 #
 # Usage:
 #
-#   ./scripts/install.sh                # full install (source build + start)
-#   ./scripts/install.sh --image-only   # skip source build, use prebuilt images
-#   ./scripts/install.sh --no-start     # build only, don't bring up compose
-#   ./scripts/install.sh --uninstall    # tear down compose + remove project dir
+#   ./scripts/install.sh                  # full install (source build + start)
+#   ./scripts/install.sh --image-only     # skip source build, use prebuilt images
+#   ./scripts/install.sh --no-start       # build only, don't bring up compose
+#   ./scripts/install.sh --with-prometheus
+#                                         # install kube-prometheus-stack into the
+#                                         # current kubeconfig context's cluster
+#                                         # (requires K3s/K8s + helm; replaces the
+#                                         # docker-compose Grafana for K8s demos).
+#                                         # Composable with the other flags.
+#   ./scripts/install.sh --uninstall      # tear down compose + remove project dir
 #
 # Env-var overrides:
 #
@@ -48,6 +54,14 @@ readonly REPO_DIR="${OCEDGE_REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 readonly COMPOSE_FILE="${OCEDGE_COMPOSE:-deploy/dev/docker-compose.yaml}"
 readonly MIN_GO_VERSION="1.22"
 readonly MIN_NODE_VERSION="20"
+
+# Helm / kube-prometheus-stack — used only by --with-prometheus (P2-T-106).
+readonly KPS_RELEASE_NAME="${OCEDGE_KPS_RELEASE:-kube-prometheus-stack}"
+readonly KPS_NAMESPACE="${OCEDGE_KPS_NAMESPACE:-monitoring}"
+readonly KPS_VALUES_FILE="${OCEDGE_KPS_VALUES:-deploy/single-node/values-kps.yaml}"
+readonly ASCEND_RELEASE_NAME="${OCEDGE_ASCEND_RELEASE:-ascend-npu-exporter}"
+readonly ASCEND_NAMESPACE="${OCEDGE_ASCEND_NAMESPACE:-ocloud-system}"
+readonly ASCEND_CHART_PATH="${OCEDGE_ASCEND_CHART:-deploy/helm-charts/ascend-npu-exporter}"
 
 log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }
 warn() { printf '[%s] \033[33mWARN\033[0m %s\n' "$(date '+%H:%M:%S')" "$*" >&2; }
@@ -289,11 +303,80 @@ print_summary() {
 EOF
 }
 
+install_helm() {
+    if command -v helm >/dev/null 2>&1; then
+        log "helm $(helm version --short 2>/dev/null) already installed"
+        return
+    fi
+    log "installing helm via official get-helm-3 script"
+    local tmp
+    tmp="$(mktemp)"
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 -o "$tmp"
+    chmod +x "$tmp"
+    $SUDO HELM_INSTALL_DIR=/usr/local/bin "$tmp"
+    rm -f "$tmp"
+    log "helm installed: $(helm version --short 2>/dev/null)"
+}
+
+# --with-prometheus implementation (P2-T-106). Targets the current
+# kubeconfig context — caller is responsible for pointing $KUBECONFIG
+# at the right cluster. Idempotent: a second run upgrades in place.
+install_prometheus_stack() {
+    if ! command -v kubectl >/dev/null 2>&1; then
+        err "--with-prometheus needs kubectl on PATH (and a working kubeconfig)"
+    fi
+    if ! kubectl cluster-info >/dev/null 2>&1; then
+        err "kubectl cluster-info failed — check kubeconfig before re-running"
+    fi
+    install_helm
+
+    log "adding prometheus-community + huawei chart repos (idempotent)"
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null
+    helm repo update prometheus-community >/dev/null
+
+    if [[ ! -f "$REPO_DIR/$KPS_VALUES_FILE" ]]; then
+        err "kube-prometheus-stack values file not found: $REPO_DIR/$KPS_VALUES_FILE"
+    fi
+
+    log "upgrading/installing $KPS_RELEASE_NAME into namespace $KPS_NAMESPACE"
+    helm upgrade --install "$KPS_RELEASE_NAME" \
+        prometheus-community/kube-prometheus-stack \
+        --namespace "$KPS_NAMESPACE" \
+        --create-namespace \
+        --values "$REPO_DIR/$KPS_VALUES_FILE" \
+        --wait --timeout 10m
+
+    if [[ ! -d "$REPO_DIR/$ASCEND_CHART_PATH" ]]; then
+        warn "ascend chart not found at $ASCEND_CHART_PATH — skipping exporter install"
+    else
+        log "upgrading/installing $ASCEND_RELEASE_NAME into namespace $ASCEND_NAMESPACE"
+        helm upgrade --install "$ASCEND_RELEASE_NAME" \
+            "$REPO_DIR/$ASCEND_CHART_PATH" \
+            --namespace "$ASCEND_NAMESPACE" \
+            --create-namespace \
+            --wait --timeout 5m \
+            || warn "ascend exporter install failed (likely no Ascend nodes); ServiceMonitor stays unbound until silicon shows up"
+    fi
+
+    log "kube-prometheus-stack ready; Grafana NodePort: 30001 (admin/admin)"
+}
+
+uninstall_prometheus_stack() {
+    if ! command -v helm >/dev/null 2>&1; then
+        warn "helm not installed; nothing to uninstall"
+        return
+    fi
+    log "uninstalling $ASCEND_RELEASE_NAME / $KPS_RELEASE_NAME (best-effort)"
+    helm uninstall "$ASCEND_RELEASE_NAME" --namespace "$ASCEND_NAMESPACE" 2>/dev/null || true
+    helm uninstall "$KPS_RELEASE_NAME" --namespace "$KPS_NAMESPACE" 2>/dev/null || true
+}
+
 uninstall() {
     log "tearing down docker-compose stack"
     pushd "$REPO_DIR" >/dev/null
     $SUDO docker compose -f "$COMPOSE_FILE" down -v --remove-orphans || true
     popd >/dev/null
+    uninstall_prometheus_stack
     log "uninstall complete. Repository directory left in place; remove manually if desired."
 }
 
@@ -302,14 +385,23 @@ usage() {
 $SCRIPT_NAME — single-node O-Cloud Edge demo installer
 
 Options:
-  --image-only   skip source build; pull pre-built images via docker compose
-  --no-start     build artifacts but don't bring up the compose stack
-  --uninstall    tear down the compose stack (does not remove repo dir)
-  --help / -h    show this message
+  --image-only        skip source build; pull pre-built images via docker compose
+  --no-start          build artifacts but don't bring up the compose stack
+  --with-prometheus   helm-install kube-prometheus-stack + ascend-npu-exporter
+                      into the current kubeconfig context (P2-T-106; composable
+                      with the other flags)
+  --uninstall         tear down the compose stack + any kps/ascend releases
+  --help / -h         show this message
 
 Env vars:
-  OCEDGE_REPO_DIR    repo location (default: this script's parent)
-  OCEDGE_COMPOSE     compose file to use (default: $COMPOSE_FILE)
+  OCEDGE_REPO_DIR          repo location (default: this script's parent)
+  OCEDGE_COMPOSE           compose file (default: $COMPOSE_FILE)
+  OCEDGE_KPS_RELEASE       kube-prometheus-stack release name (default: kube-prometheus-stack)
+  OCEDGE_KPS_NAMESPACE     kube-prometheus-stack namespace (default: monitoring)
+  OCEDGE_KPS_VALUES        kube-prometheus-stack values file (default: deploy/single-node/values-kps.yaml)
+  OCEDGE_ASCEND_RELEASE    ascend-npu-exporter release name (default: ascend-npu-exporter)
+  OCEDGE_ASCEND_NAMESPACE  ascend-npu-exporter namespace (default: ocloud-system)
+  OCEDGE_ASCEND_CHART      ascend-npu-exporter chart path (default: deploy/helm-charts/ascend-npu-exporter)
 EOF
 }
 
@@ -319,11 +411,13 @@ main() {
     local image_only=false
     local no_start=false
     local do_uninstall=false
+    local with_prometheus=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --image-only) image_only=true ;;
             --no-start) no_start=true ;;
+            --with-prometheus) with_prometheus=true ;;
             --uninstall) do_uninstall=true ;;
             --help | -h)
                 usage
@@ -360,6 +454,10 @@ main() {
         print_summary
     else
         log "no-start mode: build artifacts ready, compose not started"
+    fi
+
+    if [[ "$with_prometheus" == "true" ]]; then
+        install_prometheus_stack
     fi
 }
 

@@ -1,0 +1,85 @@
+# Values overrides for kube-prometheus-stack in the single-node demo.
+#
+# Goals:
+#   - Keep the cluster footprint small (no alertmanager, no node-exporter
+#     replicas, modest retention).
+#   - Expose Grafana via NodePort 3001 so it lines up with the
+#     `deploy/dev/docker-compose.yaml` port mapping (the frontend
+#     iframe code in GrafanaPanel.tsx hard-codes this URL pattern).
+#   - Allow the iframe embed (frontend GrafanaPanel needs this).
+#
+# Used by scripts/install.sh --with-prometheus.
+
+# ---------------------------------------------------------------- Prometheus
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    retentionSize: 10GiB
+    # Single replica — single-node demo, no HA.
+    replicas: 1
+    # Avoid scraping the chart's own ServiceMonitor in a tight loop.
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    # Pick up the ascend-npu-exporter ServiceMonitor across namespaces.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    # Small request floor so kube-scheduler can place us on a 4-core box.
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1
+        memory: 2Gi
+
+# ----------------------------------------------------------------- Grafana
+grafana:
+  enabled: true
+  # Match the docker-compose port (3001 host:3000 container).
+  service:
+    type: NodePort
+    nodePort: 30001
+  adminUser: admin
+  adminPassword: admin
+  grafana.ini:
+    # Allow embedding so the demo frontend iframe works without auth
+    # gymnastics.
+    security:
+      allow_embedding: true
+      cookie_samesite: none
+    auth.anonymous:
+      enabled: true
+      org_role: Viewer
+  # Wire datasources to the in-cluster Prometheus.
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+    datasources:
+      enabled: true
+      label: grafana_datasource
+
+# ----------------------------------------------------------- Subcomponents
+alertmanager:
+  enabled: false
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+nodeExporter:
+  enabled: true
+kubeStateMetrics:
+  enabled: true
+kubeApiServer:
+  enabled: true
+kubelet:
+  enabled: true
+kubeControllerManager:
+  enabled: false   # K3s embeds these — separate scrape endpoints not exposed.
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+kubeEtcd:
+  enabled: false
