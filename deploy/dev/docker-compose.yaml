@@ -147,6 +147,32 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  # --------------------------------------------------- ascend-exporter-stub (opt-in)
+  # Fake Ascend NPU exporter for dev hosts without real 910B silicon.
+  # Serves a static /metrics body that matches the wire shape of
+  # `swr.cn-south-1.myhuaweicloud.com/ascendhub/ascend-npu-exporter:v6.0.0`,
+  # so the existing Grafana panels render non-empty during demo prep
+  # (P2-T-008). Off by default; opt in with `--profile ascend`.
+  ascend-npu-exporter-stub:
+    image: nginx:1.27-alpine
+    container_name: ocloud-dev-ascend-exporter-stub
+    volumes:
+      - ./ascend-exporter-stub/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ascend-exporter-stub/metrics.txt:/usr/share/nginx/html/metrics.txt:ro
+    ports:
+      - "8082:8082"
+    networks:
+      - ocloud-dev
+    profiles:
+      - ascend
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
   # ------------------------------------------------------------------ loki (opt-in)
   loki:
     image: grafana/loki:3.3.2

@@ -3,6 +3,15 @@
 > 调研日期:2026-05-17
 > 任务包:P1-T-012(子任务 1 / 3)
 > 调研者:ephemeral subagent
+>
+> **Phase 2 status update (2026-05-18, P2-T-008)**: 演示后端不直接调
+> ADP,而是通过 `huawei.com/Ascend910B` capacity 标签由 `k8s.Source`
+> 推断 NPU 数量(见 `backend/pkg/datasource/k8s/npu.go`)。配套的
+> `ascend-npu-exporter` 由 `deploy/helm-charts/ascend-npu-exporter/`
+> Helm chart 部署,Prometheus 通过 ServiceMonitor 抓取(K8s 路径)
+> 或通过 `docker compose --profile ascend` 拉起 nginx 静态 stub
+> (dev 路径,不需要 Ascend 实机)。Phase 2 暂只用 whole-card 健康+利用率
+> 指标;切片/PID 级别仍按"Phase 3+"计划留待 exporter-plus 自研。
 
 ## TL;DR
 
