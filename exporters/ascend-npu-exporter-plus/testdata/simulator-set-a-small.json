@@ -1,5 +1,5 @@
 {
-  "_comment": "P3-T-007 simulator seed mirroring configs/mock-data/set-a-small/ (3 nodes * 8 NPUs = 24). MemoryTotalBytes = 64 GiB = 68719476736. Seeds vary across [40, 85]% utilization, [8, 32] GB used, [300, 700] GB/s bandwidth so dashboards see real spread.",
+  "_comment": "P3-T-007 NPU seed + P3-T-101 slice seed mirroring configs/mock-data/set-a-small/ (3 nodes * 8 NPUs = 24). MemoryTotalBytes = 64 GiB = 68719476736. NPU seeds: [40, 85]% utilization, [8, 32] GB used, [300, 700] GB/s bandwidth. Slices block (T101): 12 slices across 5 NPUs, mix of vir04 (16 GiB seed) / vir08 (32 GiB seed) templates, 4 Allocated to PD prefill/decode pods + 8 Idle (free) so the demo shows ~33% slice occupancy.",
   "npus": [
     {"id": "worker-site-a-01-npu-0", "nodeName": "worker-site-a-01", "model": "Ascend910B", "utilizationSeed": 42.0, "memoryUsedSeedBytes": 8589934592, "memoryTotalBytes": 68719476736, "hbmBandwidthSeedBytesPerSecond": 322122547200, "healthy": true},
     {"id": "worker-site-a-01-npu-1", "nodeName": "worker-site-a-01", "model": "Ascend910B", "utilizationSeed": 51.0, "memoryUsedSeedBytes": 10737418240, "memoryTotalBytes": 68719476736, "hbmBandwidthSeedBytesPerSecond": 365072220160, "healthy": true},
@@ -25,5 +25,19 @@
     {"id": "worker-site-a-03-npu-5", "nodeName": "worker-site-a-03", "model": "Ascend910B", "utilizationSeed": 41.0, "memoryUsedSeedBytes": 8589934592, "memoryTotalBytes": 68719476736, "hbmBandwidthSeedBytesPerSecond": 311022547200, "healthy": true},
     {"id": "worker-site-a-03-npu-6", "nodeName": "worker-site-a-03", "model": "Ascend910B", "utilizationSeed": 11.0, "memoryUsedSeedBytes": 2147483648, "memoryTotalBytes": 68719476736, "hbmBandwidthSeedBytesPerSecond": 107374182400, "healthy": false},
     {"id": "worker-site-a-03-npu-7", "nodeName": "worker-site-a-03", "model": "Ascend910B", "utilizationSeed": 59.0, "memoryUsedSeedBytes": 15569256448, "memoryTotalBytes": 68719476736, "hbmBandwidthSeedBytesPerSecond": 418021893120, "healthy": true}
+  ],
+  "slices": [
+    {"id": "worker-site-a-01-npu-0-vir04-0", "npuId": "worker-site-a-01-npu-0", "nodeName": "worker-site-a-01", "template": "vir04", "aiCoreCount": 4, "memoryUsedSeedBytes": 17179869184, "allocatedNamespace": "ocloud-system", "allocatedPod": "qwen-8b-prefill-0"},
+    {"id": "worker-site-a-01-npu-0-vir04-1", "npuId": "worker-site-a-01-npu-0", "nodeName": "worker-site-a-01", "template": "vir04", "aiCoreCount": 4, "memoryUsedSeedBytes": 17179869184, "allocatedNamespace": "ocloud-system", "allocatedPod": "qwen-8b-decode-0"},
+    {"id": "worker-site-a-01-npu-1-vir04-0", "npuId": "worker-site-a-01-npu-1", "nodeName": "worker-site-a-01", "template": "vir04", "aiCoreCount": 4, "memoryUsedSeedBytes": 0},
+    {"id": "worker-site-a-01-npu-1-vir04-1", "npuId": "worker-site-a-01-npu-1", "nodeName": "worker-site-a-01", "template": "vir04", "aiCoreCount": 4, "memoryUsedSeedBytes": 0},
+    {"id": "worker-site-a-02-npu-2-vir08-0", "npuId": "worker-site-a-02-npu-2", "nodeName": "worker-site-a-02", "template": "vir08", "aiCoreCount": 8, "memoryUsedSeedBytes": 34359738368, "allocatedNamespace": "ocloud-system", "allocatedPod": "qwen-8b-prefill-1"},
+    {"id": "worker-site-a-02-npu-2-vir08-1", "npuId": "worker-site-a-02-npu-2", "nodeName": "worker-site-a-02", "template": "vir08", "aiCoreCount": 8, "memoryUsedSeedBytes": 0},
+    {"id": "worker-site-a-02-npu-3-vir08-0", "npuId": "worker-site-a-02-npu-3", "nodeName": "worker-site-a-02", "template": "vir08", "aiCoreCount": 8, "memoryUsedSeedBytes": 34359738368, "allocatedNamespace": "ocloud-system", "allocatedPod": "qwen-8b-decode-1"},
+    {"id": "worker-site-a-02-npu-3-vir08-1", "npuId": "worker-site-a-02-npu-3", "nodeName": "worker-site-a-02", "template": "vir08", "aiCoreCount": 8, "memoryUsedSeedBytes": 0},
+    {"id": "worker-site-a-03-npu-4-vir04-0", "npuId": "worker-site-a-03-npu-4", "nodeName": "worker-site-a-03", "template": "vir04", "aiCoreCount": 4, "memoryUsedSeedBytes": 0},
+    {"id": "worker-site-a-03-npu-4-vir04-1", "npuId": "worker-site-a-03-npu-4", "nodeName": "worker-site-a-03", "template": "vir04", "aiCoreCount": 4, "memoryUsedSeedBytes": 0},
+    {"id": "worker-site-a-03-npu-4-vir04-2", "npuId": "worker-site-a-03-npu-4", "nodeName": "worker-site-a-03", "template": "vir04", "aiCoreCount": 4, "memoryUsedSeedBytes": 0},
+    {"id": "worker-site-a-03-npu-4-vir04-3", "npuId": "worker-site-a-03-npu-4", "nodeName": "worker-site-a-03", "template": "vir04", "aiCoreCount": 4, "memoryUsedSeedBytes": 0}
   ]
 }

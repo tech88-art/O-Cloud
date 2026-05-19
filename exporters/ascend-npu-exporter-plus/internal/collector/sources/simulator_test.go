@@ -94,3 +94,112 @@ func TestSimulator_EmptyNPUList(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, samples)
 }
+
+// TestSimulator_ReadSlices_HappyPath: fixture with 3 slices (1
+// Allocated + 2 Idle) returns 3 samples with the correct
+// AllocatedTo-nil / non-nil split.
+func TestSimulator_ReadSlices_HappyPath(t *testing.T) {
+	path := writeTempJSON(t, `{
+      "npus": [
+        {"id":"n-0","nodeName":"node-a","model":"Ascend910B","utilizationSeed":40.0,"memoryUsedSeedBytes":8589934592,"memoryTotalBytes":68719476736,"hbmBandwidthSeedBytesPerSecond":400000000000,"healthy":true}
+      ],
+      "slices": [
+        {"id":"n-0-vir04-0","npuId":"n-0","nodeName":"node-a","template":"vir04","aiCoreCount":4,"memoryUsedSeedBytes":17179869184,"allocatedNamespace":"ocloud-system","allocatedPod":"qwen-prefill-0"},
+        {"id":"n-0-vir04-1","npuId":"n-0","nodeName":"node-a","template":"vir04","aiCoreCount":4,"memoryUsedSeedBytes":0},
+        {"id":"n-0-vir04-2","npuId":"n-0","nodeName":"node-a","template":"vir04","aiCoreCount":4,"memoryUsedSeedBytes":0}
+      ]
+    }`)
+
+	src, err := NewSimulatorSource(path)
+	require.NoError(t, err)
+
+	slices, err := src.ReadSlices(context.Background())
+	require.NoError(t, err)
+	require.Len(t, slices, 3)
+
+	// Identity fields preserved verbatim.
+	assert.Equal(t, "n-0-vir04-0", slices[0].ID)
+	assert.Equal(t, "n-0", slices[0].NPUID)
+	assert.Equal(t, "node-a", slices[0].NodeName)
+	assert.Equal(t, "vir04", slices[0].Template)
+	assert.Equal(t, int32(4), slices[0].AICoreCount)
+
+	// Allocated/Idle classification: only slice[0] is allocated.
+	require.NotNil(t, slices[0].AllocatedTo)
+	assert.Equal(t, "ocloud-system", slices[0].AllocatedTo.Namespace)
+	assert.Equal(t, "qwen-prefill-0", slices[0].AllocatedTo.Pod)
+	assert.Nil(t, slices[1].AllocatedTo)
+	assert.Nil(t, slices[2].AllocatedTo)
+}
+
+// TestSimulator_ReadSlices_EmptyList: missing or empty "slices" block
+// produces no samples without error.
+func TestSimulator_ReadSlices_EmptyList(t *testing.T) {
+	path := writeTempJSON(t, `{"npus": [], "slices": []}`)
+	src, err := NewSimulatorSource(path)
+	require.NoError(t, err)
+	slices, err := src.ReadSlices(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, slices)
+}
+
+// TestSimulator_ReadSlices_MissingBlock: a JSON with no "slices" key
+// at all (T007-era fixture) is still valid; ReadSlices returns empty.
+func TestSimulator_ReadSlices_MissingBlock(t *testing.T) {
+	path := writeTempJSON(t, `{
+      "npus": [
+        {"id":"n-0","nodeName":"node-a","model":"Ascend910B","utilizationSeed":40.0,"memoryUsedSeedBytes":8589934592,"memoryTotalBytes":68719476736,"hbmBandwidthSeedBytesPerSecond":400000000000,"healthy":true}
+      ]
+    }`)
+	src, err := NewSimulatorSource(path)
+	require.NoError(t, err)
+	slices, err := src.ReadSlices(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, slices)
+}
+
+// TestSimulator_PerturbationWithin10Percent_Slices: seed memory 1000 ->
+// every sample must be in [900, 1100] across 100 reads.
+func TestSimulator_PerturbationWithin10Percent_Slices(t *testing.T) {
+	path := writeTempJSON(t, `{
+      "npus": [],
+      "slices": [
+        {"id":"s-0","npuId":"n-0","nodeName":"node-a","template":"vir04","aiCoreCount":4,"memoryUsedSeedBytes":1000}
+      ]
+    }`)
+	src, err := NewSimulatorSource(path)
+	require.NoError(t, err)
+
+	for i := 0; i < 100; i++ {
+		slices, err := src.ReadSlices(context.Background())
+		require.NoError(t, err)
+		require.Len(t, slices, 1)
+		// AICoreCount + identity fields stable across reads.
+		assert.Equal(t, int32(4), slices[0].AICoreCount)
+		// Memory perturbed within +/- 10% of seed (1000 -> [900, 1100]).
+		assert.GreaterOrEqual(t, slices[0].MemoryUsedBytes, uint64(900),
+			"iter %d mem=%d below 900 band", i, slices[0].MemoryUsedBytes)
+		assert.LessOrEqual(t, slices[0].MemoryUsedBytes, uint64(1100),
+			"iter %d mem=%d above 1100 band", i, slices[0].MemoryUsedBytes)
+	}
+}
+
+// TestSimulator_ReadSlices_PartialAllocatedFieldsTreatedAsIdle:
+// AllocatedNamespace without AllocatedPod (or vice-versa) is a
+// malformed Allocated record; sim treats it as Idle.
+func TestSimulator_ReadSlices_PartialAllocatedFieldsTreatedAsIdle(t *testing.T) {
+	path := writeTempJSON(t, `{
+      "npus": [],
+      "slices": [
+        {"id":"s-ns-only","npuId":"n-0","nodeName":"node-a","template":"vir04","aiCoreCount":4,"memoryUsedSeedBytes":0,"allocatedNamespace":"ocloud-system"},
+        {"id":"s-pod-only","npuId":"n-0","nodeName":"node-a","template":"vir04","aiCoreCount":4,"memoryUsedSeedBytes":0,"allocatedPod":"orphan-pod"}
+      ]
+    }`)
+	src, err := NewSimulatorSource(path)
+	require.NoError(t, err)
+	slices, err := src.ReadSlices(context.Background())
+	require.NoError(t, err)
+	require.Len(t, slices, 2)
+	assert.Nil(t, slices[0].AllocatedTo, "namespace-only should be Idle")
+	assert.Nil(t, slices[1].AllocatedTo, "pod-only should be Idle")
+}

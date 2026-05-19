@@ -39,3 +39,42 @@ type NPUSample struct {
 	// Healthy reports whether the device passes its self-check.
 	Healthy bool
 }
+
+// SliceSample is one snapshot of a NPU slice (vir04 / vir08 fixed template
+// or a Dynamic slice). Slices are sub-allocations of a parent NPU device.
+type SliceSample struct {
+	// ID is the unique slice identifier (e.g. "worker-site-a-01-npu-0-vir04-0").
+	ID string
+	// NPUID is the parent NPU device this slice partitions.
+	NPUID string
+	// NodeName is the K8s Node hosting the parent NPU.
+	NodeName string
+	// Template is the SliceTemplate name (e.g. "vir04", "vir08") for
+	// FixedTemplate slices; empty for Dynamic-strategy slices.
+	Template string
+	// AICoreCount is the AI Core allocation of this slice instance.
+	AICoreCount int32
+	// MemoryUsedBytes is the realised HBM usage of this slice at sample time.
+	MemoryUsedBytes uint64
+	// AllocatedTo is the Pod owning this slice; nil when the slice is free.
+	AllocatedTo *AllocatedPod
+}
+
+// AllocatedPod identifies the K8s Pod owning an Allocated slice.
+type AllocatedPod struct {
+	Namespace string
+	Pod       string
+}
+
+// SliceSource is the read-side interface for slice samples. Phase 3
+// simulator implements it; Phase 4+ DCMI / npu-smi sources will add
+// their own implementations alongside ReadNPUs.
+//
+// Separate from Source (NPU samples) so Phase-4+ stub sources are not
+// forced to implement slice reads they cannot satisfy until the DRA
+// driver ships.
+type SliceSource interface {
+	// ReadSlices returns one SliceSample per materialised slice across
+	// all NPUs this source observes.
+	ReadSlices(ctx context.Context) ([]SliceSample, error)
+}

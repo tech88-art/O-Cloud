@@ -15,8 +15,12 @@ import (
 // seed values (utilization%, memory used bytes, HBM bw bytes/s). The
 // simulator emits the seed +/- a sine-wave perturbation each ReadNPUs
 // call so dashboards show movement.
+//
+// Slices block (P3-T-101) is optional: empty/missing yields ReadSlices
+// returning an empty slice without error.
 type simulatorFile struct {
-	NPUs []simulatorNPU `json:"npus"`
+	NPUs   []simulatorNPU   `json:"npus"`
+	Slices []simulatorSlice `json:"slices"`
 }
 
 type simulatorNPU struct {
@@ -30,15 +34,30 @@ type simulatorNPU struct {
 	Healthy             bool    `json:"healthy"`
 }
 
+// simulatorSlice is the on-disk record for one NPU slice instance.
+// AllocatedNamespace + AllocatedPod are both required for an Allocated
+// slice; either-empty is treated as Idle (AllocatedTo=nil).
+type simulatorSlice struct {
+	ID                  string `json:"id"`
+	NPUID               string `json:"npuId"`
+	NodeName            string `json:"nodeName"`
+	Template            string `json:"template"`
+	AICoreCount         int32  `json:"aiCoreCount"`
+	MemoryUsedSeedBytes uint64 `json:"memoryUsedSeedBytes"`
+	AllocatedNamespace  string `json:"allocatedNamespace,omitempty"`
+	AllocatedPod        string `json:"allocatedPod,omitempty"`
+}
+
 // SimulatorSource replays an on-disk JSON snapshot with sine-wave
 // perturbation. Closes the spirit of known-issue #9 (dashboards see
 // movement, not flat lines).
 type SimulatorSource struct {
-	path  string
-	mu    sync.Mutex
-	npus  []simulatorNPU
-	start time.Time
-	rng   *rand.Rand
+	path   string
+	mu     sync.Mutex
+	npus   []simulatorNPU
+	slices []simulatorSlice
+	start  time.Time
+	rng    *rand.Rand
 }
 
 // NewSimulatorSource loads NPUs from a JSON file on disk. Returns an
@@ -67,6 +86,7 @@ func (s *SimulatorSource) load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.npus = f.NPUs
+	s.slices = f.Slices
 	return nil
 }
 
@@ -98,6 +118,47 @@ func (s *SimulatorSource) ReadNPUs(ctx context.Context) ([]NPUSample, error) {
 			MemoryTotalBytes:           n.MemoryTotalBytes,
 			HBMBandwidthBytesPerSecond: bw,
 			Healthy:                    n.Healthy,
+		})
+	}
+	return out, nil
+}
+
+// ReadSlices returns one SliceSample per loaded slice. Memory is
+// perturbed by the same +/- 10% sine wave used in ReadNPUs so the
+// visual-movement promise from T007 carries over to slice gauges.
+//
+// AllocatedNamespace + AllocatedPod must both be non-empty for the
+// resulting sample to carry an AllocatedTo pointer; otherwise the
+// slice is reported as free (AllocatedTo == nil).
+func (s *SimulatorSource) ReadSlices(ctx context.Context) ([]SliceSample, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	out := make([]SliceSample, 0, len(s.slices))
+	elapsed := time.Since(s.start).Seconds()
+	for i, sl := range s.slices {
+		// Phase shift offset from NPU's (pi/3) so slice movement is
+		// uncorrelated with parent-NPU movement on dashboards.
+		phase := elapsed*0.5 + float64(i)*math.Pi/4
+		factor := 1.0 + 0.10*math.Sin(phase)
+		memUsed := uint64(float64(sl.MemoryUsedSeedBytes) * factor)
+
+		var allocatedTo *AllocatedPod
+		if sl.AllocatedNamespace != "" && sl.AllocatedPod != "" {
+			allocatedTo = &AllocatedPod{
+				Namespace: sl.AllocatedNamespace,
+				Pod:       sl.AllocatedPod,
+			}
+		}
+
+		out = append(out, SliceSample{
+			ID:              sl.ID,
+			NPUID:           sl.NPUID,
+			NodeName:        sl.NodeName,
+			Template:        sl.Template,
+			AICoreCount:     sl.AICoreCount,
+			MemoryUsedBytes: memUsed,
+			AllocatedTo:     allocatedTo,
 		})
 	}
 	return out, nil
