@@ -120,25 +120,34 @@ jobs:
         #   - at least one device carrying the npu.huawei.com/index attribute
         # Allows up to 60s for the publisher's first reconcile pass.
         #
-        # P5-T-118 (2026-05-20): on assertion failure, dump
-        # npu-dra-driver pod state + logs + ConfigMap inline so the
-        # next CI failure surfaces root cause in this same step
-        # (instead of relying on the if-failure dump-cluster step
-        # at the bottom of the job which may be truncated in the UI).
+        # P5-T-118 (2026-05-20): added inline diagnostic dump on
+        # failure — see ::group:: blocks below.
+        # P5-T-119 (2026-05-20): switched counting from `grep -c .` +
+        # `|| echo 0` to a single `jq '... | length'`. The previous
+        # pipeline produced "0\n0" on empty input because `grep -c .`
+        # writes "0" + exits 1 (no matches), triggering `|| echo 0`
+        # to append a second "0". Multi-line value broke
+        # `[ "${n}" -ge 1 ]` with `[: 0\n0: integer expression
+        # expected` (exit 2 = syntax error, treated as false), so the
+        # T118 diagnostic dump block was silently SKIPPED — never
+        # producing the dump it was supposed to. The jq form returns
+        # a single integer in all cases.
         run: |
           set -e
           echo "waiting for npu-dra-driver to publish at least one ResourceSlice..."
           n=0
           for i in $(seq 1 12); do
-            n=$(kubectl get resourceslices -o jsonpath='{range .items[?(@.spec.driver=="npu.ocloud.edge.example.com")]}{.metadata.name}{"\n"}{end}' 2>/dev/null | grep -c . || echo 0)
+            n=$(kubectl get resourceslices -o json 2>/dev/null \
+              | jq '[.items[] | select(.spec.driver == "npu.ocloud.edge.example.com")] | length' \
+              2>/dev/null || echo 0)
             echo "  attempt ${i}: matching slices=${n}"
-            if [ "${n:-0}" -ge 1 ]; then
+            if [ "${n}" -ge 1 ] 2>/dev/null; then
               break
             fi
             sleep 5
           done
-          if [ "${n:-0}" -lt 1 ]; then
-            echo "::error::npu-dra-driver published 0 ResourceSlices after 60s — dumping state"
+          if ! [ "${n}" -ge 1 ] 2>/dev/null; then
+            echo "::error::npu-dra-driver published 0 ResourceSlices after 60s — dumping state (P5-T-119 reachable diagnostic)"
             echo "::group::npu-dra-driver pods"
             kubectl -n ocloud-system get pods -l app.kubernetes.io/name=npu-dra-driver -o wide || true
             kubectl -n ocloud-system describe pods -l app.kubernetes.io/name=npu-dra-driver || true
@@ -146,17 +155,20 @@ jobs:
             echo "::group::npu-dra-driver logs (last 500, all containers)"
             kubectl -n ocloud-system logs -l app.kubernetes.io/name=npu-dra-driver --tail=500 --all-containers=true --prefix=true || true
             echo "::endgroup::"
-            echo "::group::npu-dra-driver ConfigMap (mock npus.json, first 60 lines)"
+            echo "::group::npu-dra-driver ConfigMap (mock npus.json, first 100 lines)"
             kubectl -n ocloud-system get cm -l app.kubernetes.io/name=npu-dra-driver -o yaml | head -100 || true
             echo "::endgroup::"
             echo "::group::all ResourceSlices cluster-wide (count + drivers)"
             kubectl get resourceslices -o json | jq '{count: (.items | length), drivers: [.items[].spec.driver] | unique}' || true
             echo "::endgroup::"
-            echo "::group::NPUSliceAllocation CRD presence"
-            kubectl get crd npusliceallocations.npu.ocloud.edge.example.com -o yaml 2>&1 | head -20 || true
+            echo "::group::NPUSliceAllocation CRD presence (P5-T-118 bundling check)"
+            kubectl get crd npusliceallocations.npu.ocloud.edge.example.com -o yaml 2>&1 | head -30 || true
             echo "::endgroup::"
             echo "::group::DRA API resources served"
-            kubectl get --raw "/apis/resource.k8s.io/v1beta1" 2>&1 | head -30 || true
+            kubectl get --raw "/apis/resource.k8s.io/v1beta1" 2>&1 | head -40 || true
+            echo "::endgroup::"
+            echo "::group::npu-dra-driver Deployment (rendered + status)"
+            kubectl -n ocloud-system get deploy npu-dra-driver -o yaml || true
             echo "::endgroup::"
             exit 1
           fi
