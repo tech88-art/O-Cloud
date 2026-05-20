@@ -86,8 +86,8 @@ When `deviceClass.create: true` (default), the chart renders one
 | Class name                                  | Toggle                              | Selector                                                                                       |
 | ------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `npu.ocloud.edge.example.com`               | `deviceClass.create`                | `device.driver == "npu.ocloud.edge.example.com"` (driver-name only — matches all NPU devices) |
-| `npu.ocloud.edge.example.com.whole`         | `deviceClass.subClasses.whole`      | `... && device.attributes["npu.huawei.com/slice-strategy"] == "FixedTemplate"`                |
-| `npu.ocloud.edge.example.com.dynamic`       | `deviceClass.subClasses.dynamic`    | `... && device.attributes["npu.huawei.com/slice-strategy"] == "Dynamic"`                      |
+| `npu.ocloud.edge.example.com.whole`         | `deviceClass.subClasses.whole`      | `... && device.attributes["npu.huawei.com/slice-strategy"].string == "FixedTemplate"`         |
+| `npu.ocloud.edge.example.com.dynamic`       | `deviceClass.subClasses.dynamic`    | `... && device.attributes["npu.huawei.com/slice-strategy"].string == "Dynamic"`               |
 
 ResourceClaim authors then write either:
 

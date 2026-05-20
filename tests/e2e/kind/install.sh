@@ -249,12 +249,43 @@ YAML
   # ResourceClaims. Both behaviours land in the same Deployment behind
   # values toggles.
   # P5-T-113: `--wait` removed; image isn't loaded yet.
-  helm upgrade --install npu-dra-driver \
-    "${REPO_ROOT}/deploy/helm-charts/npu-dra-driver/" \
-    --namespace "${NS}" \
-    --set image.repository="$(echo "${NPU_DRA_IMG}" | cut -d: -f1)" \
-    --set image.tag="$(echo "${NPU_DRA_IMG}" | cut -d: -f2)" \
-    --set image.pullPolicy=IfNotPresent
+  # P5-T-116 (2026-05-20): wrap in if-check + diagnostic dump so a
+  # CEL / DeviceClass / RBAC validation failure surfaces with the
+  # exact API server admission error rather than just an exit-code-1
+  # workflow step. Past failures (commit 88aeb38) hit
+  # `DeviceClass.resource.k8s.io ... is invalid: spec.selectors[0]
+  # .cel.expression: ... compilation failed` because the chart's CEL
+  # expression used a wrong type accessor — fixed in T116, but the
+  # diagnostic stays so any future chart-side validation error
+  # (incl. RBAC, OwnerRef, label rules) is one click away from the
+  # operator's eye.
+  if ! helm upgrade --install npu-dra-driver \
+      "${REPO_ROOT}/deploy/helm-charts/npu-dra-driver/" \
+      --namespace "${NS}" \
+      --set image.repository="$(echo "${NPU_DRA_IMG}" | cut -d: -f1)" \
+      --set image.tag="$(echo "${NPU_DRA_IMG}" | cut -d: -f2)" \
+      --set image.pullPolicy=IfNotPresent; then
+    echo "::error::npu-dra-driver helm install failed"
+    echo "::group::rendered chart template (for the failing manifests)"
+    helm template npu-dra-driver \
+      "${REPO_ROOT}/deploy/helm-charts/npu-dra-driver/" \
+      --namespace "${NS}" \
+      --set image.repository="$(echo "${NPU_DRA_IMG}" | cut -d: -f1)" \
+      --set image.tag="$(echo "${NPU_DRA_IMG}" | cut -d: -f2)" \
+      --set image.pullPolicy=IfNotPresent || true
+    echo "::endgroup::"
+    echo "::group::DRA API surface (verify v1beta1 served as expected)"
+    kubectl api-resources --api-group=resource.k8s.io || true
+    kubectl get --raw "/apis/resource.k8s.io/v1beta1" 2>&1 | head -40 || true
+    echo "::endgroup::"
+    echo "::group::existing DeviceClasses in cluster (in case partial apply)"
+    kubectl get deviceclasses.resource.k8s.io -A -o yaml 2>&1 | head -100 || true
+    echo "::endgroup::"
+    echo "::group::cluster events (last 30, ordered)"
+    kubectl get events -A --sort-by=.lastTimestamp 2>&1 | tail -30 || true
+    echo "::endgroup::"
+    exit 1
+  fi
 
   echo "== up complete (deployments applied; rollouts pending image load) =="
 }

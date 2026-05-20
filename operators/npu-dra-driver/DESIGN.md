@@ -397,7 +397,15 @@ spec:
 ```
 
 Phase 5 sub-classes (e.g. `/whole`, `.dynamic`) add additional
-selector expressions that filter by `device.attributes["npu.huawei.com/slice-strategy"]`.
+selector expressions that filter by
+`device.attributes["npu.huawei.com/slice-strategy"].string`. The
+`.string` accessor is mandatory — `device.attributes["..."]`
+returns a `DeviceAttribute` struct (CEL type `map(string, any)`)
+which cannot be `==`-compared with a string literal directly. K8s
+admission rejects the expression with `compilation failed: ERROR:
+found no matching overload for '_==_' applied to '(map(string, any),
+string)'` if the accessor is omitted (kind smoke run on commit
+88aeb38 hit this; fixed at P5-T-116).
 
 ### 6.3 Real claim allocation (Phase 5)
 

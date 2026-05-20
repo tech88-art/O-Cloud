@@ -58,9 +58,17 @@ metadata:
 spec:
   selectors:
     - cel:
+        # CEL syntax note (fixed at P5-T-116, 2026-05-20):
+        # `device.attributes["<qualified-name>"]` returns a
+        # `DeviceAttribute` object (CEL type: map(string, any)) which
+        # carries one of `.bool / .int / .string / .version` typed
+        # fields. Direct `== "string-literal"` comparison fails to
+        # compile (`no matching overload for '_==_' applied to
+        # '(map(string, any), string)'`). Must access the typed
+        # accessor `.string` to extract the underlying value.
         expression: |
           device.driver == "npu.ocloud.edge.example.com" &&
-          device.attributes["npu.huawei.com/slice-strategy"] == "FixedTemplate"
+          device.attributes["npu.huawei.com/slice-strategy"].string == "FixedTemplate"
 {{- end }}
 {{- if .Values.deviceClass.subClasses.dynamic }}
 ---
@@ -73,8 +81,10 @@ metadata:
 spec:
   selectors:
     - cel:
+        # See `.whole` selector above for the CEL `.string` accessor
+        # rationale (P5-T-116 fix).
         expression: |
           device.driver == "npu.ocloud.edge.example.com" &&
-          device.attributes["npu.huawei.com/slice-strategy"] == "Dynamic"
+          device.attributes["npu.huawei.com/slice-strategy"].string == "Dynamic"
 {{- end }}
 {{- end }}
