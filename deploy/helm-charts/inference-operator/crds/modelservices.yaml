@@ -1,0 +1,237 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: modelservices.inference.ocloud.edge.example.com
+spec:
+  group: inference.ocloud.edge.example.com
+  names:
+    kind: ModelService
+    listKind: ModelServiceList
+    plural: modelservices
+    shortNames:
+    - ms
+    singular: modelservice
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.model.image
+      name: Image
+      type: string
+    - jsonPath: .spec.pdPair.prefill.replicas
+      name: Prefill
+      type: integer
+    - jsonPath: .spec.pdPair.decode.replicas
+      name: Decode
+      type: integer
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          ModelService is the Schema for the modelservices API. Phase 4 T103
+          ships the type only; the controller body lands Phase 5 per ADR-0008
+          (PD Router webhook impl) + ADR-0009 (ResourceClaim allocation via
+          npu-dra-driver).
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ModelServiceSpec is the Spec block of a ModelService.
+            properties:
+              model:
+                description: Model identifies the image + weights path.
+                properties:
+                  image:
+                    description: |-
+                      Image is the vllm-ascend container image reference
+                      (e.g. registry.example.com/vllm-ascend:v0.11.0).
+                    type: string
+                  modelPath:
+                    description: |-
+                      ModelPath is the model weights path inside the image or on a PVC
+                      mounted by the pod (e.g. /models/llama-7b).
+                    type: string
+                required:
+                - image
+                - modelPath
+                type: object
+              npuSlicePoolRef:
+                description: |-
+                  NPUSlicePoolRef binds this ModelService to a NPUSlicePool the
+                  Phase 5 controller will allocate slices from. The reference is
+                  namespace-local (ModelService is namespaced; NPUSlicePool also
+                  namespaced post-Phase-3 — same-namespace convention via
+                  operators/CLAUDE.md §4 "Phase 1-2 隔离 by convention only").
+                properties:
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              pdPair:
+                description: PDPair configures the prefill/decode split per ADR-0008.
+                properties:
+                  decode:
+                    description: Decode is the Decode-side replicas configuration.
+                    properties:
+                      replicas:
+                        default: 1
+                        description: Replicas is the number of pods on this side of
+                          the PD-pair.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                    required:
+                    - replicas
+                    type: object
+                  prefill:
+                    description: Prefill is the Prefill-side replicas configuration.
+                    properties:
+                      replicas:
+                        default: 1
+                        description: Replicas is the number of pods on this side of
+                          the PD-pair.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                    required:
+                    - replicas
+                    type: object
+                  routerLabel:
+                    default: inference.ocloud.edge.example.com/pd-role
+                    description: |-
+                      RouterLabel is the label key the Phase 5 PD Router webhook
+                      reads to route traffic across the PD-pair. Conventionally
+                      "inference.ocloud.edge.example.com/pd-role" with values
+                      "prefill" / "decode". Empty disables PD routing (the controller
+                      treats the ModelService as a single-pod inference deployment).
+                    type: string
+                required:
+                - decode
+                - prefill
+                type: object
+            required:
+            - model
+            - npuSlicePoolRef
+            - pdPair
+            type: object
+          status:
+            description: ModelServiceStatus is the Status block of a ModelService.
+            properties:
+              conditions:
+                description: |-
+                  Conditions follow the standard Kubernetes condition convention.
+                  Phase 5 controller adds:
+                    - Type="Available"      — at least one Pod ready per side
+                    - Type="ProgressDeadline" — provisioning timed out
+                    - Type="AllocationReady" — npu-dra-driver ResourceClaims bound
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                description: ObservedGeneration is the most recent .metadata.generation
+                  reconciled.
+                format: int64
+                type: integer
+              phase:
+                default: Pending
+                description: |-
+                  Phase is the high-level lifecycle phase. See ModelServicePhase
+                  for the enumeration. Phase 4 controller is absent so phase stays
+                  at PhasePending after creation.
+                enum:
+                - Pending
+                - Provisioning
+                - Ready
+                - Failed
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
