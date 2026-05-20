@@ -34,6 +34,14 @@ rules:
   - apiGroups: ["resource.k8s.io"]
     resources: ["resourceclaims/status"]
     verbs: ["get"]
+  # ResourceClaimTemplate — T007 reconciles one per side via
+  # reconcileResourceClaimTemplate; controller-runtime sets up a
+  # cache informer (LIST+WATCH) when the controller does Get/Create/
+  # Update against this kind. Missing this rule blocks the cache
+  # sync (T123 CI fix · 2026-05-20).
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["resourceclaimtemplates"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   # Deployments — T007 creates Prefill + Decode.
   - apiGroups: ["apps"]
     resources: ["deployments"]
