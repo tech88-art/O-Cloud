@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
+	resourceapi "k8s.io/api/resource/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,6 +34,59 @@ import (
 	imsv1alpha1 "github.com/example/ocloud-edge/operators/pool-operator/api/v1alpha1"
 	"github.com/example/ocloud-edge/operators/pool-operator/internal/controller"
 )
+
+// deviceFixture is a minimal description of a ResourceSlice device entry used
+// by Phase 6 T003 HCCS aggregation tests. Mirrors the shape npu-dra-driver's
+// publisher.buildSlice writes (operators/npu-dra-driver/internal/publisher/
+// publisher.go) but constructs it directly from typed resourceapi to avoid
+// cross-module Go import.
+type deviceFixture struct {
+	name   string
+	ring   int64
+	health string // "Healthy" / "Unhealthy" / "Unknown"
+}
+
+// makeHCCSResourceSlice creates a ResourceSlice labelled managed-by=npu-dra-driver
+// pinned to nodeName, with the given device entries. Each device carries the
+// npu.huawei.com/hccs_ring (int) + npu.huawei.com/health (string) attributes
+// the NPUPool aggregator reads.
+func makeHCCSResourceSlice(ctx context.Context, nodeName string, devs []deviceFixture) *resourceapi.ResourceSlice {
+	GinkgoHelper()
+	var devices []resourceapi.Device
+	for _, d := range devs {
+		ringCopy := d.ring
+		healthCopy := d.health
+		devices = append(devices, resourceapi.Device{
+			Name: d.name,
+			Basic: &resourceapi.BasicDevice{
+				Attributes: map[resourceapi.QualifiedName]resourceapi.DeviceAttribute{
+					"npu.huawei.com/hccs_ring": {IntValue: &ringCopy},
+					"npu.huawei.com/health":    {StringValue: &healthCopy},
+				},
+			},
+		})
+	}
+	slice := &resourceapi.ResourceSlice{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "npu-dra-" + nodeName + "-" + uuid.NewString()[:6],
+			Labels: map[string]string{
+				"npu.ocloud.edge.example.com/managed-by": "npu-dra-driver",
+			},
+		},
+		Spec: resourceapi.ResourceSliceSpec{
+			Driver: "npu.ocloud.edge.example.com",
+			Pool: resourceapi.ResourcePool{
+				Name:               nodeName,
+				Generation:         1,
+				ResourceSliceCount: 1,
+			},
+			NodeName: nodeName,
+			Devices:  devices,
+		},
+	}
+	Expect(k8sClient.Create(ctx, slice)).To(Succeed())
+	return slice
+}
 
 const (
 	npuResourceName     = "huawei.com/Ascend910"
@@ -152,9 +206,10 @@ var _ = Describe("NPUPool Reconcile", func() {
 		ctx        context.Context
 		reconciler *controller.NPUPoolReconciler
 		testID     string
-		createdNodes []*corev1.Node
-		createdPods  []*corev1.Pod
-		createdPools []*imsv1alpha1.NPUPool
+		createdNodes  []*corev1.Node
+		createdPods   []*corev1.Pod
+		createdPools  []*imsv1alpha1.NPUPool
+		createdSlices []*resourceapi.ResourceSlice
 	)
 
 	BeforeEach(func() {
@@ -167,14 +222,20 @@ var _ = Describe("NPUPool Reconcile", func() {
 		createdNodes = nil
 		createdPods = nil
 		createdPools = nil
+		createdSlices = nil
 	})
 
 	AfterEach(func() {
 		// Best-effort cleanup so cases don't leak resources into each other.
 		// Cluster-scoped Nodes especially must be removed because the
-		// "match all" case lists every node.
+		// "match all" case lists every node. ResourceSlices are cluster-
+		// scoped too — managed-by label scoping wouldn't help inter-test
+		// isolation since labels apply globally.
 		for _, p := range createdPods {
 			_ = k8sClient.Delete(ctx, p)
+		}
+		for _, s := range createdSlices {
+			_ = k8sClient.Delete(ctx, s)
 		}
 		for _, n := range createdNodes {
 			_ = k8sClient.Delete(ctx, n)
@@ -192,6 +253,9 @@ var _ = Describe("NPUPool Reconcile", func() {
 	}
 	trackPool := func(pool *imsv1alpha1.NPUPool) {
 		createdPools = append(createdPools, pool)
+	}
+	trackSlice := func(slice *resourceapi.ResourceSlice) {
+		createdSlices = append(createdSlices, slice)
 	}
 
 	It("happy path: 3 nodes * 8 NPUs each = 24 total, all healthy", func() {
@@ -220,7 +284,8 @@ var _ = Describe("NPUPool Reconcile", func() {
 		hccs := findCondition(updated.Status.Conditions, "HCCSDiscovered")
 		Expect(hccs).NotTo(BeNil())
 		Expect(hccs.Status).To(Equal(metav1.ConditionFalse))
-		Expect(hccs.Reason).To(Equal("PendingPhase6"))
+		// Phase 6 T003: no ResourceSlices in this case → NoResourceSlicesObserved
+		Expect(hccs.Reason).To(Equal("NoResourceSlicesObserved"))
 	})
 
 	It("empty selector: matches all nodes in cluster", func() {
@@ -313,5 +378,120 @@ var _ = Describe("NPUPool Reconcile", func() {
 		Expect(updated.Status.TotalNPUs).To(Equal(int32(8)))
 		Expect(updated.Status.HealthyNPUs).To(Equal(int32(8)))
 		Expect(updated.Status.AllocatedNPUs).To(Equal(int32(6)))
+	})
+
+	// Phase 6 T003 — HCCS topology aggregation cases (ADR-0010 §5).
+
+	It("hccs aggregation: 2 nodes × 2 rings × 2 devices → 4 PeerGroups, sorted", func() {
+		poolLabel := map[string]string{"test-id": testID, "role": "hccs-multi"}
+		nodeA := makeNode(ctx, fmt.Sprintf("worker-%s-a", testID), 4, true, true, poolLabel)
+		track(nodeA)
+		nodeB := makeNode(ctx, fmt.Sprintf("worker-%s-b", testID), 4, true, true, poolLabel)
+		track(nodeB)
+
+		// 2 ResourceSlices: one per node, each with 4 devices split across
+		// rings 0 and 1. Mirrors set-a-small mock layout.
+		sliceA := makeHCCSResourceSlice(ctx, nodeA.Name, []deviceFixture{
+			{name: "npu-0", ring: 0, health: "Healthy"},
+			{name: "npu-1", ring: 0, health: "Healthy"},
+			{name: "npu-2", ring: 1, health: "Healthy"},
+			{name: "npu-3", ring: 1, health: "Healthy"},
+		})
+		trackSlice(sliceA)
+		sliceB := makeHCCSResourceSlice(ctx, nodeB.Name, []deviceFixture{
+			{name: "npu-0", ring: 0, health: "Healthy"},
+			{name: "npu-1", ring: 0, health: "Healthy"},
+			{name: "npu-2", ring: 1, health: "Healthy"},
+			{name: "npu-3", ring: 1, health: "Healthy"},
+		})
+		trackSlice(sliceB)
+
+		pool := makePool(ctx, &metav1.LabelSelector{MatchLabels: poolLabel})
+		trackPool(pool)
+
+		updated := reconcileAndFetch(ctx, reconciler, pool)
+		Expect(updated.Status.HCCSTopology).NotTo(BeNil())
+		Expect(updated.Status.HCCSTopology.PeerGroups).To(HaveLen(4))
+
+		// Sorted: nodeA/ring-0, nodeA/ring-1, nodeB/ring-0, nodeB/ring-1.
+		groupIDs := make([]string, len(updated.Status.HCCSTopology.PeerGroups))
+		for i, pg := range updated.Status.HCCSTopology.PeerGroups {
+			groupIDs[i] = pg.GroupID
+		}
+		Expect(groupIDs[0]).To(Equal(fmt.Sprintf("%s/ring-0", nodeA.Name)))
+		Expect(groupIDs[1]).To(Equal(fmt.Sprintf("%s/ring-1", nodeA.Name)))
+		Expect(groupIDs[2]).To(Equal(fmt.Sprintf("%s/ring-0", nodeB.Name)))
+		Expect(groupIDs[3]).To(Equal(fmt.Sprintf("%s/ring-1", nodeB.Name)))
+
+		// Each ring carries 2 device IDs qualified by nodeName.
+		Expect(updated.Status.HCCSTopology.PeerGroups[0].DeviceIDs).To(ConsistOf(
+			fmt.Sprintf("%s/npu-0", nodeA.Name),
+			fmt.Sprintf("%s/npu-1", nodeA.Name),
+		))
+
+		hccs := findCondition(updated.Status.Conditions, "HCCSDiscovered")
+		Expect(hccs).NotTo(BeNil())
+		Expect(hccs.Status).To(Equal(metav1.ConditionTrue))
+		Expect(hccs.Reason).To(Equal("Aggregated"))
+	})
+
+	It("hccs aggregation: ResourceSlice on out-of-pool node ignored", func() {
+		poolLabel := map[string]string{"test-id": testID, "role": "hccs-isolation"}
+		nodeIn := makeNode(ctx, fmt.Sprintf("worker-%s-in", testID), 2, true, true, poolLabel)
+		track(nodeIn)
+		// Node WITHOUT poolLabel — must NOT be aggregated.
+		nodeOut := makeNode(ctx, fmt.Sprintf("worker-%s-out", testID), 2, true, true, nil)
+		track(nodeOut)
+
+		sliceIn := makeHCCSResourceSlice(ctx, nodeIn.Name, []deviceFixture{
+			{name: "npu-0", ring: 0, health: "Healthy"},
+		})
+		trackSlice(sliceIn)
+		sliceOut := makeHCCSResourceSlice(ctx, nodeOut.Name, []deviceFixture{
+			{name: "npu-0", ring: 7, health: "Healthy"},
+		})
+		trackSlice(sliceOut)
+
+		pool := makePool(ctx, &metav1.LabelSelector{MatchLabels: poolLabel})
+		trackPool(pool)
+
+		updated := reconcileAndFetch(ctx, reconciler, pool)
+		Expect(updated.Status.HCCSTopology).NotTo(BeNil())
+		Expect(updated.Status.HCCSTopology.PeerGroups).To(HaveLen(1))
+		Expect(updated.Status.HCCSTopology.PeerGroups[0].GroupID).To(Equal(
+			fmt.Sprintf("%s/ring-0", nodeIn.Name)))
+		// ring-7 from out-of-pool node MUST NOT appear.
+		for _, pg := range updated.Status.HCCSTopology.PeerGroups {
+			Expect(pg.GroupID).NotTo(Equal(fmt.Sprintf("%s/ring-7", nodeOut.Name)))
+		}
+	})
+
+	It("hccs aggregation: unhealthy devices are skipped", func() {
+		poolLabel := map[string]string{"test-id": testID, "role": "hccs-health"}
+		node := makeNode(ctx, fmt.Sprintf("worker-%s-mixed", testID), 4, true, true, poolLabel)
+		track(node)
+
+		// 2 healthy devices on ring 0, 2 unhealthy on ring 1.
+		slice := makeHCCSResourceSlice(ctx, node.Name, []deviceFixture{
+			{name: "npu-0", ring: 0, health: "Healthy"},
+			{name: "npu-1", ring: 0, health: "Healthy"},
+			{name: "npu-2", ring: 1, health: "Unhealthy"},
+			{name: "npu-3", ring: 1, health: "Unknown"},
+		})
+		trackSlice(slice)
+
+		pool := makePool(ctx, &metav1.LabelSelector{MatchLabels: poolLabel})
+		trackPool(pool)
+
+		updated := reconcileAndFetch(ctx, reconciler, pool)
+		Expect(updated.Status.HCCSTopology).NotTo(BeNil())
+		// Only ring 0 survives — unhealthy/unknown devices on ring 1 dropped.
+		Expect(updated.Status.HCCSTopology.PeerGroups).To(HaveLen(1))
+		Expect(updated.Status.HCCSTopology.PeerGroups[0].GroupID).To(Equal(
+			fmt.Sprintf("%s/ring-0", node.Name)))
+		Expect(updated.Status.HCCSTopology.PeerGroups[0].DeviceIDs).To(ConsistOf(
+			fmt.Sprintf("%s/npu-0", node.Name),
+			fmt.Sprintf("%s/npu-1", node.Name),
+		))
 	})
 })

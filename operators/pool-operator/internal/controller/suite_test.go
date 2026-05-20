@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	resourceapi "k8s.io/api/resource/v1beta1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,6 +57,12 @@ var _ = BeforeSuite(func() {
 	Expect(cfg).NotTo(BeNil())
 
 	Expect(imsv1alpha1.AddToScheme(scheme.Scheme)).To(Succeed())
+	// Phase 6 T003: NPUPool Reconcile lists ResourceSlices to aggregate
+	// HCCS topology. resource.k8s.io/v1beta1 is built-in to K8s 1.31+ —
+	// envtest's apiserver serves it without CRD installation. We add it
+	// to the test scheme so test cases can create slices via the typed
+	// client; controller code uses unstructured per CLAUDE.md §1.
+	Expect(resourceapi.AddToScheme(scheme.Scheme)).To(Succeed())
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())

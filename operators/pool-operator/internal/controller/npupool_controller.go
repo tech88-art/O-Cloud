@@ -19,11 +19,15 @@ package controller
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -40,6 +44,29 @@ const (
 	npuHealthLabelHealthy = "Healthy"
 )
 
+// npu-dra-driver ResourceSlice contract — text-copied (no Go import) per
+// operators/CLAUDE.md §1 "module path 不交叉依赖" rule. Sources:
+//   - SliceLabelManagedBy / Value: operators/npu-dra-driver/internal/publisher/publisher.go
+//   - AttrHCCSRing / AttrNPUHealth / HealthHealthy: operators/npu-dra-driver/api/v1alpha1/resourceslice_types.go
+// Phase 6 ADR-0010 §5 documents the attribute schema as the cross-controller
+// contract.
+const (
+	npuDriverSliceLabel        = "npu.ocloud.edge.example.com/managed-by"
+	npuDriverSliceLabelValue   = "npu-dra-driver"
+	attrNPUHealth              = "npu.huawei.com/health"
+	attrHCCSRing               = "npu.huawei.com/hccs_ring"
+	npuHealthValueHealthy      = "Healthy"
+)
+
+// resourceSliceListGVK pins the kind aggregateHCCSTopology lists. Hard-coded
+// to avoid cross-module import of the npu-dra-driver / upstream resourceapi
+// Go type — pool-operator stays module-isolated.
+var resourceSliceListGVK = schema.GroupVersionKind{
+	Group:   "resource.k8s.io",
+	Version: "v1beta1",
+	Kind:    "ResourceSliceList",
+}
+
 // NPUPoolReconciler reconciles NPUPool resources.
 type NPUPoolReconciler struct {
 	client.Client
@@ -51,6 +78,7 @@ type NPUPoolReconciler struct {
 // +kubebuilder:rbac:groups=ims.ocloud.edge.example.com,resources=npupools/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups=resource.k8s.io,resources=resourceslices,verbs=get;list;watch
 
 // Reconcile aggregates NPU availability for the pool:
 //  1. Resolve spec.selector → Node list.
@@ -59,8 +87,11 @@ type NPUPoolReconciler struct {
 //     contribute to status.healthyNPUs.
 //  3. Sum huawei.com/Ascend910 requests across all non-terminal Pods on
 //     matched nodes into status.allocatedNPUs.
-//  4. Emit Ready / HCCSDiscovered conditions. HCCSTopology is a
-//     placeholder until the Phase 6 scheduler-plugin lands real discovery.
+//  4. Aggregate HCCS topology by listing ResourceSlices labelled
+//     managed-by=npu-dra-driver, filtering to matched nodes, and grouping
+//     healthy device entries by (nodeName, hccs_ring). Phase 6 T003 per
+//     ADR-0010 §5.
+//  5. Emit Ready / HCCSDiscovered conditions.
 func (r *NPUPoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var pool imsv1alpha1.NPUPool
 	if err := r.Get(ctx, req.NamespacedName, &pool); err != nil {
@@ -132,13 +163,18 @@ func (r *NPUPoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	// 4. Write status.
+	// 4. Aggregate HCCS topology from ResourceSlices the npu-dra-driver
+	//    published for matched nodes. Phase 6 T003 per ADR-0010 §5.
+	hccs, err := r.aggregateHCCSTopology(ctx, matchedNodeNames)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// 5. Write status.
 	pool.Status.TotalNPUs = int32(totalNPUs)
 	pool.Status.HealthyNPUs = int32(healthyNPUs)
 	pool.Status.AllocatedNPUs = int32(allocated)
-	// HCCS topology discovery is a Phase 6 scheduler-plugin responsibility;
-	// emit an empty placeholder so consumers can rely on the field's shape.
-	pool.Status.HCCSTopology = &imsv1alpha1.HCCSTopologyInfo{}
+	pool.Status.HCCSTopology = hccs
 
 	if totalNPUs == 0 {
 		SetCondition(&pool.Status.Conditions, metav1.Condition{
@@ -157,18 +193,193 @@ func (r *NPUPoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			LastTransitionTime: metav1.Now(),
 		})
 	}
-	SetCondition(&pool.Status.Conditions, metav1.Condition{
+
+	hccsCondition := metav1.Condition{
 		Type:               "HCCSDiscovered",
-		Status:             metav1.ConditionFalse,
-		Reason:             "PendingPhase6",
-		Message:            "HCCS topology discovery is a Phase 6 scheduler-plugin responsibility",
 		LastTransitionTime: metav1.Now(),
-	})
+	}
+	switch {
+	case hccs == nil:
+		hccsCondition.Status = metav1.ConditionFalse
+		hccsCondition.Reason = "NoResourceSlicesObserved"
+		hccsCondition.Message = "no managed-by=npu-dra-driver ResourceSlices found for pool nodes"
+	case len(hccs.PeerGroups) == 0:
+		hccsCondition.Status = metav1.ConditionFalse
+		hccsCondition.Reason = "NoHealthyDevicesWithHCCS"
+		hccsCondition.Message = "ResourceSlices observed but no healthy devices carry hccs_ring attribute"
+	default:
+		hccsCondition.Status = metav1.ConditionTrue
+		hccsCondition.Reason = "Aggregated"
+		hccsCondition.Message = fmt.Sprintf("%d HCCS peer groups observed across pool nodes", len(hccs.PeerGroups))
+	}
+	SetCondition(&pool.Status.Conditions, hccsCondition)
 
 	if err := r.Status().Update(ctx, &pool); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
+}
+
+// aggregateHCCSTopology lists ResourceSlices labelled
+// `npu.ocloud.edge.example.com/managed-by=npu-dra-driver`, filters by
+// membership in matchedNodeNames, and groups healthy devices by
+// (nodeName, hccs_ring) into HCCSPeerGroup entries.
+//
+// PeerGroup convention (documented for downstream consumers + scheduler-
+// plugin T005 sibling-Pod lookups):
+//   - GroupID    = "<nodeName>/ring-<int>"     (e.g. "worker-a/ring-0")
+//   - DeviceIDs  = ["<nodeName>/<deviceName>", ...] sorted asc
+//   - Entries within PeerGroups sorted by (nodeName, ring) asc for
+//     deterministic status writes (avoids spurious resourceVersion churn).
+//
+// Returns nil when no ResourceSlices match the label / belong to the pool —
+// callers distinguish nil ("no data yet") from empty PeerGroups ("data but
+// no rings recoverable"). Health filter: devices whose
+// `npu.huawei.com/health` attribute is anything other than "Healthy" are
+// skipped (absent attribute → treated as healthy for back-compat with
+// pre-T002 publishers).
+//
+// Cross-module discipline: ResourceSlices are read via unstructured.
+// UnstructuredList — operators/CLAUDE.md §1 forbids Go imports across
+// operators sub-projects. The schema contract is fixed by ADR-0010 §5
+// (text-copied attribute names + label name).
+//
+// Tolerance: if the cluster has no resource.k8s.io API installed (e.g.
+// envtest without DRA feature gate), the meta.IsNoMatchError check returns
+// nil so the controller doesn't crash — HCCSDiscovered just stays
+// NoResourceSlicesObserved until the API surface arrives.
+func (r *NPUPoolReconciler) aggregateHCCSTopology(
+	ctx context.Context,
+	matchedNodeNames map[string]struct{},
+) (*imsv1alpha1.HCCSTopologyInfo, error) {
+	if len(matchedNodeNames) == 0 {
+		return nil, nil
+	}
+
+	var sliceList unstructured.UnstructuredList
+	sliceList.SetGroupVersionKind(resourceSliceListGVK)
+	if err := r.List(ctx, &sliceList, client.MatchingLabels{
+		npuDriverSliceLabel: npuDriverSliceLabelValue,
+	}); err != nil {
+		if meta.IsNoMatchError(err) {
+			// resource.k8s.io API not installed → behave as if no slices.
+			return nil, nil
+		}
+		return nil, err
+	}
+	if len(sliceList.Items) == 0 {
+		return nil, nil
+	}
+
+	// groupedDevices[nodeName][ringID] = []deviceName, accumulated then sorted.
+	groupedDevices := map[string]map[int64][]string{}
+	matchedSlice := false
+
+	for _, slice := range sliceList.Items {
+		nodeName, _, _ := unstructured.NestedString(slice.Object, "spec", "nodeName")
+		if _, ok := matchedNodeNames[nodeName]; !ok {
+			continue
+		}
+		matchedSlice = true
+		devices, _, _ := unstructured.NestedSlice(slice.Object, "spec", "devices")
+		for _, d := range devices {
+			dm, ok := d.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			deviceName, _, _ := unstructured.NestedString(dm, "name")
+			attrs, _, _ := unstructured.NestedMap(dm, "basic", "attributes")
+			if !healthAttributeOK(attrs) {
+				continue
+			}
+			ring, ok := readIntAttribute(attrs, attrHCCSRing)
+			if !ok {
+				continue
+			}
+			if _, exists := groupedDevices[nodeName]; !exists {
+				groupedDevices[nodeName] = map[int64][]string{}
+			}
+			groupedDevices[nodeName][ring] = append(groupedDevices[nodeName][ring], deviceName)
+		}
+	}
+
+	if !matchedSlice {
+		return nil, nil
+	}
+	if len(groupedDevices) == 0 {
+		// Slices belong to pool nodes but no healthy device carries the
+		// hccs_ring attribute. Return an empty (non-nil) topology so
+		// callers see "discovered but empty" — HCCSDiscovered condition
+		// flips to NoHealthyDevicesWithHCCS.
+		return &imsv1alpha1.HCCSTopologyInfo{}, nil
+	}
+
+	nodes := make([]string, 0, len(groupedDevices))
+	for n := range groupedDevices {
+		nodes = append(nodes, n)
+	}
+	sort.Strings(nodes)
+
+	var peers []imsv1alpha1.HCCSPeerGroup
+	for _, node := range nodes {
+		rings := make([]int64, 0, len(groupedDevices[node]))
+		for r := range groupedDevices[node] {
+			rings = append(rings, r)
+		}
+		sort.Slice(rings, func(i, j int) bool { return rings[i] < rings[j] })
+		for _, ring := range rings {
+			devs := append([]string(nil), groupedDevices[node][ring]...)
+			sort.Strings(devs)
+			qualified := make([]string, len(devs))
+			for i, d := range devs {
+				qualified[i] = fmt.Sprintf("%s/%s", node, d)
+			}
+			peers = append(peers, imsv1alpha1.HCCSPeerGroup{
+				GroupID:   fmt.Sprintf("%s/ring-%d", node, ring),
+				DeviceIDs: qualified,
+			})
+		}
+	}
+
+	return &imsv1alpha1.HCCSTopologyInfo{
+		PeerGroups: peers,
+	}, nil
+}
+
+// healthAttributeOK reports whether the device's npu.huawei.com/health
+// attribute is "Healthy" or absent (back-compat: pre-T002 publishers may
+// not emit this attribute). Anything else (Unhealthy / Unknown / unexpected
+// payload shape) returns false.
+func healthAttributeOK(attrs map[string]interface{}) bool {
+	a, ok := attrs[attrNPUHealth]
+	if !ok {
+		return true
+	}
+	m, ok := a.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	s, _, _ := unstructured.NestedString(m, "string")
+	return s == npuHealthValueHealthy
+}
+
+// readIntAttribute extracts an int64 from a DeviceAttribute structured as
+// {"int": <int64>}. Returns ok=false on missing key / wrong shape so
+// callers can decide whether absence is fatal.
+func readIntAttribute(attrs map[string]interface{}, key string) (int64, bool) {
+	a, ok := attrs[key]
+	if !ok {
+		return 0, false
+	}
+	m, ok := a.(map[string]interface{})
+	if !ok {
+		return 0, false
+	}
+	v, found, err := unstructured.NestedInt64(m, "int")
+	if err != nil || !found {
+		return 0, false
+	}
+	return v, true
 }
 
 // isNodeNPUHealthy reports whether n is both kubelet-Ready and carries the
