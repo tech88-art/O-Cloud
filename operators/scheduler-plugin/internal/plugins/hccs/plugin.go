@@ -39,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	resourceapi "k8s.io/api/resource/v1beta1"
+	"k8s.io/client-go/dynamic"
 	resourcelisters "k8s.io/client-go/listers/resource/v1beta1"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
@@ -47,15 +48,17 @@ import (
 // profiles[*].plugins.{filter,score}.enabled[].name MUST match this string.
 const Name = "HCCSTopology"
 
-// HCCSTopology is the plugin struct. T004 adds args + sliceLister fields +
-// implements framework.FilterPlugin (see filter.go). T005 will add the Score
-// method.
+// HCCSTopology is the plugin struct. T004 added Filter + sliceLister; T005
+// adds PreScore + Score + allocationLister. Compile-time interface
+// assertions for Plugin/FilterPlugin live here; the Score side lives in
+// score.go to keep file scope per-extension-point.
 type HCCSTopology struct {
-	args        *HCCSTopologyArgs
-	sliceLister sliceLister
+	args             *HCCSTopologyArgs
+	sliceLister      sliceLister
+	allocationLister allocationLister
 }
 
-// Compile-time assertions.
+// Compile-time assertions for Filter side. Score side asserted in score.go.
 var (
 	_ framework.Plugin       = &HCCSTopology{}
 	_ framework.FilterPlugin = &HCCSTopology{}
@@ -77,28 +80,47 @@ func New(_ context.Context, args runtime.Object, h framework.Handle) (framework.
 	if err != nil {
 		return nil, err
 	}
-	var lister sliceLister
+	var sLister sliceLister
+	var aLister allocationLister
 	if h != nil {
 		factory := h.SharedInformerFactory()
 		if factory != nil {
-			lister = &informerSliceLister{
+			sLister = &informerSliceLister{
 				lister: factory.Resource().V1beta1().ResourceSlices().Lister(),
 			}
 		}
+		// NPUSliceAllocation is a CRD; built-in SharedInformerFactory does
+		// not cover it. Build a dynamic client from the scheduler's
+		// KubeConfig — the per-Score-cycle List() is acceptable for Phase
+		// 6 simulator scope (< 100 NPUSliceAllocations). Phase 9 may want
+		// to upgrade to dynamicinformer.NewDynamicSharedInformerFactory
+		// + a metadata-only watch — see colocation.go.
+		if kc := h.KubeConfig(); kc != nil {
+			if dyn, err := dynamic.NewForConfig(kc); err == nil {
+				aLister = &dynamicAllocationLister{client: dyn}
+			}
+			// Silently swallow dynamic-client construction error — Score
+			// gracefully degrades to neutral when allocationLister is nil.
+		}
 	}
 	return &HCCSTopology{
-		args:        typed,
-		sliceLister: lister,
+		args:             typed,
+		sliceLister:      sLister,
+		allocationLister: aLister,
 	}, nil
 }
 
-// NewForTest constructs an HCCSTopology with caller-supplied args + lister.
-// Test-only: production callers go through New().
-func NewForTest(args *HCCSTopologyArgs, lister sliceLister) *HCCSTopology {
+// NewForTest constructs an HCCSTopology with caller-supplied args +
+// listers. Test-only: production callers go through New().
+func NewForTest(args *HCCSTopologyArgs, sLister sliceLister, aLister allocationLister) *HCCSTopology {
 	if args == nil {
 		args = defaultArgs()
 	}
-	return &HCCSTopology{args: args, sliceLister: lister}
+	return &HCCSTopology{
+		args:             args,
+		sliceLister:      sLister,
+		allocationLister: aLister,
+	}
 }
 
 // informerSliceLister adapts a `k8s.io/client-go/listers/resource/v1beta1`

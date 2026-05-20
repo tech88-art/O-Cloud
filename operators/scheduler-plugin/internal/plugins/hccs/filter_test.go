@@ -113,7 +113,7 @@ func TestFilter(t *testing.T) {
 	t.Run("annotation present, ring matches", func(t *testing.T) {
 		lister := newFakeLister()
 		lister.addSlice("worker-a", makeDevice("npu-0", 0, "Healthy"))
-		p := NewForTest(nil, lister)
+		p := NewForTest(nil, lister, nil)
 
 		status := p.Filter(context.Background(), nil, makePod("0"), makeNodeInfo("worker-a"))
 		if !status.IsSuccess() {
@@ -125,7 +125,7 @@ func TestFilter(t *testing.T) {
 		lister := newFakeLister()
 		// Node only carries ring 0; Pod asks for ring 5.
 		lister.addSlice("worker-a", makeDevice("npu-0", 0, "Healthy"))
-		p := NewForTest(nil, lister)
+		p := NewForTest(nil, lister, nil)
 
 		status := p.Filter(context.Background(), nil, makePod("5"), makeNodeInfo("worker-a"))
 		if status.Code() != framework.UnschedulableAndUnresolvable {
@@ -135,7 +135,7 @@ func TestFilter(t *testing.T) {
 
 	t.Run("annotation absent, permissive default (FailIfMissing=false)", func(t *testing.T) {
 		lister := newFakeLister()
-		p := NewForTest(nil, lister)
+		p := NewForTest(nil, lister, nil)
 
 		status := p.Filter(context.Background(), nil, makePod(""), makeNodeInfo("worker-a"))
 		if !status.IsSuccess() {
@@ -147,7 +147,7 @@ func TestFilter(t *testing.T) {
 		lister := newFakeLister()
 		args := defaultArgs()
 		args.FailIfMissing = true
-		p := NewForTest(args, lister)
+		p := NewForTest(args, lister, nil)
 
 		status := p.Filter(context.Background(), nil, makePod(""), makeNodeInfo("worker-a"))
 		if status.Code() != framework.UnschedulableAndUnresolvable {
@@ -161,7 +161,7 @@ func TestFilter(t *testing.T) {
 			makeDevice("npu-0", 0, "Healthy"),
 			makeDevice("npu-1", 0, "Healthy"),
 		)
-		p := NewForTest(nil, lister)
+		p := NewForTest(nil, lister, nil)
 
 		// Pod asks for {0, 7}; node has only ring 0 → still matches.
 		status := p.Filter(context.Background(), nil, makePod("0,7"), makeNodeInfo("worker-a"))
@@ -174,7 +174,7 @@ func TestFilter(t *testing.T) {
 		lister := newFakeLister()
 		// Node has a device on ring 0 but it's Unhealthy; nothing else.
 		lister.addSlice("worker-a", makeDevice("npu-0", 0, "Unhealthy"))
-		p := NewForTest(nil, lister)
+		p := NewForTest(nil, lister, nil)
 
 		status := p.Filter(context.Background(), nil, makePod("0"), makeNodeInfo("worker-a"))
 		if status.Code() != framework.UnschedulableAndUnresolvable {

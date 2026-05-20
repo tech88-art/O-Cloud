@@ -140,16 +140,65 @@ Filter(ctx, cycleState, pod, nodeInfo) *framework.Status
         "no healthy NPU device on node X matches HCCS ring set Y"
 ```
 
-### 3.3 Score cycle (T005 forward note)
+### 3.3 Score cycle (operative · T005)
 
-Per ADR-0010 §2 Score table:
-- No model-service label → 50 (neutral)
-- Sibling Pod on this ring → 100
-- Sibling Pod on adjacent ring (per Args.Adjacency) → 70
-- Sibling Pod only on disjoint rings → 30
-- No candidate devices → 0
+```
+PreScore(ctx, cs, pod, nodes) *framework.Status         # once per Pod cycle
+   │
+   ├── state := &hccsState{adjacency: buildAdjacency(p.args.Adjacency)}
+   │
+   ├── modelService := pod.Labels[ModelServiceLabel]
+   │
+   ├── if modelService=="" OR allocationLister==nil OR sliceLister==nil:
+   │       cs.Write(hccsStateKey, state)   # empty ringsOccupied
+   │       return Success
+   │
+   ├── allocs, err := allocationLister.ListByModelService(modelService)
+   │       err → framework.Error
+   │
+   ├── for alloc in allocs:
+   │       if alloc.Name == pod.Name: continue (skip self heuristic)
+   │       ring, ok := lookupDeviceRing(sliceLister, alloc.NodeName, alloc.Device)
+   │       if !ok: continue (device + ring not resolvable)
+   │       state.ringsOccupied[ring] = struct{}{}
+   │
+   └── cs.Write(hccsStateKey, state); return Success
 
-Reads NPUSliceAllocation via dynamic client (similar lister abstraction).
+
+Score(ctx, cs, pod, nodeName) (int64, *framework.Status)  # per candidate node
+   │
+   ├── state, _ := readHCCSState(cs)
+   ├── if len(ringsOccupied)==0:
+   │       return ScoreNeutral (50) — covers no-MS-label + first-Pod-of-MS
+   │
+   ├── if sliceLister==nil:
+   │       return ScoreNeutral (50) — graceful degradation
+   │
+   ├── nodeRings, err := nodeRingsFor(sliceLister, nodeName)
+   │       err → framework.Error
+   │
+   ├── if len(nodeRings)==0:
+   │       return ScoreNoCandidate (0)
+   │
+   ├── for r in nodeRings: if r in ringsOccupied → return ScoreSame (100)
+   │
+   ├── for r in nodeRings: for o in ringsOccupied:
+   │       if o in state.adjacency[r] → return ScoreAdjacent (70)
+   │
+   └── return ScoreDisjoint (30)
+```
+
+Score tiers per ADR-0010 §2:
+- `0`   ScoreNoCandidate — node has no NPU device the plugin recognises
+- `30`  ScoreDisjoint     — node's rings disjoint from siblings'
+- `50`  ScoreNeutral      — no MS label OR no siblings yet
+- `70`  ScoreAdjacent     — node's rings adjacent (per Args.Adjacency)
+- `100` ScoreSame         — node shares at least one ring with a sibling
+
+`ScoreExtensions()` returns nil — framework auto-normalises to [0..100],
+which our constants already inhabit. NPUSliceAllocation lookup runs **once
+per Pod** in PreScore (PreScorePlugin path), not per-node, keeping the
+Score hot-path O(devices_on_node × |ringsOccupied|).
 
 ## 4. 错误处理
 
@@ -164,11 +213,15 @@ Reads NPUSliceAllocation via dynamic client (similar lister abstraction).
 
 ## 5. 扩展点
 
-### 5.1 T005 Score body (immediate next-phase work)
+### 5.1 T005 Score body (operative — landed alongside T004 Filter)
 
-- `score.go` adds `Score(ctx, cycleState, pod, nodeName) (int64, *framework.Status)`
-- `colocation.go` adds NPUSliceAllocation lister abstraction (mirror sliceLister pattern)
-- `score_test.go` adds 5 envtest cases per plan §3 P6-T-005
+- `score.go` implements `PreScore` + `Score` + `ScoreExtensions`
+- `colocation.go` implements the NPUSliceAllocation lister abstraction
+  (allocationLister interface; dynamicAllocationLister production impl;
+  fakeAllocationLister in score_test.go)
+- `score_test.go` covers 7 sub-tests across the 5 scoring tiers +
+  no-MS-label + multi-ring same. Plus `TestBuildAdjacency` 3-case
+  sub-suite for the string→int adjacency conversion.
 
 ### 5.2 T006 NumaAffinity wrap
 
