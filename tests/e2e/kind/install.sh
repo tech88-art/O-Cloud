@@ -159,8 +159,15 @@ cmd_up() {
   fi
 
   echo "== install pool-operator via make deploy =="
+  # P5-T-113: do NOT wait for rollout here. The workflow runs
+  # `install.sh up` BEFORE `install.sh build-images`, so the
+  # `ocloud/pool-operator:e2e` image isn't loaded into kind yet;
+  # the freshly-created Deployment's Pod will sit in
+  # ImagePullBackOff. The workflow's "refresh deployments" step
+  # runs `kubectl rollout restart` + `kubectl rollout status`
+  # AFTER images are loaded — that's the canonical sync point.
+  # Waiting here would always time out on first run.
   (cd "${REPO_ROOT}/operators/pool-operator" && make deploy IMG="${POOL_OPERATOR_IMG}")
-  kubectl -n "${OP_NS}" rollout status deploy/pool-operator-controller-manager --timeout=3m
 
   echo "== install ascend-npu-exporter-plus via helm =="
   # The chart wires --simulator=<mountPath>/sim.json when both
@@ -169,6 +176,8 @@ cmd_up() {
   kubectl -n "${MON_NS}" create configmap ascend-npu-exporter-plus-sim \
     --from-file=sim.json="${REPO_ROOT}/exporters/ascend-npu-exporter-plus/testdata/simulator-set-a-small.json" \
     --dry-run=client -o yaml | kubectl apply -f -
+  # P5-T-113: `--wait` removed for the same reason as pool-operator
+  # above — the exporter image isn't loaded into kind yet.
   helm upgrade --install ascend-npu-exporter-plus \
     "${REPO_ROOT}/deploy/helm-charts/ascend-npu-exporter-plus/" \
     --namespace "${MON_NS}" \
@@ -177,9 +186,7 @@ cmd_up() {
     --set image.pullPolicy=IfNotPresent \
     --set simulator.enabled=true \
     --set simulator.configMap=ascend-npu-exporter-plus-sim \
-    --set serviceMonitor.enabled=false \
-    --wait --timeout 3m
-  kubectl -n "${MON_NS}" rollout status ds/ascend-npu-exporter-plus --timeout=2m
+    --set serviceMonitor.enabled=false
 
   echo "== expose exporter-plus on NodePort 30090 (smoke-only Service) =="
   cat <<'YAML' | kubectl apply -f -
@@ -204,8 +211,9 @@ spec:
 YAML
 
   echo "== install demo-backend =="
+  # P5-T-113: no rollout-status wait; images not loaded yet. See
+  # comment on pool-operator above.
   kubectl apply -f "${SCRIPT_DIR}/manifests/demo-backend.yaml"
-  kubectl -n "${NS}" rollout status deploy/demo-backend --timeout=2m
 
   echo "== install npu-dra-driver via helm (P4-T-104) =="
   # Phase 4: simulator-first publisher reads the bundled
@@ -214,16 +222,15 @@ YAML
   # records AllocationDeferred=Phase4Skeleton annotations on matching
   # ResourceClaims. Both behaviours land in the same Deployment behind
   # values toggles.
+  # P5-T-113: `--wait` removed; image isn't loaded yet.
   helm upgrade --install npu-dra-driver \
     "${REPO_ROOT}/deploy/helm-charts/npu-dra-driver/" \
     --namespace "${NS}" \
     --set image.repository="$(echo "${NPU_DRA_IMG}" | cut -d: -f1)" \
     --set image.tag="$(echo "${NPU_DRA_IMG}" | cut -d: -f2)" \
-    --set image.pullPolicy=IfNotPresent \
-    --wait --timeout 3m
-  kubectl -n "${NS}" rollout status deploy/npu-dra-driver --timeout=2m
+    --set image.pullPolicy=IfNotPresent
 
-  echo "== up complete =="
+  echo "== up complete (deployments applied; rollouts pending image load) =="
 }
 
 cmd_port_forward() {
