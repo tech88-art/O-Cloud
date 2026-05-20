@@ -88,25 +88,31 @@ cmd_up() {
     kind create cluster --config "${SCRIPT_DIR}/kind-config.yaml"
   fi
 
-  echo "== verify DRA API is being served by kube-apiserver =="
-  # P5-T-114 (2026-05-19): kind-config.yaml enables DRA via featureGates
-  # + runtimeConfig. Sanity-check the API server actually serves
-  # `resource.k8s.io/v1beta1` before proceeding — if not, the
-  # npu-dra-driver chart's DeviceClass apply will fail later with
-  # `no matches for kind "DeviceClass" in version "resource.k8s.io/v1beta1"`
-  # (commit a2c7325 run kind smoke step #8 log).
-  if ! kubectl api-resources --api-group=resource.k8s.io 2>&1 | grep -q "deviceclasses"; then
-    echo "::error::resource.k8s.io/v1beta1 API not served by kube-apiserver; DRA likely not enabled"
-    echo "::group::kubectl api-resources --api-group=resource.k8s.io"
+  echo "== verify DRA v1beta1 API is being served by kube-apiserver =="
+  # P5-T-115 (2026-05-20): T114's `grep -q deviceclasses` was too
+  # lenient — the API server might serve v1alpha2 or v1alpha3 (which
+  # also list `deviceclasses` in `kubectl api-resources`) without
+  # serving v1beta1, and helm install of the chart's v1beta1
+  # DeviceClass would still fail.
+  #
+  # The reliable check is to hit the version-specific discovery
+  # endpoint directly via `kubectl get --raw /apis/resource.k8s.io/v1beta1`.
+  # 200 OK means kube-apiserver serves that version.
+  if ! kubectl get --raw "/apis/resource.k8s.io/v1beta1" >/dev/null 2>&1; then
+    echo "::error::resource.k8s.io/v1beta1 API NOT served by kube-apiserver"
+    echo "::group::available api-resources in resource.k8s.io group"
     kubectl api-resources --api-group=resource.k8s.io || true
     echo "::endgroup::"
+    echo "::group::discovery for resource.k8s.io"
+    kubectl get --raw "/apis/resource.k8s.io" 2>&1 || true
+    echo "::endgroup::"
     echo "::group::kube-apiserver pod args"
-    kubectl -n kube-system get pod -l component=kube-apiserver -o yaml | grep -A 30 args || true
+    kubectl -n kube-system describe pod -l component=kube-apiserver | grep -E '(feature-gates|runtime-config|--enable-)' || true
     echo "::endgroup::"
     exit 1
   fi
-  echo "DRA API confirmed:"
-  kubectl api-resources --api-group=resource.k8s.io
+  echo "DRA v1beta1 API confirmed; resources:"
+  kubectl api-resources --api-group=resource.k8s.io || true
 
   echo "== patch worker nodes with fake huawei.com/Ascend910=8 capacity =="
   # kind config 'labels:' covers the label half (used by exporter-plus

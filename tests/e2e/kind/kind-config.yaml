@@ -55,16 +55,46 @@
 # and the npu-dra-driver manager reads `ResourceSlice` / writes claim
 # `status.allocation` on the same API version. Both manifests + the
 # allocator package need v1beta1 served.
+#
+# P5-T-115 (2026-05-20): the top-level featureGates: + runtimeConfig:
+# from T114 (commit 88aeb38) did NOT actually enable v1beta1 — the
+# next CI run still failed at `helm install npu-dra-driver` with
+# `no matches for kind "DeviceClass" in version "resource.k8s.io/v1beta1"`.
+# Kind v0.25 apparently doesn't translate top-level runtimeConfig to
+# kube-apiserver `--runtime-config` reliably for the slash-keyed entry
+# `resource.k8s.io/v1beta1`. The robust way is `kubeadmConfigPatches`
+# at the control-plane node, which we set explicitly here.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: ocloud-e2e
+# Top-level featureGates kept as a hint + propagates to kubelet on every
+# node (kind documents kubelet picks featureGates from cluster-level).
 featureGates:
   DynamicResourceAllocation: true
-runtimeConfig:
-  "resource.k8s.io/v1beta1": "true"
 nodes:
   - role: control-plane
     image: kindest/node:v1.32.0
+    kubeadmConfigPatches:
+      # Explicit kubeadm config — apiserver gets BOTH --feature-gates
+      # AND --runtime-config; controller-manager + scheduler get
+      # --feature-gates. kind passes these args through to the
+      # respective kubeadm-managed static pods on the control plane.
+      - |
+        kind: ClusterConfiguration
+        apiServer:
+          extraArgs:
+            feature-gates: "DynamicResourceAllocation=true"
+            runtime-config: "resource.k8s.io/v1beta1=true"
+        controllerManager:
+          extraArgs:
+            feature-gates: "DynamicResourceAllocation=true"
+        scheduler:
+          extraArgs:
+            feature-gates: "DynamicResourceAllocation=true"
+      - |
+        kind: KubeletConfiguration
+        featureGates:
+          DynamicResourceAllocation: true
     extraPortMappings:
       - containerPort: 30080
         hostPort: 30080
@@ -74,6 +104,12 @@ nodes:
         protocol: TCP
   - role: worker
     image: kindest/node:v1.32.0
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            feature-gates: "DynamicResourceAllocation=true"
     labels:
       huawei.com/Ascend910B: "true"
       huawei.com/Ascend910-Health: "Healthy"
@@ -81,6 +117,12 @@ nodes:
       role: edge
   - role: worker
     image: kindest/node:v1.32.0
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            feature-gates: "DynamicResourceAllocation=true"
     labels:
       huawei.com/Ascend910B: "true"
       huawei.com/Ascend910-Health: "Healthy"
