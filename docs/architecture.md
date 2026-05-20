@@ -802,7 +802,7 @@ ocloud-edge-platform/
 | Phase 9 | 多站点 demo backend 缓存重构(LRU 进程内 → Redis/singleton/stateless) | Phase 9 启动前 ADR + 重构路径 |
 | Phase 9 | 安全模型(authn/z + multi-tenancy RBAC + NPUSlicePool admission policy) | Phase 9 启动前完整安全设计 + Karmada RBAC 联动 |
 | Phase 5+ | NPU pod 网络考量(CNI + HCCL RDMA / RoCE / IPoIB 兼容) | research doc landed (P5-T-105 · `docs/cni-hccl-research.md`); **selection landed Phase 6 ADR-0010** — Cilium + Multus + SR-IOV 推荐 / Calico + Multus + SR-IOV fallback;scheduler-plugin CNI-portable(不依赖任何 CNI 特有 API) |
-| Phase 6 | scheduler-plugin(HCCS / NUMA / Binpack)+ HCCS 拓扑接口(npu-smi / DCMI 调研) | **in flight** — ADR-0010 (P6-T-001 / 2026-05-20) 锁定 plugin 框架 + 三 plugin 语义 + args schema + ResourceSlice attribute 消费契约;Phase 6 simulator 仍用 mock JSON(set-a-small `hccsGroup`/`hccsRing` 已就位 P4-T-005)· npu-smi 真硬件接口 deferred Phase 7 |
+| Phase 6 | scheduler-plugin(HCCS / NUMA / Binpack)+ HCCS 拓扑接口(npu-smi / DCMI 调研) | **landed phase-6-complete (2026-05-20)** — ADR-0010 (P6-T-001 / cfa6260) 设计冻结 · scheduler-plugin scaffold + HCCS Filter+Score + Binpack ScorePlugin + 集成 composition tests (P6-T-002..T008) · NumaAffinity placeholder ⏳ upstream wrap deferred to sched-plugins v0.32.x · pool-operator NPUPool.status.hccsTopology 聚合 (T003) · Helm chart (T101) · inference-operator metrics 3 collectors (T104) · vllm-ascend PD proxy_server schema substrate (T105) · kind smoke 扩展 (T106) · npu-smi 真硬件接口 deferred Phase 7 · 13/15 tasks done · 2 deferred (T102/T103 workloads sliceBindings 待 RFC) |
 
 **2026-05-18 RFC-003(spec 对齐补)追加**:
 

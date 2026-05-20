@@ -712,4 +712,36 @@ Before P6-T-001 starts, the meeting confirms:
 
 ---
 
+## Phase 6 actual landing
+
+**Phase 6 lands as `phase-6-complete` at the T107 commit (this commit
+chain head); T107 ran 2026-05-20.**
+
+13 of 15 W1+W2 tasks landed; 2 deferred with documented forward path:
+- **T006 NumaAffinity upstream wrap**: placeholder ships per ADR-0010
+  §3 update. Upstream sched-plugins v0.31.8 references `framework.GVK`
+  which K8s 1.32 (our pinned baseline) removed. Flip when v0.32.x
+  releases.
+- **T102 + T103 backend+frontend workloads `sliceBindings[]`**:
+  deferred pending `docs/api-contract.yaml` RFC chat approval. Both
+  are additive UX work that don't block Phase 6 scheduler-plugin /
+  metrics functionality.
+
+Test posture:
+- `go test ./...` across `operators/scheduler-plugin/` →
+  hccs 26 + numa 2 + binpack 9 + integration 5 = 42 sub-tests green
+- `go test ./...` across `operators/inference-operator/` →
+  controller 18 + metrics 4 + webhook 18 = 40 sub-tests green
+  (after T105 adds 5 buildPDPairContainers tests)
+- `helm lint --strict` on `deploy/helm-charts/scheduler-plugin/`
+  and updated `deploy/helm-charts/inference-operator/` → 0 failed
+- kind smoke E2E Phase 6 sub-job (T106) deferred to first CI run
+  validation per Phase 5 precedent
+
+See `docs/checkpoint-phase6.md` for the full deliverables table,
+test counts per surface, DoD reconciliation, deferral rationale,
+and Phase 7 handoff brief.
+
+---
+
 **END of Phase 6 plan**
