@@ -49,7 +49,13 @@ jobs:
       - name: setup go (for operator + backend image builds)
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          # P5-T-108 (CI fix · 2026-05-19): backend/go.mod is the highest
+          # version in the workspace (currently 1.26.3); the e2e-kind job
+          # builds backend + operators + exporter images so we pin to
+          # the highest module's go.mod to satisfy all. Previous `1.24`
+          # could not compile backend (needs ≥ 1.26) nor install
+          # controller-tools v0.20.1 (needs ≥ 1.24 — was borderline).
+          go-version-file: backend/go.mod
           cache: false
 
       - name: setup node
@@ -254,7 +260,10 @@ jobs:
       - name: setup go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          # P5-T-108 (CI fix · 2026-05-19): see e2e-kind job comment;
+          # this regression job builds backend (mock mode) so needs
+          # to match backend/go.mod.
+          go-version-file: backend/go.mod
           cache: false
 
       - name: setup node

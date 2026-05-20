@@ -161,7 +161,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          # P5-T-108 (CI fix · 2026-05-19): pin to the module's own go.mod
+          # so the toolchain matches backend/go.mod (currently 1.26.3) +
+          # follows future bumps automatically. The previous fixed `1.22`
+          # broke `make lint` which `go install`s golangci-lint v2 latest
+          # (needs Go ≥ 1.24) and broke compilation against the module
+          # graph (which requires Go ≥ 1.26).
+          go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
       - name: make ${{ matrix.task }}
         working-directory: backend
@@ -227,7 +233,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          # P5-T-108 (CI fix · 2026-05-19): pin to pool-operator's own
+          # go.mod (currently 1.25.7) so the toolchain matches the
+          # module + can `go install` controller-tools@v0.20.1 (which
+          # requires Go ≥ 1.24). The previous fixed `1.22` broke
+          # `make generate` / `make manifests`.
+          go-version-file: operators/pool-operator/go.mod
           cache-dependency-path: operators/pool-operator/go.sum
       - name: make generate + manifests
         working-directory: operators/pool-operator
