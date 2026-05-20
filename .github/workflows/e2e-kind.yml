@@ -236,6 +236,23 @@ jobs:
         # already).
         run: bash tests/e2e/kind/phase5/assert.sh
 
+      - name: Phase 6 — build + load scheduler-plugin image (P6-T-106)
+        run: bash tests/e2e/kind/phase6/install.sh build-scheduler-plugin
+
+      - name: Phase 6 — install scheduler-plugin chart
+        # Helm install + wait for Deployment Available + Lease present.
+        # NumaAffinity OMITTED from rendered config per T006 deferral.
+        run: bash tests/e2e/kind/phase6/install.sh install-scheduler-plugin
+
+      - name: Phase 6 — assert KubeSchedulerConfiguration + scrape metrics
+        # Per plan T106 acceptance: KubeSchedulerConfiguration ConfigMap
+        # has profile npu-scheduler, NumaAffinity NOT enabled (T006), the
+        # multiring ModelService applies cleanly, inference-operator
+        # /metrics endpoint exposes the 3 Phase 6 collectors (T104). The
+        # placement assertion is best-effort in kind (no real HCCS
+        # hardware); Phase 7+ tightens once lab access lands.
+        run: bash tests/e2e/kind/phase6/assert.sh
+
       - name: install Playwright deps
         working-directory: tests/e2e
         run: |
@@ -296,6 +313,14 @@ jobs:
           kubectl -n ocloud-system get resourceclaims -o yaml || true
           kubectl -n ocloud-system get npusliceallocations -o yaml || true
           kubectl -n ocloud-system get pods -l 'inference.ocloud.edge.example.com/model-service=ocloud-system/smoke-ms' -o yaml || true
+          echo "::endgroup::"
+          echo "::group::Phase 6 — scheduler-plugin (P6-T-101/T106)"
+          kubectl -n kube-system describe deploy -l app.kubernetes.io/name=scheduler-plugin || true
+          kubectl -n kube-system logs deploy -l app.kubernetes.io/name=scheduler-plugin --tail=200 || true
+          kubectl -n kube-system get cm -l app.kubernetes.io/name=scheduler-plugin -o yaml || true
+          kubectl -n kube-system get lease -l app.kubernetes.io/name=scheduler-plugin -o yaml || true
+          kubectl -n ocloud-system describe ms multiring-ms || true
+          kubectl -n ocloud-system get pods -l 'inference.ocloud.edge.example.com/model-service=multiring-ms' -o wide || true
           echo "::endgroup::"
 
   e2e-mock-regression:

@@ -1,0 +1,45 @@
+# Phase 6 P6-T-106 — multi-ring ModelService smoke fixture.
+#
+# Differs from the Phase 5 smoke fixture (phase5/fixtures/
+# modelservice-sample.yaml) in three ways:
+#   1. spec.schedulerName: npu-scheduler is set on the Pods via the
+#      Phase 5 deployment_builder propagation (currently NOT
+#      auto-stamped — known-issues #11 — this fixture relies on the
+#      ModelService template carrying it explicitly OR on T105's
+#      future deployment_builder polish to inject)
+#   2. Pods carry npu.huawei.com/preferred-hccs-ring annotation (read
+#      by HCCSTopology Filter to constrain placement)
+#   3. fallbackImage: busybox:1.36 (same as Phase 5; CI image-pull
+#      expediency)
+#
+# Important: as of P6-T-106, inference-operator's deployment_builder
+# does NOT yet inject schedulerName or preferred-hccs-ring onto the
+# generated Pod templates. The expected outcome on a fresh kind
+# cluster is: Pods run under the DEFAULT scheduler (not
+# npu-scheduler), and HCCSTopology Filter is never invoked. The
+# smoke assertion script (assert.sh) treats schedulerName presence
+# as a soft signal — it warns but doesn't fail when absent. A future
+# task wiring deployment_builder to stamp these fields will turn
+# the warning into a hard assertion.
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: ModelService
+metadata:
+  name: multiring-ms
+  namespace: ocloud-system
+  labels:
+    app.kubernetes.io/instance: multiring-ms
+    app.kubernetes.io/managed-by: P6-T-106
+spec:
+  model:
+    image: registry.example.com/vllm-ascend:v0.11.0
+    modelPath: /models/multiring
+  pdPair:
+    prefill:
+      replicas: 1
+    decode:
+      replicas: 1
+    routerLabel: inference.ocloud.edge.example.com/pd-role
+    # CI image-pull bypass.
+    fallbackImage: busybox:1.36
+  npuSlicePoolRef:
+    name: smoke-pool

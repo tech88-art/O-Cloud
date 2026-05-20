@@ -1,0 +1,33 @@
+# Phase 6 P6-T-106 multi-ring NPUSlicePool fixture.
+#
+# References the smoke-pool already seeded by
+# tests/e2e/kind/seed-resources.sh (Phase 3+). This fixture adds a
+# second NPUSlicePool overlapping the same nodes for variety; the
+# ModelService at modelservice-multiring.yaml references the existing
+# smoke-pool (no rename) so the fixture stays additive — apply-or-skip.
+#
+# In real-cluster phase the multi-ring layout comes from npu-dra-driver
+# publisher emitting ResourceSlice attributes with distinct hccs_ring
+# values per node. The kind cluster's mock JSON
+# (configs/mock-data/set-a-small/npus.json) already has rings 0/1/2/3
+# distributed across worker-site-a-{01..03}.
+#
+# T106 doesn't need to apply a new NPUSlicePool — the assertion
+# focuses on schedulerName + ConfigMap + metrics. Pool fixture kept
+# minimal for forward extensibility.
+---
+apiVersion: ims.ocloud.edge.example.com/v1alpha1
+kind: NPUSlicePool
+metadata:
+  name: smoke-pool-multiring
+  namespace: ocloud-system
+  labels:
+    app.kubernetes.io/managed-by: P6-T-106
+spec:
+  npuPoolRef:
+    name: smoke-npupool   # references the existing parent pool seeded earlier
+  strategy: FixedTemplate
+  fixedTemplates:
+  - name: whole
+    aiCoreCount: 32
+    memoryMiB: 65536
