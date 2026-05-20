@@ -259,10 +259,23 @@ Until then, operators wanting NUMA-aware scheduling can run upstream
 sched-plugins binary as a second scheduler alongside our HCCSTopology+
 Binpack binary (functional today, more operational overhead).
 
-### 5.3 T007 Binpack
+### 5.3 T007 Binpack (operative)
 
-- separate `internal/plugins/binpack/` package
-- ~50 LOC internal Score impl per ADR-0010 §4
+- `internal/plugins/binpack/` package, ~150 LOC across binpack.go + args.go
+  (slightly above the 50-LOC estimate due to manual DeepCopyObject + arg
+  parsing patterns mirrored from hccs; the actual Score formula is ~25 LOC)
+- ScorePlugin only (no Filter — ADR-0010 §4: Binpack only influences
+  score, never blocks scheduling)
+- Score formula:
+  - for each `r` in `Args.ResourceWeights`:
+    - `ratio_r = clamp(pod.requested[r] / node.allocatable[r], 0, 1)`
+    - `contribution_r = weight_r * ratio_r * 100`
+  - `score = sum(contribution_r) / sum(weight_r)` (range [0..100])
+- Default ResourceWeights: `{cpu:1, memory:1, npu.ocloud.edge.example.com/devices:5}`
+- Default `Enabled=false` — chart operators opt in via values.yaml
+- 9 sub-tests passing: 6 Score cases (disabled / single-resource /
+  multi-resource / empty allocatable / zero-request / clamp) + 3
+  parseArgs cases
 
 ### 5.4 T008 Integration tests
 
