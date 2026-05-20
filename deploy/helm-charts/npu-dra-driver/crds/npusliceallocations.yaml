@@ -1,0 +1,277 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: npusliceallocations.npu.ocloud.edge.example.com
+spec:
+  group: npu.ocloud.edge.example.com
+  names:
+    kind: NPUSliceAllocation
+    listKind: NPUSliceAllocationList
+    plural: npusliceallocations
+    shortNames:
+    - npua
+    singular: npusliceallocation
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.claimRef.name
+      name: Claim
+      type: string
+    - jsonPath: .spec.sliceRef.device
+      name: Device
+      type: string
+    - jsonPath: .spec.nodeName
+      name: Node
+      type: string
+    - jsonPath: .spec.aiCores
+      name: AICores
+      type: integer
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          NPUSliceAllocation records one allocator decision for audit, reverse
+          lookup, and Phase 9 quota purposes.
+
+          Cluster-scoped: physical NPU devices are cluster-wide resources, so
+          the audit log lives at the same scope. Namespace-scoped consumers
+          (inference-operator ModelService, multi-tenant quota controllers)
+          reach into this list via label selectors when they need per-namespace
+          views.
+
+          The npu-dra-driver claim controller (T005) creates one
+          NPUSliceAllocation per ResourceClaim allocation it writes. The
+          canonical source of truth for "is this device allocated" remains the
+          claim's `Status.Allocation` — NPUSliceAllocation is a parallel index
+          that Phase 6 scheduler-plugin + Phase 9 quota controller read but the
+          allocator (T002 Greedy / BestFit) does not.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              NPUSliceAllocationSpec captures the immutable allocation outcome.
+
+              Phase 5 invariants:
+                - Spec is set by the npu-dra-driver claim controller (T002) at the
+                  same moment status.allocation is written on the owning
+                  ResourceClaim. It is never mutated thereafter — releases delete
+                  the object, not update it.
+                - One NPUSliceAllocation per (claim, device) tuple. Multi-device
+                  claims (Phase 6+) produce multiple NPUSliceAllocation entries
+                  under the same owner-ref.
+            properties:
+              aiCores:
+                description: |-
+                  AICores is the allocated AI-core count. For SliceStrategyDynamic
+                  devices this is the requested per-slice AI-core count; for
+                  SliceStrategyFixedTemplate devices it is the device's full
+                  AI-core capacity (e.g. 32 for an Ascend 910B whole NPU).
+                format: int32
+                minimum: 0
+                type: integer
+              claimRef:
+                description: |-
+                  ClaimRef is an immutable reference back to the upstream
+                  resource.k8s.io/v1beta1.ResourceClaim that owns this allocation.
+                  The owning ResourceClaim is also set as the OwnerReference on
+                  metadata.ownerReferences so K8s garbage collection cascades the
+                  delete; ClaimRef carries the namespace + name + UID for ergonomic
+                  reads (avoid round-tripping through ownerRefs).
+                properties:
+                  apiVersion:
+                    description: API version of the referent.
+                    type: string
+                  fieldPath:
+                    description: |-
+                      If referring to a piece of an object instead of an entire object, this string
+                      should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2].
+                      For example, if the object reference is to a container within a pod, this would take on a value like:
+                      "spec.containers{name}" (where "name" refers to the name of the container that triggered
+                      the event) or if no container name is specified "spec.containers[2]" (container with
+                      index 2 in this pod). This syntax is chosen only to have some well-defined way of
+                      referencing a part of an object.
+                    type: string
+                  kind:
+                    description: |-
+                      Kind of the referent.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+                    type: string
+                  name:
+                    description: |-
+                      Name of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                  namespace:
+                    description: |-
+                      Namespace of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+                    type: string
+                  resourceVersion:
+                    description: |-
+                      Specific resourceVersion to which this reference is made, if any.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+                    type: string
+                  uid:
+                    description: |-
+                      UID of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              modelServiceRef:
+                description: |-
+                  ModelServiceRef carries the inference-operator ModelService that
+                  triggered this allocation, when set. Mirrors the annotation
+                  `ocloud.edge.example.com/model-service-ref` on the owning claim.
+                  Empty for manually-created claims (Phase 5 tests, smoke runs).
+                type: string
+              nodeName:
+                description: |-
+                  NodeName is the node hosting the device. Duplicated from
+                  SliceRef.Pool by convention but tracked separately so a Phase 7
+                  real-Ascend deployment where pool != node can express both.
+                type: string
+              sliceRef:
+                description: SliceRef identifies the picked device within the DRA
+                  pool model.
+                properties:
+                  device:
+                    description: |-
+                      Device is the per-slice Device.Name (DNS label, e.g.
+                      `<node>-npu-<index>`).
+                    type: string
+                  driver:
+                    description: |-
+                      Driver is the DRA driver name (always npu.ocloud.edge.example.com
+                      in Phase 5).
+                    type: string
+                  pool:
+                    description: |-
+                      Pool is the ResourceSlice ResourcePool.Name — by convention the
+                      node hostname (Phase 5 simulator + real Ascend Phase 7 both follow
+                      this convention).
+                    type: string
+                required:
+                - device
+                - driver
+                - pool
+                type: object
+            required:
+            - aiCores
+            - claimRef
+            - nodeName
+            - sliceRef
+            type: object
+          status:
+            description: NPUSliceAllocationStatus tracks the lifecycle of one allocation.
+            properties:
+              allocatedAt:
+                description: |-
+                  AllocatedAt records the wall-clock time of the allocation
+                  transition (the moment Spec was written). Useful as a tiebreaker
+                  for the Phase 9 quota controller when two NPUSliceAllocations
+                  reference the same device through a race.
+                format: date-time
+                type: string
+              conditions:
+                description: |-
+                  Conditions surfaces the Available signal + future Phase 6
+                  scheduler-plugin readiness signals.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              phase:
+                description: |-
+                  Phase mirrors the lifecycle described in the NPUSliceAllocationPhase*
+                  constants.
+                enum:
+                - Allocated
+                - Released
+                - Orphaned
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
