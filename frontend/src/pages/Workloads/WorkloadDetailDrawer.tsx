@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { MetricChip } from '@/components/MetricChip';
+import { SliceBindingBadge } from '@/components/SliceBindingBadge';
 import { StatusTag } from '@/components/StatusTag';
 import {
   useWorkloadDetail,
   type Pod,
+  type SliceBinding,
   type WorkloadDetail,
 } from '@/services/workload';
 import styles from './styles.module.css';
@@ -147,6 +149,16 @@ function DetailBody({ detail, metricsHref }: DetailBodyProps) {
 
       <section
         className={styles.detailSection}
+        data-testid="workload-detail-slice-bindings"
+      >
+        <h4 className={styles.detailHeading}>
+          {t('workloadDetail.sliceBindings')}
+        </h4>
+        <SliceBindingsSection bindings={detail.sliceBindings ?? []} />
+      </section>
+
+      <section
+        className={styles.detailSection}
         data-testid="workload-detail-relations"
       >
         <h4 className={styles.detailHeading}>
@@ -254,6 +266,81 @@ function PodCard({ pod }: PodCardProps) {
           </div>
         ))
       )}
+    </div>
+  );
+}
+
+// P6-T-103 — slice bindings section. Groups bindings by PD-pair role
+// when prefill+decode present (renders 2 columns side-by-side); falls
+// back to a flat list otherwise.
+interface SliceBindingsSectionProps {
+  bindings: SliceBinding[];
+}
+
+function SliceBindingsSection({ bindings }: SliceBindingsSectionProps) {
+  const { t } = useTranslation();
+  if (bindings.length === 0) {
+    return <Text type="secondary">{t('workloadDetail.noSliceBindings')}</Text>;
+  }
+
+  const prefill = bindings.filter((b) => b.role === 'prefill');
+  const decode = bindings.filter((b) => b.role === 'decode');
+  const isPdPair = prefill.length > 0 && decode.length > 0;
+
+  if (isPdPair) {
+    const other = bindings.filter(
+      (b) => b.role !== 'prefill' && b.role !== 'decode',
+    );
+    return (
+      <div
+        className={styles.pdPairGrid}
+        data-testid="workload-detail-pd-pair-grid"
+      >
+        <SliceBindingGroup
+          label={t('workloadDetail.pdSidePrefill')}
+          bindings={prefill}
+          testId="workload-detail-prefill-bindings"
+        />
+        <SliceBindingGroup
+          label={t('workloadDetail.pdSideDecode')}
+          bindings={decode}
+          testId="workload-detail-decode-bindings"
+        />
+        {other.length > 0 && (
+          <SliceBindingGroup
+            label={t('workloadDetail.pdSideOther')}
+            bindings={other}
+            testId="workload-detail-other-bindings"
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Space size={[6, 6]} wrap data-testid="workload-detail-bindings-flat">
+      {bindings.map((b, i) => (
+        <SliceBindingBadge key={`${b.nodeName}-${b.device}-${i}`} binding={b} />
+      ))}
+    </Space>
+  );
+}
+
+interface SliceBindingGroupProps {
+  label: string;
+  bindings: SliceBinding[];
+  testId: string;
+}
+
+function SliceBindingGroup({ label, bindings, testId }: SliceBindingGroupProps) {
+  return (
+    <div className={styles.pdPairColumn} data-testid={testId}>
+      <Text strong>{label}</Text>
+      <Space size={[6, 6]} wrap>
+        {bindings.map((b, i) => (
+          <SliceBindingBadge key={`${b.nodeName}-${b.device}-${i}`} binding={b} />
+        ))}
+      </Space>
     </div>
   );
 }

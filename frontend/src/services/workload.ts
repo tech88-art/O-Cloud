@@ -21,6 +21,8 @@ import type { components } from './types';
 export type Workload = components['schemas']['Workload'];
 export type WorkloadDetail = components['schemas']['WorkloadDetail'];
 export type Pod = components['schemas']['Pod'];
+// P6-T-102 — SliceBinding generated from the new SliceBinding component.
+export type SliceBinding = components['schemas']['SliceBinding'];
 
 export type WorkloadType = NonNullable<Workload['type']>;
 export type WorkloadStatus = NonNullable<Workload['status']>;
@@ -29,6 +31,14 @@ export interface WorkloadFilter {
   namespace?: string;
   type?: WorkloadType;
   status?: WorkloadStatus;
+  /**
+   * P6-T-103 opt-in: when true, the list endpoint populates
+   * `Workload.sliceBindings` from NPUSliceAllocation data joined
+   * against the workload's pods. Default false — keeps response
+   * shape unchanged for callers that don't ask for the data. The
+   * detail endpoint always populates when source has data.
+   */
+  includeSliceBindings?: boolean;
 }
 
 /**
@@ -37,9 +47,14 @@ export interface WorkloadFilter {
  * Empty-string values are treated as "no filter" so the page can pass an
  * uncontrolled input's value directly without trimming. Anything else flows
  * through to the backend query string.
+ *
+ * P6-T-103: passing `includeSliceBindings: true` adds the
+ * `?includeSliceBindings=true` query param; backend response then carries
+ * the `sliceBindings[]` field per workload (per-pod NPU device + AI core
+ * allocations).
  */
 export function useWorkloads(filter: WorkloadFilter = {}) {
-  const params: Record<string, string> = {};
+  const params: Record<string, string | boolean> = {};
   if (filter.namespace && filter.namespace.trim().length > 0) {
     params.namespace = filter.namespace.trim();
   }
@@ -48,6 +63,9 @@ export function useWorkloads(filter: WorkloadFilter = {}) {
   }
   if (filter.status) {
     params.status = filter.status;
+  }
+  if (filter.includeSliceBindings) {
+    params.includeSliceBindings = true;
   }
   return useQuery({
     queryKey: ['workloads', params],

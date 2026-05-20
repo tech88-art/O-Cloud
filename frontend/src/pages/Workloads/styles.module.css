@@ -77,6 +77,24 @@
   margin: 0;
 }
 
+/* P6-T-103 — PD-pair grid for the SliceBindings section. Two columns
+   when prefill + decode both present; "other" wraps below. */
+.pdPairGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pdPairColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
 .podCard {
   border: 1px solid #f0f0f0;
   border-radius: 6px;

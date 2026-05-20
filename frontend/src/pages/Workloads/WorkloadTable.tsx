@@ -1,6 +1,7 @@
-import { Table } from 'antd';
+import { Space, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
+import { SliceBindingBadge } from '@/components/SliceBindingBadge';
 import { StatusTag } from '@/components/StatusTag';
 import type { Workload } from '@/services/workload';
 import styles from './styles.module.css';
@@ -43,6 +44,15 @@ export function WorkloadTable({
   selectedRowKey,
 }: WorkloadTableProps) {
   const { t } = useTranslation();
+
+  // P6-T-103: show the Slice Bindings column ONLY when at least one
+  // workload in the current list has sliceBindings populated. Keeps
+  // the table compact for callers that haven't opted in to
+  // `?includeSliceBindings=true` AND for environments where no
+  // workload has bound NPU slices yet.
+  const anyHasSliceBindings = data.some(
+    (w) => (w.sliceBindings?.length ?? 0) > 0,
+  );
 
   const columns: ColumnsType<Workload> = [
     {
@@ -100,6 +110,28 @@ export function WorkloadTable({
       render: (iso: string | undefined) => formatTimestamp(iso),
     },
   ];
+
+  // P6-T-103: append the Slice Bindings column only when needed.
+  // Hidden column when no workload has bindings (most callers /
+  // pre-Phase-6 deployments).
+  if (anyHasSliceBindings) {
+    columns.push({
+      title: t('workloads.sliceBindings'),
+      key: 'sliceBindings',
+      width: 280,
+      render: (_: unknown, row: Workload) => {
+        const bindings = row.sliceBindings ?? [];
+        if (bindings.length === 0) return '-';
+        return (
+          <Space size={[4, 4]} wrap data-testid={`workload-slicebindings-${workloadRowKey(row)}`}>
+            {bindings.map((b, i) => (
+              <SliceBindingBadge key={`${b.nodeName}-${b.device}-${i}`} binding={b} />
+            ))}
+          </Space>
+        );
+      },
+    });
+  }
 
   return (
     <Table<Workload>

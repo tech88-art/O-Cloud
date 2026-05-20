@@ -469,6 +469,16 @@ export interface paths {
                     namespace?: string;
                     type?: "inference" | "benchmark" | "training" | "other";
                     status?: "pending" | "running" | "succeeded" | "failed" | "unknown";
+                    /**
+                     * @description P6-T-102 opt-in flag. When true, each returned Workload
+                     *     entry includes its `sliceBindings[]` field populated from
+                     *     NPUSliceAllocation data joined against the workload's
+                     *     pods. Default false — keeps the list-endpoint response
+                     *     shape unchanged for callers that don't ask for the data.
+                     *     The detail endpoint always populates the field when the
+                     *     underlying source has data.
+                     */
+                    includeSliceBindings?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -1171,6 +1181,44 @@ export interface components {
             labels?: {
                 [key: string]: string;
             };
+            /**
+             * @description P6-T-102 — NPU slice allocations bound to this workload's
+             *     pods. Sourced from the `npu.huawei.com/slice-bindings`
+             *     annotation Phase 5 PD Router stamps onto PD-pair Pods +
+             *     cross-referenced against NPUSliceAllocation audit
+             *     objects when the crd source is configured. **Default
+             *     empty** on the list endpoint unless
+             *     `?includeSliceBindings=true` is passed; the detail
+             *     endpoint always populates when data is available.
+             */
+            sliceBindings?: components["schemas"]["SliceBinding"][];
+        };
+        /**
+         * @description P6-T-102 — one NPU slice allocation observed for a pod of a
+         *     workload. Mirrors the `npu.huawei.com/slice-bindings`
+         *     annotation format
+         *     (`<node>/<pool>/<device>:<aiCores>`) with each component
+         *     split into its own field for easier frontend rendering.
+         */
+        SliceBinding: {
+            /** @description Pod the binding originated from. */
+            podName?: string;
+            /** @description Node hosting the device. */
+            nodeName: string;
+            /** @description ResourcePool name (= nodeName by convention). */
+            pool?: string;
+            /** @description Device identifier inside the pool (e.g. `worker-site-a-01-npu-0`). */
+            device: string;
+            /**
+             * Format: int32
+             * @description Allocated AI-core count for this slice.
+             */
+            aiCores?: number;
+            /**
+             * @description PD-pair side or relation when the binding came from a ModelService Pod.
+             * @enum {string}
+             */
+            role?: "prefill" | "decode" | "primary" | "sidecar" | "init" | "peer";
         };
         WorkloadDetail: components["schemas"]["Workload"] & {
             pods?: components["schemas"]["Pod"][];

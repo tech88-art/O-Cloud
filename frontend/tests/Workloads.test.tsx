@@ -134,7 +134,56 @@ function workloadDetailFixture(): WorkloadDetail {
         type: 'pd-pair',
       },
     ],
+    // P6-T-103 — sliceBindings populated on the detail endpoint by
+    // backend default; renders as 2-column PD-pair grid in the Drawer.
+    sliceBindings: [
+      {
+        podName: 'qwen-8b-pd-prefill-0',
+        nodeName: 'worker-site-a-01',
+        pool: 'worker-site-a-01',
+        device: 'worker-site-a-01-npu-1',
+        aiCores: 32,
+        role: 'prefill',
+      },
+      {
+        podName: 'qwen-8b-pd-decode-0',
+        nodeName: 'worker-site-a-02',
+        pool: 'worker-site-a-02',
+        device: 'worker-site-a-02-npu-1',
+        aiCores: 32,
+        role: 'decode',
+      },
+    ],
   };
+}
+
+// P6-T-103 — workload list with sliceBindings populated (returned when
+// the page passes ?includeSliceBindings=true, which it always does).
+function workloadListWithBindings(): Workload[] {
+  return [
+    {
+      ...workloadList()[0],
+      sliceBindings: [
+        {
+          podName: 'qwen-8b-pd-prefill-0',
+          nodeName: 'worker-site-a-01',
+          pool: 'worker-site-a-01',
+          device: 'worker-site-a-01-npu-1',
+          aiCores: 32,
+          role: 'prefill',
+        },
+        {
+          podName: 'qwen-8b-pd-decode-0',
+          nodeName: 'worker-site-a-02',
+          pool: 'worker-site-a-02',
+          device: 'worker-site-a-02-npu-1',
+          aiCores: 32,
+          role: 'decode',
+        },
+      ],
+    },
+    ...workloadList().slice(1),
+  ];
 }
 
 // -------- Render helper --------
@@ -255,8 +304,9 @@ describe('WorkloadsPage — filter passthrough', () => {
 
     // First call has no status filter.
     await waitFor(() => {
+      // P6-T-103: page always opts in to includeSliceBindings.
       expect(mockGet).toHaveBeenCalledWith('/api/v1/workloads', {
-        params: {},
+        params: { includeSliceBindings: true },
       });
     });
 
@@ -274,7 +324,7 @@ describe('WorkloadsPage — filter passthrough', () => {
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith('/api/v1/workloads', {
-        params: { status: 'running' },
+        params: { status: 'running', includeSliceBindings: true },
       });
     });
   });
@@ -382,5 +432,92 @@ describe('WorkloadsPage — drawer detail', () => {
       'href',
       '/metrics?workload=ai-inference/qwen-8b-pd',
     );
+  });
+});
+
+// P6-T-103 — SliceBindings column + PD-pair grouping in Drawer.
+
+describe('WorkloadsPage — P6-T-103 slice bindings', () => {
+  it('shows the Slice Bindings column when at least one workload has bindings', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/workloads') {
+        return Promise.resolve({ data: workloadListWithBindings() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    renderPage();
+    await screen.findByTestId('workload-table');
+
+    // The qwen-8b-pd row has 2 sliceBindings; expect the cell with the
+    // workload-slicebindings testid to be present.
+    const cell = await screen.findByTestId(
+      'workload-slicebindings-ai-inference/qwen-8b-pd',
+    );
+    expect(within(cell).getAllByTestId('slice-binding-badge')).toHaveLength(2);
+
+    // Badge text format: <node>/<device> (<aiCores>c)
+    expect(cell).toHaveTextContent('worker-site-a-01/worker-site-a-01-npu-1 (32c)');
+    expect(cell).toHaveTextContent('worker-site-a-02/worker-site-a-02-npu-1 (32c)');
+  });
+
+  it('hides the Slice Bindings column when no workload has bindings', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/workloads') {
+        // No sliceBindings on any entry (default-off backend response or
+        // pre-Phase-6 environment).
+        return Promise.resolve({ data: workloadList() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    renderPage();
+    await screen.findByTestId('workload-table');
+
+    // The cell with workload-slicebindings testid should be absent for
+    // every workload since the column is hidden entirely.
+    expect(
+      screen.queryByTestId(
+        'workload-slicebindings-ai-inference/qwen-8b-pd',
+      ),
+    ).toBeNull();
+  });
+
+  it('Drawer renders PD-pair grid with prefill + decode columns', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/workloads') {
+        return Promise.resolve({ data: workloadListWithBindings() });
+      }
+      if (url === '/api/v1/workloads/ai-inference/qwen-8b-pd') {
+        return Promise.resolve({ data: workloadDetailFixture() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByTestId('workload-table');
+    await user.click(
+      screen.getByTestId('workload-row-ai-inference/qwen-8b-pd'),
+    );
+
+    // Wait for the PD-pair grid to render in the Drawer detail body.
+    const grid = await screen.findByTestId('workload-detail-pd-pair-grid');
+    const prefillCol = within(grid).getByTestId(
+      'workload-detail-prefill-bindings',
+    );
+    const decodeCol = within(grid).getByTestId(
+      'workload-detail-decode-bindings',
+    );
+    expect(within(prefillCol).getAllByTestId('slice-binding-badge')).toHaveLength(1);
+    expect(within(decodeCol).getAllByTestId('slice-binding-badge')).toHaveLength(1);
+
+    // Prefill column contains the prefill-role badge.
+    expect(
+      within(prefillCol).getByTestId('slice-binding-badge'),
+    ).toHaveAttribute('data-role', 'prefill');
+    expect(
+      within(decodeCol).getByTestId('slice-binding-badge'),
+    ).toHaveAttribute('data-role', 'decode');
   });
 });
