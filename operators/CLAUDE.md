@@ -1,6 +1,6 @@
 # Operators CLAUDE.md — Kubebuilder Operators 协作指南
 
-> Operators 模块涵盖 `pool-operator`（池化 CRD，Phase 3）、`npu-dra-driver`（DRA driver scaffold，Phase 4）和 `inference-operator`（推理服务 CRD scaffold Phase 4 / controller body Phase 5）。
+> Operators 模块涵盖 `pool-operator`（池化 CRD，Phase 3）、`npu-dra-driver`（DRA driver scaffold，Phase 4）、`inference-operator`（推理服务 CRD scaffold Phase 4 / controller body Phase 5）和 `scheduler-plugin`（自研 kube-scheduler with HCCSTopology + NumaAffinity + Binpack plugins · Phase 6 scaffold P6-T-002 · NOT a Kubebuilder project）。
 
 ---
 
@@ -8,16 +8,21 @@
 
 ```
 operators/
-├── pool-operator/        4 级池化 CRD(ClusterPool / NodePool / NPUPool / NPUSlicePool)+ 控制器(Phase 3 完整 + Phase 4 T102 加 ResourceSlice cross-watch)
-├── npu-dra-driver/       Ascend NPU DRA driver(Phase 4 simulator-first; real Ascend + 真分配 Phase 5+)
-└── inference-operator/   推理服务 CRD(ModelService · scaffold Phase 4 T103 / controller Phase 5 per ADR-0008+ADR-0009)
+├── pool-operator/        4 级池化 CRD(ClusterPool / NodePool / NPUPool / NPUSlicePool)+ 控制器(Phase 3 完整 + Phase 4 T102 加 ResourceSlice cross-watch + Phase 6 T003 加 NPUPool.status.hccsTopology 聚合)
+├── npu-dra-driver/       Ascend NPU DRA driver(Phase 4 simulator-first + Phase 5 real allocator + NPUSliceAllocation 审计 CRD;real Ascend 硬件接入 Phase 7+)
+├── inference-operator/   推理服务 CRD(ModelService · scaffold Phase 4 T103 / controller body + PD Router webhook Phase 5 per ADR-0008+ADR-0009 / metrics + vllm-ascend PD proxy adoption Phase 6 T104+T105)
+└── scheduler-plugin/     自研 kube-scheduler 二进制(HCCSTopology Filter+Score + NumaAffinity wrap + Binpack opt-in Score · 框架 sigs.k8s.io/scheduler-plugins v0.31.x per ADR-0010 · scaffold Phase 6 T002 · plugin bodies T004-T007)
 ```
+
+**重要**:scheduler-plugin **不是 Kubebuilder 项目** · 它是 `kube-scheduler` 二进制 + 自定义 plugins compiled in。无 controller-gen / make manifests / setup-envtest 目标。Plugin 注册走 `app.NewSchedulerCommand(app.WithPlugin(...))`,KubeSchedulerConfiguration ConfigMap 由 P6-T-101 helm chart 提供。
 
 **Phase 4 W1 引入 npu-dra-driver(P4-T-003)**:Kubebuilder v4 scaffold + 预留 `--enable-publisher` / `--enable-claim-controller` flags;simulator-first(读 `configs/mock-data/set-a-small/npus.json`),不接触真实 NPU。详见 `docs/phase4-plan.md` §3 P4-T-003 与 `operators/npu-dra-driver/README.md`。
 
 **Phase 4 W2 引入 inference-operator scaffold(P4-T-103)**:Kubebuilder v4 scaffold + ModelService CRD 类型(api/v1alpha1)只 · 不含 controller body。Phase 5 落 controller 实现 per ADR-0008(PD Router 管入 webhook)+ ADR-0009(npu-dra-driver 分配逻辑)。详见 `operators/inference-operator/README.md`。
 
-三个 sub-project 共享本 CLAUDE.md 的工程约定(§3.x),但各自维护独立 `go.mod`(module path 不交叉依赖)— 跨 sub-project 共享代码请走 Go 单独包发布或代码复制(本仓库已有先例:pool-operator + npu-dra-driver/internal/controller/utils.go 是文本复制不是 import,见 §3.x 末尾说明)。
+**Phase 6 W1 引入 scheduler-plugin scaffold(P6-T-002)**:non-Kubebuilder Go 项目 · 上游 `sigs.k8s.io/scheduler-plugins` v0.31.x 框架 + 3 个 placeholder plugin 包(hccs / numa / binpack)· cmd/main.go 走 `app.NewSchedulerCommand` 注册。Plugin Filter/Score bodies P6-T-004..T007 填入。详见 `operators/scheduler-plugin/README.md` + ADR-0010 §1。
+
+四个 sub-project 共享本 CLAUDE.md 的工程约定(§3.x),但各自维护独立 `go.mod`(module path 不交叉依赖)— 跨 sub-project 共享代码请走 Go 单独包发布或代码复制(本仓库已有先例:pool-operator + npu-dra-driver/internal/controller/utils.go 是文本复制不是 import,见 §3.x 末尾说明)。scheduler-plugin 因依赖 k8s.io/kubernetes 主仓 + 上游 sched-plugins,go.mod replace block 显著大于其他 sub-project(详 `operators/scheduler-plugin/go.mod`),但仍保持模块隔离原则。
 
 **Phase 1 范围**：
 - 只完成 **CRD 类型定义**（`api/v1alpha1/*.go`），**不**实现 Controller

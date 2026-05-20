@@ -1,0 +1,35 @@
+# scheduler-plugin sub-project metadata.
+#
+# NOT a Kubebuilder file (scheduler-plugin is NOT a Kubebuilder project — it
+# IS kube-scheduler with custom plugins linked in via sigs.k8s.io/scheduler-
+# plugins framework per ADR-0010 §1). Provided for parity with sibling
+# operators sub-projects (pool-operator, npu-dra-driver, inference-operator)
+# and to document the module identity at a glance.
+
+projectName: scheduler-plugin
+repo: github.com/tech88-art/O-Cloud/operators/scheduler-plugin
+domain: ocloud.edge.example.com
+phase: 6
+status: scaffold
+
+# Plugin registry (filled by T002 placeholder, bodies land T004-T007):
+# - HCCSTopology  (Filter + Score)  — T004 Filter, T005 Score
+# - NumaAffinity  (Filter + Score)  — T006 (wraps sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology)
+# - Binpack       (Score)            — T007 (internal thin impl, default disabled per ADR-0010 §4)
+#
+# Framework: sigs.k8s.io/scheduler-plugins v0.31.x (K8s 1.32 baseline per
+# P5-T-114 kind smoke + ADR-0010 §1).
+
+plugins:
+  - name: HCCSTopology
+    package: github.com/tech88-art/O-Cloud/operators/scheduler-plugin/internal/plugins/hccs
+    status: scaffold
+    bodyTasks: [P6-T-004, P6-T-005]
+  - name: NumaAffinity
+    package: github.com/tech88-art/O-Cloud/operators/scheduler-plugin/internal/plugins/numa
+    status: scaffold
+    bodyTasks: [P6-T-006]
+  - name: Binpack
+    package: github.com/tech88-art/O-Cloud/operators/scheduler-plugin/internal/plugins/binpack
+    status: scaffold
+    bodyTasks: [P6-T-007]

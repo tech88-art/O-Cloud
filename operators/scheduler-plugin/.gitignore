@@ -1,0 +1,32 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/*
+Dockerfile.cross
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+cover.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Vendor directory (sched-plugins / upstream K8s pattern: not vendored)
+vendor/
+
+# editor and IDE paraphernalia
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Kubeconfig might contain secrets
+*.kubeconfig
