@@ -665,6 +665,25 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "sliceBindings": {
+          "type": "array",
+          "description": "(P6-T-102) NPU slice allocations bound to this workload's pods. Mirrors npu.huawei.com/slice-bindings annotation Phase 5 PD Router writes.",
+          "items": {
+            "type": "object",
+            "required": ["nodeName", "device"],
+            "properties": {
+              "podName": { "type": "string" },
+              "nodeName": { "type": "string" },
+              "pool": { "type": "string" },
+              "device": { "type": "string" },
+              "aiCores": { "type": "integer", "minimum": 0 },
+              "role": {
+                "type": "string",
+                "enum": ["prefill", "decode", "primary", "sidecar", "init", "peer"]
+              }
+            }
+          }
         }
       }
     },

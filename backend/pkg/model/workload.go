@@ -14,6 +14,52 @@ type Workload struct {
 	NPUUsage  *WorkloadNPUUsage `json:"npuUsage,omitempty"`
 	CreatedAt *time.Time        `json:"createdAt,omitempty"`
 	Labels    map[string]string `json:"labels,omitempty"`
+
+	// SliceBindings (P6-T-102) lists the NPU slice allocations bound
+	// to this workload's pods. Sourced from the
+	// `npu.huawei.com/slice-bindings` annotation Phase 5 PD Router
+	// stamps onto PD-pair Pods + cross-referenced against
+	// NPUSliceAllocation audit objects when available (crd source).
+	//
+	// **omitempty + opt-in default-off**: the list endpoint
+	// `GET /api/v1/workloads` excludes this field unless the caller
+	// passes `?includeSliceBindings=true`. The detail endpoint
+	// `GET /api/v1/workloads/{ns}/{name}` always populates when the
+	// underlying source has data.
+	SliceBindings []SliceBinding `json:"sliceBindings,omitempty"`
+}
+
+// SliceBinding mirrors components.schemas.SliceBinding (P6-T-102).
+//
+// Each entry corresponds to one NPU slice allocation observed for a
+// pod of the workload. Format mirrors the
+// `npu.huawei.com/slice-bindings` annotation
+// (`<node>/<pool>/<device>:<aiCores>`) the Phase 5 PD Router webhook
+// writes, with each component split into its own struct field for
+// easier frontend rendering.
+type SliceBinding struct {
+	// PodName identifies the pod the binding originated from. Useful
+	// for grouping (frontend Workloads page T103 renders per-pod
+	// chips).
+	PodName string `json:"podName,omitempty"`
+
+	// NodeName is the node hosting the device.
+	NodeName string `json:"nodeName"`
+
+	// Pool is the ResourcePool name (by convention = nodeName per
+	// npu-dra-driver Phase 5 publisher).
+	Pool string `json:"pool,omitempty"`
+
+	// Device is the device identifier inside the pool (e.g.
+	// `worker-site-a-01-npu-0`).
+	Device string `json:"device"`
+
+	// AICores is the allocated AI-core count for this slice.
+	AICores int32 `json:"aiCores,omitempty"`
+
+	// Role optionally identifies the PD-pair side (prefill / decode)
+	// when the binding came from a ModelService Pod.
+	Role string `json:"role,omitempty"`
 }
 
 // ReplicaStatus mirrors Workload.replicas inline.
@@ -95,6 +141,12 @@ type WorkloadFilter struct {
 	Namespace string
 	Type      string
 	Status    string
+
+	// IncludeSliceBindings (P6-T-102) opts in to populating
+	// Workload.SliceBindings on each returned entry. Default false —
+	// keeps the list-endpoint response shape unchanged for callers
+	// that don't ask for the data.
+	IncludeSliceBindings bool
 }
 
 // LogOptions is the Go-side aggregate of GET /workloads/.../logs query params.

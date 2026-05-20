@@ -49,6 +49,24 @@
           "worker-site-a-02-npu-1"
         ]
       },
+      "sliceBindings": [
+        {
+          "podName": "qwen-8b-pd-prefill-0",
+          "nodeName": "worker-site-a-01",
+          "pool": "worker-site-a-01",
+          "device": "worker-site-a-01-npu-1",
+          "aiCores": 32,
+          "role": "prefill"
+        },
+        {
+          "podName": "qwen-8b-pd-decode-0",
+          "nodeName": "worker-site-a-02",
+          "pool": "worker-site-a-02",
+          "device": "worker-site-a-02-npu-1",
+          "aiCores": 32,
+          "role": "decode"
+        }
+      ],
       "pods": [
         {
           "name": "qwen-8b-pd-prefill-0",

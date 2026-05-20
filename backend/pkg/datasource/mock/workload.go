@@ -100,6 +100,13 @@ func (s *Source) ListWorkloads(ctx context.Context, filter model.WorkloadFilter)
 		}
 		// Shallow copy so callers can't mutate the cached fixture.
 		wc := *w
+		// P6-T-102: SliceBindings is opt-in on the list endpoint —
+		// caller must set filter.IncludeSliceBindings=true (driven by
+		// `?includeSliceBindings=true` query param). Default omits the
+		// field for backward compatibility with pre-T102 clients.
+		if !filter.IncludeSliceBindings {
+			wc.SliceBindings = nil
+		}
 		out = append(out, &wc)
 	}
 	return out, nil

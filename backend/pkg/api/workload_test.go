@@ -84,7 +84,25 @@ const workloadFixtureJSON = `{
         {"from": "qwen-8b-pd-prefill-0", "to": "qwen-8b-pd-decode-0", "type": "pd-pair"}
       ],
       "createdAt": "2026-05-11T10:00:00Z",
-      "labels": {"app.kubernetes.io/name": "qwen-8b-pd"}
+      "labels": {"app.kubernetes.io/name": "qwen-8b-pd"},
+      "sliceBindings": [
+        {
+          "podName": "qwen-8b-pd-prefill-0",
+          "nodeName": "worker-site-a-01",
+          "pool": "worker-site-a-01",
+          "device": "worker-site-a-01-npu-1",
+          "aiCores": 32,
+          "role": "prefill"
+        },
+        {
+          "podName": "qwen-8b-pd-decode-0",
+          "nodeName": "worker-site-a-02",
+          "pool": "worker-site-a-02",
+          "device": "worker-site-a-02-npu-1",
+          "aiCores": 32,
+          "role": "decode"
+        }
+      ]
     },
     {
       "name": "pi-3b",
@@ -423,4 +441,104 @@ func TestGetWorkloadDetail_SetASmall_QwenPDPair(t *testing.T) {
 	require.GreaterOrEqual(t, len(got.Pods), 2, "PD pair should yield prefill + decode pods")
 	require.GreaterOrEqual(t, len(got.Relations), 1, "PD pair should yield 1 pd-pair relation")
 	assert.Equal(t, "pd-pair", got.Relations[0].Type)
+}
+
+// P6-T-102 — sliceBindings opt-in behavior.
+
+func TestListWorkloads_DefaultOmitsSliceBindings(t *testing.T) {
+	h := newWorkloadsTestHandler(t)
+	router := NewRouter(h, RouterOptions{})
+
+	// No includeSliceBindings query param.
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/workloads?name=qwen-8b-pd", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var got []model.Workload
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	// Find the qwen-8b-pd entry (which has sliceBindings in fixture).
+	var qwen *model.Workload
+	for i := range got {
+		if got[i].Name == "qwen-8b-pd" {
+			qwen = &got[i]
+			break
+		}
+	}
+	require.NotNil(t, qwen, "qwen-8b-pd entry should exist in default list")
+	assert.Empty(t, qwen.SliceBindings,
+		"default list endpoint should omit sliceBindings per opt-in contract")
+}
+
+func TestListWorkloads_IncludeSliceBindingsTrue_PopulatesField(t *testing.T) {
+	h := newWorkloadsTestHandler(t)
+	router := NewRouter(h, RouterOptions{})
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/workloads?includeSliceBindings=true", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var got []model.Workload
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	var qwen *model.Workload
+	for i := range got {
+		if got[i].Name == "qwen-8b-pd" {
+			qwen = &got[i]
+			break
+		}
+	}
+	require.NotNil(t, qwen)
+	require.Len(t, qwen.SliceBindings, 2, "qwen-8b-pd fixture has 2 sliceBindings (prefill + decode)")
+	assert.Equal(t, "prefill", qwen.SliceBindings[0].Role)
+	assert.Equal(t, "decode", qwen.SliceBindings[1].Role)
+	assert.Equal(t, "worker-site-a-01-npu-1", qwen.SliceBindings[0].Device)
+	assert.Equal(t, int32(32), qwen.SliceBindings[0].AICores)
+}
+
+func TestGetWorkloadDetail_AlwaysIncludesSliceBindings(t *testing.T) {
+	h := newWorkloadsTestHandler(t)
+	router := NewRouter(h, RouterOptions{})
+
+	// Detail endpoint — no opt-in needed.
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/workloads/ai-inference/qwen-8b-pd", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var got model.WorkloadDetail
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Len(t, got.SliceBindings, 2,
+		"detail endpoint always populates sliceBindings (no opt-in needed)")
+	assert.Equal(t, "qwen-8b-pd-prefill-0", got.SliceBindings[0].PodName)
+}
+
+func TestListWorkloads_IncludeSliceBindingsMalformed_FallsBackToFalse(t *testing.T) {
+	// Truthy parsing follows strconv.ParseBool — unparseable values
+	// fall back to false (same permissive behavior as Topology
+	// includeFabric / includeWorkloads). A typo in the frontend
+	// shouldn't break the page.
+	h := newWorkloadsTestHandler(t)
+	router := NewRouter(h, RouterOptions{})
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/v1/workloads?includeSliceBindings=yes-please", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var got []model.Workload
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	var qwen *model.Workload
+	for i := range got {
+		if got[i].Name == "qwen-8b-pd" {
+			qwen = &got[i]
+			break
+		}
+	}
+	require.NotNil(t, qwen)
+	assert.Empty(t, qwen.SliceBindings,
+		"unparseable includeSliceBindings should fall back to opt-out (default-off)")
 }

@@ -13,6 +13,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -49,9 +50,10 @@ func (h *Handler) ListWorkloads(c *gin.Context) {
 	}
 
 	filter := model.WorkloadFilter{
-		Namespace: c.Query("namespace"),
-		Type:      c.Query("type"),
-		Status:    c.Query("status"),
+		Namespace:            c.Query("namespace"),
+		Type:                 c.Query("type"),
+		Status:               c.Query("status"),
+		IncludeSliceBindings: parseWorkloadBoolQuery(c, "includeSliceBindings"),
 	}
 
 	out, err := src.ListWorkloads(c.Request.Context(), filter)
@@ -119,6 +121,23 @@ func (h *Handler) GetWorkloadDetail(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, detail)
+}
+
+// parseWorkloadBoolQuery converts a Gin query param into a bool. Empty /
+// missing / unparseable → false. Same truthy parsing as
+// strconv.ParseBool (1/t/T/TRUE/true/True). Mirrors cluster.go's
+// parseTopologyBool but takes the Gin context directly so the handler
+// reads cleaner (P6-T-102).
+func parseWorkloadBoolQuery(c *gin.Context, key string) bool {
+	raw := c.Query(key)
+	if raw == "" {
+		return false
+	}
+	v, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false
+	}
+	return v
 }
 
 // workloadSource resolves the source backing /workloads via the registry
