@@ -33,17 +33,29 @@
 #
 # Image pin
 # ---------
-#   kindest/node:v1.30.4 — Kubernetes 1.30 is the first GA release
-#   of ValidatingAdmissionPolicy (the operator's admission/ kustomize
-#   skeleton from T005 lands an NPUSlicePool namespace-scope policy).
-#   Older nodes won't accept the policy CRD and the operator
-#   kustomize apply would fail.
+#   kindest/node:v1.32.0 — bumped at P5-T-108 (2026-05-19) from v1.30.4.
+#   Phase 5 introduces the `resource.k8s.io/v1beta1.DeviceClass` template
+#   in the npu-dra-driver helm chart (P5-T-001) and the npu-dra-driver
+#   manager publishes `resource.k8s.io/v1beta1.ResourceSlice`. K8s 1.30
+#   only ships `resource.k8s.io/v1alpha2` (DRA was alpha); v1beta1 was
+#   added at 1.31 (beta, gated), and is default-on at 1.32. The bump
+#   keeps DRA on without extra feature-gate config.
+#
+# Feature gates
+# -------------
+#   DynamicResourceAllocation = true keeps the gate explicit even though
+#   K8s 1.32 defaults it on. Belt-and-braces against future-default
+#   regressions.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: ocloud-e2e
+featureGates:
+  DynamicResourceAllocation: true
+runtimeConfig:
+  "resource.k8s.io/v1beta1": "true"
 nodes:
   - role: control-plane
-    image: kindest/node:v1.30.4
+    image: kindest/node:v1.32.0
     extraPortMappings:
       - containerPort: 30080
         hostPort: 30080
@@ -52,14 +64,14 @@ nodes:
         hostPort: 30090
         protocol: TCP
   - role: worker
-    image: kindest/node:v1.30.4
+    image: kindest/node:v1.32.0
     labels:
       huawei.com/Ascend910B: "true"
       huawei.com/Ascend910-Health: "Healthy"
       site: site-a
       role: edge
   - role: worker
-    image: kindest/node:v1.30.4
+    image: kindest/node:v1.32.0
     labels:
       huawei.com/Ascend910B: "true"
       huawei.com/Ascend910-Health: "Healthy"

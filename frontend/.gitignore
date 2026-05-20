@@ -25,6 +25,13 @@ build
 # Deps
 node_modules
 
+# pnpm 10+ auto-regenerates pnpm-workspace.yaml with a placeholder
+# `allowBuilds: esbuild: set this to true or false` stub which is
+# invalid YAML for pnpm 9 strict-mode used in CI. The canonical
+# build-allowlist for esbuild lives in package.json under
+# `pnpm.onlyBuiltDependencies` (P5-T-109).
+pnpm-workspace.yaml
+
 # Vite
 *.local
 
