@@ -99,6 +99,19 @@ rules:
   - apiGroups: [""]
     resources: ["nodes", "pods", "services", "namespaces", "events"]
     verbs: ["get", "list", "watch"]
+  # apps/v1 + batch/v1 — `k8s.Source.ListWorkloads` aggregates
+  # Deployments + StatefulSets + Jobs (see backend/pkg/datasource/k8s/
+  # workload.go:51). Without these rules the very first List in the
+  # handler returns forbidden, the handler 500s, and
+  # /api/v1/workloads returns null to the test. T126 added the
+  # smoke-workload Deployment fixture; T127 adds the matching RBAC so
+  # the handler can actually see it.
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: ["ims.ocloud.edge.example.com"]
     resources:
       - clusterpools
