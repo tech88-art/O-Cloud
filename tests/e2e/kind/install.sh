@@ -104,13 +104,38 @@ cmd_up() {
   kubectl create namespace "${NS}" --dry-run=client -o yaml | kubectl apply -f -
   kubectl create namespace "${MON_NS}" --dry-run=client -o yaml | kubectl apply -f -
 
+  echo "== pre-pull cert-manager images into kind =="
+  # P5-T-111 (2026-05-19): the in-cluster image pull from quay.io for
+  # cert-manager v1.16.0 routinely hits the helm `--wait --timeout 5m`
+  # deadline on GitHub Actions runners (run 26136209836 step #8 log:
+  # `Error: context deadline exceeded` 5m 38s into install.sh). Pre-
+  # pulling on the host + `kind load docker-image` avoids the quay.io
+  # round trip from the kind cluster and reliably brings cert-manager
+  # Ready inside the helm `--wait` window.
+  CERT_MANAGER_VERSION="v1.16.0"
+  for img in controller webhook cainjector acmesolver startupapicheck; do
+    docker pull "quay.io/jetstack/cert-manager-${img}:${CERT_MANAGER_VERSION}" || true
+    kind load docker-image "quay.io/jetstack/cert-manager-${img}:${CERT_MANAGER_VERSION}" --name "${KIND_CLUSTER}" || true
+  done
+
   echo "== install cert-manager =="
   helm repo add jetstack https://charts.jetstack.io --force-update >/dev/null
-  helm upgrade --install cert-manager jetstack/cert-manager \
-    --namespace cert-manager --create-namespace \
-    --version v1.16.0 \
-    --set crds.enabled=true \
-    --wait --timeout 5m
+  if ! helm upgrade --install cert-manager jetstack/cert-manager \
+      --namespace cert-manager --create-namespace \
+      --version "${CERT_MANAGER_VERSION}" \
+      --set crds.enabled=true \
+      --set image.pullPolicy=IfNotPresent \
+      --set webhook.image.pullPolicy=IfNotPresent \
+      --set cainjector.image.pullPolicy=IfNotPresent \
+      --set startupapicheck.image.pullPolicy=IfNotPresent \
+      --wait --timeout 10m; then
+    echo "::error::cert-manager helm install failed; dumping namespace state"
+    kubectl -n cert-manager get pods -o wide || true
+    kubectl -n cert-manager describe pods || true
+    kubectl -n cert-manager get events --sort-by=.lastTimestamp || true
+    kubectl -n cert-manager logs --tail=200 -l app.kubernetes.io/instance=cert-manager --prefix=true --all-containers=true || true
+    exit 1
+  fi
 
   echo "== install pool-operator via make deploy =="
   (cd "${REPO_ROOT}/operators/pool-operator" && make deploy IMG="${POOL_OPERATOR_IMG}")
