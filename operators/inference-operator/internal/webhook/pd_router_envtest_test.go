@@ -122,7 +122,7 @@ func TestEnvtest_Happy_AnnotationInjected(t *testing.T) {
 	url, stop := admissionServer(t, h)
 	defer stop()
 
-	pod := newPod("p-e1", "ns-e", map[string]string{LabelModelService: "ns-e/ms-e1"})
+	pod := newPod("p-e1", "ns-e", map[string]string{LabelModelService: "ms-e1"})
 	resp := postAdmissionRequest(t, url, pod)
 	if resp.Response == nil {
 		t.Fatal("nil response")
@@ -168,7 +168,7 @@ func TestEnvtest_EmptyPool_NoAnnotation(t *testing.T) {
 	url, stop := admissionServer(t, h)
 	defer stop()
 
-	pod := newPod("p-e3", "ns-e", map[string]string{LabelModelService: "ns-e/ms-e3"})
+	pod := newPod("p-e3", "ns-e", map[string]string{LabelModelService: "ms-e3"})
 	resp := postAdmissionRequest(t, url, pod)
 	if !resp.Response.Allowed {
 		t.Errorf("empty-pool path should Allow; got %+v", resp.Response)
@@ -191,7 +191,7 @@ func TestEnvtest_CertFailure_FailClosed(t *testing.T) {
 	}))
 	defer bad.Close()
 
-	pod := newPod("p-e4", "ns-e", map[string]string{LabelModelService: "ns-e/ms-e4"})
+	pod := newPod("p-e4", "ns-e", map[string]string{LabelModelService: "ms-e4"})
 	enc := k8sserializer.NewSerializerWithOptions(
 		k8sserializer.DefaultMetaFactory, scheme.Scheme, scheme.Scheme,
 		k8sserializer.SerializerOptions{Yaml: false, Pretty: false, Strict: false},

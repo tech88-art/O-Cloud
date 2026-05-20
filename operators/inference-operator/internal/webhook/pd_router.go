@@ -112,11 +112,17 @@ func (h *PDRouter) Handle(ctx context.Context, req admission.Request) admission.
 		return admission.Allowed("decode failure tolerated")
 	}
 
-	msRef, ok := pod.Labels[LabelModelService]
-	if !ok || msRef == "" {
+	// Label value carries just ms.Name (no namespace) because K8s
+	// label-value regex rejects `/`. Reconstruct the qualified
+	// `<ns>/<name>` form to match NPUSliceAllocation.spec.modelServiceRef
+	// (which the npu-dra-driver claim controller copies from the
+	// ResourceClaim annotation, where `/` is permitted). T124 fix.
+	nameVal, ok := pod.Labels[LabelModelService]
+	if !ok || nameVal == "" {
 		lg.V(1).Info("Pod missing model-service label; allowing without patch")
 		return admission.Allowed("not a ModelService Pod")
 	}
+	msRef := req.Namespace + "/" + nameVal
 
 	bindings, err := h.listBindings(ctx, msRef)
 	if err != nil {

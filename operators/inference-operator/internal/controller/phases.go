@@ -201,15 +201,16 @@ func durationSinceAvailableFalse(last *inferencev1alpha1.ModelServiceStatus, now
 // (total, allocated). Only counts claims whose
 // `inference.ocloud.edge.example.com/model-service` label matches the
 // ModelService — claims for other ModelServices in the same namespace
-// are skipped.
+// are skipped. The caller (modelservice_controller.go) already lists
+// with client.InNamespace(ms.Namespace), so the label value carries
+// just ms.Name (no namespace prefix). T124 fix · 2026-05-20.
 //
 // `allocated` is the subset that have non-nil Status.Allocation AND
 // at least one entry whose Driver == NPUDeviceClassName.
 func countClaimsAllocated(ms *inferencev1alpha1.ModelService, claims []resourceapi.ResourceClaim) (total, allocated int) {
-	msRef := ms.Namespace + "/" + ms.Name
 	for i := range claims {
 		c := &claims[i]
-		if c.Labels[LabelModelService] != msRef {
+		if c.Labels[LabelModelService] != ms.Name {
 			continue
 		}
 		total++

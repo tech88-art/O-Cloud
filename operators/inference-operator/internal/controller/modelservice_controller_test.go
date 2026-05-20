@@ -224,8 +224,8 @@ func TestReconcile_T007_CreatesPDDeploymentsAndClaimTemplates(t *testing.T) {
 			t.Errorf("Deployment %s missing pd-role label %s=%s; got %+v",
 				dn, routerLabelKey(ms), side, dep.Spec.Template.Labels)
 		}
-		if dep.Spec.Template.Labels[LabelModelService] != "ns-pd/ms-pd" {
-			t.Errorf("Deployment %s missing model-service label; got %+v", dn, dep.Spec.Template.Labels)
+		if dep.Spec.Template.Labels[LabelModelService] != "ms-pd" {
+			t.Errorf("Deployment %s missing model-service label (want ms.Name only · T124); got %+v", dn, dep.Spec.Template.Labels)
 		}
 		// OwnerRef → ModelService
 		if len(dep.OwnerReferences) != 1 || dep.OwnerReferences[0].Kind != "ModelService" {

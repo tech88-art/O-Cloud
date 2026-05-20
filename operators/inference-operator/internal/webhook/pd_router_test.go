@@ -139,7 +139,7 @@ func TestHandle_HappyPath_InjectsSliceBindings(t *testing.T) {
 	cli := newFakeClientWithAllocations(t, a1, a2)
 	h := &PDRouter{Decoder: dec, Client: cli, DenyOnOrphaned: true}
 
-	pod := newPod("p1", "ns", map[string]string{LabelModelService: "ns/ms-1"})
+	pod := newPod("p1", "ns", map[string]string{LabelModelService: "ms-1"})
 	req := podAdmissionRequest(t, pod)
 	resp := h.Handle(context.Background(), req)
 
@@ -199,7 +199,7 @@ func TestHandle_NoMatchingAllocations_AllowedWithoutPatch(t *testing.T) {
 	cli := newFakeClientWithAllocations(t, a1)
 	h := &PDRouter{Decoder: dec, Client: cli, DenyOnOrphaned: true}
 
-	pod := newPod("p2", "ns", map[string]string{LabelModelService: "ns/ms-1"})
+	pod := newPod("p2", "ns", map[string]string{LabelModelService: "ms-1"})
 	req := podAdmissionRequest(t, pod)
 	resp := h.Handle(context.Background(), req)
 
@@ -218,7 +218,7 @@ func TestHandle_AllOrphaned_Denied(t *testing.T) {
 	cli := newFakeClientWithAllocations(t, a1, a2)
 	h := &PDRouter{Decoder: dec, Client: cli, DenyOnOrphaned: true}
 
-	pod := newPod("p3", "ns", map[string]string{LabelModelService: "ns/ms-1"})
+	pod := newPod("p3", "ns", map[string]string{LabelModelService: "ms-1"})
 	req := podAdmissionRequest(t, pod)
 	resp := h.Handle(context.Background(), req)
 
@@ -236,7 +236,7 @@ func TestHandle_AllOrphaned_DenyOff_AllowedWithoutPatch(t *testing.T) {
 	cli := newFakeClientWithAllocations(t, a1)
 	h := &PDRouter{Decoder: dec, Client: cli, DenyOnOrphaned: false}
 
-	pod := newPod("p4", "ns", map[string]string{LabelModelService: "ns/ms-1"})
+	pod := newPod("p4", "ns", map[string]string{LabelModelService: "ms-1"})
 	req := podAdmissionRequest(t, pod)
 	resp := h.Handle(context.Background(), req)
 
@@ -255,7 +255,7 @@ func TestHandle_PartialAllocation_AllowedWithoutPatch(t *testing.T) {
 	cli := newFakeClientWithAllocations(t, a1, a2)
 	h := &PDRouter{Decoder: dec, Client: cli, DenyOnOrphaned: true}
 
-	pod := newPod("p5", "ns", map[string]string{LabelModelService: "ns/ms-1"})
+	pod := newPod("p5", "ns", map[string]string{LabelModelService: "ms-1"})
 	req := podAdmissionRequest(t, pod)
 	resp := h.Handle(context.Background(), req)
 
@@ -302,7 +302,7 @@ func TestHandle_ScaffoldAllowsAll(t *testing.T) {
 	h := &PDRouter{Decoder: dec, Client: newFakeClientWithAllocations(t)}
 
 	pod := newPod("p1", "ns", map[string]string{
-		LabelModelService: "ns/ms-1",
+		LabelModelService: "ms-1",
 	})
 	req := podAdmissionRequest(t, pod)
 	resp := h.Handle(context.Background(), req)

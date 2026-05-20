@@ -188,7 +188,9 @@ func TestDetectImagePullError(t *testing.T) {
 
 func TestCountClaimsAllocated(t *testing.T) {
 	ms := newModelService("ms-c", "ns-c", "pool-c")
-	msRef := "ns-c/ms-c"
+	// Label value carries just ms.Name (no namespace) — see
+	// LabelModelService doc. T124 fix · 2026-05-20.
+	msRef := "ms-c"
 
 	// Build claim fixtures via the helper.
 	claims := []resourceapi.ResourceClaim{

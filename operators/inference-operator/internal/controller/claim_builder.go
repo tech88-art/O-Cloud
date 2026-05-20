@@ -50,7 +50,16 @@ const (
 // creating it"). The npu-dra-driver claim controller (T002) reads
 // these annotations during allocation.
 func buildResourceClaimTemplate(ms *inferencev1alpha1.ModelService, side PDSide) *resourceapi.ResourceClaimTemplate {
-	msRef := ms.Namespace + "/" + ms.Name
+	// msRefAnnot is the cross-controller stable identifier. K8s
+	// annotations accept `/`; the npu-dra-driver claim controller
+	// (T002) reads it and copies it onto NPUSliceAllocation.spec.
+	msRefAnnot := ms.Namespace + "/" + ms.Name
+	// LabelModelService VALUE must not contain `/` (K8s label-value
+	// regex rejects slashes). Use just ms.Name — namespace is encoded
+	// implicitly by the object's own namespace. PD Router webhook
+	// reconstructs `<pod.Namespace>/<label>` to match the annotation
+	// form. (T124 fix · 2026-05-20.)
+	msRefLabel := ms.Name
 	roleVal := string(side)
 
 	return &resourceapi.ResourceClaimTemplate{
@@ -61,17 +70,17 @@ func buildResourceClaimTemplate(ms *inferencev1alpha1.ModelService, side PDSide)
 				"app.kubernetes.io/name":      "modelservice",
 				"app.kubernetes.io/instance":  ms.Name,
 				"app.kubernetes.io/component": roleVal,
-				LabelModelService:             msRef,
+				LabelModelService:             msRefLabel,
 			},
 		},
 		Spec: resourceapi.ResourceClaimTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{
-					AnnotationModelServiceRef: msRef,
+					AnnotationModelServiceRef: msRefAnnot,
 					AnnotationPreferredPool:   ms.Spec.NPUSlicePoolRef.Name,
 				},
 				Labels: map[string]string{
-					LabelModelService:             msRef,
+					LabelModelService:             msRefLabel,
 					"app.kubernetes.io/component": roleVal,
 				},
 			},

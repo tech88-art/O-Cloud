@@ -37,10 +37,14 @@ const (
 // spec.pdPair.routerLabel — empty value falls back to this constant.
 const DefaultRouterLabelKey = "inference.ocloud.edge.example.com/pd-role"
 
-// LabelModelService is the label key carrying the namespace/name of
-// the owning ModelService on every Pod the controller creates. The PD
-// Router admission webhook (T103) uses this to recover the originating
-// ModelService from a Pod.
+// LabelModelService is the label key carrying the NAME (not full
+// namespace/name) of the owning ModelService on every Pod the controller
+// creates. K8s label-value regex rejects `/`, so we encode just the
+// name — namespace is implicit from the Pod's own namespace. The PD
+// Router admission webhook (T103) reconstructs the qualified ref
+// `<pod.Namespace>/<label>` to match
+// NPUSliceAllocation.spec.modelServiceRef (which keeps the `<ns>/<name>`
+// form on the annotation). T124 fix · 2026-05-20.
 const LabelModelService = "inference.ocloud.edge.example.com/model-service"
 
 // pdReplicaSpec returns the PDReplicaSpec for the named side.
@@ -86,8 +90,8 @@ const claimRefNameInPod = "npu-slice"
 //
 // The pod template:
 //   * carries the pd-role label (routerLabelKey -> string(side))
-//   * carries the model-service label (ns/name) so the webhook can
-//     recover the ModelService cheaply
+//   * carries the model-service label (ms.Name only — namespace is
+//     implicit from pod.Namespace; see LabelModelService doc)
 //   * declares one PodResourceClaim referencing the claim template
 //     (which K8s expands per-replica at Pod admission)
 //   * containers reference the claim via container.Resources.Claims
@@ -100,7 +104,9 @@ func buildDeployment(ms *inferencev1alpha1.ModelService, side PDSide) *appsv1.De
 	replicas := rep.Replicas
 	roleKey := routerLabelKey(ms)
 	roleVal := string(side)
-	msRef := ms.Namespace + "/" + ms.Name
+	// LabelModelService VALUE = ms.Name only (no namespace). See
+	// LabelModelService doc for why. T124 fix · 2026-05-20.
+	msRefLabel := ms.Name
 
 	selectorLabels := map[string]string{
 		"app.kubernetes.io/name":      "modelservice",
@@ -114,7 +120,7 @@ func buildDeployment(ms *inferencev1alpha1.ModelService, side PDSide) *appsv1.De
 		"app.kubernetes.io/component": roleVal,
 		"app.kubernetes.io/part-of":   "ocloud-edge",
 		roleKey:                       roleVal,
-		LabelModelService:             msRef,
+		LabelModelService:             msRefLabel,
 	}
 
 	dep := &appsv1.Deployment{
@@ -125,7 +131,7 @@ func buildDeployment(ms *inferencev1alpha1.ModelService, side PDSide) *appsv1.De
 				"app.kubernetes.io/name":      "modelservice",
 				"app.kubernetes.io/instance":  ms.Name,
 				"app.kubernetes.io/component": roleVal,
-				LabelModelService:             msRef,
+				LabelModelService:             msRefLabel,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
