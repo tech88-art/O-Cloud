@@ -44,12 +44,12 @@ const (
 	HealthValueHealthy    = "Healthy"
 )
 
-// sliceLister abstracts ResourceSlice lookup for one node so Filter / Score
+// SliceLister abstracts ResourceSlice lookup for one node so Filter / Score
 // can be tested without spinning up a real SharedInformerFactory. Production
 // wires this to
 // `framework.Handle.SharedInformerFactory().Resource().V1beta1().
 // ResourceSlices().Lister()` (see informerSliceLister in plugin.go).
-type sliceLister interface {
+type SliceLister interface {
 	// ListForNode returns ResourceSlices pinned to nodeName, filtered to
 	// those labelled `npu.ocloud.edge.example.com/managed-by=npu-dra-driver`.
 	// Returns an empty (not-nil) slice for "no slices for this node".

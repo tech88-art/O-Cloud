@@ -277,12 +277,20 @@ Binpack binary (functional today, more operational overhead).
   multi-resource / empty allocatable / zero-request / clamp) + 3
   parseArgs cases
 
-### 5.4 T008 Integration tests
+### 5.4 T008 Integration tests (operative)
 
-- `internal/integration/integration_test.go` exercises all 3 plugins
-  end-to-end against a multi-ring, 2-node fixture
-- Uses `setup-envtest` for real kube-scheduler bootstrap (no fake)
-- Plan §3 P6-T-008 acceptance: 5 cases
+- `internal/integration/integration_test.go` + `helpers_test.go`
+  exercise HCCSTopology Filter+Score (T004+T005) on a 2-node × 2-ring
+  fixture; Binpack covered by its own package tests (T007)
+- **Setup-envtest NOT required**: tests use in-process fake
+  SliceLister + fake AllocationLister (mirrors per-plugin abstractions
+  established T004/T005). Real apiserver dispatch is covered by
+  T106 kind smoke
+- 5 sub-tests passing: no-MS-label → neutral, MS-label-no-siblings →
+  neutral, sibling-on-ring-0 → 100/30 split, ring-5-annotation → all
+  filtered, adjacency-map-kicks-in
+- NUMA plugin **deferred** per T006 placeholder; integration test grows
+  a 6th case when NUMA wrap lands
 
 ### 5.5 Phase 7+ (forward notes per ADR-0010 §7)
 

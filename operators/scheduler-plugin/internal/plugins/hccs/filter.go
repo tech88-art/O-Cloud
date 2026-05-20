@@ -79,7 +79,7 @@ func (p *HCCSTopology) Filter(
 	}
 
 	nodeName := nodeInfo.Node().Name
-	if p.sliceLister == nil {
+	if p.SliceLister == nil {
 		// No lister wired (e.g. Handle had no SharedInformerFactory). Treat
 		// as "no slices observed" — permissive when FailIfMissing=false,
 		// strict otherwise.
@@ -90,7 +90,7 @@ func (p *HCCSTopology) Filter(
 		return nil
 	}
 
-	slices, err := p.sliceLister.ListForNode(nodeName)
+	slices, err := p.SliceLister.ListForNode(nodeName)
 	if err != nil {
 		return framework.NewStatus(framework.Error,
 			fmt.Sprintf("HCCSTopology Filter: list ResourceSlices for %q: %v", nodeName, err))

@@ -25,7 +25,7 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
-// fakeAllocationLister implements allocationLister for tests by returning a
+// fakeAllocationLister implements AllocationLister for tests by returning a
 // pre-populated per-ModelService allocation list.
 type fakeAllocationLister struct {
 	byMS map[string][]*SimpleAllocation

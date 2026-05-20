@@ -26,7 +26,7 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
-// fakeSliceLister implements sliceLister for unit tests by returning a
+// fakeSliceLister implements SliceLister for unit tests by returning a
 // pre-populated per-node slice list. Use newFakeLister(...) constructor.
 type fakeSliceLister struct {
 	byNode map[string][]*resourceapi.ResourceSlice

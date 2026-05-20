@@ -78,7 +78,7 @@ var (
 //     returns ScoreNeutral on every node)
 //   - Pod with label, no siblings allocated → write empty state (same as above)
 //   - Pod with label + siblings → write ringsOccupied set
-//   - allocationLister or sliceLister nil → write empty state (graceful
+//   - AllocationLister or SliceLister nil → write empty state (graceful
 //     degradation; Score also returns ScoreNeutral when state is empty)
 func (p *HCCSTopology) PreScore(
 	_ context.Context,
@@ -91,12 +91,12 @@ func (p *HCCSTopology) PreScore(
 	}
 
 	modelService := pod.Labels[ModelServiceLabel]
-	if modelService == "" || p.allocationLister == nil || p.sliceLister == nil {
+	if modelService == "" || p.AllocationLister == nil || p.SliceLister == nil {
 		cs.Write(hccsStateKey, state)
 		return nil
 	}
 
-	allocs, err := p.allocationLister.ListByModelService(modelService)
+	allocs, err := p.AllocationLister.ListByModelService(modelService)
 	if err != nil {
 		return framework.NewStatus(framework.Error,
 			fmt.Sprintf("HCCSTopology PreScore: list NPUSliceAllocation for %q: %v", modelService, err))
@@ -113,7 +113,7 @@ func (p *HCCSTopology) PreScore(
 		if alloc.Name == pod.Name {
 			continue
 		}
-		ring, ok := lookupDeviceRing(p.sliceLister, alloc.NodeName, alloc.Device)
+		ring, ok := lookupDeviceRing(p.SliceLister, alloc.NodeName, alloc.Device)
 		if !ok {
 			continue
 		}
@@ -153,12 +153,12 @@ func (p *HCCSTopology) Score(
 		return ScoreNeutral, nil
 	}
 
-	if p.sliceLister == nil {
+	if p.SliceLister == nil {
 		// Can't introspect node rings → fall back to neutral.
 		return ScoreNeutral, nil
 	}
 
-	nodeRings, err := nodeRingsFor(p.sliceLister, nodeName)
+	nodeRings, err := nodeRingsFor(p.SliceLister, nodeName)
 	if err != nil {
 		return 0, framework.NewStatus(framework.Error,
 			fmt.Sprintf("HCCSTopology Score: list ResourceSlices for %q: %v", nodeName, err))
@@ -232,7 +232,7 @@ func buildAdjacency(raw map[string][]int32) map[int64]map[int64]struct{} {
 // nodeRingsFor returns the set of rings present on healthy devices of
 // nodeName, sourced from ResourceSlices the npu-dra-driver published.
 // Empty set → node has no healthy NPU device the plugin recognises.
-func nodeRingsFor(l sliceLister, nodeName string) (map[int64]struct{}, error) {
+func nodeRingsFor(l SliceLister, nodeName string) (map[int64]struct{}, error) {
 	slices, err := l.ListForNode(nodeName)
 	if err != nil {
 		return nil, err
@@ -260,7 +260,7 @@ func nodeRingsFor(l sliceLister, nodeName string) (map[int64]struct{}, error) {
 // tuple, used by PreScore to translate sibling allocations into ring IDs.
 // Returns ok=false when the tuple isn't found or the device lacks the
 // attribute.
-func lookupDeviceRing(l sliceLister, nodeName, deviceName string) (int64, bool) {
+func lookupDeviceRing(l SliceLister, nodeName, deviceName string) (int64, bool) {
 	slices, err := l.ListForNode(nodeName)
 	if err != nil {
 		return 0, false

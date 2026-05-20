@@ -29,8 +29,8 @@ limitations under the License.
 //     the same HCCS ring.
 //
 // ResourceSlice data is sourced via the scheduler framework's
-// SharedInformerFactory cache (production) or a fake sliceLister (tests).
-// See sliceLister interface in types.go.
+// SharedInformerFactory cache (production) or a fake SliceLister (tests).
+// See SliceLister interface in types.go.
 package hccs
 
 import (
@@ -48,14 +48,14 @@ import (
 // profiles[*].plugins.{filter,score}.enabled[].name MUST match this string.
 const Name = "HCCSTopology"
 
-// HCCSTopology is the plugin struct. T004 added Filter + sliceLister; T005
-// adds PreScore + Score + allocationLister. Compile-time interface
+// HCCSTopology is the plugin struct. T004 added Filter + SliceLister; T005
+// adds PreScore + Score + AllocationLister. Compile-time interface
 // assertions for Plugin/FilterPlugin live here; the Score side lives in
 // score.go to keep file scope per-extension-point.
 type HCCSTopology struct {
 	args             *HCCSTopologyArgs
-	sliceLister      sliceLister
-	allocationLister allocationLister
+	SliceLister      SliceLister
+	AllocationLister AllocationLister
 }
 
 // Compile-time assertions for Filter side. Score side asserted in score.go.
@@ -70,18 +70,18 @@ func (p *HCCSTopology) Name() string {
 }
 
 // New constructs an HCCSTopology plugin instance, parsing args from the
-// scheduler framework and wiring a production sliceLister backed by the
+// scheduler framework and wiring a production SliceLister backed by the
 // framework's SharedInformerFactory ResourceSlice lister.
 //
 // Tests construct HCCSTopology directly via NewForTest with an injected
-// sliceLister.
+// SliceLister.
 func New(_ context.Context, args runtime.Object, h framework.Handle) (framework.Plugin, error) {
 	typed, err := parseArgs(args)
 	if err != nil {
 		return nil, err
 	}
-	var sLister sliceLister
-	var aLister allocationLister
+	var sLister SliceLister
+	var aLister AllocationLister
 	if h != nil {
 		factory := h.SharedInformerFactory()
 		if factory != nil {
@@ -100,31 +100,31 @@ func New(_ context.Context, args runtime.Object, h framework.Handle) (framework.
 				aLister = &dynamicAllocationLister{client: dyn}
 			}
 			// Silently swallow dynamic-client construction error — Score
-			// gracefully degrades to neutral when allocationLister is nil.
+			// gracefully degrades to neutral when AllocationLister is nil.
 		}
 	}
 	return &HCCSTopology{
 		args:             typed,
-		sliceLister:      sLister,
-		allocationLister: aLister,
+		SliceLister:      sLister,
+		AllocationLister: aLister,
 	}, nil
 }
 
 // NewForTest constructs an HCCSTopology with caller-supplied args +
 // listers. Test-only: production callers go through New().
-func NewForTest(args *HCCSTopologyArgs, sLister sliceLister, aLister allocationLister) *HCCSTopology {
+func NewForTest(args *HCCSTopologyArgs, sLister SliceLister, aLister AllocationLister) *HCCSTopology {
 	if args == nil {
 		args = defaultArgs()
 	}
 	return &HCCSTopology{
 		args:             args,
-		sliceLister:      sLister,
-		allocationLister: aLister,
+		SliceLister:      sLister,
+		AllocationLister: aLister,
 	}
 }
 
 // informerSliceLister adapts a `k8s.io/client-go/listers/resource/v1beta1`
-// ResourceSliceLister to the local sliceLister interface. Filters by both
+// ResourceSliceLister to the local SliceLister interface. Filters by both
 // the managed-by label and the requested nodeName so Filter / Score only
 // see relevant slices.
 type informerSliceLister struct {

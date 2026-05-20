@@ -57,17 +57,17 @@ type SimpleAllocation struct {
 	Phase           string
 }
 
-// allocationLister abstracts NPUSliceAllocation lookup so PreScore can be
+// AllocationLister abstracts NPUSliceAllocation lookup so PreScore can be
 // tested without a real dynamic client. Production wires the
 // dynamicAllocationLister; tests inject a fake.
-type allocationLister interface {
+type AllocationLister interface {
 	// ListByModelService returns NPUSliceAllocations with
 	// spec.modelServiceRef == modelService AND status.phase == "Allocated".
 	// Returns empty (not nil) on "no siblings yet".
 	ListByModelService(modelService string) ([]*SimpleAllocation, error)
 }
 
-// dynamicAllocationLister is the production allocationLister.
+// dynamicAllocationLister is the production AllocationLister.
 //
 // Performance note: PreScore runs once per Pod scheduling cycle, so a
 // per-cycle List() is acceptable for the Phase 6 simulator scope
@@ -79,7 +79,7 @@ type dynamicAllocationLister struct {
 	client dynamic.Interface
 }
 
-// ListByModelService implements allocationLister via a single dynamic
+// ListByModelService implements AllocationLister via a single dynamic
 // List call + post-filtering on spec.modelServiceRef + status.phase.
 func (l *dynamicAllocationLister) ListByModelService(modelService string) ([]*SimpleAllocation, error) {
 	list, err := l.client.Resource(npuSliceAllocationGVR).List(context.TODO(), metav1.ListOptions{})

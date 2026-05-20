@@ -45,8 +45,12 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: fmt vet ## Run tests. (Phase 6 T002 scaffold: empty plugin pkgs return 0 tests but build clean. T004-T008 fill in.)
+test: fmt vet ## Run unit + integration composition tests (all in-process, no envtest required).
 	go test ./... -coverprofile cover.out
+
+.PHONY: envtest
+envtest: fmt vet ## Run integration tests targeting the same fixtures (alias for `test`; P6-T-008 uses fake listers so no setup-envtest binary is required).
+	go test ./internal/integration/... -timeout 180s -v
 
 .PHONY: tidy
 tidy: ## Run go mod tidy.
