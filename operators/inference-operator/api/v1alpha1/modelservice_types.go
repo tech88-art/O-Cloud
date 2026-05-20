@@ -86,6 +86,31 @@ type PDPairSpec struct {
 	// treats the ModelService as a single-pod inference deployment).
 	// +kubebuilder:default="inference.ocloud.edge.example.com/pd-role"
 	RouterLabel string `json:"routerLabel,omitempty"`
+
+	// ProxyImage opts in to vllm-ascend `disaggregated_prefill_v1`
+	// proxy_server sidecar (P6-T-105). When non-empty, the controller
+	// adds a second container ("pd-proxy") to each PD-pair Pod that
+	// runs the proxy_server process with PREFILL_HOST / DECODE_HOST
+	// env-vars derived from the PD-pair sibling Service endpoints.
+	// Empty (default) keeps the Phase 5 single-container behavior:
+	// each Pod runs only Spec.Model.Image with --pd-role flag.
+	//
+	// Gated on vllm-ascend v0.12+ stability per ADR-0010 §3 forward
+	// notes; until then chart values keep this empty + use
+	// FallbackImage below for kind-smoke-friendly env.
+	// +optional
+	ProxyImage string `json:"proxyImage,omitempty"`
+
+	// FallbackImage is used in CI / kind smoke environments where
+	// pulling the real ~5GB vllm-ascend image is too expensive. When
+	// non-empty, the controller substitutes it for Spec.Model.Image
+	// on the PD-pair containers — operators can ship a busybox-style
+	// stand-in that exits 0 immediately so the readiness probe
+	// completes the smoke run without real inference.
+	//
+	// Production deployments leave this empty.
+	// +optional
+	FallbackImage string `json:"fallbackImage,omitempty"`
 }
 
 // ModelServiceSpec is the Spec block of a ModelService.

@@ -1,4 +1,6 @@
 # Phase 5 P5-T-106 — minimal ModelService for the kind smoke.
+# Updated Phase 6 P6-T-105 — uses pdPair.fallbackImage to demonstrate
+# the new CI/production image-split pattern.
 #
 # References the smoke-pool NPUSlicePool seeded by
 # tests/e2e/kind/seed-resources.sh (Phase 3 T104 + Phase 4 T102
@@ -9,12 +11,15 @@
 # the smoke completes within the kind workflow's time budget even
 # when image pulls / scheduling take longer than locally.
 #
-# Container image is `busybox:1.36` as a stand-in for the real
-# vllm-ascend image. The smoke does NOT assert pod readiness or
-# real inference traffic — only that the controller created the
-# Pods + the PD Router webhook stamped the slice-bindings
-# annotation. busybox keeps the test surface free of upstream
-# vllm-ascend image-pull latency / ARM/AMD64 architecture mismatch.
+# **Phase 6 T105 pattern**: spec.model.image references the REAL
+# vllm-ascend image (what production deployments use), while
+# spec.pdPair.fallbackImage overrides it with busybox:1.36 in this
+# CI fixture. The controller's deployment_builder honors
+# fallbackImage > model.image precedence so the smoke pulls
+# 1MB busybox instead of ~5GB vllm-ascend. The smoke does NOT
+# assert pod readiness or real inference traffic — only that the
+# controller created the Pods + the PD Router webhook stamped the
+# slice-bindings annotation.
 apiVersion: inference.ocloud.edge.example.com/v1alpha1
 kind: ModelService
 metadata:
@@ -22,10 +27,11 @@ metadata:
   namespace: ocloud-system
   labels:
     app.kubernetes.io/instance: smoke-ms
-    app.kubernetes.io/managed-by: P5-T-106
+    app.kubernetes.io/managed-by: P6-T-105
 spec:
   model:
-    image: busybox:1.36
+    # Real image reference — what production deployments would set.
+    image: registry.example.com/vllm-ascend:v0.11.0
     modelPath: /models/smoke
   pdPair:
     prefill:
@@ -33,5 +39,8 @@ spec:
     decode:
       replicas: 1
     routerLabel: inference.ocloud.edge.example.com/pd-role
+    # P6-T-105 — bypass real vllm-ascend image pull in CI / kind
+    # smoke. Production deployments leave this empty.
+    fallbackImage: busybox:1.36
   npuSlicePoolRef:
     name: smoke-pool

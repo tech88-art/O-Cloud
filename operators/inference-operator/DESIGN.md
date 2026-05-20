@@ -499,6 +499,67 @@ phase = Ready
 | ProgressDeadlineSeconds exceeded (10m total)     | terminal | condition ProgressDeadline=True; phase=Failed |
 | PD Router webhook TLS cert load failure          | startup  | exit non-zero — chart's cert-manager dependency missing |
 
+## 5.0 PD proxy_server sidecar pattern (Phase 6 T105 · operative)
+
+Per ADR-0010 §3 forward-notes and plan §3 P6-T-105 (gated decision on
+vllm-ascend v0.12+ stability), T105 ships:
+
+**Schema additions** (`api/v1alpha1.PDPairSpec`):
+
+```go
+type PDPairSpec struct {
+    // ... Phase 5 fields (Prefill, Decode, RouterLabel) ...
+
+    // ProxyImage opts in to vllm-ascend disaggregated_prefill_v1
+    // proxy_server sidecar. Empty (default) keeps the Phase 5
+    // single-container behavior.
+    ProxyImage    string `json:"proxyImage,omitempty"`
+
+    // FallbackImage overrides spec.model.image on the main container
+    // in CI / kind smoke environments where pulling the real ~5GB
+    // vllm-ascend image is too expensive. Production deployments
+    // leave empty.
+    FallbackImage string `json:"fallbackImage,omitempty"`
+}
+```
+
+**Container materialisation** (`internal/controller/deployment_builder.go
+buildPDPairContainers`):
+
+```
+ms.Spec.Model.Image                       → vllm-ascend (main)
+ms.Spec.PDPair.FallbackImage (override)   → busybox / smoke (main, when set)
+ms.Spec.PDPair.ProxyImage (opt-in)        → pd-proxy (sidecar, when set)
+```
+
+The proxy sidecar's env-var contract (matches upstream vllm-ascend
+disaggregated_prefill_v1/proxy_server.py contract — to be exercised
+once vllm-ascend v0.12+ stabilises):
+
+| Env var | Value |
+|---|---|
+| `VLLM_PD_ROLE` | "prefill" or "decode" (this Pod's side) |
+| `VLLM_PD_PREFILL_HOST` | `<ms.Name>-prefill` (Service name convention) |
+| `VLLM_PD_DECODE_HOST` | `<ms.Name>-decode` |
+| `VLLM_PD_SIBLING_LOCALHOST_PORT` | `"8000"` (proxy_server reaches local vllm-ascend over localhost:8000) |
+| `VLLM_PD_OTHER_SIDE` | "prefill" if this Pod is decode, "decode" if prefill |
+
+**Why split FallbackImage vs ProxyImage**: FallbackImage is for CI
+expedience (avoiding 5GB image pulls); ProxyImage is a production
+capability (adding a sidecar to enable PD-pair traffic routing).
+Distinct fields so operators don't accidentally activate the proxy by
+opting into a busybox-style stand-in.
+
+**Forward path (Phase 7+)**: once vllm-ascend v0.12+ documents the
+proxy_server contract on stable, the env-var key names above may
+shift. T105 chose names matching the current upstream conventions
+(VLLM_PD_*); pre-emptive standardisation, may need a rename pass when
+upstream finalises.
+
+T106 kind smoke fixture uses FallbackImage=busybox:1.36 to demonstrate
+the CI pattern. Production deployments leave both ProxyImage and
+FallbackImage empty until vllm-ascend v0.12+ stability assessment.
+
 ## 5.1 Metrics exposition (Phase 6 T104 · operative)
 
 Three Prometheus collectors registered against controller-runtime's

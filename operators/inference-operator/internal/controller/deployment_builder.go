@@ -146,19 +146,7 @@ func buildDeployment(ms *inferencev1alpha1.ModelService, side PDSide) *appsv1.De
 						Name:                      claimRefNameInPod,
 						ResourceClaimTemplateName: ptrString(claimTemplateName(ms, side)),
 					}},
-					Containers: []corev1.Container{{
-						Name:  "vllm-ascend",
-						Image: ms.Spec.Model.Image,
-						Args: []string{
-							"--model-path=" + ms.Spec.Model.ModelPath,
-							"--pd-role=" + roleVal,
-						},
-						Resources: corev1.ResourceRequirements{
-							Claims: []corev1.ResourceClaim{{
-								Name: claimRefNameInPod,
-							}},
-						},
-					}},
+					Containers: buildPDPairContainers(ms, side, roleVal, claimRefNameInPod),
 				},
 			},
 		},
@@ -168,3 +156,71 @@ func buildDeployment(ms *inferencev1alpha1.ModelService, side PDSide) *appsv1.De
 
 func ptrInt32(v int32) *int32   { return &v }
 func ptrString(v string) *string { return &v }
+
+// buildPDPairContainers materialises the PD-pair Pod container list per
+// P6-T-105:
+//
+//   - Container "vllm-ascend" runs ms.Spec.Model.Image (or
+//     ms.Spec.PDPair.FallbackImage when set) with the standard
+//     --model-path / --pd-role flags.
+//   - If ms.Spec.PDPair.ProxyImage is non-empty, a second container
+//     "pd-proxy" is appended that runs the vllm-ascend
+//     disaggregated_prefill_v1 proxy_server with PREFILL_HOST /
+//     DECODE_HOST env-vars resolving to the per-side Service names
+//     (Phase 6 simulator scope uses convention; Phase 7 real-cluster
+//     wires explicit Service refs).
+//
+// FallbackImage takes precedence over Model.Image on the main
+// container ONLY. The proxy sidecar always uses ProxyImage when set
+// (it doesn't have a fallback because it's opt-in by design — operators
+// don't enable the proxy sidecar without the proxy_server image being
+// available).
+func buildPDPairContainers(ms *inferencev1alpha1.ModelService, side PDSide, roleVal, claimRef string) []corev1.Container {
+	mainImage := ms.Spec.Model.Image
+	if ms.Spec.PDPair.FallbackImage != "" {
+		mainImage = ms.Spec.PDPair.FallbackImage
+	}
+
+	containers := []corev1.Container{{
+		Name:  "vllm-ascend",
+		Image: mainImage,
+		Args: []string{
+			"--model-path=" + ms.Spec.Model.ModelPath,
+			"--pd-role=" + roleVal,
+		},
+		Resources: corev1.ResourceRequirements{
+			Claims: []corev1.ResourceClaim{{
+				Name: claimRef,
+			}},
+		},
+	}}
+
+	if ms.Spec.PDPair.ProxyImage != "" {
+		// Per-side sibling Service name convention: <ms.Name>-<other-side>.
+		// Phase 5 deployment_builder doesn't yet create per-side Services;
+		// Phase 7+ work will. T105 ships the env-var pattern so a future
+		// Service-creation task wires through.
+		other := "decode"
+		if string(side) == "decode" {
+			other = "prefill"
+		}
+		containers = append(containers, corev1.Container{
+			Name:  "pd-proxy",
+			Image: ms.Spec.PDPair.ProxyImage,
+			Env: []corev1.EnvVar{
+				{Name: "VLLM_PD_ROLE", Value: roleVal},
+				{Name: "VLLM_PD_PREFILL_HOST", Value: ms.Name + "-prefill"},
+				{Name: "VLLM_PD_DECODE_HOST", Value: ms.Name + "-decode"},
+				// The proxy_server connects to its local sibling
+				// container over localhost (same Pod). Phase 7 may
+				// add port discovery via downward-API env.
+				{Name: "VLLM_PD_SIBLING_LOCALHOST_PORT", Value: "8000"},
+				// Identify the sibling Pod side this sidecar's own
+				// upstream is — proxy_server uses this to skip self.
+				{Name: "VLLM_PD_OTHER_SIDE", Value: other},
+			},
+		})
+	}
+
+	return containers
+}
