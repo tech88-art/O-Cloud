@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -35,7 +36,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"github.com/tech88-art/O-Cloud/operators/inference-operator/internal/metrics"
 )
+
+// recordDecisionMetric inspects the admission.Response and records the
+// outcome into the WebhookDecisions counter. Called via deferred wrap in
+// Handle below so every return path observes exactly once.
+func recordDecisionMetric(resp admission.Response) {
+	switch {
+	case !resp.Allowed:
+		metrics.RecordWebhookDecision(metrics.WebhookDecisionDenied)
+	case len(resp.Patches) > 0 || resp.PatchType != nil:
+		metrics.RecordWebhookDecision(metrics.WebhookDecisionPatched)
+	default:
+		metrics.RecordWebhookDecision(metrics.WebhookDecisionAllowedNoPatch)
+	}
+}
 
 // PathPDRouterMutate is the URL path the webhook server serves the
 // PD Router mutating handler on. The MutatingWebhookConfiguration
@@ -105,6 +122,18 @@ func (h *PDRouter) Handle(ctx context.Context, req admission.Request) admission.
 		"pod-name", req.Name,
 		"operation", req.Operation,
 	)
+	// P6-T-104: record webhook decision metric on EVERY return path
+	// (allowed_no_patch / patched / denied).
+	var resp admission.Response
+	defer func() { recordDecisionMetric(resp) }()
+	resp = h.handle(ctx, lg, req)
+	return resp
+}
+
+// handle is the inner Handle body — exists so we can wrap the entire
+// flow with the decision-metric defer above without complicating
+// every return statement.
+func (h *PDRouter) handle(ctx context.Context, lg logr.Logger, req admission.Request) admission.Response {
 
 	pod := &corev1.Pod{}
 	if err := h.Decoder.Decode(req, pod); err != nil {

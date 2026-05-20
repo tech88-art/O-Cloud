@@ -1,0 +1,28 @@
+{{- /*
+Service for the inference-operator Prometheus metrics endpoint (P6-T-104).
+
+Separate from the PD Router webhook Service (service.yaml) so operators
+can scrape metrics without enabling the webhook. Port matches
+`metricsBindAddress` (default :8082).
+
+Gated by `metrics.enabled` — chart authors flip false for setups with
+external scraping that doesn't need a K8s Service.
+*/}}
+{{- if .Values.metrics.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inference-operator.fullname" . }}-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inference-operator.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "inference-operator.selectorLabels" . | nindent 4 }}
+  ports:
+    - port: {{ .Values.metrics.port }}
+      targetPort: {{ .Values.metrics.port }}
+      protocol: TCP
+      name: metrics
+{{- end }}

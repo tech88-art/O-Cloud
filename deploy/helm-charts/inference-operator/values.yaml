@@ -84,6 +84,32 @@ certManager:
     kind: Issuer
     name: ""
 
+# ----------------------------------------------------- Metrics (P6-T-104)
+# Three Prometheus collectors registered by the manager's
+# internal/metrics package:
+#   - inference_modelservice_phase_transitions_total{from,to}     Counter
+#   - inference_pdrouter_decisions_total{decision}                Counter
+#   - inference_modelservice_reconcile_duration_seconds            Histogram
+#
+# Served on the manager's metrics-bind-address (default :8082). A separate
+# Service ($fullname-metrics) is rendered when metrics.enabled=true so
+# Prometheus can scrape via in-cluster service routing. ServiceMonitor
+# is opt-in via metrics.serviceMonitor.enabled (requires Prometheus
+# Operator CRDs installed in the cluster).
+metrics:
+  enabled: true
+  port: 8082
+  serviceMonitor:
+    enabled: false
+    interval: "30s"
+    scrapeTimeout: "10s"
+    # Extra labels merged onto the ServiceMonitor's metadata.labels
+    # (operators often need a `prometheus: kube-prometheus` selector
+    # so kube-prometheus-stack picks the monitor up).
+    labels: {}
+    # Prometheus relabel_config[] verbatim. Pass-through.
+    relabelings: []
+
 # ----------------------------------------------------- Leader election
 leaderElect: true
 

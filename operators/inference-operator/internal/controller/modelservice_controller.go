@@ -37,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	inferencev1alpha1 "github.com/tech88-art/O-Cloud/operators/inference-operator/api/v1alpha1"
+	"github.com/tech88-art/O-Cloud/operators/inference-operator/internal/metrics"
 )
 
 // FinalizerName is the metadata.finalizers entry the ModelService
@@ -111,6 +112,14 @@ func (r *ModelServiceReconciler) now() time.Time {
 
 // Reconcile implements the controller-runtime Reconciler contract.
 func (r *ModelServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	// P6-T-104: observe Reconcile duration. defer pattern captures all
+	// return paths (NotFound short-circuit + happy path + finalizer +
+	// phase write + error).
+	start := r.now()
+	defer func() {
+		metrics.ObserveReconcileDuration(r.now().Sub(start).Seconds())
+	}()
+
 	lg := log.FromContext(ctx).WithName("modelservice-controller").WithValues(
 		"modelservice", req.NamespacedName, "task", "P5-T-006",
 	)
@@ -183,6 +192,13 @@ func (r *ModelServiceReconciler) reconcilePhase(ctx context.Context, ms *inferen
 	base := ms.DeepCopy()
 	ms.Status.Phase = decision.Phase
 	ms.Status.ObservedGeneration = ms.Generation
+
+	// P6-T-104: record phase transition when Status.Phase actually
+	// changes. RecordPhaseTransition treats the recompute-same-phase
+	// case as a no-op via the `from != to` guard here.
+	if string(base.Status.Phase) != string(decision.Phase) {
+		metrics.RecordPhaseTransition(string(base.Status.Phase), string(decision.Phase))
+	}
 
 	// PoolUnresolved stays True from the pool-found check we already
 	// did above.

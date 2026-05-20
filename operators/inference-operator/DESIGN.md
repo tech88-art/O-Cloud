@@ -499,6 +499,47 @@ phase = Ready
 | ProgressDeadlineSeconds exceeded (10m total)     | terminal | condition ProgressDeadline=True; phase=Failed |
 | PD Router webhook TLS cert load failure          | startup  | exit non-zero — chart's cert-manager dependency missing |
 
+## 5.1 Metrics exposition (Phase 6 T104 · operative)
+
+Three Prometheus collectors registered against controller-runtime's
+shared registry, served on the manager's `--metrics-bind-address`
+(default `:8082`):
+
+| Collector | Type | Labels | Source |
+|---|---|---|---|
+| `inference_modelservice_phase_transitions_total` | Counter | `from`, `to` | `internal/controller/modelservice_controller.go` Reconcile — incremented only when `Status.Phase` actually changes (recompute-same-phase is a no-op) |
+| `inference_pdrouter_decisions_total` | Counter | `decision` ∈ {allowed_no_patch, patched, denied} | `internal/webhook/pd_router.go` Handle — recorded via deferred wrap that inspects every return path |
+| `inference_modelservice_reconcile_duration_seconds` | Histogram | (none) | `internal/controller/modelservice_controller.go` Reconcile — observed via `defer ObserveReconcileDuration(time.Since(start).Seconds())` |
+
+Buckets for the histogram cover the expected simulator-scope range
+(`{0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10}` seconds).
+
+**Plan scope reduction**: plan §4 P6-T-104 originally listed 4
+collectors including "allocator picks", but that one was dropped at
+task entry because inference-operator does NOT call npu-dra-driver's
+allocator directly — allocation happens via DRA's ResourceClaim
+machinery. Allocator metrics belong in npu-dra-driver (Phase 7+).
+
+**Chart wiring** (`deploy/helm-charts/inference-operator/`):
+- `templates/service-metrics.yaml` — separate Service (port 8082) from
+  the webhook Service so operators can scrape metrics independent of
+  PD Router lifecycle
+- `templates/servicemonitor.yaml` — opt-in via
+  `metrics.serviceMonitor.enabled=true` (requires Prometheus Operator
+  CRDs in the cluster)
+- `values.yaml` block:
+  ```yaml
+  metrics:
+    enabled: true
+    port: 8082
+    serviceMonitor:
+      enabled: false
+      interval: 30s
+      scrapeTimeout: 10s
+      labels: {}
+      relabelings: []
+  ```
+
 ## 6. 扩展点
 
 ### 6.1 Phase 5 controller body (immediate next-phase work)
