@@ -1,15 +1,24 @@
-# P3-T-104 — minimal mock workload for the kind smoke spec.
+# P3-T-104 / P5-T-126 — minimal mock workload for the kind smoke spec.
 #
 # Purpose
 # -------
 #   Prove the k8s.Source serves /api/v1/workloads against the live API
-#   server: the seeded Pod requests huawei.com/Ascend910=1 (matched by
-#   the fake capacity install.sh patches into each worker node) and
-#   carries the npu.huawei.com/slice-bindings annotation that the
-#   Phase 5 PD Router (ADR-0008) will eventually write. Today the
-#   annotation is purely advisory — the k8s.Source surfaces it on
-#   model.Workload.Bindings via the same annotation contract used by
-#   mock fixtures (configs/mock-data/set-a-small/workloads.json).
+#   server: the seeded workload requests huawei.com/Ascend910=1
+#   (matched by the fake capacity install.sh patches into each worker
+#   node) and carries the npu.huawei.com/slice-bindings annotation that
+#   the Phase 5 PD Router (ADR-0008) will eventually write.
+#
+# Why Deployment (T126 fix — was bare Pod)
+# ----------------------------------------
+#   `k8s.Source.ListWorkloads` aggregates `apps/v1` Deployments +
+#   StatefulSets + `batch/v1` Jobs into the model.Workload list-view
+#   (backend/pkg/datasource/k8s/workload.go:51). Bare Pods never
+#   surface there, so the previous bare-Pod fixture made the
+#   "workloads list" smoke assertion impossible to pass. Wrapping the
+#   container in a 1-replica Deployment with the same scheduling
+#   constraints + annotations + container spec keeps the original
+#   intent (one running workload reachable through the chain) while
+#   matching the contract the test asserts against.
 #
 # Why pause:3.10
 # --------------
@@ -19,14 +28,16 @@
 #   the infra container of every pod, so it's already cached on most
 #   nodes. registry.k8s.io is the official mirror with no rate limits.
 #
-# Why no Deployment
-# -----------------
-#   A single Pod is enough for the workloads-list smoke. A Deployment
-#   would force us to mirror Status.Replicas accounting against the
-#   live cluster, which adds flakiness without buying coverage that
-#   the existing unit tests don't already give us.
-apiVersion: v1
-kind: Pod
+# Status.Replicas accounting
+# --------------------------
+#   The earlier comment in this file claimed a Deployment would add
+#   flakiness via Status.Replicas accounting. In practice
+#   `Available = 1` lands within seconds because the Pod is just
+#   pause; no readiness probe, no init logic. The smoke spec asserts
+#   on workload presence + name + namespace only, not on replica
+#   count, so accounting flakiness doesn't bleed into the test.
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: smoke-workload
   namespace: ocloud-system
@@ -34,27 +45,37 @@ metadata:
     app: smoke-workload
     ocloud.edge.example.com/managed-by: kind-smoke
     workload-type: inference
-  annotations:
-    # Single-binding shape matches model.Pod.Bindings JSON marshalling
-    # (backend/pkg/model/workload.go). PD Router will populate this
-    # at admission time in Phase 5; we hand-seed it here so the
-    # k8s.Source has something concrete to round-trip.
-    npu.huawei.com/slice-bindings: |
-      [{"sliceId":"smoke-pool-slice-0","npuId":"worker-1-npu-0","template":"vir04"}]
 spec:
-  # Pin to a worker node (we patched capacity into worker nodes only).
-  nodeSelector:
-    site: site-a
-  tolerations:
-    - key: huawei.com/Ascend910B
-      operator: Exists
-      effect: NoSchedule
-  containers:
-    - name: pause
-      image: registry.k8s.io/pause:3.10
-      resources:
-        requests:
-          huawei.com/Ascend910: "1"
-        limits:
-          huawei.com/Ascend910: "1"
-  restartPolicy: Never
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smoke-workload
+  template:
+    metadata:
+      labels:
+        app: smoke-workload
+        ocloud.edge.example.com/managed-by: kind-smoke
+        workload-type: inference
+      annotations:
+        # Single-binding shape matches model.Pod.Bindings JSON marshalling
+        # (backend/pkg/model/workload.go). PD Router will populate this
+        # at admission time in Phase 5; we hand-seed it here so the
+        # k8s.Source has something concrete to round-trip.
+        npu.huawei.com/slice-bindings: |
+          [{"sliceId":"smoke-pool-slice-0","npuId":"worker-1-npu-0","template":"vir04"}]
+    spec:
+      # Pin to a worker node (we patched capacity into worker nodes only).
+      nodeSelector:
+        site: site-a
+      tolerations:
+        - key: huawei.com/Ascend910B
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.10
+          resources:
+            requests:
+              huawei.com/Ascend910: "1"
+            limits:
+              huawei.com/Ascend910: "1"

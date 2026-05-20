@@ -170,6 +170,17 @@ spec:
               mountPath: /app/configs/config.yaml
               subPath: config.yaml
               readOnly: true
+            # P5-T-126: mock-data fixtures backing mapping.clusters=mock /
+            # mapping.topology=mock / mapping.presets=mock /
+            # mapping.deploy=mock. install.sh creates the ConfigMap from
+            # configs/mock-data/set-a-small/ via `kubectl create configmap
+            # --from-file=` before applying this manifest. Each JSON file
+            # becomes a key under the mount path
+            # (e.g. clusters.json), matching the fixturesPath that
+            # mock.Source's loadClusters etc. join into.
+            - name: mockdata
+              mountPath: /app/configs/mock-data/set-a-small
+              readOnly: true
       volumes:
         - name: config
           configMap:
@@ -177,6 +188,9 @@ spec:
             items:
               - key: config.yaml
                 path: config.yaml
+        - name: mockdata
+          configMap:
+            name: demo-backend-mockdata
 ---
 apiVersion: v1
 kind: Service

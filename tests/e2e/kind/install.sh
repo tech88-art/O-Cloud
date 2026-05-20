@@ -237,6 +237,19 @@ spec:
 YAML
 
   echo "== install demo-backend =="
+  # P5-T-126: ship mock-data fixtures as a ConfigMap and mount them
+  # into the demo-backend Pod. The backend Dockerfile bakes only
+  # config.example.yaml into the runtime image (correctly — production
+  # builds don't ship test fixtures), so the kind smoke must provision
+  # the fixtures separately. The mapping `clusters: mock` in
+  # demo-backend.yaml's ConfigMap config sends /api/v1/clusters through
+  # mock.Source which reads from ${fixturesPath}/clusters.json; without
+  # this mount, the path doesn't exist and the handler returns 500
+  # (caught by tests/e2e/specs/kind-smoke.spec.ts "clusters list
+  # smoke" assertion).
+  kubectl -n "${NS}" create configmap demo-backend-mockdata \
+    --from-file="${REPO_ROOT}/configs/mock-data/set-a-small/" \
+    --dry-run=client -o yaml | kubectl apply -f -
   # P5-T-113: no rollout-status wait; images not loaded yet. See
   # comment on pool-operator above.
   kubectl apply -f "${SCRIPT_DIR}/manifests/demo-backend.yaml"
