@@ -1,0 +1,98 @@
+{{- if .Values.rbac.create -}}
+{{- $fullname := include "scheduler-plugin.fullname" . -}}
+{{- $sa := include "scheduler-plugin.serviceAccountName" . -}}
+
+{{- if .Values.rbac.bindToUpstream }}
+# Bind the chart's ServiceAccount to the upstream system:kube-scheduler
+# ClusterRole — this covers the standard kube-scheduler operational
+# permissions (nodes/pods/bindings/leases/events/storageclasses/etc).
+# Set rbac.bindToUpstream=false if your cluster customises this ClusterRole.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $fullname }}-system-kube-scheduler
+  labels:
+    {{- include "scheduler-plugin.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:kube-scheduler
+subjects:
+- kind: ServiceAccount
+  name: {{ $sa }}
+  namespace: {{ .Release.Namespace }}
+---
+# Also bind system:volume-scheduler so the scheduler can read PVs/PVCs
+# during binding (kube-scheduler upstream requires this for stateful Pods).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $fullname }}-system-volume-scheduler
+  labels:
+    {{- include "scheduler-plugin.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:volume-scheduler
+subjects:
+- kind: ServiceAccount
+  name: {{ $sa }}
+  namespace: {{ .Release.Namespace }}
+---
+{{- end }}
+
+# Ocloud-specific reads that the upstream system:kube-scheduler
+# ClusterRole does NOT cover:
+#   - resource.k8s.io/v1beta1.ResourceClaim / ResourceSlice / DeviceClass
+#     (informer cache for the scheduler's DRA-aware filters + our HCCS
+#     Filter SliceLister)
+#   - npu.ocloud.edge.example.com/v1alpha1.NPUSliceAllocation
+#     (HCCS Score reads via dynamic client for sibling-Pod lookups)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $fullname }}-ocloud
+  labels:
+    {{- include "scheduler-plugin.labels" . | nindent 4 }}
+rules:
+- apiGroups: ["resource.k8s.io"]
+  resources:
+  - resourceclaims
+  - resourceslices
+  - deviceclasses
+  - resourceclaimtemplates
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["npu.ocloud.edge.example.com"]
+  resources:
+  - npusliceallocations
+  verbs: ["get", "list", "watch"]
+# Coordination leases for the plugin's leader-election lease (separate
+# from the upstream kube-scheduler lease — our lease lives in
+# leaderElectionNamespace, default kube-system, with name derived from
+# the chart fullname).
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Event recording — kube-scheduler emits scheduling events on Pods.
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: ["events.k8s.io"]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $fullname }}-ocloud
+  labels:
+    {{- include "scheduler-plugin.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $fullname }}-ocloud
+subjects:
+- kind: ServiceAccount
+  name: {{ $sa }}
+  namespace: {{ .Release.Namespace }}
+{{- end }}

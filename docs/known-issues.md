@@ -292,6 +292,51 @@ helmfile orchestrator if cluster operators report friction.
 
 ---
 
+### #11 — scheduler-plugin runs as a SECOND scheduler — Pods must opt in via schedulerName
+
+Severity: low · Status: **OPEN** (2026-05-20, P6-T-101).
+
+The `scheduler-plugin` helm chart (`deploy/helm-charts/scheduler-plugin/`)
+deploys a custom kube-scheduler binary as a SECOND scheduler in the
+cluster, registered under profile name `npu-scheduler` (configurable
+via `profileName` in values.yaml). The default-scheduler is
+intentionally unaffected — Pods must EXPLICITLY set
+`spec.schedulerName: npu-scheduler` to get HCCS-aware placement.
+
+This is per ADR-0010 §1 (multi-scheduler form, not default-scheduler
+patch) to keep blast radius bounded — a bug in HCCS scoring cannot
+break the rest of the cluster's scheduling.
+
+**Observable symptom** when forgotten: Pods schedule successfully but
+WITHOUT HCCSTopology Filter/Score evaluation. No error surfaces —
+just sub-optimal placement. Operators check by inspecting Pod
+events: messages from `Scheduler` source with `Component=
+default-scheduler` mean the wrong scheduler picked the node.
+
+**Required action** for HCCS-aware placement:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-vllm-ascend-pod
+spec:
+  schedulerName: npu-scheduler  # ← required
+  # ... rest of Pod spec
+```
+
+For inference-operator-managed Deployments, set this in the Pod template
+inside `ms.spec.template.spec.schedulerName` (Phase 6 T105 inference-
+operator polish may stamp this automatically; gated on T105 decision).
+
+**Proposed resolution**: P6-T-105 evaluates whether inference-operator
+deployment_builder should default `spec.schedulerName=npu-scheduler`
+when the chart is enabled. Phase 7+ may add a MutatingWebhook to
+flip the field for Pods carrying the
+`inference.ocloud.edge.example.com/model-service` label.
+
+---
+
 ### #9 — ascend exporter dev stub serves static metrics only
 
 Severity: trivial · Status: **RESOLVED** (2026-05-19, P3-T-103).

@@ -1,0 +1,37 @@
+apiVersion: v2
+name: scheduler-plugin
+description: |
+  O-Cloud custom kube-scheduler binary with HCCSTopology (Filter+Score)
+  + NumaAffinity (placeholder; upstream wrap deferred per ADR-0010 §3)
+  + Binpack (Score, default disabled) plugins linked in via
+  sigs.k8s.io/scheduler-plugins framework v0.31.x.
+
+  Phase 6 W2 T101 — deploys the binary as a second kube-scheduler running
+  under profile name `npu-scheduler`. Pods opt in via
+  `spec.schedulerName: npu-scheduler`. The default-scheduler is unaffected
+  for all other workloads.
+
+  See operators/scheduler-plugin/DESIGN.md + docs/adr/0010-scheduler-plugin.md
+  for the design contract, plugin args schema, and the T006 NumaAffinity
+  upstream-wrap deferral status.
+type: application
+# Chart version — bump on every chart-shape change.
+version: 0.1.0
+# Application (binary) version — keep in lock-step with
+# operators/scheduler-plugin/PROJECT + helm chart appVersion.
+appVersion: "0.1.0"
+keywords:
+  - ascend
+  - npu
+  - kube-scheduler
+  - scheduler-plugins
+  - hccs
+  - numa
+  - binpack
+  - ocloud
+home: https://github.com/tech88-art/O-Cloud
+sources:
+  - https://github.com/tech88-art/O-Cloud/tree/main/operators/scheduler-plugin
+maintainers:
+  - name: O-Cloud team
+    url: https://github.com/tech88-art/O-Cloud

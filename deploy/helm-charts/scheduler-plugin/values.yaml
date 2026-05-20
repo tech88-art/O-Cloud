@@ -1,0 +1,150 @@
+# Default values for scheduler-plugin (Phase 6 T101).
+#
+# Operators opt in by setting `spec.schedulerName: npu-scheduler` on
+# Pods that need HCCS-aware placement. The default-scheduler in the
+# cluster remains untouched.
+#
+# NumaAffinity is INTENTIONALLY OMITTED from the rendered
+# KubeSchedulerConfiguration filter/score enabled lists until the
+# upstream sched-plugins wrap lands per T006 deferral (see
+# operators/scheduler-plugin/DESIGN.md §5.2).
+
+image:
+  # Locally-built image — `make docker-build IMG=scheduler-plugin:v0.1.0`
+  # in operators/scheduler-plugin/ produces the image. CI replaces tag
+  # with a SHA on release. Set repository to a registry path (e.g.
+  # `registry.example.com/ocloud/scheduler-plugin`) for cluster deploys.
+  repository: scheduler-plugin
+  tag: "v0.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Profile / scheduler-name registered in KubeSchedulerConfiguration.
+# Pods consume this via `spec.schedulerName: <name>`. Changing this
+# requires updating both the chart values AND every consumer Pod's
+# schedulerName — do NOT alter post-install on a live cluster.
+profileName: npu-scheduler
+
+# Number of scheduler replicas. With leader election enabled, only one
+# replica is active at a time; >1 yields HA failover. Defaults to 1 for
+# the Phase 6 simulator scope.
+replicaCount: 1
+
+# Node placement. The custom kube-scheduler is a control-plane component;
+# common practice runs it on control-plane nodes. Defaults left empty so
+# the chart works on kind / dev clusters where all nodes are equivalent.
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Pod-level securityContext. Distroless image runs as nonroot uid 65532.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+# Resource shape — kube-scheduler with our plugins is small. Tune up
+# for large clusters (>200 nodes) where SharedInformerFactory caches
+# grow.
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Leader election — REQUIRED for production multi-replica deployments.
+# Lease lives in kube-system namespace by convention (matches
+# upstream kube-scheduler default).
+leaderElect: true
+leaderElectionNamespace: kube-system
+
+# Secure serving port — kube-scheduler defaults to 10259 for HTTPS.
+# Health/metrics probed on this port via /healthz and /metrics.
+securePort: 10259
+
+# ---------------------------------------------------------------- Plugins
+
+# HCCSTopologyArgs per ADR-0010 §4 / operators/scheduler-plugin/
+# internal/plugins/hccs/args.go.
+hccsTopology:
+  # Score weight in [0..100]. Default 5 — HCCS is the headline plugin.
+  weight: 5
+  # Pod annotation key Filter / Score read for the requested ring set.
+  preferAnnotation: "npu.huawei.com/preferred-hccs-ring"
+  # When true, Filter returns UnschedulableAndUnresolvable for Pods
+  # missing the annotation. Default false (permissive) until inference-
+  # operator T105 polish starts stamping the annotation.
+  failIfMissing: false
+  # Adjacency map — string-keyed for JSON compat. Empty default = no
+  # adjacency (strict same-ring scoring; cross-ring placements score
+  # disjoint=30). Example for an 8-NPU ring 0↔1↔2↔3:
+  #   adjacency:
+  #     "0": [1]
+  #     "1": [0, 2]
+  #     "2": [1, 3]
+  #     "3": [2]
+  adjacency: {}
+
+# NumaAffinity — DEFERRED per T006 (upstream sched-plugins v0.31.8
+# references framework.GVK removed in K8s 1.32). Placeholder binary
+# is registered but NOT enabled in KubeSchedulerConfiguration.
+# Flip `numaAffinity.enabled: true` once a v0.32.x release lands AND
+# `operators/scheduler-plugin/internal/plugins/numa/plugin.go` body is
+# upgraded to `return nrt.New(ctx, args, h)`.
+numaAffinity:
+  enabled: false
+  weight: 2
+
+# Binpack per ADR-0010 §4. Default disabled — chart operators opt in
+# after observing default scheduler + HCCSTopology behavior. NPU
+# weighted 5x in default ResourceWeights so binpacking favours
+# consolidating NPU-loaded nodes.
+binpack:
+  enabled: false
+  weight: 1
+  # Empty map → plugin uses its built-in defaults from args.go
+  # (cpu: 1, memory: 1, npu.ocloud.edge.example.com/devices: 5).
+  resourceWeights: {}
+
+# ---------------------------------------------------- ServiceAccount + RBAC
+
+serviceAccount:
+  create: true
+  name: ""  # auto-named when empty
+  annotations: {}
+
+# RBAC is split into two ClusterRoles:
+#   * kubeScheduler — binds the chart's ServiceAccount to the upstream
+#     `system:kube-scheduler` ClusterRole (covers nodes/pods/bindings/
+#     leases/events/storageclasses/etc).
+#   * ocloud — chart-managed role that adds Ocloud-specific reads
+#     (resource.k8s.io/v1beta1 + npu.ocloud.edge.example.com/v1alpha1
+#     NPUSliceAllocation).
+rbac:
+  create: true
+  # Bind ServiceAccount to the upstream system:kube-scheduler ClusterRole.
+  # Set false ONLY if your cluster has a custom ClusterRole replacement.
+  bindToUpstream: true
+
+# ---------------------------------------------------- Extra args / pod-level
+# Verbatim args appended to the kube-scheduler argv (after our --config
+# flag). Useful for --v=4 verbose logging.
+extraArgs: []
+
+extraEnv: []
+podAnnotations: {}
+podLabels: {}

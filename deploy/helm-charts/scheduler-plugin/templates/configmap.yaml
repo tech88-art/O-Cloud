@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "scheduler-plugin.configMapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "scheduler-plugin.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    apiVersion: kubescheduler.config.k8s.io/v1
+    kind: KubeSchedulerConfiguration
+    leaderElection:
+      leaderElect: {{ .Values.leaderElect }}
+      resourceLock: leases
+      resourceNamespace: {{ .Values.leaderElectionNamespace }}
+      resourceName: {{ include "scheduler-plugin.fullname" . }}
+    profiles:
+    - schedulerName: {{ .Values.profileName }}
+      plugins:
+        # Filter chain. HCCSTopology gates Pods by HCCS-ring annotation
+        # match against ResourceSlice device attributes.
+        # NumaAffinity DEFERRED per T006 (upstream wrap pending v0.32.x).
+        filter:
+          enabled:
+          - name: HCCSTopology
+        {{- if .Values.numaAffinity.enabled }}
+          - name: NumaAffinity
+        {{- end }}
+        preScore:
+          enabled:
+          - name: HCCSTopology
+        # Score chain. Higher score = preferred placement.
+        score:
+          enabled:
+          - name: HCCSTopology
+            weight: {{ .Values.hccsTopology.weight }}
+        {{- if .Values.numaAffinity.enabled }}
+          - name: NumaAffinity
+            weight: {{ .Values.numaAffinity.weight }}
+        {{- end }}
+        {{- if .Values.binpack.enabled }}
+          - name: Binpack
+            weight: {{ .Values.binpack.weight }}
+          # When Binpack participates, NodeResourcesFit's score is redundant
+          # (both rank by utilization). Disable it to avoid double-counting.
+          disabled:
+          - name: NodeResourcesFit
+        {{- end }}
+      pluginConfig:
+      - name: HCCSTopology
+        args:
+          weight: {{ .Values.hccsTopology.weight }}
+          preferAnnotation: {{ .Values.hccsTopology.preferAnnotation | quote }}
+          failIfMissing: {{ .Values.hccsTopology.failIfMissing }}
+        {{- if .Values.hccsTopology.adjacency }}
+          adjacency:
+            {{- toYaml .Values.hccsTopology.adjacency | nindent 12 }}
+        {{- end }}
+      {{- if .Values.binpack.enabled }}
+      - name: Binpack
+        args:
+          weight: {{ .Values.binpack.weight }}
+          enabled: true
+        {{- if .Values.binpack.resourceWeights }}
+          resourceWeights:
+            {{- toYaml .Values.binpack.resourceWeights | nindent 12 }}
+        {{- end }}
+      {{- end }}
