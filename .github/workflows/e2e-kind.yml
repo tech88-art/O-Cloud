@@ -77,12 +77,14 @@ jobs:
         uses: helm/kind-action@v1.10.0
         with:
           install_only: true
-          # P5-T-108: bump kind v0.24.0 → v0.25.0 so kindest/node:v1.32.0
-          # is supported (kind 0.24 max is K8s 1.31). Required because
-          # Phase 5 charts apply `resource.k8s.io/v1beta1.DeviceClass`
-          # which is K8s 1.31+ only; we use 1.32 + explicit feature-gate
-          # for DRA stability — see tests/e2e/kind/kind-config.yaml.
-          version: v0.25.0
+          # kind v0.24.0 ships kindest/node up to v1.31.x — sufficient
+          # for the K8s 1.31 DRA v1beta1 beta API needed by Phase 5
+          # charts (`resource.k8s.io/v1beta1.DeviceClass` / ResourceSlice).
+          # See tests/e2e/kind/kind-config.yaml for node image + feature
+          # gate. Earlier P5-T-108 bumped to v0.25.0 + v1.32.0 but the
+          # node image tag interaction failed; reverting to the well-
+          # tested kind v0.24.0 + v1.31.0 with explicit DRA feature gate.
+          version: v0.24.0
 
       - name: kind create cluster + install components
         # install.sh `up` is idempotent — it skips cluster creation if
