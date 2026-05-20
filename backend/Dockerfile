@@ -6,7 +6,14 @@
 #                       no shell, no package manager.
 
 # ---- build stage ----------------------------------------------------------
-FROM golang:1.24-alpine AS build
+# P5-T-117 (2026-05-20): bumped golang:1.24-alpine → golang:1.26-alpine.
+# `backend/go.mod` declares `go 1.26.3` (the Go ≥ 1.21 toolchain
+# directive is enforced at build time), so the previous 1.24 image
+# fails `go mod download` with:
+#   go: go.mod requires go >= 1.26.3 (running go 1.24.13; GOTOOLCHAIN=local)
+# That broke the kind-smoke `build-images` step on commit 61d6a49.
+# `1.26-alpine` resolves to the latest 1.26.x patch (≥ 1.26.3).
+FROM golang:1.26-alpine AS build
 
 # Build-time metadata baked into the binary via -ldflags.
 ARG VERSION=0.1.0
