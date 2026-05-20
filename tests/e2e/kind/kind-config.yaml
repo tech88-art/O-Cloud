@@ -33,31 +33,30 @@
 #
 # Image pin
 # ---------
-#   kindest/node:v1.31.0 — bumped at P5-T-110 (2026-05-19) from v1.30.4.
-#   Phase 5 introduces the `resource.k8s.io/v1beta1.DeviceClass` template
-#   in the npu-dra-driver helm chart (P5-T-001) and the npu-dra-driver
-#   manager publishes `resource.k8s.io/v1beta1.ResourceSlice`. K8s 1.30
-#   only ships `resource.k8s.io/v1alpha2` (DRA was alpha); v1beta1 was
-#   added at 1.31 (beta, default-off, gated by DynamicResourceAllocation).
-#   kind v0.24.0 supports kindest/node up to v1.31.x; bumping kind itself
-#   (e.g. to v0.25.0/v1.32.0) caused the install_only step to misresolve
-#   the node image, so we stay on the well-tested kind v0.24.0 +
-#   kindest/node:v1.31.0 and enable DRA via featureGates explicitly.
+#   kindest/node:v1.32.0 — bumped at P5-T-112 (2026-05-19) from v1.31.0.
+#   The 1.31.0 + featureGates DynamicResourceAllocation=true combo
+#   triggered a known scheduler-init issue: cert-manager pods sat in
+#   Pending with Node: <none> + Events: <none> for the full 10m helm
+#   timeout. kube-scheduler in 1.31 with DRA enabled deadlocks on a
+#   fresh cluster (no ResourceClaim seeded yet) and never processes
+#   any pod — even cert-manager pods that don't request DRA. K8s 1.32
+#   has DRA promoted to default-on AND the scheduler init bug is
+#   fixed, so we drop the explicit featureGates line (would be a no-op
+#   anyway since 1.32 has it on).
 #
-# Feature gates
-# -------------
-#   DynamicResourceAllocation = true required because K8s 1.31 has DRA
-#   beta but default-OFF (graduated to default-ON in 1.32). kind's
-#   top-level `featureGates:` propagates to api-server, scheduler,
-#   controller-manager, and kubelet (kind v0.20+ behaviour).
+#   kind v0.25.0 ships kindest/node:v1.32.0; the workflow's
+#   helm/kind-action `version` field is bumped in lockstep.
+#
+# Phase 5 needs `resource.k8s.io/v1beta1` for DeviceClass / ResourceSlice
+# / NPUSliceAllocation — present in 1.31 (beta default-OFF) and in 1.32
+# (beta default-ON). v1.32 is the sweet spot: API + scheduler both
+# work out-of-the-box without manual feature-gate juggling.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: ocloud-e2e
-featureGates:
-  DynamicResourceAllocation: true
 nodes:
   - role: control-plane
-    image: kindest/node:v1.31.0
+    image: kindest/node:v1.32.0
     extraPortMappings:
       - containerPort: 30080
         hostPort: 30080
@@ -66,14 +65,14 @@ nodes:
         hostPort: 30090
         protocol: TCP
   - role: worker
-    image: kindest/node:v1.31.0
+    image: kindest/node:v1.32.0
     labels:
       huawei.com/Ascend910B: "true"
       huawei.com/Ascend910-Health: "Healthy"
       site: site-a
       role: edge
   - role: worker
-    image: kindest/node:v1.31.0
+    image: kindest/node:v1.32.0
     labels:
       huawei.com/Ascend910B: "true"
       huawei.com/Ascend910-Health: "Healthy"

@@ -129,11 +129,32 @@ cmd_up() {
       --set cainjector.image.pullPolicy=IfNotPresent \
       --set startupapicheck.image.pullPolicy=IfNotPresent \
       --wait --timeout 10m; then
-    echo "::error::cert-manager helm install failed; dumping namespace state"
+    echo "::error::cert-manager helm install failed; dumping cluster state"
+    echo "::group::cert-manager namespace state"
     kubectl -n cert-manager get pods -o wide || true
     kubectl -n cert-manager describe pods || true
     kubectl -n cert-manager get events --sort-by=.lastTimestamp || true
     kubectl -n cert-manager logs --tail=200 -l app.kubernetes.io/instance=cert-manager --prefix=true --all-containers=true || true
+    echo "::endgroup::"
+    echo "::group::cluster nodes"
+    kubectl get nodes -o wide || true
+    kubectl describe nodes || true
+    echo "::endgroup::"
+    echo "::group::kube-system pods (scheduler / controller-manager / etc.)"
+    # P5-T-112: when cert-manager Pods stay Pending with no Events,
+    # the scheduler is the prime suspect. Surface kube-system pod
+    # health + scheduler logs to confirm.
+    kubectl -n kube-system get pods -o wide || true
+    for p in $(kubectl -n kube-system get pods -o name 2>/dev/null | grep -E 'scheduler|controller-manager|apiserver' || true); do
+      echo "--- describe ${p} ---"
+      kubectl -n kube-system describe "${p}" || true
+      echo "--- logs ${p} (last 100) ---"
+      kubectl -n kube-system logs "${p}" --tail=100 || true
+    done
+    echo "::endgroup::"
+    echo "::group::cluster-wide events"
+    kubectl get events -A --sort-by=.lastTimestamp | tail -60 || true
+    echo "::endgroup::"
     exit 1
   fi
 

@@ -77,14 +77,13 @@ jobs:
         uses: helm/kind-action@v1.10.0
         with:
           install_only: true
-          # kind v0.24.0 ships kindest/node up to v1.31.x — sufficient
-          # for the K8s 1.31 DRA v1beta1 beta API needed by Phase 5
-          # charts (`resource.k8s.io/v1beta1.DeviceClass` / ResourceSlice).
-          # See tests/e2e/kind/kind-config.yaml for node image + feature
-          # gate. Earlier P5-T-108 bumped to v0.25.0 + v1.32.0 but the
-          # node image tag interaction failed; reverting to the well-
-          # tested kind v0.24.0 + v1.31.0 with explicit DRA feature gate.
-          version: v0.24.0
+          # P5-T-112 (2026-05-19): bump to kind v0.25.0 which ships
+          # kindest/node:v1.32.0. K8s 1.32 has DRA beta default-ON +
+          # the v1.31 scheduler init bug fixed (cert-manager Pods sat
+          # Pending with no scheduling events on v1.31 + manual DRA
+          # feature gate). v1.32 lets us drop the manual featureGates
+          # line in kind-config.yaml entirely.
+          version: v0.25.0
 
       - name: kind create cluster + install components
         # install.sh `up` is idempotent — it skips cluster creation if
