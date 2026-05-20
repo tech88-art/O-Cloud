@@ -26,18 +26,32 @@ import (
 
 // Attribute QualifiedNames set on upstream Device.Basic.Attributes.
 // Schema documented in the package doc (types.go).
+//
+// QualifiedName format (P5-T-120 fix · 2026-05-20): the "name" segment
+// after the `/` MUST be a valid C identifier — regex
+// `[A-Za-z_][A-Za-z0-9_]*`. Hyphens are NOT allowed. Earlier values
+// (`slice-strategy`, `ai-cores`, `numa-node`, `hccs-ring`, `slice-
+// aicore`) were rejected at K8s admission with:
+//   ResourceSlice.resource.k8s.io "..." is invalid:
+//   spec.devices[i].basic.attributes[npu.huawei.com/slice-strategy]:
+//     Invalid value: "slice-strategy": a valid C identifier must
+//     start with alphabetic character or '_', followed by a string
+//     of alphanumeric characters or '_'
+// Switched all hyphens to underscores. Names with no hyphens (`index`,
+// `health`) are unchanged.
 const (
 	AttrNPUIndex       resourceapi.QualifiedName = "npu.huawei.com/index"
 	AttrNPUHealth      resourceapi.QualifiedName = "npu.huawei.com/health"
-	AttrSliceStrategy  resourceapi.QualifiedName = "npu.huawei.com/slice-strategy"
-	AttrAICores        resourceapi.QualifiedName = "npu.huawei.com/ai-cores"
-	AttrNUMANode       resourceapi.QualifiedName = "npu.huawei.com/numa-node"
-	AttrHCCSRing       resourceapi.QualifiedName = "npu.huawei.com/hccs-ring"
+	AttrSliceStrategy  resourceapi.QualifiedName = "npu.huawei.com/slice_strategy"
+	AttrAICores        resourceapi.QualifiedName = "npu.huawei.com/ai_cores"
+	AttrNUMANode       resourceapi.QualifiedName = "npu.huawei.com/numa_node"
+	AttrHCCSRing       resourceapi.QualifiedName = "npu.huawei.com/hccs_ring"
 )
 
 // Capacity QualifiedName set on upstream Device.Basic.Capacity.
+// Same C-identifier constraint as attributes (P5-T-120 fix).
 const (
-	CapSliceAICore resourceapi.QualifiedName = "npu.huawei.com/slice-aicore"
+	CapSliceAICore resourceapi.QualifiedName = "npu.huawei.com/slice_aicore"
 )
 
 // Enum values for AttrNPUHealth (mirror Ascend Device Plugin labels).

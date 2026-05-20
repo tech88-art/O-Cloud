@@ -183,10 +183,10 @@ Set on upstream `resource.k8s.io/v1beta1.Device.Basic.Attributes`:
 | ------------------------------------ | ---------- | ------------------------------------- | ------- |
 | `npu.huawei.com/index`               | int        | 0..7 (Ascend 910B physical chip idx)   | required |
 | `npu.huawei.com/health`              | string     | Healthy / Unhealthy / Unknown          | required |
-| `npu.huawei.com/slice-strategy`      | string     | FixedTemplate / Dynamic                | required |
-| `npu.huawei.com/ai-cores`            | int        | 0 for FixedTemplate; 1..32 for Dynamic | optional |
-| `npu.huawei.com/numa-node`           | int        | host NUMA index                        | optional |
-| `npu.huawei.com/hccs-ring`           | int        | Phase 6 placeholder, default 0         | optional |
+| `npu.huawei.com/slice_strategy`      | string     | FixedTemplate / Dynamic                | required |
+| `npu.huawei.com/ai_cores`            | int        | 0 for FixedTemplate; 1..32 for Dynamic | optional |
+| `npu.huawei.com/numa_node`           | int        | host NUMA index                        | optional |
+| `npu.huawei.com/hccs_ring`           | int        | Phase 6 placeholder, default 0         | optional |
 
 ### 3.3 Ocloud Device capacity schema
 
@@ -194,7 +194,7 @@ Set on `Device.Basic.Capacity`:
 
 | Key                                  | Value (resource.Quantity)                |
 | ------------------------------------ | ---------------------------------------- |
-| `npu.huawei.com/slice-aicore`        | per-device slice AI-core capacity (e.g. 32 for Ascend 910B) |
+| `npu.huawei.com/slice_aicore`        | per-device slice AI-core capacity (e.g. 32 for Ascend 910B) |
 
 ### 3.4 ResourceClaim annotation schema
 
@@ -398,7 +398,7 @@ spec:
 
 Phase 5 sub-classes (e.g. `/whole`, `.dynamic`) add additional
 selector expressions that filter by
-`device.attributes["npu.huawei.com/slice-strategy"].string`. The
+`device.attributes["npu.huawei.com/slice_strategy"].string`. The
 `.string` accessor is mandatory — `device.attributes["..."]`
 returns a `DeviceAttribute` struct (CEL type `map(string, any)`)
 which cannot be `==`-compared with a string literal directly. K8s

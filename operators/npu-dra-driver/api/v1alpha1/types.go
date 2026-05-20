@@ -45,18 +45,24 @@ limitations under the License.
 //   - npu.huawei.com/index         (int)    physical NPU index 0..7
 //   - npu.huawei.com/health        (string) Healthy / Unhealthy / Unknown
 //     (mirrors Ascend Device Plugin label)
-//   - npu.huawei.com/slice-strategy (string) FixedTemplate / Dynamic
+//   - npu.huawei.com/slice_strategy (string) FixedTemplate / Dynamic
 //     (mirrors NPUSlicePool CRD pool-operator API)
-//   - npu.huawei.com/ai-cores      (int)    slice AI-core count for Dynamic
+//   - npu.huawei.com/ai_cores      (int)    slice AI-core count for Dynamic
 //     strategy; 1..max per Ascend 910B chip topology
-//   - npu.huawei.com/numa-node     (int)    host NUMA node, sourced from
+//   - npu.huawei.com/numa_node     (int)    host NUMA node, sourced from
 //     Ascend Device Plugin labels
-//   - npu.huawei.com/hccs-ring     (int)    Phase 6 placeholder, default 0
+//   - npu.huawei.com/hccs_ring     (int)    Phase 6 placeholder, default 0
 //     until scheduler-plugins NUMA+HCCS lands
+//
+// Note: the name segments above use underscores rather than hyphens —
+// QualifiedName format requires a C identifier after the `/` (regex
+// `[A-Za-z_][A-Za-z0-9_]*`). Earlier hyphenated forms (`slice-strategy`
+// etc.) were rejected at K8s admission validation; renamed to
+// underscored variants at P5-T-120 (2026-05-20).
 //
 // Ascend device capacity schema (set on upstream Device.Basic.Capacity):
 //
-//   - npu.huawei.com/slice-aicore  (resource.Quantity) per-device slice
+//   - npu.huawei.com/slice_aicore  (resource.Quantity) per-device slice
 //     capacity; pool-operator NPUSlicePool Reconcile reads this as the
 //     upper bound (cross-controller integration in P4-T-102)
 //

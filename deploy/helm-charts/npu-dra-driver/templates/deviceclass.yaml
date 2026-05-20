@@ -15,12 +15,12 @@ Three classes are rendered, each gated by an independent values toggle:
      rendered when `.Values.deviceClass.create` is true (default true).
 
   2. Sub-class `npu.ocloud.edge.example.com.whole` — adds a CEL filter
-     requiring `npu.huawei.com/slice-strategy = "FixedTemplate"` (i.e.
+     requiring `npu.huawei.com/slice_strategy = "FixedTemplate"` (i.e.
      pre-defined templates whole / vir04 / vir08). Rendered when
      `.Values.deviceClass.subClasses.whole` is true (default true).
 
   3. Sub-class `npu.ocloud.edge.example.com.dynamic` — adds a CEL filter
-     requiring `npu.huawei.com/slice-strategy = "Dynamic"` (free-form
+     requiring `npu.huawei.com/slice_strategy = "Dynamic"` (free-form
      AI-core allocation). Rendered when
      `.Values.deviceClass.subClasses.dynamic` is true (default true).
 
@@ -68,7 +68,7 @@ spec:
         # accessor `.string` to extract the underlying value.
         expression: |
           device.driver == "npu.ocloud.edge.example.com" &&
-          device.attributes["npu.huawei.com/slice-strategy"].string == "FixedTemplate"
+          device.attributes["npu.huawei.com/slice_strategy"].string == "FixedTemplate"
 {{- end }}
 {{- if .Values.deviceClass.subClasses.dynamic }}
 ---
@@ -85,6 +85,6 @@ spec:
         # rationale (P5-T-116 fix).
         expression: |
           device.driver == "npu.ocloud.edge.example.com" &&
-          device.attributes["npu.huawei.com/slice-strategy"].string == "Dynamic"
+          device.attributes["npu.huawei.com/slice_strategy"].string == "Dynamic"
 {{- end }}
 {{- end }}
