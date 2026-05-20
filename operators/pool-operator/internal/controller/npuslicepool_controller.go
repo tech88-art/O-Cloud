@@ -99,6 +99,16 @@ type reconcileErr struct {
 // +kubebuilder:rbac:groups=ims.ocloud.edge.example.com,resources=npuslicepools/finalizers,verbs=update
 // +kubebuilder:rbac:groups=ims.ocloud.edge.example.com,resources=npupools,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
+// P4-T-102 added the .Watches(*v1beta1.ResourceSlice) secondary
+// watch but missed the RBAC marker; P5-T-121 (2026-05-20) fixes
+// the gap. The controller never listed resourceslices before this
+// (manifests/CRDs hadn't been deployed in any test scenario), so
+// the kind smoke ran for the first time on commit f00c808 and
+// failed at NPUSlicePool reconcile with `Failed to watch
+// *v1beta1.ResourceSlice: resourceslices.resource.k8s.io is
+// forbidden`. The forbidden watch blocked the controller's cache-
+// sync; reconciler workers never started → totalSlices stuck at 0.
+// +kubebuilder:rbac:groups=resource.k8s.io,resources=resourceslices,verbs=get;list;watch
 
 // Reconcile materialises NPUSlicePool status from the parent NPUPool's
 // resolved Node set. See type doc on NPUSlicePoolReconciler for the contract.
