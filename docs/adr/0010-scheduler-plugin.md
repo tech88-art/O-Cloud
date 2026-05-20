@@ -109,6 +109,14 @@ scheduler-plugins 框架启动时注册。
 **默认 Weight**:2(per arch §5.6 + cni-hccl-research §4 间接 — NUMA 在 vllm-ascend
 PD 场景下次于 HCCS,因 HCCL 通信带宽是主要瓶颈;NUMA cache locality 次之)。
 
+**T006 落地状态(2026-05-20 update)**:placeholder · upstream wrap deferred。
+直接 `nrt.New(...)` 委托在 P6-T-006 entry 时构建失败 — 上游
+`sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology` v0.31.8 引用
+`framework.GVK` 符号,K8s 1.31 `pkg/scheduler/framework` 包内有但 K8s
+1.32(本仓库 go.mod replace block baseline · ADR §1)已移除。等 sched-
+plugins v0.32.x 发布(或 v0.31.y backport)再补 wrap。详 DESIGN.md §5.2 +
+phase-6-t006 devlog。
+
 ### 4. BinpackPlugin opt-in(P6-T-007)
 
 **实现选择**:内部 thin impl(50 LOC)Score-only · 不引入 volcano dep。

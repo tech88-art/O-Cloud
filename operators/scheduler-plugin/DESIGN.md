@@ -223,10 +223,41 @@ Score hot-path O(devices_on_node × |ringsOccupied|).
   no-MS-label + multi-ring same. Plus `TestBuildAdjacency` 3-case
   sub-suite for the string→int adjacency conversion.
 
-### 5.2 T006 NumaAffinity wrap
+### 5.2 T006 NumaAffinity (placeholder; upstream wrap deferred)
 
-- separate `internal/plugins/numa/` package, no shared code with hccs
-- thin wrapper around `sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology`
+Status: **T006 placeholder landed**; upstream wrap deferred.
+
+Per ADR-0010 §3 this plugin should wrap upstream
+`sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology` without
+modification. At T006 entry the direct `nrt.New(...)` delegation FAILED
+to build because upstream v0.31.8 references `framework.GVK` — a symbol
+that exists in K8s 1.31's `pkg/scheduler/framework` but was removed in
+K8s 1.32 (our pinned baseline per `go.mod` replace block / ADR-0010 §1).
+
+API drift table (observed 2026-05-20):
+
+| sched-plugins | K8s target | framework.GVK | vs our K8s 1.32 baseline   |
+|---------------|-----------|---------------|------------------------------|
+| v0.30.x       | 1.30      | present       | INCOMPATIBLE                 |
+| v0.31.x       | 1.31      | present       | INCOMPATIBLE — observed fail |
+| v0.32.x       | 1.32      | removed       | COMPATIBLE — not yet released |
+
+**Operative**: T006 ships a Name()-only placeholder; kube-scheduler
+registers the plugin under `NumaAffinity` but invokes no Filter/Score
+because we don't implement the extension-point interfaces. T101 chart
+will OMIT NumaAffinity from its KubeSchedulerConfiguration default
+until the wrap lands.
+
+**Forward path**: once sched-plugins v0.32.x ships (or a downstream
+v0.31.y backport with K8s 1.32 compatibility), revisit by:
+1. Bumping the dep in `go.mod`
+2. Replacing `plugin.go` placeholder body with `return nrt.New(...)`
+3. Updating T101 chart's KubeSchedulerConfiguration to enable
+   NumaAffinity in profile
+
+Until then, operators wanting NUMA-aware scheduling can run upstream
+sched-plugins binary as a second scheduler alongside our HCCSTopology+
+Binpack binary (functional today, more operational overhead).
 
 ### 5.3 T007 Binpack
 
@@ -253,6 +284,9 @@ Score hot-path O(devices_on_node × |ringsOccupied|).
 
 ### 6.1 KubeSchedulerConfiguration (rendered by chart T101)
 
+NumaAffinity is **omitted from filter/score enabled lists** in the
+default chart values until the upstream wrap lands (see §5.2 deferral).
+
 ```yaml
 apiVersion: kubescheduler.config.k8s.io/v1
 kind: KubeSchedulerConfiguration
@@ -262,13 +296,11 @@ profiles:
       filter:
         enabled:
           - name: HCCSTopology
-          - name: NumaAffinity
+          # NumaAffinity placeholder — re-add once upstream wrap lands
       score:
         enabled:
           - name: HCCSTopology
             weight: 5
-          - name: NumaAffinity
-            weight: 2
           - name: Binpack
             weight: 1
         disabled:
@@ -282,9 +314,9 @@ profiles:
           adjacency:
             "0": [1, 2]
             "1": [0, 3]
-      - name: NumaAffinity
-        args:
-          weight: 2
+      # - name: NumaAffinity  # placeholder; restore when upstream wrap lands
+      #   args:
+      #     weight: 2
       - name: Binpack
         args:
           weight: 1
