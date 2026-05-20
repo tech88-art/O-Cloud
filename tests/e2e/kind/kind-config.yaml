@@ -33,27 +33,35 @@
 #
 # Image pin
 # ---------
-#   kindest/node:v1.32.0 — bumped at P5-T-112 (2026-05-19) from v1.31.0.
-#   The 1.31.0 + featureGates DynamicResourceAllocation=true combo
-#   triggered a known scheduler-init issue: cert-manager pods sat in
-#   Pending with Node: <none> + Events: <none> for the full 10m helm
-#   timeout. kube-scheduler in 1.31 with DRA enabled deadlocks on a
-#   fresh cluster (no ResourceClaim seeded yet) and never processes
-#   any pod — even cert-manager pods that don't request DRA. K8s 1.32
-#   has DRA promoted to default-on AND the scheduler init bug is
-#   fixed, so we drop the explicit featureGates line (would be a no-op
-#   anyway since 1.32 has it on).
+#   kindest/node:v1.32.0 — picked at P5-T-112 / P5-T-114 for the kind
+#   v0.25.0 supported set. K8s 1.32 has the v1.31 scheduler bug fixed
+#   (cert-manager pods stayed Pending on 1.31 + DRA feature gate), but
+#   DRA is STILL beta with feature gate default-OFF in 1.32 (graduates
+#   to default-on at K8s 1.33). So we explicitly enable both:
 #
-#   kind v0.25.0 ships kindest/node:v1.32.0; the workflow's
-#   helm/kind-action `version` field is bumped in lockstep.
+#     featureGates:                          # required for scheduler
+#       DynamicResourceAllocation: true        plugin + controller
+#     runtimeConfig:                         # required for kube-apiserver
+#       "resource.k8s.io/v1beta1": "true"      to serve the API
 #
-# Phase 5 needs `resource.k8s.io/v1beta1` for DeviceClass / ResourceSlice
-# / NPUSliceAllocation — present in 1.31 (beta default-OFF) and in 1.32
-# (beta default-ON). v1.32 is the sweet spot: API + scheduler both
-# work out-of-the-box without manual feature-gate juggling.
+# Both knobs are needed: featureGates flips on the DRA plugins inside
+# scheduler / controller-manager / kubelet; runtimeConfig flips on the
+# api-server serving of resource.k8s.io/v1beta1. Without runtimeConfig,
+# `kubectl apply -f deviceclass.yaml` fails with "no matches for kind
+# DeviceClass in version resource.k8s.io/v1beta1" — which is exactly
+# what blocked P5-T-113 e2e-kind run on commit a2c7325.
+#
+# Phase 5 charts apply `resource.k8s.io/v1beta1.DeviceClass` (T001)
+# and the npu-dra-driver manager reads `ResourceSlice` / writes claim
+# `status.allocation` on the same API version. Both manifests + the
+# allocator package need v1beta1 served.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: ocloud-e2e
+featureGates:
+  DynamicResourceAllocation: true
+runtimeConfig:
+  "resource.k8s.io/v1beta1": "true"
 nodes:
   - role: control-plane
     image: kindest/node:v1.32.0
