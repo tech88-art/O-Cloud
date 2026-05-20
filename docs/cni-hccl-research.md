@@ -107,6 +107,8 @@ metadata exposed by both CNIs** (Pod annotations, K8s Node labels
 populated by Mellanox tools). This keeps the plugin CNI-portable;
 operators choose Cilium or Calico per their organization standard.
 
+**Phase 6 selection landed in ADR-0010 (`docs/adr/0010-scheduler-plugin.md` §6)**: Cilium + Multus + SR-IOV recommended primary; Calico + Multus + SR-IOV production fallback. The scheduler-plugin reads only ResourceSlice attributes + NodeResourceTopology CR + Pod annotations — no CNI-specific API surface — so the choice does not lock the plugin.
+
 ## 5. Known gaps
 
 The following HCCL features are unsupported across all evaluated

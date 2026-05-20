@@ -384,9 +384,11 @@ operators/pool-operator/
 
 ### 5.6 调度器插件 `scheduler-plugin`（Phase 6）
 
-- `NumaAffinityPlugin`：复用社区
-- `HCCSTopologyPlugin`：自研，读取 HCCS 拓扑、感知 HCCL 通信亲和
-- `BinpackPlugin`：紧凑装箱
+- `NumaAffinityPlugin`：复用社区（上游 `sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology` wrap，不 fork）
+- `HCCSTopologyPlugin`：自研，读取 ResourceSlice `npu.huawei.com/hccs_ring` 属性 + NPUSliceAllocation 反查兄弟 Pod，做 HCCL 通信亲和 Filter+Score
+- `BinpackPlugin`：紧凑装箱（自研 ~50 LOC 内部实现 · 默认 opt-in via Args.Enabled=false）
+
+详细设计契约 + CNI 选型 + Phase 7 forward notes 见 **ADR-0010**(`docs/adr/0010-scheduler-plugin.md`)。
 
 ### 5.7 指标采集器 `ascend-npu-exporter-plus`（Phase 2+）
 
@@ -799,7 +801,8 @@ ocloud-edge-platform/
 | Phase 7 | 动态切分若 fallback "多模板组合" 削弱设计目标 | Phase 7 启动前 ADR,明确触发 fallback 的条件 |
 | Phase 9 | 多站点 demo backend 缓存重构(LRU 进程内 → Redis/singleton/stateless) | Phase 9 启动前 ADR + 重构路径 |
 | Phase 9 | 安全模型(authn/z + multi-tenancy RBAC + NPUSlicePool admission policy) | Phase 9 启动前完整安全设计 + Karmada RBAC 联动 |
-| Phase 5+ | NPU pod 网络考量(CNI + HCCL RDMA / RoCE / IPoIB 兼容) | research doc landed (P5-T-105 · `docs/cni-hccl-research.md`); selection deferred to Phase 6 scheduler-plugin entry |
+| Phase 5+ | NPU pod 网络考量(CNI + HCCL RDMA / RoCE / IPoIB 兼容) | research doc landed (P5-T-105 · `docs/cni-hccl-research.md`); **selection landed Phase 6 ADR-0010** — Cilium + Multus + SR-IOV 推荐 / Calico + Multus + SR-IOV fallback;scheduler-plugin CNI-portable(不依赖任何 CNI 特有 API) |
+| Phase 6 | scheduler-plugin(HCCS / NUMA / Binpack)+ HCCS 拓扑接口(npu-smi / DCMI 调研) | **in flight** — ADR-0010 (P6-T-001 / 2026-05-20) 锁定 plugin 框架 + 三 plugin 语义 + args schema + ResourceSlice attribute 消费契约;Phase 6 simulator 仍用 mock JSON(set-a-small `hccsGroup`/`hccsRing` 已就位 P4-T-005)· npu-smi 真硬件接口 deferred Phase 7 |
 
 **2026-05-18 RFC-003(spec 对齐补)追加**:
 
