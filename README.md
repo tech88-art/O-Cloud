@@ -2,7 +2,7 @@
 
 > 基于 O-Cloud 形态的边缘云平台样机，具备**异构算力（昇腾 910B）基础设施管理**与 **AI 推理服务编排部署**两大能力。
 
-**当前阶段**:Phase 6 complete — HCCS/NUMA-aware scheduler-plugin + pool-operator HCCS topology aggregation + inference-operator Prometheus metrics + vllm-ascend PD proxy_server schema substrate — **完成**(13/15 tasks · tag `phase-6-complete`)。NumaAffinity upstream wrap deferred to sched-plugins v0.32.x release · backend+frontend workloads sliceBindings (T102/T103) deferred 待 `docs/api-contract.yaml` RFC。
+**当前阶段**:Phase 6 complete — HCCS/NUMA-aware scheduler-plugin + pool-operator HCCS topology aggregation + inference-operator Prometheus metrics + vllm-ascend PD proxy_server schema substrate + backend/frontend workloads sliceBindings[] — **完成**(15/15 tasks · tag `phase-6-complete` · T102/T103 landed post-tag same day via chat+ADR self-RFC)。NumaAffinity upstream wrap deferred to sched-plugins v0.32.x release(T006 placeholder ships)。
 **上一阶段**:Phase 5(real claim allocation + NPUSliceAllocation CRD + inference-operator controller body + PD Router mutating webhook + cert-manager wiring)— 完成(15/15 tasks · tag `phase-5-complete`)
 **早期阶段**:Phase 1(核心样机 + Mock 数据)44/44 · Phase 2(真实数据源切入)15/15 · Phase 3(pool controllers + ascend-npu-exporter-plus + ADR-0008 PD Router design)15/15 · Phase 4(npu-dra-driver scaffold + ADR-0001 v3 + CANN matrix)15/15 · 全部完成
 **下一阶段**:Phase 7(real Ascend hardware integration + NPU 动态切分 + Standard-K8s 1.34+ DRA spike + NumaAffinity wrap upgrade · 详见 `docs/checkpoint-phase6.md §7` handoff)

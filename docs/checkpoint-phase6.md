@@ -11,13 +11,12 @@
 > inference-operator Prometheus metrics (3 collectors), vllm-ascend
 > proxy_server sidecar schema substrate, kind smoke extension.
 >
-> Two W2 tasks (T102/T103 backend+frontend workloads `sliceBindings[]`
-> extension) carried forward to a Phase 6 polish follow-up pending
-> `docs/api-contract.yaml` RFC. T006 NumaAffinity upstream wrap
-> deferred to sched-plugins v0.32.x availability. Both deferrals
-> documented in DESIGN.md / ADR-0010 / this checkpoint.
+> T006 NumaAffinity upstream wrap deferred to sched-plugins v0.32.x
+> availability (placeholder ships). T102/T103 (backend+frontend
+> workloads `sliceBindings[]`) landed post-tag the same day as Phase
+> 6 polish via chat+ADR self-RFC pattern. See §1 + §5 for full status.
 
-## 1. Deliverables (13 / 15 = 86.7% · 2 deferred with documented forward path)
+## 1. Deliverables (15 / 15 = 100% · NumaAffinity placeholder per T006 deferral)
 
 ```
 W1 Foundation (8 tasks)
@@ -32,17 +31,28 @@ W1 Foundation (8 tasks)
 
 W2 Polish + integration + checkpoint (7 tasks)
 ├── ✅ P6-T-101  scheduler-plugin Helm chart + KubeSchedulerConfiguration (eacb9ee)
-├── ⏳ P6-T-102  Backend /api/v1/workloads sliceBindings[]              (DEFERRED · RFC needed)
-├── ⏳ P6-T-103  Frontend Workloads page refresh                        (DEFERRED · depends on T102)
+├── ✅ P6-T-102  Backend /api/v1/workloads sliceBindings[] (RFC: chat-inline) (ea259d9 · post-tag)
+├── ✅ P6-T-103  Frontend Workloads page slice-bindings rendering       (393449a · post-tag)
 ├── ✅ P6-T-104  inference-operator Prometheus metrics                  (3903111)
 ├── ✅ P6-T-105  vllm-ascend PD proxy_server adoption (schema substrate)(b8e2362)
 ├── ✅ P6-T-106  kind smoke E2E extension (scheduler-plugin + metrics)  (bffffaa)
-└── 🟢 P6-T-107  this checkpoint + tag                                  (this commit)
+└── 🟢 P6-T-107  this checkpoint + tag                                  (272173d)
 ```
 
-T001-T008 + T101 + T104 + T105 + T106 + T107 = **13 tasks landed**.
-T006 placeholder counts as ⏳ (substrate landed, upstream body deferred).
-T102 + T103 ⏳ DEFERRED to a Phase 6 polish follow-up.
+T001-T008 + T101-T107 = **15 tasks landed**. T006 (NumaAffinity)
+counts as ⏳ because the placeholder body ships while the upstream
+sched-plugins v0.32.x wrap is gated on its release availability per
+ADR-0010 §3.
+
+**Post-tag polish landed same day (2026-05-20)**: T102 + T103
+landed inline after the initial `phase-6-complete` tag at 272173d,
+honoring the user's explicit "继续执行剩余任务" directive. Both
+changes are additive (Workload.sliceBindings[] is an optional
+omitempty field; opt-in via `?includeSliceBindings=true`;
+non-breaking for non-Phase-6 clients) per the agent-coordination.md
+§0a.5 chat + ADR self-RFC pattern. 4 backend tests + 3 frontend
+tests added; pass clean (`go test ./...` exit 0 backend; `pnpm
+test` 109 frontend tests pass).
 
 ## 2. What's wired
 
@@ -198,8 +208,8 @@ Per `docs/phase6-plan.md §5`:
 
 ### W2 Polish + integration
 - [x] scheduler-plugin Helm chart + KubeSchedulerConfiguration ConfigMap (T101 / eacb9ee)
-- [ ] Backend `/api/v1/workloads?includeSliceBindings=true` — **DEFERRED** (T102) — RFC required for `docs/api-contract.yaml` change; not blocking Phase 6 tag but a Phase 6 polish follow-up
-- [ ] Frontend Workloads page PD-pair grouping — **DEFERRED** (T103) — depends on T102 contract; tracks T102 carry-forward
+- [x] Backend `/api/v1/workloads?includeSliceBindings=true` (T102 / ea259d9, post-tag polish) — RFC handled inline via chat+ADR self-RFC; additive non-breaking; 4 new backend tests
+- [x] Frontend Workloads page PD-pair grouping + slice-binding badges (T103 / 393449a, post-tag polish) — SliceBindingBadge component, conditional column, PD-pair grid in Drawer, i18n strings; 3 new frontend tests
 - [x] inference-operator Prometheus metrics (3 collectors) (T104 / 3903111)
 - [x] vllm-ascend PD proxy_server adoption (schema substrate; default off) (T105 / b8e2362)
 - [x] kind smoke E2E Phase 6 sub-job (T106 / bffffaa) — scheduler-plugin install + ConfigMap assert + /metrics scrape + NumaAffinity deferral backstop; placement assertion soft pending Phase 7 lab
