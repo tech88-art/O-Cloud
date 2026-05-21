@@ -42,18 +42,32 @@ type IngestorOpts struct {
 
 // IngestorQuery describes the dimensions of a metric lookup.
 //
-// PromQL shape (filled in by the ingestor):
+// PromQL shape (filled in by the ingestor when CustomPromQL is empty —
+// Phase 8 NPUUtilization built-in path):
 //
 //	avg_over_time(ascend_npu_utilization_percent{namespace="$Namespace",
 //	  model_service="$ModelService"}[$WindowSeconds.s])
+//
+// When CustomPromQL is non-empty (Phase 9 P9-T-007 · ADR-0012 §7 forward
+// note · MetricSpec.Type=PrometheusQuery path), the ingestor evaluates the
+// expression verbatim and ignores Namespace + ModelService + WindowSeconds
+// (operator owns label scoping inside the custom expression).
 type IngestorQuery struct {
-	// Namespace is the Kubernetes namespace label.
+	// Namespace is the Kubernetes namespace label. Used only when
+	// CustomPromQL is empty.
 	Namespace string
-	// ModelService is the model_service label on the metric series.
+	// ModelService is the model_service label on the metric series. Used
+	// only when CustomPromQL is empty.
 	ModelService string
 	// WindowSeconds is the sliding-window length in seconds. Mirrors
 	// NPUVerticalScalerSpec.Metric.WindowSeconds at controller wiring.
+	// Used only when CustomPromQL is empty.
 	WindowSeconds int32
+	// CustomPromQL is a verbatim PromQL expression (Phase 9 P9-T-007 ·
+	// ADR-0012 §7). When non-empty the ingestor sends it directly to the
+	// Prometheus /api/v1/query endpoint; namespace + model_service label
+	// scoping is the operator's responsibility (no auto-injection).
+	CustomPromQL string
 }
 
 // IngestorResult is the controller-facing answer per reconcile tick.

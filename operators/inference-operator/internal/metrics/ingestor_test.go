@@ -217,3 +217,57 @@ func TestWindowedAverage_EmptyIsNoData(t *testing.T) {
 		t.Fatalf("WindowedAverage value = %v, want 50.0", res.Value)
 	}
 }
+
+// TestPrometheusIngestor_CustomPromQL covers P9-T-007 acceptance case 1/2
+// (ingestor): when IngestorQuery.CustomPromQL is non-empty, the ingestor
+// sends it verbatim to /api/v1/query (no namespace/model_service label
+// injection · operator owns label scoping). ADR-0012 §7 forward note.
+func TestPrometheusIngestor_CustomPromQL(t *testing.T) {
+	const wantPromQL = `avg_over_time(custom_kv_cache_hit_rate{model_service="qwen-pd"}[5m])`
+	var capturedQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedQuery = r.URL.Query().Get("query")
+		fmt.Fprintln(w, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"model_service":"qwen-pd"},"value":[1750000000,"0.87"]}]}}`)
+	}))
+	defer srv.Close()
+
+	ing := NewPrometheusIngestor(IngestorOpts{PrometheusURL: srv.URL})
+	res := ing.Query(context.Background(), IngestorQuery{
+		CustomPromQL: wantPromQL,
+	})
+	if res.Err != nil {
+		t.Fatalf("Query err: %v", res.Err)
+	}
+	if res.NoData {
+		t.Fatalf("Query NoData=true unexpected for non-empty result")
+	}
+	if res.Value != 0.87 {
+		t.Fatalf("Query value = %v, want 0.87", res.Value)
+	}
+	if capturedQuery != wantPromQL {
+		t.Fatalf("custom PromQL mismatch:\n  got:  %q\n  want: %q", capturedQuery, wantPromQL)
+	}
+}
+
+// TestPrometheusIngestor_CustomPromQLInvalid4xx covers P9-T-007 acceptance
+// case 2/2 (ingestor): invalid PromQL returns 400 from Prometheus → Err
+// surfaced (NOT NoData · 4xx is a genuine bug per ADR-0012 §1 reconcile
+// step 3 contract).
+func TestPrometheusIngestor_CustomPromQLInvalid4xx(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, `parse error: unexpected end of input`)
+	}))
+	defer srv.Close()
+
+	ing := NewPrometheusIngestor(IngestorOpts{PrometheusURL: srv.URL})
+	res := ing.Query(context.Background(), IngestorQuery{
+		CustomPromQL: `this_is_not_valid_promql{`,
+	})
+	if res.Err == nil {
+		t.Fatalf("Query Err=nil; want non-nil for 4xx invalid PromQL")
+	}
+	if res.NoData {
+		t.Fatalf("Query NoData=true; 4xx should surface Err not NoData")
+	}
+}

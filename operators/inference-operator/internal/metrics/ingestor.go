@@ -75,14 +75,23 @@ func (p *PrometheusIngestor) Query(ctx context.Context, q IngestorQuery) Ingesto
 	if strings.TrimSpace(p.opts.PrometheusURL) == "" {
 		return IngestorResult{NoData: true}
 	}
-	if q.Namespace == "" || q.ModelService == "" || q.WindowSeconds <= 0 {
-		return IngestorResult{Err: fmt.Errorf("ingestor: query missing namespace / modelService / windowSeconds")}
-	}
 
-	promQL := fmt.Sprintf(
-		`avg_over_time(ascend_npu_utilization_percent{namespace="%s", model_service="%s"}[%ds])`,
-		q.Namespace, q.ModelService, q.WindowSeconds,
-	)
+	// P9-T-007: when CustomPromQL is provided (ADR-0012 §7 forward note
+	// PrometheusQuery metric.Type path), use the expression verbatim and
+	// skip the NPUUtilization built-in PromQL shape. Namespace + model_service
+	// label scoping is the operator's responsibility inside the expression.
+	var promQL string
+	if strings.TrimSpace(q.CustomPromQL) != "" {
+		promQL = q.CustomPromQL
+	} else {
+		if q.Namespace == "" || q.ModelService == "" || q.WindowSeconds <= 0 {
+			return IngestorResult{Err: fmt.Errorf("ingestor: query missing namespace / modelService / windowSeconds")}
+		}
+		promQL = fmt.Sprintf(
+			`avg_over_time(ascend_npu_utilization_percent{namespace="%s", model_service="%s"}[%ds])`,
+			q.Namespace, q.ModelService, q.WindowSeconds,
+		)
+	}
 
 	endpoint := strings.TrimRight(p.opts.PrometheusURL, "/") + "/api/v1/query"
 	params := url.Values{}

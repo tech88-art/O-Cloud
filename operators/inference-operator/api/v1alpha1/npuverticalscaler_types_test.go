@@ -242,4 +242,79 @@ func TestNPUVerticalScalerEnumValuesArePinned(t *testing.T) {
 	if MaxScaleHistoryEntries != 10 {
 		t.Fatalf("MaxScaleHistoryEntries = %d, want 10", MaxScaleHistoryEntries)
 	}
+	if MetricTypePrometheusQuery != "PrometheusQuery" {
+		t.Fatalf("MetricTypePrometheusQuery = %q, want PrometheusQuery",
+			MetricTypePrometheusQuery)
+	}
+}
+
+// TestNPUVerticalScalerPrometheusQueryRoundTrip covers P9-T-007 acceptance
+// case 1/2 (types): MetricSpec round-trips the new PrometheusQuery type +
+// PrometheusQuery field. Phase 9 P9-T-007 · ADR-0012 §7 forward note.
+func TestNPUVerticalScalerPrometheusQueryRoundTrip(t *testing.T) {
+	const customQuery = `avg_over_time(custom_kv_cache_hit_rate{model_service="qwen-pd"}[5m])`
+	orig := &NPUVerticalScaler{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "inference.ocloud.edge.example.com/v1alpha1",
+			Kind:       "NPUVerticalScaler",
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: "qwen-promql", Namespace: "ai-edge-demo"},
+		Spec: NPUVerticalScalerSpec{
+			Target: TargetRef{Name: "qwen-pd", Namespace: "ai-edge-demo"},
+			Metric: MetricSpec{
+				Type:            MetricTypePrometheusQuery,
+				PrometheusQuery: customQuery,
+				BusyThreshold:   80,
+				IdleThreshold:   30,
+				WindowSeconds:   300,
+			},
+			ScaleSlice: ScaleSliceSpec{
+				BusyTemplateName: "qwen-pd-busy",
+				IdleTemplateName: "qwen-pd-idle",
+			},
+		},
+	}
+	encoded, err := json.Marshal(orig)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	var rt NPUVerticalScaler
+	if err := json.Unmarshal(encoded, &rt); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if rt.Spec.Metric.Type != MetricTypePrometheusQuery {
+		t.Fatalf("Type round-trip = %q, want %q", rt.Spec.Metric.Type, MetricTypePrometheusQuery)
+	}
+	if rt.Spec.Metric.PrometheusQuery != customQuery {
+		t.Fatalf("PrometheusQuery round-trip = %q, want %q", rt.Spec.Metric.PrometheusQuery, customQuery)
+	}
+}
+
+// TestNPUVerticalScalerPrometheusQueryOmitted covers P9-T-007 acceptance
+// case 2/2 (types): when Type=NPUUtilization (default), PrometheusQuery
+// field is omitted from JSON output (omitempty respected).
+func TestNPUVerticalScalerPrometheusQueryOmitted(t *testing.T) {
+	scaler := &NPUVerticalScaler{
+		Spec: NPUVerticalScalerSpec{
+			Target: TargetRef{Name: "qwen-pd", Namespace: "ai-edge-demo"},
+			Metric: MetricSpec{
+				Type:          MetricTypeNPUUtilization,
+				BusyThreshold: 75,
+				IdleThreshold: 20,
+				WindowSeconds: 300,
+				// PrometheusQuery intentionally empty
+			},
+			ScaleSlice: ScaleSliceSpec{
+				BusyTemplateName: "qwen-pd-busy",
+				IdleTemplateName: "qwen-pd-idle",
+			},
+		},
+	}
+	encoded, err := json.Marshal(scaler)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if strings.Contains(string(encoded), `"prometheusQuery"`) {
+		t.Errorf("prometheusQuery JSON field should be omitted when empty; got: %s", string(encoded))
+	}
 }

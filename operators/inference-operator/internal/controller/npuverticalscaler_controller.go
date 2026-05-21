@@ -148,11 +148,20 @@ func (r *NPUVerticalScalerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	currentTemplate := target.GetAnnotations()[annotationSliceTemplate]
 
 	// Step 3: Query Ingestor.
-	result := r.Ingestor.Query(ctx, metrics.IngestorQuery{
+	//
+	// P9-T-007: when metric.Type == PrometheusQuery, pass the verbatim
+	// custom expression to the ingestor via CustomPromQL · skip the
+	// NPUUtilization built-in PromQL shape (per ADR-0012 §7 forward note ·
+	// operator owns label scoping inside the expression).
+	iq := metrics.IngestorQuery{
 		Namespace:     scaler.Spec.Target.Namespace,
 		ModelService:  scaler.Spec.Target.Name,
 		WindowSeconds: scaler.Spec.Metric.WindowSeconds,
-	})
+	}
+	if scaler.Spec.Metric.Type == inferencev1alpha1.MetricTypePrometheusQuery {
+		iq.CustomPromQL = scaler.Spec.Metric.PrometheusQuery
+	}
+	result := r.Ingestor.Query(ctx, iq)
 	if result.Err != nil {
 		// 4xx / parse failure surfaces as Active=False reason MetricsUnreachable
 		// after N persistent ticks. Phase 8 ships immediate ConditionActive

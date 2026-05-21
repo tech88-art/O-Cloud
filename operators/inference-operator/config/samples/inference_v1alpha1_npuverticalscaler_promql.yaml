@@ -1,0 +1,44 @@
+# Sample NPUVerticalScaler using P9-T-007 PromQL custom metric extension.
+#
+# Per ADR-0012 §7 forward note (status flipped to "landed P9-T-007"
+# 2026-05-21): operators can opt into a custom Prometheus expression
+# instead of the default NPUUtilization built-in PromQL shape. The
+# operator owns label scoping inside the expression (no auto-injection
+# of namespace + model_service labels by the controller).
+#
+# Use cases:
+#  - rate-based metrics: rate(http_requests_total[5m]) → busy when high
+#  - KV cache hit-rate: avg_over_time(kv_cache_hit_rate{...}[5m]) →
+#    idle when very high (well-cached pod), busy when low
+#  - composite: rate(prefill_tokens_total[5m]) / rate(decode_tokens_total[5m])
+#
+# busy/idleThreshold semantics are unchanged: metric > busyThreshold →
+# scale up to busyTemplate; metric < idleThreshold → scale down to
+# idleTemplate; hysteresis band between thresholds stays current.
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: NPUVerticalScaler
+metadata:
+  name: qwen-pd-promql-scaler
+  namespace: ai-edge-demo
+spec:
+  target:
+    apiVersion: inference.ocloud.edge.example.com/v1alpha1
+    kind: ModelService
+    name: qwen-pd
+    namespace: ai-edge-demo
+  metric:
+    type: PrometheusQuery
+    # Custom rate-based query · operator pre-encodes label scoping +
+    # window. Example: token decode throughput (tokens/sec) over 5min.
+    prometheusQuery: |
+      sum(rate(vllm_decode_tokens_total{namespace="ai-edge-demo", model_service="qwen-pd"}[5m]))
+    # Thresholds compared against the scalar result of the PromQL above.
+    # Choose values matching the metric semantic (NOT 0-100 like the
+    # built-in NPUUtilization · this is tokens/sec scale).
+    busyThreshold: 800
+    idleThreshold: 200
+    windowSeconds: 300
+  scaleSlice:
+    busyTemplateName: qwen-pd-busy
+    idleTemplateName: qwen-pd-idle
+  cooldownSeconds: 600

@@ -211,9 +211,16 @@ type TargetRef struct {
 
 type MetricSpec struct {
     // Type selects the metric backend.
+    // Phase 9 P9-T-007 (2026-05-21): enum extended to PrometheusQuery.
     // +kubebuilder:default=NPUUtilization
-    // +kubebuilder:validation:Enum=NPUUtilization
+    // +kubebuilder:validation:Enum=NPUUtilization;PrometheusQuery
     Type MetricType `json:"type,omitempty"`
+
+    // PrometheusQuery (Phase 9 P9-T-007 · ADR-0012 §7 forward note landed):
+    // verbatim PromQL expression used when Type=PrometheusQuery.
+    // Operator-owned label scoping (no namespace/model_service auto-injection).
+    // +optional
+    PrometheusQuery string `json:"prometheusQuery,omitempty"`
     // BusyThreshold (0-100); metric > this triggers scale-up.
     // +kubebuilder:validation:Minimum=0
     // +kubebuilder:validation:Maximum=100
@@ -228,13 +235,16 @@ type MetricSpec struct {
     WindowSeconds int32 `json:"windowSeconds,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=NPUUtilization
+// +kubebuilder:validation:Enum=NPUUtilization;PrometheusQuery
 type MetricType string
 
 const (
     // MetricTypeNPUUtilization reads ascend_npu_utilization_percent
     // exposed by ascend-npu-exporter-plus, scoped by namespace + model_service label.
     MetricTypeNPUUtilization MetricType = "NPUUtilization"
+    // MetricTypePrometheusQuery (Phase 9 P9-T-007) dispatches the ingestor to
+    // evaluate MetricSpec.PrometheusQuery verbatim.
+    MetricTypePrometheusQuery MetricType = "PrometheusQuery"
 )
 
 type ScaleSliceSpec struct {
@@ -378,7 +388,7 @@ const (
 
 ## 7. Forward notes(Phase 9-10)
 
-> 🆕 **Phase 9 候选**:多租户 fair scaling policy(读 NPUVerticalScaler.status + Quota CRD)+ Prometheus PromQL custom metric extension(`spec.metric.type=PrometheusQuery` enum 值)。Phase 8 ships only NPUUtilization built-in metric · Phase 9 加 PrometheusQuery 时 PromQL 表达式带 namespace + model_service label 自动注入(与 Phase 8 NPUUtilization 同 scoping)。**Status update(2026-05-21 · ADR-0014 / P9-T-002 落)**:多租户 fair scaling reads NPUVerticalScaler.status.scaleHistory + lastScaleTime(本 ADR §4)to coordinate · ADR-0014 Webhook B 拦截 NPUVerticalScaler.spec.scaleSlice.{busy,idle}TemplateName patch(用户或 O2 NB 触发 scale rule change · 不拦 controller 内部 reconcile patch ModelService.annotation 路径 per §5)· 详 ADR-0014 §2 Decision C + §3 risk row "webhook reject 透传"。PromQL custom metric extension 走 P9-T-007 独立 task。
+> 🆕 **Phase 9 候选**:多租户 fair scaling policy(读 NPUVerticalScaler.status + Quota CRD)+ Prometheus PromQL custom metric extension(`spec.metric.type=PrometheusQuery` enum 值)。**Status update(2026-05-21 · ADR-0014 / P9-T-002 落)**:多租户 fair scaling reads NPUVerticalScaler.status.scaleHistory + lastScaleTime(本 ADR §4)to coordinate · ADR-0014 Webhook B 拦截 NPUVerticalScaler.spec.scaleSlice.{busy,idle}TemplateName patch(用户或 O2 NB 触发 scale rule change · 不拦 controller 内部 reconcile patch ModelService.annotation 路径 per §5)· 详 ADR-0014 §2 Decision C + §3 risk row "webhook reject 透传"。**Status update(2026-05-21 · P9-T-007 PromQL extension landed)**:PromQL custom metric extension landed — `MetricSpec.Type` enum 加 `PrometheusQuery` value + `MetricSpec.PrometheusQuery string` 新字段(operator-owned 表达式 verbatim 发给 Prometheus · namespace + model_service label scoping 由 operator 在表达式内 encode · 不 auto-inject 与 Phase 8 NPUUtilization 路径 design 决定不同)· `IngestorQuery.CustomPromQL` 新字段控制 Ingestor dispatch · NPUUtilization 路径不变。详 §4 CRD schema 更新 + DESIGN.md §6.2 + `docs/devlog/phase-9-t007.md`。
 
 > 🆕 **Phase 9 候选**:Karmada 多站点 federation 时,NPUVerticalScaler.status.scaleHistory 由本地控制平面 own,fair scaling decision 由 federation 控制平面统一(每站点 NPUVerticalScaler 是 propagated 副本)。Phase 8 单 cluster · 不预占 federation schema。
 

@@ -92,11 +92,28 @@ type TargetRef struct {
 
 // MetricSpec describes the metric source + thresholds.
 type MetricSpec struct {
-	// Type selects the metric backend. Phase 8 ships only NPUUtilization;
-	// Phase 9 forward note adds PrometheusQuery (ADR-0012 §7).
+	// Type selects the metric backend. Phase 8 shipped only NPUUtilization;
+	// Phase 9 P9-T-007 adds PrometheusQuery per ADR-0012 §7 forward note.
 	// +kubebuilder:default=NPUUtilization
-	// +kubebuilder:validation:Enum=NPUUtilization
+	// +kubebuilder:validation:Enum=NPUUtilization;PrometheusQuery
 	Type MetricType `json:"type,omitempty"`
+
+	// PrometheusQuery is the custom PromQL expression used when
+	// Type=PrometheusQuery. The ingestor passes the expression verbatim
+	// to the Prometheus /api/v1/query endpoint and expects a single-vector
+	// result (windowed average is the operator's responsibility — the
+	// expression should already encode `avg_over_time(... [window])` if
+	// desired). MUST be non-empty when Type=PrometheusQuery; ignored when
+	// Type=NPUUtilization.
+	//
+	// Per ADR-0012 §7 + P9-T-007: namespace + model_service label injection
+	// is the operator's responsibility (the controller does NOT mutate the
+	// expression). NPUUtilization path remains the hardcoded
+	// `avg_over_time(ascend_npu_utilization_percent{namespace,model_service}[window])`
+	// wired by PrometheusIngestor.Query when CustomPromQL is empty.
+	//
+	// +optional
+	PrometheusQuery string `json:"prometheusQuery,omitempty"`
 
 	// BusyThreshold is the metric value (0-100) above which the scaler
 	// switches to busyTemplateName.
@@ -119,11 +136,16 @@ type MetricSpec struct {
 	WindowSeconds int32 `json:"windowSeconds,omitempty"`
 }
 
-// MetricType selects the metric backend. Phase 8 ships only NPUUtilization.
-// +kubebuilder:validation:Enum=NPUUtilization
+// MetricType selects the metric backend. Phase 8 shipped only NPUUtilization;
+// Phase 9 P9-T-007 adds PrometheusQuery per ADR-0012 §7 forward note.
+// +kubebuilder:validation:Enum=NPUUtilization;PrometheusQuery
 type MetricType string
 
 const (
+	// MetricTypePrometheusQuery dispatches the ingestor to evaluate
+	// MetricSpec.PrometheusQuery verbatim. The operator owns label scoping
+	// (no namespace/model_service auto-injection). Phase 9 P9-T-007.
+	MetricTypePrometheusQuery MetricType = "PrometheusQuery"
 	// MetricTypeNPUUtilization reads ascend_npu_utilization_percent
 	// exposed by ascend-npu-exporter-plus, scoped by namespace +
 	// model_service label. PromQL shape:

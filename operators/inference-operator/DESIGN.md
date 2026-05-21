@@ -828,6 +828,57 @@ it instead of the built-in NPUUtilization template. The `Ingestor`
 interface contract is forward-compatible — additional fields on
 `IngestorQuery` + `IngestorOpts` only.
 
+### 5.3.6 PromQL custom-metric path (P9-T-007 · 2026-05-21 · landed)
+
+P9-T-007 lands the PromQL custom-metric extension per ADR-0012 §7 forward
+note. `MetricSpec.Type` enum is extended with `PrometheusQuery`;
+`MetricSpec.PrometheusQuery string` is the new optional field that carries
+the verbatim expression. The controller dispatches via `IngestorQuery.CustomPromQL`:
+
+```
+                Phase 8 NPUUtilization (default)             Phase 9 PrometheusQuery (P9-T-007)
+                ───────────────────────────────              ────────────────────────────────
+NPUVerticalScaler.Spec.Metric.Type = NPUUtilization          NPUVerticalScaler.Spec.Metric.Type = PrometheusQuery
+                                                             NPUVerticalScaler.Spec.Metric.PrometheusQuery = "<expr>"
+                              │                                                  │
+                              ↓                                                  ↓
+            NPUVerticalScaler.Reconcile builds                NPUVerticalScaler.Reconcile sets
+            IngestorQuery{Namespace, ModelService,            IngestorQuery{Namespace, ModelService,
+              WindowSeconds}                                    WindowSeconds, CustomPromQL: spec.metric.prometheusQuery}
+                              │                                                  │
+                              ↓                                                  ↓
+            PrometheusIngestor.Query builds                   PrometheusIngestor.Query uses
+            avg_over_time(ascend_npu_utilization_percent{     CustomPromQL verbatim (no label injection ·
+              namespace, model_service}[$WindowSeconds.s])      operator-owned scoping in the expression)
+                              │                                                  │
+                              ↓                                                  ↓
+                  /api/v1/query?query=...                           /api/v1/query?query=...
+```
+
+**Operator-owned label scoping**: Phase 9 P9-T-007 design decision —
+the controller does NOT auto-inject `namespace + model_service` labels
+into the custom expression. Operators MUST encode scoping inside the
+expression (typical pattern: `<series>{namespace="ns", model_service="ms"}`).
+This trade-off keeps the ingestor simple + supports composite expressions
+(rate ratios · multi-series aggregations) that don't fit the auto-inject
+template.
+
+**No window auto-injection** either — windowSeconds + busy/idleThreshold
+in MetricSpec are interpreted by the controller against the scalar
+result of the expression; if the expression returns a rate (per-second
+units), the operator's thresholds reflect that semantic (NOT 0-100 like
+NPUUtilization).
+
+**Sample**: `config/samples/inference_v1alpha1_npuverticalscaler_promql.yaml`
+demonstrates a rate-based scaler over `vllm_decode_tokens_total` with
+busy=800 tokens/sec + idle=200 tokens/sec.
+
+**Tests**: 4 new cases (2 types: round-trip + omitted-on-default · 2
+ingestor: stub-server custom-query + 4xx invalid-PromQL error path) ·
+controller reconcile path traversal is exercised by existing P8 + P9-T-006
+test coverage (the new `CustomPromQL` field is a single inlined
+construct-site assignment).
+
 ---
 
 ## 5.4 NPUVerticalScaler controller (Phase 8 T007 · operative)

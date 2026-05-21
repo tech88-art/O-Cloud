@@ -91,16 +91,34 @@ spec:
                     maximum: 100
                     minimum: 0
                     type: integer
+                  prometheusQuery:
+                    description: |-
+                      PrometheusQuery is the custom PromQL expression used when
+                      Type=PrometheusQuery. The ingestor passes the expression verbatim
+                      to the Prometheus /api/v1/query endpoint and expects a single-vector
+                      result (windowed average is the operator's responsibility — the
+                      expression should already encode `avg_over_time(... [window])` if
+                      desired). MUST be non-empty when Type=PrometheusQuery; ignored when
+                      Type=NPUUtilization.
+
+                      Per ADR-0012 §7 + P9-T-007: namespace + model_service label injection
+                      is the operator's responsibility (the controller does NOT mutate the
+                      expression). NPUUtilization path remains the hardcoded
+                      `avg_over_time(ascend_npu_utilization_percent{namespace,model_service}[window])`
+                      wired by PrometheusIngestor.Query when CustomPromQL is empty.
+                    type: string
                   type:
                     allOf:
                     - enum:
                       - NPUUtilization
+                      - PrometheusQuery
                     - enum:
                       - NPUUtilization
+                      - PrometheusQuery
                     default: NPUUtilization
                     description: |-
-                      Type selects the metric backend. Phase 8 ships only NPUUtilization;
-                      Phase 9 forward note adds PrometheusQuery (ADR-0012 §7).
+                      Type selects the metric backend. Phase 8 shipped only NPUUtilization;
+                      Phase 9 P9-T-007 adds PrometheusQuery per ADR-0012 §7 forward note.
                     type: string
                   windowSeconds:
                     default: 300
