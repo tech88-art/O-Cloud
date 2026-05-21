@@ -493,3 +493,35 @@ For live numbers from real silicon, deploy the new helm chart
 `huawei.com/Ascend910B`-labeled nodes; the chart's `simulator.enabled:
 false` switch flips the exporter to its DCMI/npu-smi backend once
 P4-T-2xx lands those sources.
+
+---
+
+### #14 — Volcano gang-scheduling carried to Phase 10+ (P9-T-101 doc-only deferred)
+
+Severity: low · Status: **OPEN** (2026-05-21 update · P9-T-101 deferred per default policy).
+
+> 🆕 **2026-05-21 update (P9-T-101 deferred per default policy)**:
+> Phase 9 W2 entry user "继续" signal 未明示 training-job demo gang 需求 ·
+> per phase9-plan §4 P9-T-101 default policy "Deferred unless positive
+> signal at W1 entry chat" + spike doc `docs/research/volcano-gang-scheduling-spike.md`
+> §4 W1 entry decision matrix "无明确信号(default) → C · defer" · 走
+> doc-only deferred 路径 · 0 风险 0 代码改动。
+>
+> **Phase 8 P8-T-106 spike landing** 推荐路径 A(引入 Volcano binary ·
+> 1-2d 工作量)· Phase 9 默认 fallback 路径 C(defer Phase 10+ ·
+> 0d)· 这两个路径在 spike doc §4 cost matrix 内已 enumerated。
+>
+> **Re-WebFetch outcome 2026-05-21**:Volcano upstream stable v1.10.x line
+> 与 K8s 1.32 兼容(本 phase scheduler-plugin 维持 K8s 1.32 baseline per
+> P9-T-003 doc-only refresh outcome)· `helm install` 路径 unchanged if
+> Phase 10+ light up。
+>
+> **Phase 10 W1 entry 重新评估** if training-job demo signal materialises
+> (例如 70B model training scenario · multi-Pod HCCL collective 启动
+> 需要 gang atomicity)。Volcano `schedulerName=volcano` opt-in path 不与
+> npu-scheduler 冲突(per ADR-0010 §7 co-existence model)· Phase 10
+> light up 时无 breaking change to existing inference path。
+
+Cross-references: `docs/adr/0010-scheduler-plugin.md` §7 Volcano forward
+note · `docs/research/volcano-gang-scheduling-spike.md` §4 cost matrix +
+P9-T-101 outcome row · `docs/phase9-plan.md` §4 P9-T-101 · `docs/devlog/phase-9-t101.md`.

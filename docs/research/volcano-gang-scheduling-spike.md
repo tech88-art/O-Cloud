@@ -122,8 +122,9 @@ Per ADR-0010 §1 npu-scheduler 是独立 kube-scheduler binary(profile name `npu
 | "Phase 9 训练 demo 需要 gang"          | A · 引入 Volcano binary | 1-2d 工作量 · 在 Phase 9 calendar 内可吸收         |
 | "Phase 9 只 inference 演进 · 不引入训练"| C · defer Phase 10+ | 0 风险路径 · Phase 8 NPUVerticalScaler 继续主轴   |
 | 无明确信号(default)                  | C · defer            | 保守路径 · 同 lab gating default 政策             |
+| **P9-T-101 实际 outcome(2026-05-21)** | **C · defer Phase 10+** | Phase 9 W1 entry + W2 entry 用户 "继续" 未明示 gang · per default policy "无明确信号 → defer" · doc-only path 0.3d · 实际选 C(此行)· T101 deferred ADR-0010 §7 + 本 spike doc + known-issues + devlog 4 文件 doc-only 更新 · 无 helm install · 无代码 |
 
-**推荐路径**:A(引入 Volcano binary)· 训练 job 是 Phase 9-10 lab smoke 自然需求(70B model training scenarios)· Volcano 是行业 standard · 不重新发明轮子。
+**推荐路径**:A(引入 Volcano binary)· 训练 job 是 Phase 9-10 lab smoke 自然需求(70B model training scenarios)· Volcano 是行业 standard · 不重新发明轮子。**Phase 9 实际 outcome: C deferred per default policy**(2026-05-21 P9-T-101)· Phase 10 W1 entry 重新评估 if training-job demo signal materialises。
 
 ---
 
