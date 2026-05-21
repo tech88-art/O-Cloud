@@ -79,6 +79,8 @@ operators/npu-dra-driver/
 
 > 🆕 **2026-05-20 update (P7-T-001 / ADR-0011 §1)**:在 Partitionable Devices GA(K8s 1.37 est.)之前,Phase 7 通过 **NPUSliceTemplate CRD + 多模板组合 fallback** 提供动态切分能力。`NPUSliceTemplate.spec.composition` 表达用户期望切分,template engine 把 composition 拆解为现存固定模板(vir04/vir08/vir16/whole)的 bundle,allocator 按 bundle 多次分配。Pod opt-in via label `npu.huawei.com/slice-template=<name>`;absent → 走本 ADR §5 + §6 既有 whole-NPU 路径(零回归)。详 **ADR-0011 §1 NPU 动态切分** + §4 NPUSliceTemplate CRD schema。Phase 7 fallback 路径与 Partitionable Devices(本节)长期共存:driver-layer 突破或 KEP-4815 GA 后,fallback 标 deprecated 但 backward-compat。
 
+> 🆕 **2026-05-21 update (P8-T-001 / ADR-0012 · Phase 8 partition path)**:Phase 8 引入 **NPUVerticalScaler CRD**(详 **ADR-0012 §4 CRD schema**)消费本 ADR §4 NPUSliceTemplate ref + AllocateBundle 控制器 wiring(P8-T-008 · 本 ADR §6 Allocator 升级)。Phase 8 W2 BETA-GATED 路径(T101+T102)若 light up Partitionable Devices Beta(K8s 1.36),partition-aware allocator(本 ADR §4 升级路径第 2 行)与 NPUVerticalScaler 协同 — NPUVerticalScaler patch ModelService.spec.template.sliceTemplate → claim_controller 按 label 解析 → AllocateBundle 内部选 partition 或 whole-NPU candidate(per `docs/research/k8s-partitionable-devices-spike.md` §5 sibling preference)。Beta 路径 default = doc-only refresh(ADR-0011 §3 spirit · spike §1 GA timing unconfirmed)。详 **ADR-0012 §"Scaling decision flow"** + ADR-0012 §"7. Forward notes" Phase 10 候选行。
+
 ### 5. Phase 5 实施要点(immediate next-phase work)
 
 按 Phase 5 入口顺序列出:

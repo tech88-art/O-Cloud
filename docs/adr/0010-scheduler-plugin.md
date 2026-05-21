@@ -239,6 +239,8 @@ CNI 选型只影响 HCCL 数据面是否能跑通(secondary nic 路径)· 不影
 
 > 🆕 **2026-05-20 update (P7-T-001 / ADR-0011)**:`Source.RealAscend.queryTopology()`(下表第 1 行)实际落地分两步:**P7-T-004** ship Source 接口 + RealAscendSource stub(返回 ErrNotImplemented)+ factory 选择;**P7-T-101 lab-conditional** 在 W2 entry meeting 用户 signal lab access available 时 light up 真实现(npu-smi 解析 + DCMI health poll)。缺省 = defer to Phase 10 — 详 **ADR-0011 §3 Lab gating 政策**。同时本节下表第 2 行(HCCS Adjacency map 经验数据缺失 · §256 risk row)对应的 Phase 7 fix 是 **P7-T-008**:chart values 默认 910B 8 卡 ring-of-rings adjacency,运行时通过 Args 可覆盖。
 
+> 🆕 **2026-05-21 update (P8-T-001 / ADR-0012 · Phase 8 busy-idle reconcile loop)**:Phase 8 引入 **NPUVerticalScaler CRD**(co-located with ModelService in inference-operator binary · 详 **ADR-0012 §"NPUVerticalScaler CRD shape"**)。NPUVerticalScaler 不参与本 scheduler-plugin 的 Filter/Score 决策 — 它 patch `ModelService.spec.template.sliceTemplate` 字段触发 rolling restart;rebuilt Pod 仍走本 plugin profile(`schedulerName=npu-scheduler` per P7-T-003 auto-stamp)+ T008 wiring 标记 `npu.huawei.com/preferred-hccs-ring=<ringID>` annotation。Phase 8 T104-v2 把 Phase 7 T104 的 HCCS placement soft-warning(synthetic ring fixture)升级为 hard-fail(读 T008 wiring stamp 的 annotation)— 详 ADR-0012 §"Scaling mutation model"。本 plugin 端**无代码变化**;Phase 8 baseline bump(T002 1.32→1.36+)同时 unblocks NumaAffinity wrap upgrade(下表 §3 NumaAffinity row · known-issues #12 closer)。
+
 | 演进项 | 触发 | 切换路径 |
 |---|---|---|
 | 真硬件 HCCS ring 发现 | Phase 7 实机 + CANN driver ≥ 24.x | 替换 npu-dra-driver `Source.RealAscend.queryTopology()` · 走 `npu-smi info -t topo` 解析 HCCS group 拓扑;ResourceSlice attribute 写法不变 |

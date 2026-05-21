@@ -232,6 +232,8 @@ type NPUSliceTemplateStatus struct {
 - **Lab gating 政策 unblocks main agent 派发决策**:政策在 ADR 内固化 → main agent 不必为 "T101 派还是不派" 反复澄清。
 - **NPUSliceTemplate substrate 给 Phase 8 vertical scaling 留出 hook**:Phase 8 busy-idle vertical scaling controller 读 `NPUSliceTemplate.status` 判断"重启切片"触发(arch §13 row Phase 8 "调研,可能只支持横向,垂直走重启切片")。
 
+> 🆕 **2026-05-21 update (P8-T-001 / ADR-0012)**:Phase 8 vertical scaling reads NPUSliceTemplate.status to determine 重启切片 trigger — 详 **ADR-0012 §"Scaling decision flow"**(§3 Decision C reconcile loop)+ ADR-0012 §5 mutation model。NPUVerticalScaler 通过 patch `ModelService.spec.template.sliceTemplate` 字段(指向 NPUSliceTemplate ref)触发 rolling restart;Pod recreation 后 claim_controller(P8-T-008 wiring)按 label `npu.huawei.com/slice-template=<new-template>` 解析 NPUSliceTemplate → Engine.Decompose → AllocateBundle → N allocations。本 ADR §4 NPUSliceTemplate CRD schema 在 Phase 8 期间被 NPUVerticalScaler.spec.scaleSlice.{busyTemplateName, idleTemplateName} 引用,**无 schema 变化**。Pod opt-in label 契约(本 ADR §"Pod opt-in 契约")保留;NPUVerticalScaler 不感知 label 路径,只 patch spec。
+
 ### 负面 / 风险
 
 | 风险 | 影响 | 缓解 |

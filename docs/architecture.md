@@ -223,6 +223,8 @@ flowchart LR
 > 🎯 **npu-dra-driver design(2026-05-19, P4-T-105)**:slice ↔ ResourceClaim 语义映射表 + KubeEdge gap + Partitionable Devices(Phase 7)forward note + Phase 5 实施要点详见 **ADR-0009 npu-dra-driver design**。
 >
 > 🆕 **Phase 7 动态切分(2026-05-20, P7-T-001)**:NPUSliceTemplate CRD(composition + fallbackStrategy)+ template engine(Validate + Decompose)+ allocator extension + Source 接口抽象(MockJSONSource preserve Phase 4-6 / RealAscendSource stub W1 / lab-conditional T101 真实现)+ lab gating 政策详见 **ADR-0011** · `docs/adr/0011-npu-dynamic-slicing-and-source-interface.md`。Pod opt-in via label `npu.huawei.com/slice-template=<name>`,不带 label 走 Phase 5 既有 whole-NPU 路径(零回归)。
+>
+> 🆕 **Phase 8 忙闲时垂直伸缩(2026-05-21, P8-T-001)**:NPUVerticalScaler CRD(inference.ocloud.edge.example.com/v1alpha1 · namespace-scoped · co-located with inference-operator binary)+ "重启切片" pattern(controller patch ModelService.spec.template.sliceTemplate ref → inference-operator rolling restart → claim_controller AllocateBundle wiring)+ NPUUtilization built-in metric(window-averaged threshold + cooldown)+ GitOps 协调 annotation 提示约定详见 **ADR-0012** · `docs/adr/0012-busy-idle-vertical-scaler.md`。**消费 Phase 7 NPUSliceTemplate substrate**(ADR-0011 §1/§4) · 无新 CRD 重复;HPA(replica count)+ NPUVerticalScaler(template ref)字段解耦可共存。**Phase 8 不引入** live re-partition / KV cache migration / HCCL rank migration — 这些 CNI / vllm engine 层 gap 由"重启切片"绕开,Phase 11+ 评估升级路径。
 
 ### 3.5 监控与日志
 
@@ -789,7 +791,7 @@ ocloud-edge-platform/
 | Phase 5 (PD分离) | vLLM PD 分离仍在快速迭代 | 锁定一个稳定 commit；准备 llm-d 作为备选 |
 | Phase 6 (HCCS 调度) | HCCS 拓扑获取接口可能要走 Huawei SDK | 调研 npu-smi / DCMI 接口 |
 | Phase 7 (动态切分) | 突破硬模板需要驱动层能力 | 与昇腾团队交互；准备 fallback：多模板组合（**Phase 7 P7-T-001 落 ADR-0011 提交 fallback 作为 deliverable + Source 接口抽象 + lab gating 政策**） |
-| Phase 8 (垂直伸缩) | NPU 在线缩容是否支持 | 调研，可能只支持横向，垂直走"重启切片"(Phase 7 NPUSliceTemplate substrate · ADR-0011 §1);**Phase 7 P7-T-106 spike 也勘察 Partitionable Devices KEP-4815 status**(1.36 Beta confirmed · GA unconfirmed · `docs/research/k8s-partitionable-devices-spike.md`)— Phase 8 baseline bump 同时 unblocks NumaAffinity(known-issues #12)+ ProxyImage flip(P7-T-102)+ partition-aware allocator |
+| Phase 8 (垂直伸缩) | NPU 在线缩容是否支持 | **in flight via ADR-0012**(2026-05-21 · P8-T-001)— 调研结论 commit "重启切片" pattern 为 Phase 8 deliverable(NPU vendor stack 不暴露 live re-partition 而保持 device state;workload state 无法 mid-flight transfer)。NPUVerticalScaler CRD(inference.ocloud.edge.example.com/v1alpha1 · namespace-scoped · co-located with inference-operator binary)patch target ModelService.spec.template.sliceTemplate → inference-operator rolling restart → claim_controller(P8-T-008 wiring · 消费 Phase 7 NPUSliceTemplate substrate)按 label 解析 → AllocateBundle → N allocations。NPUSliceTemplate substrate(ADR-0011 §1/§4)立即变现;Phase 7 P7-T-106 spike 也勘察 Partitionable Devices KEP-4815 status(1.36 Beta confirmed · GA unconfirmed · `docs/research/k8s-partitionable-devices-spike.md`)— Phase 8 baseline bump(T002 1.32→1.36+)同时 unblocks NumaAffinity(known-issues #12)+ ProxyImage flip(P7-T-102)+ partition-aware allocator(BETA-GATED T101+T102)|
 | Phase 9 (O2 DMS) | O-RAN O2 规范持续演进 | 锁定一个版本（如 O2 IMS R1） |
 
 **2026-05-17 评审追加(flag-to-phase, baseline 不修, 各 Phase 入口检查)**:
