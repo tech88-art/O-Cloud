@@ -317,6 +317,106 @@ unchanged (now wired through `mockjson.New(...)` instead of inline
 rings + empty/error edge). NEW `internal/source/realascend/realascend_test.go`
 1 case asserts stub returns `source.ErrNotImplemented` per ADR-0011 §2.
 
+### 3.7 npu-smi parser contract (Phase 7 P7-T-005 · operative)
+
+Phase 7 P7-T-005 ships the `internal/source/realascend/npusmi/`
+subpackage that the lab-conditional T101 RealAscendSource body will
+consume to bridge real npu-smi / DCMI calls into the Source contract.
+
+**Package layout**:
+
+```
+operators/npu-dra-driver/internal/source/realascend/npusmi/
+├── client.go             - Client interface + TopoEntry + DeviceInfo +
+│                           HealthState + ErrNoCommand + ErrParse
+├── fake.go               - FakeClient impl backed by embed.FS testdata
+│                           fixtures (8card + 16card); used by tests +
+│                           T101 dev mode without lab cluster
+├── exec.go               - ExecClient impl shelling out to `npu-smi`
+│                           binary; Phase 7 W1 scaffold only (QueryTopo
+│                           parser wired; QueryDeviceInfo + QueryHealth
+│                           bodies deferred to T101 lab landing)
+├── parse.go              - ParseTopoMatrix: text-matrix → []TopoEntry
+│                           with Ring populated via connected-components
+│                           on HCCS edges. Sidecar comments
+│                           (# numa: NPU0=0 ... + # health: NPU0=Healthy ...)
+│                           populate NumaNode + Health for tests.
+├── parse_test.go         - 5 cases: empty / 8-card / 16-card /
+│                           unhealthy sidecar / malformed row
+└── testdata/
+    ├── npu-smi-topo-fixture-8card.txt   - canonical 8-card 910B
+    │                                       (2 HCCS rings of 4 NPUs)
+    └── npu-smi-topo-fixture-16card.txt  - synthetic 16-card 910B-pro
+                                            (4 HCCS rings of 4 NPUs +
+                                            cross-numa SYS links)
+```
+
+**Client interface (3 methods)**:
+
+```go
+type Client interface {
+    QueryTopo(ctx context.Context) ([]TopoEntry, error)
+    QueryDeviceInfo(ctx context.Context, devID int) (*DeviceInfo, error)
+    QueryHealth(ctx context.Context, devID int) (HealthState, error)
+}
+```
+
+- **QueryTopo** — primary path · returns ALL devices' (DeviceID +
+  Ring + NumaNode + Health) for the bound node. Phase 7 T101 lab body
+  composes Ring from `npu-smi info -t topo` + NumaNode from
+  `numactl --hardware` or sysfs + Health from `dcmi_get_device_health`.
+  Phase 7 W1 parser populates Ring only; NumaNode + Health default
+  to 0 / HealthUnknown unless sidecar hints present.
+- **QueryDeviceInfo** — per-device detail (chip / cores / memory /
+  driver versions). Phase 7 W1 type-only; T101 wires
+  `npu-smi info -t board -i <id>` parser.
+- **QueryHealth** — cheaper than QueryDeviceInfo · called by Source.Watch
+  loop at high cadence. Phase 7 W1 type-only.
+
+**npu-smi topo matrix format** (per upstream Huawei docs):
+
+```
+       NPU0   NPU1   NPU2   NPU3   ...
+NPU0   X      HCCS   HCCS   HCCS   ...
+NPU1   HCCS   X      HCCS   HCCS   ...
+...
+
+Legend:
+  X    = self
+  SYS  = Connection traversing PCIe + SMP interconnect (cross-NUMA)
+  HCCS = Connection traversing at most a single HCCS switch
+  PIX  = Connection traversing a single PCIe switch (PHB)
+```
+
+Parser semantics:
+- Build undirected graph where `HCCS` = edge between devices
+- BFS connected components in DeviceID-ascending order — first
+  component reached from NPU0 gets `Ring=0`; next gets `Ring=1`; etc.
+- 8-card standard config: NPU0-3 = ring 0 · NPU4-7 = ring 1
+- 16-card 910B-pro: 4 rings of 4 NPUs each (intra-numa HCCS · inter-numa
+  SYS · inter-quadrant PIX inside the same numa)
+
+**Test gate (5 cases per phase7-plan §3 T005 acceptance)**:
+
+| Case                          | Asserts                                              |
+|-------------------------------|------------------------------------------------------|
+| `TestParseEmptyInput` × 3 sub | empty / whitespace / comment-only → `ErrParse`       |
+| `TestParse8CardFixture`        | 8 entries · NPU0-3 ring 0 · NPU4-7 ring 1 · NodeID + NUMA sidecar honored |
+| `TestParse16CardFixture`       | 16 entries · 4 rings of 4 each (NPU0-3=0 · NPU4-7=1 · NPU8-11=2 · NPU12-15=3) |
+| `TestParseUnhealthyHint`       | 2-device minimal matrix + health sidecar → per-device Health populated |
+| `TestParseMalformedRow`        | row vs column count mismatch → `ErrParse`            |
+
+**Phase 7 W1 CI does NOT exercise any real npu-smi binary** — tests
+go through FakeClient backed by embedded testdata fixtures. ExecClient
+compiles + is type-asserted to satisfy Client interface but is
+unreachable from the W1 RealAscendSource stub (which returns
+ErrNotImplemented uniformly per ADR-0011 §2 §3).
+
+**Cross-references**: ADR-0010 §7 forward note row 1 (real HCCS ring
+discovery via npu-smi) · ADR-0011 §2 (Source interface + lab gating
+policy) · phase7-plan §3 P7-T-005 (this task) + §4 P7-T-101 (lab body
+that wires ExecClient).
+
 ## 4. 生命周期
 
 ### 4.1 Manager startup

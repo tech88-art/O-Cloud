@@ -1,0 +1,26 @@
+# Phase 7 P7-T-005 fixture: 8-card 910B server (the most common 910B
+# host topology). Two HCCS rings, each containing 4 NPUs:
+#   ring 0 = NPU0, NPU1, NPU2, NPU3
+#   ring 1 = NPU4, NPU5, NPU6, NPU7
+# Sanitized of any real hostname / serial info.
+#
+# Sidecar comments parsed by parse.go (npu-smi -t topo doesn't actually
+# emit numa/health inline; the parser tolerates these as test-only
+# hints — real npu-smi output reaches NUMA + Health via -t board
+# queries that ExecClient T101 wires).
+# numa: NPU0=0 NPU1=0 NPU2=0 NPU3=0 NPU4=1 NPU5=1 NPU6=1 NPU7=1
+# health: NPU0=Healthy NPU1=Healthy NPU2=Healthy NPU3=Healthy NPU4=Healthy NPU5=Healthy NPU6=Healthy NPU7=Healthy
+       NPU0   NPU1   NPU2   NPU3   NPU4   NPU5   NPU6   NPU7
+NPU0   X      HCCS   HCCS   HCCS   PIX    PIX    PIX    PIX
+NPU1   HCCS   X      HCCS   HCCS   PIX    PIX    PIX    PIX
+NPU2   HCCS   HCCS   X      HCCS   PIX    PIX    PIX    PIX
+NPU3   HCCS   HCCS   HCCS   X      PIX    PIX    PIX    PIX
+NPU4   PIX    PIX    PIX    PIX    X      HCCS   HCCS   HCCS
+NPU5   PIX    PIX    PIX    PIX    HCCS   X      HCCS   HCCS
+NPU6   PIX    PIX    PIX    PIX    HCCS   HCCS   X      HCCS
+NPU7   PIX    PIX    PIX    PIX    HCCS   HCCS   HCCS   X
+Legend:
+  X    = self
+  SYS  = Connection traversing PCIe and the SMP interconnect between NUMA nodes
+  HCCS = Connection traversing at most a single HCCS switch
+  PIX  = Connection traversing a single PCIe switch (PHB)

@@ -1,0 +1,33 @@
+# Phase 7 P7-T-005 fixture: synthetic 16-card 910B-pro topology per
+# ADR-0011 §4 (we don't have real 16-card hardware to sample; this
+# extrapolates the 8-card ring-of-4 to a ring-of-rings shape).
+# Four HCCS rings of 4 NPUs each:
+#   ring 0 = NPU0, NPU1, NPU2, NPU3
+#   ring 1 = NPU4, NPU5, NPU6, NPU7
+#   ring 2 = NPU8, NPU9, NPU10, NPU11
+#   ring 3 = NPU12, NPU13, NPU14, NPU15
+# NUMA: 8 NPUs per node (0 + 1) = 2-socket host.
+# numa: NPU0=0 NPU1=0 NPU2=0 NPU3=0 NPU4=0 NPU5=0 NPU6=0 NPU7=0 NPU8=1 NPU9=1 NPU10=1 NPU11=1 NPU12=1 NPU13=1 NPU14=1 NPU15=1
+# health: NPU0=Healthy NPU1=Healthy NPU2=Healthy NPU3=Healthy NPU4=Healthy NPU5=Healthy NPU6=Healthy NPU7=Healthy NPU8=Healthy NPU9=Healthy NPU10=Healthy NPU11=Healthy NPU12=Healthy NPU13=Healthy NPU14=Healthy NPU15=Healthy
+       NPU0   NPU1   NPU2   NPU3   NPU4   NPU5   NPU6   NPU7   NPU8   NPU9   NPU10  NPU11  NPU12  NPU13  NPU14  NPU15
+NPU0   X      HCCS   HCCS   HCCS   PIX    PIX    PIX    PIX    SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS
+NPU1   HCCS   X      HCCS   HCCS   PIX    PIX    PIX    PIX    SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS
+NPU2   HCCS   HCCS   X      HCCS   PIX    PIX    PIX    PIX    SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS
+NPU3   HCCS   HCCS   HCCS   X      PIX    PIX    PIX    PIX    SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS
+NPU4   PIX    PIX    PIX    PIX    X      HCCS   HCCS   HCCS   SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS
+NPU5   PIX    PIX    PIX    PIX    HCCS   X      HCCS   HCCS   SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS
+NPU6   PIX    PIX    PIX    PIX    HCCS   HCCS   X      HCCS   SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS
+NPU7   PIX    PIX    PIX    PIX    HCCS   HCCS   HCCS   X      SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS
+NPU8   SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS    X      HCCS   HCCS   HCCS   PIX    PIX    PIX    PIX
+NPU9   SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS    HCCS   X      HCCS   HCCS   PIX    PIX    PIX    PIX
+NPU10  SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS    HCCS   HCCS   X      HCCS   PIX    PIX    PIX    PIX
+NPU11  SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS    HCCS   HCCS   HCCS   X      PIX    PIX    PIX    PIX
+NPU12  SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS    PIX    PIX    PIX    PIX    X      HCCS   HCCS   HCCS
+NPU13  SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS    PIX    PIX    PIX    PIX    HCCS   X      HCCS   HCCS
+NPU14  SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS    PIX    PIX    PIX    PIX    HCCS   HCCS   X      HCCS
+NPU15  SYS    SYS    SYS    SYS    SYS    SYS    SYS    SYS    PIX    PIX    PIX    PIX    HCCS   HCCS   HCCS   X
+Legend:
+  X    = self
+  SYS  = Connection traversing PCIe and the SMP interconnect between NUMA nodes
+  HCCS = Connection traversing at most a single HCCS switch
+  PIX  = Connection traversing a single PCIe switch (PHB)
