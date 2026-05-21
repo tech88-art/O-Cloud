@@ -147,9 +147,14 @@ spec:
                       Empty (default) keeps the Phase 5 single-container behavior:
                       each Pod runs only Spec.Model.Image with --pd-role flag.
 
-                      Gated on vllm-ascend v0.12+ stability per ADR-0010 §3 forward
-                      notes; until then chart values keep this empty + use
-                      FallbackImage below for kind-smoke-friendly env.
+                      **P7-T-102 gating (2026-05-20)**: vllm-ascend v0.12+ IS GA
+                      (latest stable v0.18.0 · 2024-04-30 per release page). Chart
+                      default for this field STAYS empty pending Phase 10 demo polish
+                      verification of (a) CI image-pull access from GHA runners
+                      (~5GB) and (b) `quay.io/vllm-project/vllm-ascend` exact tag
+                      convention. Operators wanting the proxy sidecar today set
+                      e.g. `proxyImage: "quay.io/vllm-project/vllm-ascend:v0.18.0"`
+                      explicitly. See DESIGN.md §5.0.1.
                     type: string
                   routerLabel:
                     default: inference.ocloud.edge.example.com/pd-role

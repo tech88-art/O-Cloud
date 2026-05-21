@@ -556,6 +556,41 @@ shift. T105 chose names matching the current upstream conventions
 (VLLM_PD_*); pre-emptive standardisation, may need a rename pass when
 upstream finalises.
 
+### 5.0.1 Phase 7 P7-T-102 vllm-ascend v0.12+ status (2026-05-20)
+
+**GA status check (P7-T-102 gating decision)**:
+
+| Version    | Date          | GA status            |
+|------------|---------------|----------------------|
+| v0.11.0    | (Phase 5 ref) | GA (used as Phase 4-6 baseline in PDPairSpec.Model.Image godoc)        |
+| v0.13.0    | (last v0.13)  | GA (final release of v0.13.0 line)        |
+| v0.18.0    | 2024-04-30    | **GA · "Latest" tag**  |
+| v0.19.1rc1 | 2024-04-30    | Pre-release (release-candidate) |
+
+**Outcome**: doc-only refresh per phase7-plan §4 P7-T-102 fallback
+branch. The v0.12+ gating condition IS met (v0.13.0 + v0.18.0 both
+GA), but flipping the chart `defaults.proxyImage` to a concrete tag
+without verifying:
+  - CI image-pull access from GHA runners (image size ~5GB · GHA disk
+    budget concern · `quay.io/vllm-project/vllm-ascend` exact tag
+    convention)
+  - Phase 6 T106 + Phase 7 T103 kind smoke continues to use
+    `fallbackImage=busybox` to skip real pulls (per Phase 6 T106
+    pattern · preserved here)
+
+… is judged risky for the chart's tested code path. **Operators
+wanting v0.18.0 proxy sidecar** set
+`ms.Spec.PDPair.ProxyImage="quay.io/vllm-project/vllm-ascend:v0.18.0"`
+explicitly (or whatever current stable they prefer); chart default
+stays empty (Phase 5 single-container behavior preserved). When real
+lab cluster + image pull verified in Phase 10 demo polish, chart
+default can flip cleanly.
+
+**Cross-references**: ADR-0010 §3 forward notes + phase7-plan.md §4
+P7-T-102 doc-only fallback acceptance · ADR-0011 §3 lab gating policy
+(Phase 7 W2 decisions defer cleanly to Phase 10 when verification
+infrastructure not in place).
+
 T106 kind smoke fixture uses FallbackImage=busybox:1.36 to demonstrate
 the CI pattern. Production deployments leave both ProxyImage and
 FallbackImage empty until vllm-ascend v0.12+ stability assessment.
