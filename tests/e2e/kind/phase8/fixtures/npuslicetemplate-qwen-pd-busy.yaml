@@ -1,0 +1,19 @@
+# Phase 8 P8-T-103 kind smoke fixture: "busy" NPUSliceTemplate.
+#
+# Sized larger than the idle template (1× vir08) so a NPUVerticalScaler
+# decision to switch ModelService.metadata.annotations[npu.huawei.com/slice-template]
+# from qwen-pd-idle → qwen-pd-busy realises a vertical scale-up via
+# claim_controller (P8-T-008 wiring) re-allocating per the new template
+# on Pod recreation.
+#
+# Apply order: AFTER npu-dra-driver chart installs the NPUSliceTemplate CRD
+# (Phase 7 P7-T-006 chart bundle).
+apiVersion: npu.ocloud.edge.example.com/v1alpha1
+kind: NPUSliceTemplate
+metadata:
+  name: qwen-pd-busy
+spec:
+  composition:
+    - type: vir08
+      count: 1
+  fallbackStrategy: fixed-template-combination

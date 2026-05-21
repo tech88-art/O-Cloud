@@ -1,0 +1,38 @@
+# Phase 8 P8-T-103 kind smoke fixture: ModelService that the
+# NPUVerticalScaler manages via metadata annotation patching per
+# ADR-0012 §5 mutation model.
+#
+# The metadata.annotations[npu.huawei.com/slice-template] annotation
+# is pre-seeded to the "idle" template; the NPUVerticalScaler controller
+# will patch it to "qwen-pd-busy" when the windowed metric exceeds
+# busyThreshold (degraded mode in kind smoke: no real Prometheus →
+# Ingestor returns NoData=true → no scaling decision → annotation stays
+# at qwen-pd-idle).
+#
+# Pre-seeded annotation also exercises P8-T-008 claim_controller bundle
+# path dispatch: claim_builder propagates the annotation to ResourceClaim
+# (carry-forward Phase 8 polish task; kind smoke phase8/install.sh uses
+# direct `kubectl annotate resourceclaim` workaround to demo the wiring).
+#
+# fallbackImage=busybox keeps CI image-pull cost low (no real vllm-ascend
+# pull; same pattern as Phase 6 T106 + Phase 7 T103).
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: ModelService
+metadata:
+  name: qwen-pd
+  namespace: ocloud-system
+  annotations:
+    npu.huawei.com/slice-template: qwen-pd-idle
+spec:
+  model:
+    image: registry.example.com/vllm-ascend:v0.18.0
+    modelPath: /models/qwen-7b
+  pdPair:
+    prefill:
+      replicas: 1
+    decode:
+      replicas: 1
+    routerLabel: inference.ocloud.edge.example.com/pd-role
+    fallbackImage: busybox:1.36
+  npuSlicePoolRef:
+    name: ascend-910b-pool

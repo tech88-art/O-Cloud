@@ -1,0 +1,39 @@
+# Phase 8 P8-T-103 kind smoke fixture: NPUVerticalScaler that manages
+# the qwen-pd ModelService.
+#
+# Kind smoke degraded mode behaviour (chart metrics.prometheusURL=""):
+#   - PrometheusIngestor returns NoData=true on every Query
+#   - Reconcile loop ADR-0012 §1 step 3 → set ConditionActive=True
+#     reason=NoDataThisTick + requeue 30s
+#   - No scaling decision committed → ModelService annotation unchanged
+#   - ScaleHistory remains empty
+#
+# Production mode (operator sets metrics.prometheusURL to a working
+# Prometheus URL):
+#   - Ingestor.Query returns Value (windowed average of
+#     ascend_npu_utilization_percent for ns=ocloud-system, model_service=qwen-pd)
+#   - Reconcile loop patches annotation when threshold crossed + appends
+#     ScaleEvent + requeue 60s for rolling restart observation
+#
+# cooldownSeconds=300 makes a single scaling event visible inside ~10min
+# demo录屏 window. Production recommend ≥300s.
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: NPUVerticalScaler
+metadata:
+  name: qwen-pd-scaler
+  namespace: ocloud-system
+spec:
+  target:
+    apiVersion: inference.ocloud.edge.example.com/v1alpha1
+    kind: ModelService
+    name: qwen-pd
+    namespace: ocloud-system
+  metric:
+    type: NPUUtilization
+    busyThreshold: 75
+    idleThreshold: 20
+    windowSeconds: 300
+  scaleSlice:
+    busyTemplateName: qwen-pd-busy
+    idleTemplateName: qwen-pd-idle
+  cooldownSeconds: 300

@@ -271,6 +271,22 @@ jobs:
           bash tests/e2e/kind/phase7/install.sh all
           bash tests/e2e/kind/phase7/assert.sh
 
+      - name: Phase 8 — apply busy-idle 垂直伸缩 substrate (P8-T-103)
+        # Phase 8 layering on top of Phase 7 cluster state:
+        #  T005 NPUVerticalScaler CRD (installed via inference-operator chart bundle)
+        #  T103: apply qwen-pd-busy + qwen-pd-idle NPUSliceTemplates +
+        #        ModelService qwen-pd (annotation-seeded) + NPUVerticalScaler
+        #        qwen-pd-scaler. Verifies ConditionActive observed +
+        #        annotation stays in degraded mode (no Prometheus → NoData)
+        #        + T008 bundle path dispatched when claim annotated.
+        # Skipped per Phase 8 W1 decisions:
+        #  T003 NumaAffinity: deferred Phase 9 (user K8s 1.32 stay decision)
+        #  T101+T102 Partitionable Devices: deferred Phase 10 (kindest/node v1.36 lag)
+        #  T004 ProxyImage chart flip: doc-only fallback (vllm-ascend 14-month silence)
+        run: |
+          bash tests/e2e/kind/phase8/install.sh all
+          bash tests/e2e/kind/phase8/assert.sh
+
       - name: install Playwright deps
         working-directory: tests/e2e
         run: |
@@ -339,6 +355,14 @@ jobs:
           kubectl -n kube-system get lease -l app.kubernetes.io/name=scheduler-plugin -o yaml || true
           kubectl -n ocloud-system describe ms multiring-ms || true
           kubectl -n ocloud-system get pods -l 'inference.ocloud.edge.example.com/model-service=multiring-ms' -o wide || true
+          echo "::endgroup::"
+          echo "::group::Phase 8 — NPUVerticalScaler + bundle path"
+          kubectl -n ocloud-system describe npuvs qwen-pd-scaler || true
+          kubectl -n ocloud-system describe modelservice qwen-pd || true
+          kubectl get npust qwen-pd-busy qwen-pd-idle -o yaml || true
+          kubectl -n ocloud-system get resourceclaims -l app.kubernetes.io/instance=qwen-pd -o yaml || true
+          kubectl -n ocloud-system logs deploy/inference-operator --tail=400 || true
+          kubectl -n ocloud-system logs deploy/npu-dra-driver --tail=400 || true
           echo "::endgroup::"
 
   e2e-mock-regression:

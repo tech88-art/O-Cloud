@@ -1,0 +1,14 @@
+# Phase 8 P8-T-103 kind smoke fixture: "idle" NPUSliceTemplate.
+#
+# Sized smaller than the busy template (1× vir04). NPUVerticalScaler
+# decides to switch to this template when the windowed average of
+# ascend_npu_utilization_percent drops below idleThreshold.
+apiVersion: npu.ocloud.edge.example.com/v1alpha1
+kind: NPUSliceTemplate
+metadata:
+  name: qwen-pd-idle
+spec:
+  composition:
+    - type: vir04
+      count: 1
+  fallbackStrategy: fixed-template-combination
