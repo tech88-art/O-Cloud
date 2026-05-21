@@ -408,6 +408,51 @@ ADR-0010 §1 §3 T006 + P7-T-002 attempt notes + phase7-plan.md §3 T002
 
 ---
 
+### #13 — vllm-ascend ProxyImage chart default re-deferred Phase 7 → Phase 8 → Phase 10
+
+Severity: low · Status: **OPEN** (2026-05-21 update · P8-T-004 doc-only fallback per phase8-plan §3 T004 fallback Acceptance).
+
+`deploy/helm-charts/inference-operator/values.yaml` ships `defaults.proxyImage`
+**empty**(自 Phase 5 起 · 维持 Phase 7 P7-T-102 状态 · 现 Phase 8 P8-T-004 doc-only
+再次确认)。Operators 想要 vllm-ascend disaggregated_prefill_v1 proxy sidecar
+必须显式设 `ms.Spec.PDPair.ProxyImage="quay.io/vllm-project/vllm-ascend:v0.18.0"`
+(或当时 stable tag);chart 不主动 default 翻转。
+
+**Phase 7 P7-T-102 outcome**(2026-05-20):doc-only refresh · GA gating 第 1
+项 met(v0.13.0 + v0.18.0 都 GA)· 第 2 项 unverified(CI image-pull access
+未实测 · `quay.io/vllm-project/vllm-ascend` 准确 tag 命名约定 unverified)·
+Phase 10 demo polish 翻转。
+
+**Phase 8 P8-T-004 outcome**(2026-05-21):re-verify outcome ALL同 Phase 7
+T102 + 新增 finding:
+- 上游 `vllm-project/vllm-ascend` stable line 14 个月静默(v0.18.0 2024-04-30
+  → 2026-05-21 现在;只有 pre-release v0.19.1rc1 之后没更新过)
+- Phase 8 W1 用户 mandated 风险 reduction(P8-T-002 "stay K8s 1.32" 决策同 spirit) ·
+  ProxyImage flip 同样 inherits 该 conservative posture
+- C: 盘满阻止本地 docker pull 验证;`go clean -modcache` 待 user 跑
+
+**Workaround** for operators wanting v0.18.0 proxy sidecar today:explicitly
+set `ms.Spec.PDPair.ProxyImage`(deployment_builder.go::buildPDPairContainers
+Phase 6 T105 路径 already ship · Phase 7 T003 schedulerName auto-stamp 兼容)。
+
+**Proposed resolution**(**Phase 10** candidate · was Phase 7 / Phase 8):
+1. Phase 10 真硬件 lab 环境内 `docker pull quay.io/vllm-project/vllm-ascend:vX.Y.Z`
+   验证 image 完整可拉(同时记录确切 tag 命名约定)
+2. GHA runner CI image-pull 路径加 cache mount + retry policy(if disk
+   budget constrained)
+3. Chart `defaults.proxyImage` 翻到 verified tag · `effectiveProxyImage`
+   fallback chain(已 ship at Phase 6 T105)继续工作
+4. 1 effectiveProxyImage 单元测试新增(同 Phase 6 T106 effectiveSchedulerName
+   pattern)
+5. Phase 10 kind smoke + lab smoke 双路径验证 PD-pair Pod 走 proxy_server
+   入口(非 busybox sleep)
+
+Cross-references: `operators/inference-operator/DESIGN.md` §5.0.1
+(Phase 7 P7-T-102) + §5.0.2(Phase 8 P8-T-004 · new) · phase7-plan.md §4
+T102 + phase8-plan.md §3 T004 · `docs/devlog/phase-7-t102.md` + `docs/devlog/phase-8-t004.md`.
+
+---
+
 ### #9 — ascend exporter dev stub serves static metrics only
 
 Severity: trivial · Status: **RESOLVED** (2026-05-19, P3-T-103).

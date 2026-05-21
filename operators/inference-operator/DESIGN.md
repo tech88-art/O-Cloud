@@ -595,6 +595,42 @@ T106 kind smoke fixture uses FallbackImage=busybox:1.36 to demonstrate
 the CI pattern. Production deployments leave both ProxyImage and
 FallbackImage empty until vllm-ascend v0.12+ stability assessment.
 
+### 5.0.2 Phase 8 P8-T-004 vllm-ascend ProxyImage chart flip re-deferred to Phase 10 (2026-05-21)
+
+**Phase 8 W1 entry re-WebFetch + verify attempt (2026-05-21)**:
+
+| 验证维度 | 结果 |
+|---|---|
+| `quay.io/vllm-project/vllm-ascend` 仓库 metadata | Quay 公共 web UI 当时 read-only error · 无法直接列 tags(单次 WebFetch 尝试 = unavailable) |
+| `vllm-project/vllm-ascend` GitHub releases | v0.18.0 "Latest" tag 仍是 2024-04-30 release · 没有 2024 以后的 stable release · v0.19.1rc1 (2024-04-30) 是最新 pre-release;**说明 vllm-ascend 上游 stable 自 v0.18.0 起 14 个月未发 stable**(2024-04 → 2026-05) |
+| 本地 docker pull 验证 image-pull access | **Blocked** by C: drive 100% full(`go clean -modcache` 待 user 手动跑 · 即使释放后 ~5GB image pull 仍非本 P8-T-004 doc-only 路径 acceptance 必要项) |
+| CI image-pull 验证 from GHA runners | **未实测** · 与 Phase 7 T102 同样不变 — 不在 doc-only 路径范围 |
+
+**Outcome**:**Doc-only refresh + carry to Phase 10** per phase8-plan
+§3 P8-T-004 doc-only fallback Allowed Paths · 同 Phase 7 T102 outcome
+保持一致。Reasons aggregated:
+
+- 上游 vllm-ascend stable line 14 个月静默(v0.18.0 2024-04-30 → 现在
+  2026-05-21)· chart default 翻到 stale image 的价值低 · 风险大
+  (CI image-pull 测试 + 真硬件 PD-pair lab verify 仍未发生)
+- Phase 7 T102 已 establish "operators 显式 set `ms.Spec.PDPair.ProxyImage`"
+  路径 · 不需要新的 dispatch path
+- Phase 8 W1 用户 mandated 风险 reduction(P8-T-002 "stay K8s 1.32" 决策
+  同 spirit) · ProxyImage flip 同样 inherits 该 conservative posture
+- Phase 8 内 demo 用 FallbackImage=busybox:1.36 既有路径(Phase 6 T106 + Phase 7 T103 pattern)继续覆盖 PD-pair 容器编排逻辑测试 · 不依赖真 vllm-ascend image pull
+
+**Forward path · Phase 10 demo polish**(unchanged from P7-T-102):
+- 在 Phase 10 真硬件 lab 环境内 docker pull `quay.io/vllm-project/vllm-ascend:v0.18.0`(或届时最新 stable tag)· 验证 image 完整可拉
+- GHA runner CI image-pull · 加 cache mount + retry policy if disk budget 受限
+- Chart `defaults.proxyImage` 翻到 verified tag · `effectiveProxyImage` fallback chain 维持
+- known-issues 新条目记录"ProxyImage chart default re-deferred Phase 7 → Phase 8 → Phase 10"(本节 + Phase 8 P8-T-004 devlog)
+
+**Cross-references**:
+- phase8-plan.md §3 P8-T-004 doc-only fallback Allowed Paths + Acceptance
+- `docs/devlog/phase-8-t004.md`(本 task devlog)
+- §5.0.1 Phase 7 P7-T-102 vllm-ascend v0.12+ status(本节前置)
+- ADR-0011 §3 Lab gating 政策(spirit · default = defer)
+
 ## 5.1 Metrics exposition (Phase 6 T104 · operative)
 
 Three Prometheus collectors registered against controller-runtime's
