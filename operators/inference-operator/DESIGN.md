@@ -942,6 +942,79 @@ ModelService verbs (already present at Phase 5) include `patch` —
 sufficient for the annotation merge patch path. No new ModelService
 RBAC needed in T007.
 
+### 5.4.8 Multi-tenant Quota controller + admission webhooks (P9-T-006 · 2026-05-21)
+
+P9-T-006 lands the Quota controller body + 2 ValidatingAdmissionWebhooks
+per ADR-0014 §2 Decision C + §5 enforcement contract. Quota is a
+namespace-scoped NPU-aware resource quota CRD (orthogonal to upstream
+`core/v1.ResourceQuota`).
+
+**Components**:
+- `internal/controller/quota_controller.go` — reconcile loop on 60s tick
+  (per `QuotaReconcilePeriod`) reads NPUSliceAllocation count + sums
+  NPUVerticalScaler scaleHistory entries within `WindowSeconds` → writes
+  Quota.status.usage atomically + LastSyncTime + Active condition
+- `internal/webhook/quota_admission.go` —
+  - `QuotaCache` 5s TTL in-memory snapshot per namespace · List Quota
+    fallback Get on cache miss · NotFound caching avoids re-Get on every
+    webhook invocation in unbounded path
+  - `QuotaSliceAllocationValidator` Webhook A · intercepts
+    `npu.ocloud.edge.example.com/v1alpha1.NPUSliceAllocation` CREATE ·
+    rejects when `currentSliceAllocations + 1 > maxSliceAllocations` ·
+    fail-open on no-Quota / Get errors / Get NotFound
+  - `QuotaScalerValidator` Webhook B · intercepts
+    `inference.ocloud.edge.example.com/v1alpha1.NPUVerticalScaler` UPDATE ·
+    decodes new + old via admission.Decoder · only triggers on
+    `spec.scaleSlice.{busy,idle}TemplateName` change · rejects on scale
+    rate cap exceed OR template whitelist deny
+
+**Cross-module pattern** (per operators/CLAUDE.md §1 no-import rule):
+- NPUSliceAllocation cannot be Go-imported from npu-dra-driver · controller
+  uses `unstructured.UnstructuredList` with `NPUSliceAllocationGVK` to
+  list count
+- NPUSliceAllocation admission webhook receives `admission.Request` ·
+  no decode needed for Webhook A logic (count check uses Quota state ·
+  not NPUSliceAllocation fields)
+
+**Webhook decision flow** (per ADR-0014 §2 Decision C):
+
+```
+Webhook A · NPUSliceAllocation CREATE:
+  if not CREATE         → admit (pass-through)
+  Get Quota in ns       → if err non-NotFound: 500 Internal Server Error
+  if no Quota           → admit (fail-open · unbounded semantics)
+  if maxAlloc == 0      → admit (0 = unbounded)
+  if used + 1 > maxAlloc → REJECT "namespace X at cap Y; current Z"
+  else                  → admit
+
+Webhook B · NPUVerticalScaler UPDATE:
+  if not UPDATE                    → admit (pass-through)
+  decode new + old NPUVerticalScaler
+  if busy + idle TemplateName unchanged → admit (status update etc.)
+  Get Quota in ns                  → if err non-NotFound: 500
+  if no Quota OR rateCap == 0      → admit (fail-open · unbounded)
+  if scaleEvents + 1 > rateCap     → REJECT "scale rate cap"
+  if whitelist non-empty + new template NOT in whitelist → REJECT
+  else                             → admit
+```
+
+**Cert reuse** (per ADR-0014 §5 Cert reuse path · §3 Cert reuse risk row):
+- Reuses Phase 5 P5-T-101 `inference-operator-webhook` cert via
+  `cert-manager.io/inject-ca-from` annotation in
+  `templates/validatingwebhookconfiguration-quota.yaml`
+- Same caBundle / Service / port (9443) as PD Router mutating webhook ·
+  single cert-manager Certificate covers all 3 webhook handlers
+- Phase 10 polish: split cert per webhook for故障域 isolation if needed
+
+**Limitations & Phase 10 polish path**:
+- 5s cache TTL allows +N error under burst create scenario · Phase 10
+  polish strong-consistency mode per ADR-0014 §6 Open question (d)
+- Multi-Quota-per-namespace falls back to first List item (deterministic
+  by sort order) · AND semantics for multiple quotas Phase 11+ if实质需求
+- scaleHistory rolling 10-entry FIFO bounds scale event sum · Phase 10
+  event-driven counter replacement for windowSeconds > 1h + maxScale > 10
+  production scenarios
+
 ### 5.4.7 Annotation → Pod label propagation chain (P9-T-004 · 2026-05-21)
 
 P8-T-007 NPUVerticalScaler controller writes annotation

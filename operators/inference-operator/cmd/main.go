@@ -176,6 +176,33 @@ func main() {
 	}
 	setupLog.Info("NPUVerticalScalerReconciler registered", "task", "P8-T-007")
 
+	// Phase 9 P9-T-006: Register Quota controller + 2 ValidatingAdmissionWebhooks
+	// per ADR-0014 §2 Decision C + D. Controller reconciles status.usage on
+	// 60s tick. Webhook A intercepts NPUSliceAllocation CREATE (group
+	// npu.ocloud.edge.example.com); Webhook B intercepts NPUVerticalScaler
+	// UPDATE (spec.scaleSlice template ref change · scale rate + whitelist).
+	qr := &controller.QuotaReconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("quota-controller"),
+	}
+	if err := qr.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to register QuotaReconciler")
+		os.Exit(1)
+	}
+	setupLog.Info("QuotaReconciler registered", "task", "P9-T-006")
+
+	quotaCache := webhook.NewQuotaCache(mgr.GetClient(), 0)
+	mgr.GetWebhookServer().Register(webhook.PathQuotaValidateNPUSliceAllocation,
+		&ctrladmission.Webhook{Handler: &webhook.QuotaSliceAllocationValidator{Cache: quotaCache}})
+	mgr.GetWebhookServer().Register(webhook.PathQuotaValidateNPUVerticalScaler,
+		&ctrladmission.Webhook{Handler: &webhook.QuotaScalerValidator{Cache: quotaCache, Decoder: ctrladmission.NewDecoder(mgr.GetScheme())}})
+	setupLog.Info("Quota admission webhooks registered",
+		"task", "P9-T-006",
+		"webhookA", webhook.PathQuotaValidateNPUSliceAllocation,
+		"webhookB", webhook.PathQuotaValidateNPUVerticalScaler,
+		"cacheTTL", webhook.DefaultQuotaCacheTTL.String())
+
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

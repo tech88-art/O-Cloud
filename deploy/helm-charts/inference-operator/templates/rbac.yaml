@@ -27,6 +27,17 @@ rules:
   - apiGroups: ["inference.ocloud.edge.example.com"]
     resources: ["npuverticalscalers/finalizers"]
     verbs: ["update", "patch"]
+  # Quota — Phase 9 P9-T-006 controller owns the kind. Webhook A reads
+  # status.usage via cache + List Quota in namespace. Per ADR-0014.
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["quotas"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["quotas/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["quotas/finalizers"]
+    verbs: ["update", "patch"]
   # NPUSlicePool — read for spec.npuSlicePoolRef resolution. Same-namespace
   # convention (operators/CLAUDE.md §4 Phase 1-2 isolation-by-convention).
   - apiGroups: ["ims.ocloud.edge.example.com"]

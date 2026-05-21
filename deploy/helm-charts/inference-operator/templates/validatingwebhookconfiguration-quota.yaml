@@ -1,0 +1,69 @@
+{{- /*
+ValidatingWebhookConfiguration for the multi-tenant Quota admission
+(P9-T-006 · per ADR-0014 §2 Decision C + §5 enforcement contract).
+
+Two webhooks colocated on the inference-operator binary (port 9443):
+  - Webhook A intercepts NPUSliceAllocation CREATE
+    (group npu.ocloud.edge.example.com)
+  - Webhook B intercepts NPUVerticalScaler UPDATE on
+    spec.scaleSlice template ref changes
+    (group inference.ocloud.edge.example.com)
+
+cert-manager.io/inject-ca-from reuses the existing inference-operator
+webhook Certificate from P5-T-101 (same cert as PD Router webhook ·
+ADR-0014 §5 Cert reuse path).
+
+failurePolicy=Fail per ADR-0014 §5 — webhook failure should not
+silently bypass the namespace quota (security boundary).
+*/}}
+{{- if .Values.quota.enabled }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ include "inference-operator.fullname" . }}-quota
+  labels:
+    {{- include "inference-operator.labels" . | nindent 4 }}
+  {{- if .Values.certManager.enabled }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "inference-operator.fullname" . }}-webhook
+  {{- end }}
+webhooks:
+  - name: npusliceallocation.quota.inference.ocloud.edge.example.com
+    admissionReviewVersions:
+      - v1
+    sideEffects: None
+    failurePolicy: {{ .Values.quota.failurePolicy | default "Fail" }}
+    matchPolicy: Equivalent
+    timeoutSeconds: {{ .Values.quota.timeoutSeconds | default 5 }}
+    clientConfig:
+      service:
+        namespace: {{ .Release.Namespace }}
+        name: {{ include "inference-operator.fullname" . }}-webhook
+        path: /validate-npu-ocloud-edge-example-com-v1alpha1-npusliceallocation-quota
+        port: 443
+    rules:
+      - apiGroups: ["npu.ocloud.edge.example.com"]
+        apiVersions: ["v1alpha1"]
+        resources: ["npusliceallocations"]
+        operations: ["CREATE"]
+        scope: "Namespaced"
+  - name: npuverticalscaler.quota.inference.ocloud.edge.example.com
+    admissionReviewVersions:
+      - v1
+    sideEffects: None
+    failurePolicy: {{ .Values.quota.failurePolicy | default "Fail" }}
+    matchPolicy: Equivalent
+    timeoutSeconds: {{ .Values.quota.timeoutSeconds | default 5 }}
+    clientConfig:
+      service:
+        namespace: {{ .Release.Namespace }}
+        name: {{ include "inference-operator.fullname" . }}-webhook
+        path: /validate-inference-ocloud-edge-example-com-v1alpha1-npuverticalscaler-quota
+        port: 443
+    rules:
+      - apiGroups: ["inference.ocloud.edge.example.com"]
+        apiVersions: ["v1alpha1"]
+        resources: ["npuverticalscalers"]
+        operations: ["UPDATE"]
+        scope: "Namespaced"
+{{- end }}

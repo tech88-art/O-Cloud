@@ -65,6 +65,18 @@ pdRouter:
   failurePolicy: Fail
   timeoutSeconds: 5
 
+# -------------------------------------------------- Quota multi-tenant admission (P9-T-006)
+# Per ADR-0014 §2 Decision C + §5: TWO ValidatingAdmissionWebhooks on
+# the same inference-operator binary (cert-manager reuse · port 9443).
+#   Webhook A: NPUSliceAllocation CREATE  → maxSliceAllocations cap
+#   Webhook B: NPUVerticalScaler UPDATE   → scale rate + template whitelist
+# failurePolicy=Fail per ADR-0014 §5 security boundary rationale —
+# webhook failure should NOT silently bypass namespace quota.
+quota:
+  enabled: true
+  failurePolicy: Fail
+  timeoutSeconds: 5
+
 # -------------------------------------------------- cert-manager wiring (T101)
 # When enabled, the chart renders a cert-manager Certificate + (optional)
 # Issuer pointing at the PD Router webhook TLS secret. cert-manager (v1.16+)
