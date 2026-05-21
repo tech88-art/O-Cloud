@@ -140,9 +140,12 @@ func NewSource(sourceType string, cfg Config) (Source, error) {
 |---|---|---|---|
 | Phase 7 P7-T-101 (2026-05-20) | no signal | deferred Phase 8 | 1st carry |
 | Phase 8 P8-T-105 (2026-05-21) | no signal | deferred Phase 9 | 2nd carry |
-| Phase 9 P9-T-106 (2026-05-21) | no signal | **deferred Phase 10** | **3rd carry** |
+| Phase 9 P9-T-106 (2026-05-21) | no signal | deferred Phase 10 | 3rd carry |
+| Phase 10 P10-T-102 (2026-05-21) | TBD (W2 entry) | TBD(若 5th carry → 触发 ADR-0016 §2 Decision B posture re-eval trigger (1)) | **4th attempt** |
 
 > 🆕 **2026-05-21 update (P9-T-106 · 3rd carry · default policy)**:Phase 9 W2 entry chat 用户 "继续" 未明示 lab access available · per default policy "无明确信号 → defer Phase 10" 命中 · T106 走 deferred 路径 · 3-line devlog + 本 §3 carry tally 表更新 + known-issues entry。Phase 10 W1 entry 再评估 if lab access signal materialises mid-Phase 10。**累计 3 次推迟** · synthetic ring fixture(set-b-multi-ring · P7-T-104-v2 hard-fail upgrade · P8-T-104 reseed)仍 cover CI 路径,lab smoke 不阻塞主干交付。
+
+> 🆕 **2026-05-21 update (P10-T-002 · ADR-0016 forward-looking codify)**:Phase 10 P10-T-002 起草 ADR-0016(`docs/adr/0016-lab-onboarding-and-phase-11-outlook.md`)+ codify 4th attempt rationale + 5th carry posture re-eval triggers + T201 真硬件演示打磨 fallback path detail + Phase 11+ 8 candidate streams enumeration。本 §3 policy core *不修改* — ADR-0016 是 Phase 10 节点 *上下文* + Phase 11+ forward · 与本 §3 policy *本体* 分离。**若 T102 5th carry Phase 11+** → ADR-0016 §2 Decision B 3 triggers 任一启动 lab gating policy posture re-evaluation(Phase 11+ entry meeting / ad-hoc signal / M5+ milestone reset)。
 
 ---
 
