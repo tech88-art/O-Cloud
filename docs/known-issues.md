@@ -368,6 +368,11 @@ Severity: low · Status: **OPEN** (2026-05-21 update · P9-T-003 doc-only refres
 > - Phase 10 estimate budget:2-3d(原 phase8/9 plan 估计 1-2d 仅含 baseline bump + wrap · 新增 framework migration ~1d for 9 files)
 > - 详 `docs/devlog/phase-9-t003.md` framework migration matrix + ADR-0010 §1 2026-05-21 update segment
 
+> 🆕 **2026-05-21 update (P9-T-102 auto-deferred per T003 outcome · 4th carry note)**:
+> - **4th carry tally**:Phase 7 T002 doc-only fallback → Phase 8 T003 user stay 1.32 → Phase 9 T003 bump 1.34 attempted + framework drift → **Phase 9 T102 auto-deferred per T003 doc-only refresh outcome**(plan §4 P9-T-102 default decision)
+> - **决策**:plan §4 P9-T-102 "Auto-deferred if T003 doc-only refresh" 触发器命中 · 走 auto-deferred 路径 · 0 代码 0 chart change · CI no-op
+> - **Phase 10 起手任务统一**:NumaAffinity wrap upgrade 必须 coordinate K8s baseline bump + framework migration 在同 Phase 10 task chain · 不分拆 · 详 `docs/devlog/phase-9-t102.md` 1-line + `docs/devlog/phase-9-t003.md` framework migration matrix
+
 ---
 
 **历史背景**:
