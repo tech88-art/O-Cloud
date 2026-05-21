@@ -1,0 +1,34 @@
+# NPUVerticalScaler sample — Phase 8 P8-T-005 busy-idle 垂直伸缩 demo target.
+#
+# Per ADR-0012:
+# - 重启切片 pattern: controller patches ModelService.spec.template.sliceTemplate
+#   between busyTemplateName / idleTemplateName based on windowed metric average.
+# - inference-operator ModelService controller then drives Deployment rolling
+#   restart. Pod recreation invokes claim_controller (P8-T-008 wiring) to
+#   re-allocate per the new NPUSliceTemplate ref.
+# - GitOps tools should ignore `.spec.template.sliceTemplate` on ModelServices
+#   annotated `ocloud.edge.example.com/vertical-scaler-managed=<scaler-name>`.
+#
+# This sample uses cooldownSeconds=300 (instead of the schema default 600) to
+# make demo录屏 see at least 1 scaling event inside a 10-15 min window.
+# Production deployments should keep cooldownSeconds >= 300 to prevent flapping.
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: NPUVerticalScaler
+metadata:
+  name: qwen-pd-scaler
+  namespace: ocloud-system
+spec:
+  target:
+    apiVersion: inference.ocloud.edge.example.com/v1alpha1
+    kind: ModelService
+    name: qwen-pd
+    namespace: ocloud-system          # Phase 8 single-tenant scope: must match scaler ns
+  metric:
+    type: NPUUtilization              # Phase 8 only enum (Phase 9 adds PrometheusQuery)
+    busyThreshold: 75                 # metric > 75 → scale up to busyTemplateName
+    idleThreshold: 20                 # metric < 20 → scale down to idleTemplateName
+    windowSeconds: 300                # 5-minute sliding-window average
+  scaleSlice:
+    busyTemplateName: qwen-pd-busy    # NPUSliceTemplate ref (cluster-scoped, ADR-0011 §4)
+    idleTemplateName: qwen-pd-idle
+  cooldownSeconds: 300                # demo录屏 friendly; production recommend >= 300

@@ -21,4 +21,13 @@ resources:
   kind: ModelService
   path: github.com/tech88-art/O-Cloud/operators/inference-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: ocloud.edge.example.com
+  group: inference
+  kind: NPUVerticalScaler
+  path: github.com/tech88-art/O-Cloud/operators/inference-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"
