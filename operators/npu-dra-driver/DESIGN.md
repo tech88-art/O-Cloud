@@ -617,6 +617,65 @@ status.Allocatable=True for sample composition).
 
 ---
 
+### 3.10 Allocator: NPUSliceTemplate-aware path (Phase 7 P7-T-105 · partial)
+
+Phase 7 P7-T-105 ships `internal/allocator/bundle.go::AllocateBundle`
+— the free-function entry point that drives the
+NPUSliceTemplate-aware allocation path per ADR-0011 §1 §後果 row 4.
+
+**Signature**:
+
+```go
+func AllocateBundle(
+    a Allocator,
+    claim resourceapi.ResourceClaim,
+    bundle *template.FixedTemplateBundle,
+    slices []resourceapi.ResourceSlice,
+    allocated AllocatedSet,
+) ([]*Allocation, error)
+```
+
+**Semantics**:
+
+| Input                         | Behavior                                                                  |
+|-------------------------------|---------------------------------------------------------------------------|
+| `bundle == nil`               | Falls back to `a.Allocate(claim, slices, allocated)` (Phase 5 path)        |
+| `bundle.IsEmpty()`            | Same as nil — fallback                                                    |
+| `bundle.Items` non-empty      | Loops `Items × Count`, calling `a.Allocate` per slot with cumulative AllocatedSet (prevents double-pick) |
+| Any iteration fails           | Returns error; cumulative set is LOCAL, so caller's `allocated` unmodified (all-or-nothing rollback) |
+
+**Test gate (4 cases per phase7-plan §3 P7-T-105 acceptance)**:
+
+| Case                                              | Asserts                                                 |
+|---------------------------------------------------|---------------------------------------------------------|
+| `TestAllocateBundle_NilBundleFallsBackToWholeNPUPath` | nil bundle → single Allocate result · Phase 5 path     |
+| `TestAllocateBundle_SingleVir04`                 | 1-item bundle (vir04 × 1) → 1 allocation                |
+| `TestAllocateBundle_Vir04PlusVir08`              | 2-item bundle → 2 different devices (cumulative dedup)  |
+| `TestAllocateBundle_OverCapacityRollback`         | bundle wants 2, pool has 1 → ErrNoAvailableDevice + caller's AllocatedSet unmodified |
+
+**Phase 7 W1 scope deliberately narrow** (M4 value-focus):
+
+- **Shipped**: AllocateBundle method + 4 unit tests · capability is
+  testable today via unit tests + future callers (webhook · CLI ·
+  Phase 8 partition allocator)
+- **Deferred to Phase 10 / T105-v2**: the controller wiring that
+  connects Pod label `npu.huawei.com/slice-template=<name>` →
+  client.Get NPUSliceTemplate → template.Engine.Decompose →
+  AllocateBundle → write N allocations into ResourceClaim.Status /
+  N NPUSliceAllocation audit objects. Phase 7 W1 has no real Pods
+  with this label (simulator only); when real Pods show up in
+  kind / lab clusters during Phase 10 demo polish, the controller
+  wiring lands cleanly without rework — AllocateBundle's interface
+  is forward-compat with the wiring needs.
+
+**Cross-references**: ADR-0011 §1 NPU 动态切分 + §後果 row 4
+(all-or-nothing bundle invariant) · ADR-0009 §6 (Allocator algorithm
+contract) · phase7-plan.md §3 P7-T-105 + §4 P7-T-103 (kind smoke
+verifies NPUSliceTemplate Allocatable=True flows through engine but
+does NOT yet exercise AllocateBundle directly — that's Phase 10).
+
+---
+
 ## 4. 生命周期
 
 ### 4.1 Manager startup
