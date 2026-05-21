@@ -1,0 +1,226 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: quotas.inference.ocloud.edge.example.com
+spec:
+  group: inference.ocloud.edge.example.com
+  names:
+    kind: Quota
+    listKind: QuotaList
+    plural: quotas
+    shortNames:
+    - quota
+    singular: quota
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.enforcement.maxSliceAllocations
+      name: MaxAllocations
+      type: integer
+    - jsonPath: .status.usage.currentSliceAllocations
+      name: Used
+      type: integer
+    - jsonPath: .spec.enforcement.maxScaleEventsPerWindow.count
+      name: MaxScaleEvents
+      type: integer
+    - jsonPath: .spec.enforcement.maxScaleEventsPerWindow.windowSeconds
+      name: ScaleEventsWindow
+      type: integer
+    - jsonPath: .status.conditions[?(@.type=='Active')].status
+      name: Status
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          Quota is the NPU-aware namespace-scoped resource quota CRD per ADR-0014.
+
+          Multi-tenant fair scaling: Quota caps the number of concurrent
+          NPUSliceAllocation objects in the namespace and the rate of
+          NPUVerticalScaler scale events within a sliding window. Optional whitelist
+          pins which NPUSliceTemplate refs the NPUVerticalScaler.spec may reference.
+
+          Quota is orthogonal to upstream `core/v1.ResourceQuota` (generic CPU/mem/pod
+          count quota): both can coexist in the same namespace. Enforcement happens
+          via TWO ValidatingAdmissionWebhooks colocated with the inference-operator
+          binary per ADR-0014 §2 Decision C:
+
+            - Webhook A on NPUSliceAllocation CREATE (group npu.ocloud.edge.example.com)
+              checks `status.usage.currentSliceAllocations + 1 <= spec.enforcement.maxSliceAllocations`
+            - Webhook B on NPUVerticalScaler UPDATE (group inference.ocloud.edge.example.com)
+              checks `status.usage.scaleEventsInWindow + 1 <= spec.enforcement.maxScaleEventsPerWindow.count`
+
+          The Quota controller reconciles `status.usage` on a 60s tick by listing
+          NPUSliceAllocation + NPUVerticalScaler.status.scaleHistory in the namespace.
+          The admission webhooks read `status.usage` via an in-memory cache with a
+          5s TTL fallback Get.
+
+          API group lives under `inference.ocloud.edge.example.com/v1alpha1` (same
+          scheme as ModelService + NPUVerticalScaler) per P9-T-002-fix-001 (the
+          initial ADR-0014 v1 picked the bare `ocloud.edge.example.com/v1alpha1`
+          group but no existing CRD uses that bare group — fix-001 unifies under
+          the inference-operator binary scheme · simpler multi-group avoided).
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: QuotaSpec describes the namespace-wide NPU-aware quota.
+            properties:
+              enforcement:
+                description: Enforcement carries the caps that the admission webhooks
+                  enforce.
+                properties:
+                  maxNPUSliceTemplateRefs:
+                    description: |-
+                      MaxNPUSliceTemplateRefs is an optional whitelist of
+                      NPUSliceTemplate names that NPUVerticalScaler.spec.scaleSlice.{busy,idle}TemplateName
+                      may reference. Empty (default) allows any template.
+                    items:
+                      type: string
+                    type: array
+                  maxScaleEventsPerWindow:
+                    description: |-
+                      MaxScaleEventsPerWindow caps the rate of NPUVerticalScaler.spec
+                      scaleSlice mutations (scale events) within a sliding window.
+                      Count=0 (default) means unbounded.
+                    properties:
+                      count:
+                        default: 0
+                        description: |-
+                          Count is the maximum number of scale events allowed within
+                          WindowSeconds. 0 (default) means unbounded.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      windowSeconds:
+                        default: 3600
+                        description: WindowSeconds is the sliding-window length in
+                          seconds.
+                        format: int32
+                        minimum: 60
+                        type: integer
+                    type: object
+                  maxSliceAllocations:
+                    default: 0
+                    description: |-
+                      MaxSliceAllocations is the namespace-wide cap on concurrent
+                      NPUSliceAllocation objects. 0 (default) means unbounded.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                type: object
+            required:
+            - enforcement
+            type: object
+          status:
+            description: QuotaStatus carries the observed namespace usage + conditions.
+            properties:
+              conditions:
+                description: Conditions tracks Active / EnforcementOK lifecycle per
+                  ADR-0014 §5.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              lastSyncTime:
+                description: |-
+                  LastSyncTime is the timestamp the controller last refreshed Usage.
+                  The admission webhooks use this to detect stale cache snapshots.
+                format: date-time
+                type: string
+              usage:
+                description: Usage records current namespace consumption against the
+                  spec caps.
+                properties:
+                  currentSliceAllocations:
+                    description: |-
+                      CurrentSliceAllocations is the count of NPUSliceAllocation objects
+                      currently in the namespace.
+                    format: int32
+                    type: integer
+                  scaleEventsInWindow:
+                    description: |-
+                      ScaleEventsInWindow is the count of NPUVerticalScaler scale events
+                      observed across all NPUVerticalScalers in the namespace within the
+                      most recent WindowSeconds.
+                    format: int32
+                    type: integer
+                required:
+                - currentSliceAllocations
+                - scaleEventsInWindow
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

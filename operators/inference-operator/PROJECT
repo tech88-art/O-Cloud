@@ -30,4 +30,19 @@ resources:
   kind: NPUVerticalScaler
   path: github.com/tech88-art/O-Cloud/operators/inference-operator/api/v1alpha1
   version: v1alpha1
+# Phase 9 P9-T-005 (2026-05-21): NPU-aware namespace-scoped resource quota
+# CRD per ADR-0014. Controller body + admission webhooks land at P9-T-006.
+# Group `inference` (becomes `inference.ocloud.edge.example.com/v1alpha1`)
+# per P9-T-002-fix-001 group correction (initial ADR-0014 v1 picked bare
+# `ocloud.edge.example.com` but no existing CRD uses that bare group · fix-001
+# unifies under the inference-operator binary scheme).
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: ocloud.edge.example.com
+  group: inference
+  kind: Quota
+  path: github.com/tech88-art/O-Cloud/operators/inference-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

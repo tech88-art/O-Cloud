@@ -13,7 +13,7 @@ Phase 8 (`phase-8-complete` @ e24f365 + P8-fix-001 CI gate dev HEAD 全绿)合�
 
 `docs/checkpoint-phase8.md` §6 Phase 9 candidate workstream #2 列 "**Multi-tenant fair scaling policy**(读 NPUVerticalScaler.status + 新 Quota CRD):Phase 8 NPUVerticalScaler.status.scaleHistory + status.lastScaleTime 已为 multi-tenant 提供数据 · Phase 9 加 Quota CRD + admission webhook 限定 per-namespace scaling rate / template ref"。`docs/architecture.md` §6.7 Multi-tenancy 与 scope 警告(2026-05-17 评审追加)记录"`NPUSlicePool` 是 `scope: Namespaced`,父池是 `scope: Cluster`,后果:多 namespace 可对同一物理 NPU 定义切片,无 RBAC / Admission 强制隔离"+ "Phase 1-2 by-convention 落 `ocloud-system` ns" + "Phase 3 修复 skeleton landed P3-T-005 CEL ValidatingAdmissionPolicy" + "**Phase 9 完整**:multi-tenancy + Karmada RBAC 联动"。`docs/architecture.md` §6.8 Allocation / Quota 模型占位 — Phase 5 NPUSliceAllocation 已 ship · Quota 占位仍 TODO · 本 ADR 升 status。`docs/architecture.md` §13 review-table Phase 9 行 "安全模型(authn/z + multi-tenancy RBAC + NPUSlicePool admission policy)" 检查动作 "Phase 9 启动前完整安全设计 + Karmada RBAC 联动" — 本 ADR 落 multi-tenancy + NPU-aware Quota admission 那一部分;authn/z full + Karmada RBAC 联动 Phase 10 polish(per ADR-0013 §6 forward note + 本 ADR §7)。
 
-**与 K8s ResourceQuota 关系**:K8s 原生 `core/v1.ResourceQuota` 是 generic resource quota(CPU / memory / pod count / PVC等)· **不**感知 NPU 切片语义(`NPUSliceAllocation` count · `NPUVerticalScaler` scale event rate · `NPUSliceTemplate` ref whitelist)。本 ADR `Quota` CRD 是 **NPU-aware** orthogonal layer — 与 K8s ResourceQuota 并存 · 运维同 namespace 可既设 ResourceQuota(CPU/mem limits)又设 Quota(NPU slice allocation limits)· 两端独立 enforce · 互不替代。**命名空间冲突避免**:本 CRD `apiVersion: ocloud.edge.example.com/v1alpha1, kind: Quota` — 与 K8s `core/v1, kind: ResourceQuota` 完全独立 GVK,无 RBAC 或 selector 重叠。
+**与 K8s ResourceQuota 关系**:K8s 原生 `core/v1.ResourceQuota` 是 generic resource quota(CPU / memory / pod count / PVC等)· **不**感知 NPU 切片语义(`NPUSliceAllocation` count · `NPUVerticalScaler` scale event rate · `NPUSliceTemplate` ref whitelist)。本 ADR `Quota` CRD 是 **NPU-aware** orthogonal layer — 与 K8s ResourceQuota 并存 · 运维同 namespace 可既设 ResourceQuota(CPU/mem limits)又设 Quota(NPU slice allocation limits)· 两端独立 enforce · 互不替代。**命名空间冲突避免**:本 CRD `apiVersion: inference.ocloud.edge.example.com/v1alpha1, kind: Quota` — 与 K8s `core/v1, kind: ResourceQuota` 完全独立 GVK,无 RBAC 或 selector 重叠。
 
 **Phase 8 → Phase 9 boundary 视角**:Phase 8 单租户 busy-idle scaling · Phase 9 多租户 fair scaling — 本 ADR 把"单租户"约束升"namespace-as-tenant"(per ADR-0012 §6 推翻条件 "命名空间作用域 · Phase 9 multi-tenancy 引入 → namespace = tenant boundary 已经满足");scaler.spec 路径不变 · 通过 Quota CRD 加上 admission layer 拦截 over-limit operations。
 
@@ -41,7 +41,7 @@ Phase 8 (`phase-8-complete` @ e24f365 + P8-fix-001 CI gate dev HEAD 全绿)合�
 
 ### 2. Quota CRD shape(Decision B)
 
-**API group**:`ocloud.edge.example.com/v1alpha1`(与 NPUSlicePool / NPUSliceAllocation 同 group · 同 IMS 命名 spirit per ADR-0009 §2 operative 表 row 1 + 7)
+**API group**:`inference.ocloud.edge.example.com/v1alpha1`(与 ModelService + NPUVerticalScaler 同 group · 同 inference-operator binary scheme · per P9-T-005 task entry self-correction — 原 v1 写 `ocloud.edge.example.com/v1alpha1` 错:NPUSlicePool 在 `ims.ocloud.edge.example.com`,NPUSliceAllocation 在 `npu.ocloud.edge.example.com`,**无 CRD** 用 bare `ocloud.edge.example.com` group · P9-T-002-fix-001 自我纠正 2026-05-21)
 
 **Kind**:`Quota`(短 · clear · 不与 K8s `ResourceQuota` 冲突 GVK)
 
@@ -69,7 +69,7 @@ Phase 8 (`phase-8-complete` @ e24f365 + P8-fix-001 CI gate dev HEAD 全绿)合�
 **YAML form sample**(P9-T-005 落地 in `operators/inference-operator/config/samples/`):
 
 ```yaml
-apiVersion: ocloud.edge.example.com/v1alpha1
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
 kind: Quota
 metadata:
   name: ai-edge-demo-quota
@@ -109,7 +109,7 @@ status:
   - 理由 3:Phase 10 polish 若 Quota webhook 维护成本爆炸(实质化 webhook reject 性能瓶颈 / cross-controller race)→ split 到 new binary `operators/quota-controller/` · re-eval at T006 implementation per §6 Open question (a)
   - **alternative considered + rejected**:`operators/quota-controller/` 独立 binary 起手 — 拒因 Phase 9 W1 scope 内 cert-manager 重新 bootstrap 复杂 + leader-elect 多 binary 管理复杂 + 故障域隔离收益 < 部署复杂度成本(Phase 9 demo scale)
 - **Webhook A**:`ValidatingAdmissionWebhook` on `NPUSliceAllocation` create
-  - **Match**:apiGroup `ocloud.edge.example.com`,apiVersion `v1alpha1`,resources `npusliceallocations`,operations `CREATE`(Phase 9 不拦 UPDATE — `NPUSliceAllocation.spec` 不变)
+  - **Match**:apiGroup `npu.ocloud.edge.example.com`(NPUSliceAllocation 实际 group · per `operators/npu-dra-driver/api/v1alpha1/types.go` `+groupName=npu.ocloud.edge.example.com`),apiVersion `v1alpha1`,resources `npusliceallocations`,operations `CREATE`(Phase 9 不拦 UPDATE — `NPUSliceAllocation.spec` 不变)
   - **Decision logic**:
     1. Get Quota in same namespace as incoming NPUSliceAllocation(in-memory cache · 5s TTL · fallback Get)
     2. If Quota not found(无 quota set in namespace)→ admit · fail-open(无限语义)
@@ -271,18 +271,18 @@ const (
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: quota-admission.ocloud.edge.example.com
+  name: quota-admission.inference.ocloud.edge.example.com
   annotations:
     cert-manager.io/inject-ca-from: "{{ .Release.Namespace }}/inference-operator-webhook-cert"
 webhooks:
-- name: npusliceallocation.quota.ocloud.edge.example.com
+- name: npusliceallocation.quota.inference.ocloud.edge.example.com
   clientConfig:
     service:
       name: inference-operator-webhook
       namespace: "{{ .Release.Namespace }}"
-      path: /validate-ocloud-edge-example-com-v1alpha1-npusliceallocation-quota
+      path: /validate-npu-ocloud-edge-example-com-v1alpha1-npusliceallocation-quota
   rules:
-  - apiGroups: ["ocloud.edge.example.com"]
+  - apiGroups: ["npu.ocloud.edge.example.com"]
     apiVersions: ["v1alpha1"]
     resources: ["npusliceallocations"]
     operations: ["CREATE"]
@@ -393,7 +393,7 @@ webhooks:
 
 > 🆕 **Phase 10 polish**:`scaleHistory rolling 10-entry FIFO` 替换为 event-driven counter(K8s Event + counter sum · 不依赖 ADR-0012 NPUVerticalScaler.status.scaleHistory window 限额)· 解决 risk row "scaleHistory sum 与实际 scale event 数偏差" · 配 Open question (d) strict mode 一起。
 
-> 🆕 **Phase 11+ 候选**:Quota CRD 升级 v1beta1 → v1 promotion(per K8s API maturity convention)· `apiVersion: ocloud.edge.example.com/v1` · v1alpha1 backward-compat 保留 N phases。
+> 🆕 **Phase 11+ 候选**:Quota CRD 升级 v1beta1 → v1 promotion(per K8s API maturity convention)· `apiVersion: inference.ocloud.edge.example.com/v1` · v1alpha1 backward-compat 保留 N phases。
 
 > 🆕 **Phase 11+ 候选**:Webhook cert split(per Quota A · Quota B · ADR-0008 PD Router · NPUVerticalScaler future webhook 独立 cert)· 故障域隔离 · cert-manager 多 Certificate 管理 · 当 cert reuse 出 incident 时触发。
 

@@ -1,0 +1,27 @@
+# Sample Quota object per ADR-0014 §2 Decision B + P9-T-005 acceptance.
+#
+# Quota CRD is the NPU-aware namespace-scoped resource quota (orthogonal to
+# upstream `core/v1.ResourceQuota`). This sample caps the demo namespace
+# `ai-edge-demo` at 8 concurrent NPUSliceAllocations + 5 NPUVerticalScaler
+# scale events / hour + whitelists the two qwen-pd templates.
+#
+# Apply: kubectl apply -f config/samples/inference_v1alpha1_quota.yaml
+#
+# Enforcement happens via TWO ValidatingAdmissionWebhooks colocated with
+# the inference-operator binary per ADR-0014 §2 Decision C (P9-T-006 body):
+#   Webhook A on NPUSliceAllocation CREATE  → maxSliceAllocations cap
+#   Webhook B on NPUVerticalScaler UPDATE   → maxScaleEventsPerWindow + whitelist
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: Quota
+metadata:
+  name: ai-edge-demo-quota
+  namespace: ai-edge-demo
+spec:
+  enforcement:
+    maxSliceAllocations: 8
+    maxScaleEventsPerWindow:
+      count: 5
+      windowSeconds: 3600
+    maxNPUSliceTemplateRefs:
+      - qwen-pd-busy
+      - qwen-pd-idle
