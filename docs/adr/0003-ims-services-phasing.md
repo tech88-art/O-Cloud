@@ -87,6 +87,22 @@ v1 曾选 Option C(Phase 1 W4 加占位 UI + Phase 3 真实)。用户复盘"根�
 - **P9-T-IMS-2** software-mgmt(节点级软件 inventory + 升级 workflow,参考 StarlingX)
 - **P9-T-IMS-3** bare-metal-provisioning(基于 Metal3 / Tinkerbell,与 Phase 10 真机对接同期)
 
+**Phase 9 plan 落地状态**(2026-05-21 起草 · `docs/phase9-plan.md` §4 P9-T-105):3 项合并为单任务 P9-T-105 — `operators/node-lifecycle-operator/` + `operators/software-mgmt-operator/` + `operators/bare-metal-provisioning-operator/` **api/v1alpha1 types only scaffold**(per CLAUDE.md §14.2 scaffold pattern)· controller bodies + helm + 真 reconcile loops deferred Phase 10。
+
+### O2 DMS NB 与 IMS Core 关系(2026-05-21 · P9-T-001 ADR-0013 落地后增补)
+
+`docs/adr/0013-o2-dms-adapter.md`(2026-05-21 Phase 9 P9-T-001 落)锁定 **O2 DMS Adapter** 作为对 O-RAN 联盟北向的生产契约 — K8s Profile only · HTTP REST `/o2dms/v1` 7 endpoint · reflect 内部 ocloud 资源(NPUSlicePool / ModelService / NPUVerticalScaler / NPUSliceAllocation)。**O2 DMS Adapter ≠ IMS Core**,二者职责正交:
+
+| 维度 | O2 DMS Adapter (ADR-0013) | IMS Core 服务 (本 ADR Option A · P9-T-105) |
+|---|---|---|
+| **职责** | 对外 NB API server(O-RAN 联盟契约) | Day-0/Day-2 ops 基础设施服务(provisioning / software-mgmt / lifecycle) |
+| **方向** | 北向(NB) — 让外部 O-RAN 集成对接方调用 | 内部 ops — 集群运维自身使用 |
+| **协议** | HTTP REST · O-RAN.WG6.O2IMS-INTERFACE-R003-v04.00 | K8s CRD + Controller(Phase 9 scaffold-only · Phase 10 reconcile body) |
+| **生命周期** | Phase 9 W1 scaffold(P9-T-008)+ W2 body(P9-T-104) | Phase 9 W2 scaffold(P9-T-105 · 3 modules api/v1alpha1 types only)+ Phase 10 reconcile body |
+| **互相关系** | O2 DMS reflect ocloud 资源对外 · 暂不 reflect IMS Core CRDs(Phase 10 polish 评估) | IMS Core 服务被 O2 DMS Phase 10 polish 评估纳入 `infrastructureInventory`(ADR-0013 §6 forward note · `swInventory` Phase 10 候选) |
+
+**Phase 9 boundary**:O2 DMS Adapter 单独 ship full(scaffold + body 都在 Phase 9 内)· IMS 3 项只 scaffold(types only)· 两个 spine 同 Phase 9 但独立任务链,互不阻塞。**Phase 10+ 整合**:IMS Core CRDs(node-lifecycle / software-mgmt / bare-metal-provisioning)的 reconcile body 落 + O2 DMS Phase 10 polish 纳入 `swInventory` resource path 一同评估。
+
 ### Phase 1 不做
 
 - **撤回 v1 的 P1-T-308 占位 UI** — 演示无 IMS-7 入口标签

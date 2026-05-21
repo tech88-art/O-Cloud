@@ -402,6 +402,29 @@ operators/pool-operator/
 - 显存带宽利用率
 - MindIE 业务指标桥接（TTFT / ITL / Throughput）
 
+### 5.8 O2 DMS Adapter `o2-dms-adapter`（Phase 9 · M4 工程化对外 spine）
+
+```
+operators/o2-dms-adapter/
+├── cmd/main.go                       # HTTP server entry · binds 0.0.0.0:8088
+├── internal/
+│   ├── api/
+│   │   ├── handlers.go               # 7 NB endpoint handlers (per ADR-0013 §4)
+│   │   ├── routes.go                 # chi router · prefix /o2dms/v1
+│   │   └── handlers_test.go
+│   ├── inventory/
+│   │   └── client.go                 # informer/lister wrappers for ocloud CRDs
+│   └── types/
+│       └── o2.go                     # O2 IMS R1 v04.00 NB types + mapping table
+├── api/openapi.yaml                  # NB OpenAPI 3.0 doc (P9-T-104 ship)
+├── DESIGN.md                         # per CLAUDE.md §14.2 module DESIGN.md convention
+├── Dockerfile
+├── go.mod
+└── Makefile
+```
+
+K8s Profile only (per ADR-0013 §2 Decision A) · HTTP REST per O-RAN ALLIANCE WG6 O2 IMS Interface Specification R003-v04.00 (per ADR-0013 §2 Decision B) · reflects NPUSlicePool / NPUSliceAllocation / ModelService / NPUVerticalScaler 内部资源到 O-RAN 北向 (per ADR-0013 §2 Decision C 6-row mapping table) · 独立 binary · informer-based read 路径 + client.Create/Delete 写路径 (ADR-0013 §2 Decision D) · 详细设计 + NB endpoint catalog + 推翻条件见 **ADR-0013** (`docs/adr/0013-o2-dms-adapter.md`)。
+
 ---
 
 ## 6. CRD Schema 设计（草案）
@@ -792,7 +815,7 @@ ocloud-edge-platform/
 | Phase 6 (HCCS 调度) | HCCS 拓扑获取接口可能要走 Huawei SDK | 调研 npu-smi / DCMI 接口 |
 | Phase 7 (动态切分) | 突破硬模板需要驱动层能力 | 与昇腾团队交互；准备 fallback：多模板组合（**Phase 7 P7-T-001 落 ADR-0011 提交 fallback 作为 deliverable + Source 接口抽象 + lab gating 政策**） |
 | Phase 8 (垂直伸缩) | NPU 在线缩容是否支持 | **landed phase-8-complete (2026-05-21)** — P8-T-001 → ADR-0012 + 13 task chain(9b89ff9..T107)· "重启切片" pattern 为 Phase 8 deliverable · NPUVerticalScaler CRD(inference.ocloud.edge.example.com/v1alpha1)+ 8-step Reconcile + PrometheusIngestor + AllocateBundle 控制器 wiring(T008 = T105-v2 · Phase 7 deferred body)。**Mutation model adaptation**(annotation vs spec.template.sliceTemplate):NPUVerticalScaler patches `ModelService.metadata.annotations[npu.huawei.com/slice-template]` + AnnotationManagedBy hint(ADR-0012 §5)· claim_controller bundle path dispatches via same annotation。**User stay K8s 1.32 决策**(chat 2026-05-21)blocks T003(NumaAffinity wrap upgrade)/ T101+T102(Partitionable Devices Beta)/ T004(ProxyImage chart flip)— 3 items 顺延 Phase 9-10 per plan §6 fallback + upstream sched-plugins v0.35+/v0.36+ 未发布 + kindest/node v1.36 不存在双重 lag。Lab-gating outcome:T105 deferred Phase 10 per ADR-0011 §3 default(no lab signal)· T104-v2 hard-fail upgrade via synthetic ring fixture + claim_controller stamped `preferred-hccs-ring` annotation。Phase 9 候选workstreams详 `docs/checkpoint-phase8.md` §6 + Volcano spike(P8-T-106 · `docs/research/volcano-gang-scheduling-spike.md` · 推荐 Phase 9 W1 entry 路径 A)|
-| Phase 9 (O2 DMS) | O-RAN O2 规范持续演进 | 锁定一个版本（如 O2 IMS R1） · **训练大批量 job 场景** Phase 8 P8-T-106 spike landed(`docs/research/volcano-gang-scheduling-spike.md`):推荐 Phase 9 W1 entry 引入 Volcano binary(独立 helm · 1-2d 工作量)· 训练 Pod opt-in via `schedulerName=volcano` + PodGroup atomicity · npu-scheduler 继续 own NPU device 级 Filter+Score · 解耦清晰 |
+| Phase 9 (O2 DMS) | O-RAN O2 规范持续演进 | **in flight via ADR-0013 (2026-05-21 · P9-T-001)** — 锁定 **O-RAN.WG6.O2IMS-INTERFACE-R003-v04.00**(per ADR-0013 §1 Context · [B · 二手源 ATIS MVP Feb 2025 cross-ref] · R004-v07.00.00 在 §6 forward note 留 Phase 10 polish re-eval)· **K8s Profile only**(ADR-0013 §2 Decision A · 不 emit OpenStack/Helm Profile)· HTTP REST `/o2dms/v1` 7 endpoint(ADR-0013 §4 catalog · scaffold P9-T-008 / body P9-T-104)· 独立 binary `operators/o2-dms-adapter/`(arch §5.8 · ADR-0013 §2 Decision D)· **训练大批量 job 场景** Phase 8 P8-T-106 spike landed(`docs/research/volcano-gang-scheduling-spike.md`)推荐 Phase 9 W1 entry 引入 Volcano binary(独立 helm · 1-2d 工作量 · decision-gated P9-T-101)· 训练 Pod opt-in via `schedulerName=volcano` + PodGroup atomicity · npu-scheduler 继续 own NPU device 级 Filter+Score · 解耦清晰 |
 
 **2026-05-17 评审追加(flag-to-phase, baseline 不修, 各 Phase 入口检查)**:
 
