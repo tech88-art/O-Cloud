@@ -210,6 +210,36 @@ func buildDeployment(ms *inferencev1alpha1.ModelService, side PDSide) *appsv1.De
 func ptrInt32(v int32) *int32   { return &v }
 func ptrString(v string) *string { return &v }
 
+// DefaultProxyImage is overridden at startup from the chart-injected
+// env var `DEFAULT_PROXY_IMAGE` (per Phase 10 P10-T-106 ProxyImage chart
+// default flip · closes known-issues #13)。Empty preserves Phase 7-8
+// behavior (operator must specify ms.Spec.PDPair.ProxyImage per-CR).
+//
+// Read at cmd/main.go startup:
+//
+//	if v := os.Getenv("DEFAULT_PROXY_IMAGE"); v != "" {
+//	    deployment_builder.DefaultProxyImage = v
+//	}
+//
+// Phase 10 W2 wires this from chart values.proxyImage. Phase 11+ may
+// add hot-reload via ConfigMap watch if image rotation cadence demands.
+var DefaultProxyImage string
+
+// EffectiveProxyImage returns the operative proxy image for a given
+// ModelService · `ms.Spec.PDPair.ProxyImage` wins · `DefaultProxyImage`
+// fallback when per-CR field is empty · "" preserves Phase 7-8 no-proxy-
+// sidecar behavior (buildPDPairContainers omits sidecar when "").
+//
+// Per ADR-0010 §1 Phase 10 P10-T-106 + known-issues #13 closer:
+// chart `defaults.proxyImage` is the operator-side global default · per-CR
+// override is operator-side authoritative when set.
+func EffectiveProxyImage(ms *inferencev1alpha1.ModelService) string {
+	if ms != nil && ms.Spec.PDPair.ProxyImage != "" {
+		return ms.Spec.PDPair.ProxyImage
+	}
+	return DefaultProxyImage
+}
+
 // buildPDPairContainers materialises the PD-pair Pod container list per
 // P6-T-105:
 //
@@ -248,18 +278,21 @@ func buildPDPairContainers(ms *inferencev1alpha1.ModelService, side PDSide, role
 		},
 	}}
 
-	if ms.Spec.PDPair.ProxyImage != "" {
+	proxyImage := EffectiveProxyImage(ms)
+	if proxyImage != "" {
 		// Per-side sibling Service name convention: <ms.Name>-<other-side>.
 		// Phase 5 deployment_builder doesn't yet create per-side Services;
 		// Phase 7+ work will. T105 ships the env-var pattern so a future
-		// Service-creation task wires through.
+		// Service-creation task wires through. P10-T-106 adds chart-level
+		// default (via DefaultProxyImage package var) so operators can flip
+		// proxy-sidecar default on without editing every ModelService CR.
 		other := "decode"
 		if string(side) == "decode" {
 			other = "prefill"
 		}
 		containers = append(containers, corev1.Container{
 			Name:  "pd-proxy",
-			Image: ms.Spec.PDPair.ProxyImage,
+			Image: proxyImage,
 			Env: []corev1.EnvVar{
 				{Name: "VLLM_PD_ROLE", Value: roleVal},
 				{Name: "VLLM_PD_PREFILL_HOST", Value: ms.Name + "-prefill"},

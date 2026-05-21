@@ -436,7 +436,12 @@ ADR-0010 §1 §3 T006 + P7-T-002 attempt notes + phase7-plan.md §3 T002
 
 ---
 
-### #13 — vllm-ascend ProxyImage chart default re-deferred Phase 7 → Phase 8 → Phase 10
+### #13 — vllm-ascend ProxyImage chart default re-deferred Phase 7 → Phase 8 → Phase 10 → RESOLVED at P10-T-106
+
+Severity: low · Status: **RESOLVED**(2026-05-21 · P10-T-106 chart `defaults.proxyImage` value field + `internal/controller.DefaultProxyImage` package var + `EffectiveProxyImage(ms)` helper + 4 unit tests · per-CR `ms.Spec.PDPair.ProxyImage` overrides global default · empty preserves Phase 7-8 no-sidecar behavior · 详 `docs/devlog/phase-10-t106.md`)。
+
+**5-phase carry tally closer**:Phase 7 P7-T-102 doc-only fallback → Phase 8 P8-T-004 conservative posture → Phase 9 carry → Phase 10 P10-T-106 RESOLVED。
+
 
 Severity: low · Status: **OPEN** (2026-05-21 update · P9-T-003 re-eval inherited Phase 8 P8-T-004 stance · still OPEN · Phase 10 carry).
 
