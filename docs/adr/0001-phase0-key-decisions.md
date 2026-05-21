@@ -165,6 +165,8 @@ v3 与 v2 区别:v2 把 "Phase 4 主路径"与"Phase 4 後段"混在一段散文
 
 **实现**：见 `backend/CLAUDE.md §4.1`。
 
+**Phase 10 起 cache 层增强**(2026-05-21 · P10-T-001 ADR-0015 Accepted)：DataSource 接口本身不变 · 但 `backend/pkg/cache/` 进程内 LRU 在 Phase 10 加 K8s Lease 选主 single-active failover · `replicaCount` 默认升 2 · degraded read-only mode 在 Lease 错误时 graceful 返 stale 数据 · 详 ADR-0015 §2 Decision A-D · 实现落 P10-T-006。Cache 是 DataSource 实现的 transparent decorator layer · 接口表面零感知 · Phase 11+ Redis-backed additive rewrite 路径保留。
+
 ---
 
 ### 11. 工程协作：AI Agent 并行模式
