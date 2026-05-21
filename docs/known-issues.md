@@ -339,7 +339,7 @@ known-issues #11 will flip RESOLVED at that commit.
 
 ### #12 — NumaAffinity plugin wrap re-deferred from Phase 7 → Phase 8 → Phase 9 (K8s baseline bump prerequisite)
 
-Severity: low · Status: **OPEN** (2026-05-21 update · P8-T-002 user decision: stay K8s 1.32 baseline · re-evaluated Phase 9 W1 entry).
+Severity: low · Status: **OPEN** (2026-05-21 update · P9-T-003 doc-only refresh outcome · bump 1.34 attempted but framework API drift exceeded T003 scope · prerequisite expanded · Phase 10 carry).
 
 > 🆕 **2026-05-21 update (P8-T-002 · K8s baseline stay decision)**:Phase 8 W1 entry P8-T-002 re-WebFetch findings(upstream snapshot 2026-05-21):
 > - sched-plugins latest = **v0.34.7**(2026-04-20)· v0.35.x / v0.36.x **未发布**
@@ -351,6 +351,22 @@ Severity: low · Status: **OPEN** (2026-05-21 update · P8-T-002 user decision: 
 > 影响:NumaAffinity wrap upgrade **deferred from Phase 8 → Phase 9**(known-issues #12 maintains OPEN · severity low)。下次评估在 **Phase 9 W1 entry**(届时 sched-plugins v0.35+ / kindest/node v1.36+ 若 GA · 重新评估)。
 >
 > 用户可在 Phase 8 内任意 chat 启动 mid-phase bump 决策(本 known-issues 政策 default = defer)。
+
+> 🆕 **2026-05-21 update (P9-T-003 · Bump 1.34 attempted · framework API drift · revert · doc-only refresh outcome)**:Phase 9 W1 entry P9-T-003 re-WebFetch findings + 执行复盘:
+> - sched-plugins **v0.34.7** GA available(同 Phase 8 W1 finding · 2026-04-20 release)
+> - kind **v0.31.0** ships kindest/node:**v1.35.0** · kind **v0.30.0** ships kindest/node:**v1.34.0** · v1.36 镜像仍不存在
+> - Phase 9 plan §3 default-policy 触发:both conditions met → bump 1.34 plan-default 路径 activated
+> - 用户决策(2026-05-21 chat):**A · Bump 1.34**(plan-recommended)
+> - **执行结果**:`go mod tidy` clean → `go build ./...` **FAIL** · K8s 1.34 scheduler framework restructured:`Status` / `NewStatus` / `Error` / `StateKey` / `StateData` / `NodeInfo` 从 `k8s.io/kubernetes/pkg/scheduler/framework` 迁移到 `k8s.io/kube-scheduler/framework` · `NodeInfo` + `CycleState` struct→interface · 9 个文件需 migration
+> - **P9-T-003 Forbidden Paths**:`Source code outside go.mod / go.sum` · framework migration **out of T003 scope** · framework migration ≠ T102 NumaAffinity wrap scope(T102 仅 `noderesourcetopology.New(ctx, args, h)` wrap + 3 sanity tests)· 超出 T102 W2 plan boundary 亦
+> - **路径决策**:revert + 应用 doc-only refresh 路径(plan §3 default fallback per P3 conservative)
+> - **revert outcome**:`git checkout origin/dev -- operators/scheduler-plugin/go.mod operators/scheduler-plugin/go.sum` + 其他 Allowed Paths 文件 revert · `go build ./...` clean exit 0 · CI no-op
+>
+> **影响 known-issues #12**:
+> - prerequisite 从"baseline bump"扩展为"**baseline bump + scheduler framework API migration**"(K8s 1.34 框架 NodeInfo/CycleState interface 化是新 prerequisite layer)
+> - Phase 10 carry 路径不变 · 但 Phase 10 W1 起手任务从 simple NumaAffinity wrap 升级为 "coordinated K8s 1.34/1.35 baseline bump + framework migration + NumaAffinity wrap" 三件套
+> - Phase 10 estimate budget:2-3d(原 phase8/9 plan 估计 1-2d 仅含 baseline bump + wrap · 新增 framework migration ~1d for 9 files)
+> - 详 `docs/devlog/phase-9-t003.md` framework migration matrix + ADR-0010 §1 2026-05-21 update segment
 
 ---
 
@@ -410,7 +426,9 @@ ADR-0010 §1 §3 T006 + P7-T-002 attempt notes + phase7-plan.md §3 T002
 
 ### #13 — vllm-ascend ProxyImage chart default re-deferred Phase 7 → Phase 8 → Phase 10
 
-Severity: low · Status: **OPEN** (2026-05-21 update · P8-T-004 doc-only fallback per phase8-plan §3 T004 fallback Acceptance).
+Severity: low · Status: **OPEN** (2026-05-21 update · P9-T-003 re-eval inherited Phase 8 P8-T-004 stance · still OPEN · Phase 10 carry).
+
+> 🆕 **2026-05-21 update (P9-T-003 inherited re-eval)**:Phase 9 W1 entry P9-T-003 doc-only refresh outcome inherits Phase 8 P8-T-004 stance — ProxyImage chart default flip 仍 OPEN · Phase 10 carry。**Re-eval 触发器** 不变:upstream vllm-ascend stable line 重新活跃 + lab access available + GHA runner image-pull verify · 任一发生即 mid-phase 评估。 Phase 10 demo polish window 默认承接(per Proposed resolution §1-§3 below)。
 
 `deploy/helm-charts/inference-operator/values.yaml` ships `defaults.proxyImage`
 **empty**(自 Phase 5 起 · 维持 Phase 7 P7-T-102 状态 · 现 Phase 8 P8-T-004 doc-only

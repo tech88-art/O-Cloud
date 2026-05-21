@@ -58,6 +58,28 @@ P5-T-114 落地;具体 patch 版本在 P6-T-002 task entry 按当时 latest rele
 >
 > **下一次 baseline bump 评估时机**:Phase 9 W1 entry re-WebFetch — 届时若 sched-plugins v0.35.x+ GA + kindest/node v1.36+ 在 kind release · 重新评估升级路径。known-issues #12(NumaAffinity)继续 OPEN 跟踪。
 
+> 🆕 **2026-05-21 update (P9-T-003 · Bump 1.34 attempted · framework API drift surfaced · revert to v0.32.0)**:Phase 9 W1 entry re-WebFetch findings:
+> - upstream sched-plugins **v0.34.7** GA(同 Phase 8 W1 latest 2026-04-20)— v0.35.x / v0.36.x 仍未发布
+> - kind **v0.31.0** (2025-12-18) ships kindest/node:**v1.35.0** · kind **v0.30.0** (2025-08-27) ships kindest/node:**v1.34.0** · v1.36 镜像仍不存在 (与 Phase 8 W1 同)
+> - Phase 9 plan §3 T003 default-policy 触发条件:`Doc-only refresh unless re-WebFetch shows BOTH (kindest/node ≥1.34 released stable AND sched-plugins ≥v0.34.x GA released)` — BOTH 条件 met → bump 1.34 plan-default 路径 activated
+>
+> **用户决策**(2026-05-21 chat · Phase 9 W1 entry T003 path choice):**A · Bump 1.34**(plan-recommended · 1-2d 跨模块 · CI may surface dep API drift)
+>
+> **执行过程 + 复盘**(2026-05-21 main agent 主动汇报):
+> 1. 编辑 `kind-config.yaml` kindest/node:v1.32.0 → v1.34.0 · `scheduler-plugin/go.mod` v0.32.0 → v0.34.7 (require + replace block + indirect block 全部) · `e2e-kind.yml` kind version v0.25.0 → v0.30.0 + comment refresh
+> 2. `go mod tidy` clean (exit 0 · 下载 K8s v0.34.7 cohort + transitive deps · 没有 conflict)
+> 3. **`go build ./...` FAIL**:K8s 1.34 scheduler framework restructured · `framework.Status` / `NewStatus` / `Error` / `StateKey` / `StateData` / `NodeInfo` 从 `k8s.io/kubernetes/pkg/scheduler/framework` 迁移到 `k8s.io/kube-scheduler/framework` · 且 `NodeInfo` 从 struct-pointer (`*NodeInfo`) 改为 interface (`NodeInfo`) · `CycleState` 同样改为 interface · 影响 9 个文件 (`hccs/{filter.go,score.go,plugin.go,filter_test.go,score_test.go}` + `binpack/{binpack.go,binpack_test.go}` + `numa/plugin.go` + `internal/integration/integration_test.go`)
+> 4. **Plan §3 T003 Forbidden Paths**: "Source code outside `go.mod` / `go.sum` (any source change must be SEPARATE post-bump task — T102 NumaAffinity wrap is the explicit post-bump task in W2)"
+> 5. **路径决策**:framework restructuring fixes 不属于 T102 NumaAffinity wrap scope (T102 仅 wrap upstream `noderesourcetopology.New(ctx, args, h)` + 3 sanity tests · 不含 framework type signature migration) · 是更广的 K8s 1.34 scheduler framework migration · 超出 T003 Forbidden Paths boundary · per P3 conservative + plan §3 default fallback → revert + 应用 doc-only refresh 路径
+> 6. `git checkout origin/dev -- operators/scheduler-plugin/go.mod operators/scheduler-plugin/go.sum` + revert `kind-config.yaml` + revert `e2e-kind.yml` + restore `hccs/filter.go` import · `go build ./...` clean exit 0 · `go vet ./...` clean exit 0(scheduler-plugin v0.32.0 baseline 恢复)
+>
+> **Phase 9 影响**:
+> - **T003 实际 outcome** = **doc-only refresh**(本 update segment + known-issues #12+#13 refresh + `docs/devlog/phase-9-t003.md`)· K8s baseline 维持 1.32 · scheduler-plugin go.mod 维持 v0.32.0 · 主模块(npu-dra-driver / inference-operator / pool-operator)go.mod 维持 v0.35.0(Phase 7 期间 drift · 不主动 downgrade)· backend go.mod 维持 v0.31.4(KubeEdge compat lock per ADR-0001 v3 §5)
+> - **T102**(NumaAffinity wrap upgrade)→ auto-deferred Phase 10 · known-issues #12 maintained OPEN with framework restructuring note · prerequisite expanded from "baseline bump" → "baseline bump + framework migration"
+> - **Phase 10 carry**:full K8s 1.34/1.35 baseline bump + framework API migration(NodeInfo/CycleState interface conversion across 9 files)+ NumaAffinity wrap upgrade · coordinated task chain · 需独立 2-3d scope outside Phase 9 W1 boundary · 详 `docs/devlog/phase-9-t003.md` migration matrix
+>
+> **下一次 baseline bump 评估时机**:Phase 10 W1 entry · 或 sched-plugins v0.35+/v0.36+ 发布时(re-eval whether v0.35+ relaxes framework restructuring · 现 v0.34.x 是 K8s 1.34 framework GA baseline · v0.35+ 可能进一步演进)。
+
 **部署形态**:**独立 kube-scheduler 二进制**(`bin/kube-scheduler` from
 `operators/scheduler-plugin/cmd/main.go`),作为**第二 scheduler** 运行,通过
 KubeSchedulerConfiguration 注册 profile `npu-scheduler`。**不修改 default-scheduler。**
