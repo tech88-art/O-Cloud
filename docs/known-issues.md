@@ -530,3 +530,34 @@ Severity: low · Status: **OPEN** (2026-05-21 update · P9-T-101 deferred per de
 Cross-references: `docs/adr/0010-scheduler-plugin.md` §7 Volcano forward
 note · `docs/research/volcano-gang-scheduling-spike.md` §4 cost matrix +
 P9-T-101 outcome row · `docs/phase9-plan.md` §4 P9-T-101 · `docs/devlog/phase-9-t101.md`.
+
+---
+
+### #15 — Source.RealAscend body 3rd defer to Phase 10 (P9-T-106 LAB-CONDITIONAL · no lab signal)
+
+Severity: low · Status: **OPEN** (2026-05-21 update · P9-T-106 deferred per ADR-0011 §3 default policy).
+
+> 🆕 **2026-05-21 update (P9-T-106 · 3rd carry per default policy)**:
+> Phase 9 W2 entry user "继续" 未明示 lab access available · per
+> ADR-0011 §3 "无明确信号(default)→ defer Phase 10" 命中 · T106 走
+> deferred 路径 · 0 代码 · CI no-op。
+>
+> **Lab gating carry tally**:
+> - Phase 7 P7-T-101 (2026-05-20): 1st carry → Phase 8
+> - Phase 8 P8-T-105 (2026-05-21): 2nd carry → Phase 9
+> - Phase 9 P9-T-106 (2026-05-21): **3rd carry → Phase 10**
+>
+> **synthetic ring fixture path** (P7-T-104-v2 hard-fail upgrade ·
+> P8-T-104 reseed) 仍 cover CI 路径 · lab smoke 不阻塞主干交付。
+> Source 接口 (Phase 7 T004 · `operators/npu-dra-driver/internal/source/`
+> 接口 + mockjson impl + factory) 已就绪 · RealAscend impl 待 Phase 10
+> lab access signal 时 light up。
+>
+> **Phase 10 W1 entry re-eval** · if lab access mid-Phase 10 signaled ·
+> light up Source.RealAscend body per ADR-0011 §3 full lab body Allowed
+> Paths(npu-smi parser + ResourceSlice attribute populate +
+> tests/e2e/lab/phase10/ smoke 脚本 + cann-driver-matrix verified row)。
+
+Cross-references: `docs/adr/0011-npu-dynamic-slicing-and-source-interface.md`
+§3 Lab gating 政策 carry tally table · `docs/phase9-plan.md` §4 P9-T-106 ·
+`docs/devlog/phase-9-t106.md`.

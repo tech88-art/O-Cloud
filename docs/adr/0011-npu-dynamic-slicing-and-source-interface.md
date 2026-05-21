@@ -134,6 +134,16 @@ func NewSource(sourceType string, cfg Config) (Source, error) {
 - e2e-kind workflow(T103+T104)不依赖 lab,跑 synthetic ring fixture(set-b-multi-ring),hard-assert 兼容 lab 缺席。
 - `tests/lab/phase7/` 目录仅在 T101 actually landed 时存在;deferral 路径不落该目录。
 
+**Lab gating carry tally**(累计推迟次数):
+
+| Phase / Task | 用户 signal at entry | Outcome | Carry # |
+|---|---|---|---|
+| Phase 7 P7-T-101 (2026-05-20) | no signal | deferred Phase 8 | 1st carry |
+| Phase 8 P8-T-105 (2026-05-21) | no signal | deferred Phase 9 | 2nd carry |
+| Phase 9 P9-T-106 (2026-05-21) | no signal | **deferred Phase 10** | **3rd carry** |
+
+> 🆕 **2026-05-21 update (P9-T-106 · 3rd carry · default policy)**:Phase 9 W2 entry chat 用户 "继续" 未明示 lab access available · per default policy "无明确信号 → defer Phase 10" 命中 · T106 走 deferred 路径 · 3-line devlog + 本 §3 carry tally 表更新 + known-issues entry。Phase 10 W1 entry 再评估 if lab access signal materialises mid-Phase 10。**累计 3 次推迟** · synthetic ring fixture(set-b-multi-ring · P7-T-104-v2 hard-fail upgrade · P8-T-104 reseed)仍 cover CI 路径,lab smoke 不阻塞主干交付。
+
 ---
 
 ## NPUSliceTemplate CRD schema(P7-T-006 落地)
