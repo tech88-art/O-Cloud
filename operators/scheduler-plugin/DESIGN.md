@@ -225,35 +225,59 @@ Score hot-path O(devices_on_node × |ringsOccupied|).
 
 ### 5.2 T006 NumaAffinity (placeholder; upstream wrap deferred)
 
-Status: **T006 placeholder landed**; upstream wrap deferred.
+Status: **T006 placeholder landed Phase 6**; upstream wrap **attempted
+Phase 7 T002 · re-deferred to Phase 8 baseline bump**.
 
 Per ADR-0010 §3 this plugin should wrap upstream
 `sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology` without
-modification. At T006 entry the direct `nrt.New(...)` delegation FAILED
-to build because upstream v0.31.8 references `framework.GVK` — a symbol
-that exists in K8s 1.31's `pkg/scheduler/framework` but was removed in
-K8s 1.32 (our pinned baseline per `go.mod` replace block / ADR-0010 §1).
+modification. At T006 entry (Phase 6) the direct `nrt.New(...)` delegation
+FAILED to build because upstream v0.31.8 references `framework.GVK` —
+a symbol that exists in K8s 1.31's `pkg/scheduler/framework` but was
+removed in K8s 1.32 (our pinned baseline per `go.mod` replace block /
+ADR-0010 §1).
 
-API drift table (observed 2026-05-20):
+API drift table (refreshed 2026-05-20 P7-T-002):
 
-| sched-plugins | K8s target | framework.GVK | vs our K8s 1.32 baseline   |
-|---------------|-----------|---------------|------------------------------|
-| v0.30.x       | 1.30      | present       | INCOMPATIBLE                 |
-| v0.31.x       | 1.31      | present       | INCOMPATIBLE — observed fail |
-| v0.32.x       | 1.32      | removed       | COMPATIBLE — not yet released |
+| sched-plugins | K8s target | GA status (2026-05-20)    | vs our K8s 1.32 baseline pin                                                                                                                   |
+|---------------|-----------|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| v0.30.x       | 1.30      | GA                        | INCOMPATIBLE (framework.GVK present, removed in 1.32)                                                                                           |
+| v0.31.x       | 1.31      | GA                        | INCOMPATIBLE — observed fail at T006 entry                                                                                                       |
+| **v0.32.7**   | **1.32**  | **GA (2024-08-06)**       | **module resolves cleanly · BUT transitive deps require apimachinery v0.32.7+ packages (`pkg/api/safe` / `pkg/api/operation` / `pkg/api/validate`) missing under our replace-block pin → blocks landing without bumping replace block to v0.32.7 (uniform) AND audit downstream transitive expectations** |
+| v0.33.5       | 1.33      | GA (2024-10-27)           | Untested — would force K8s baseline bump (deferred Phase 8+ scope)                                                                              |
+| v0.34.7       | 1.34      | GA (2025-04-20 · latest)  | Untested — would force K8s baseline bump                                                                                                       |
 
-**Operative**: T006 ships a Name()-only placeholder; kube-scheduler
-registers the plugin under `NumaAffinity` but invokes no Filter/Score
-because we don't implement the extension-point interfaces. T101 chart
-will OMIT NumaAffinity from its KubeSchedulerConfiguration default
-until the wrap lands.
+**P7-T-002 attempted upgrade outcome (2026-05-20)**:
+- `go get sigs.k8s.io/scheduler-plugins@v0.32.7` succeeded · all
+  `k8s.io/*` indirect deps bumped to v0.32.7
+- Bumping replace block from `v0.32.0` → `v0.32.7` to match aligned
+- `go mod tidy` then surfaces `k8s.io/apimachinery@v0.32.7` missing
+  `pkg/api/{safe,operation,validate}` packages along the import chain
+  `cmd/main.go → kube-scheduler/app → pkg/scheduler → pkg/apis/core/{validation,v1}`
+- These apimachinery packages are post-v0.32 additions (likely v1.33+);
+  our K8s 1.32 baseline (per ADR-0010 §1) cannot absorb the transitive
+  expectation without a broader baseline bump
+- Revert clean (single `git checkout go.mod go.sum`) — no commit took
+  the upgrade path
 
-**Forward path**: once sched-plugins v0.32.x ships (or a downstream
-v0.31.y backport with K8s 1.32 compatibility), revisit by:
-1. Bumping the dep in `go.mod`
-2. Replacing `plugin.go` placeholder body with `return nrt.New(...)`
-3. Updating T101 chart's KubeSchedulerConfiguration to enable
-   NumaAffinity in profile
+**Operative**: T006 placeholder unchanged — kube-scheduler registers the
+plugin under `NumaAffinity` but invokes no Filter/Score because we don't
+implement the extension-point interfaces. T101 chart continues to OMIT
+NumaAffinity from its KubeSchedulerConfiguration default; numaAffinity.enabled
+chart toggle remains `false` default.
+
+**Forward path** (Phase 8 candidate):
+1. Bump K8s baseline from 1.32 → 1.33 (or 1.34) — coordinate with kind
+   smoke baseline (currently `kindest/node:v1.32.x` per P5-T-114)
+2. Bump sched-plugins to matching minor (v0.33.x or v0.34.x)
+3. Replace `plugin.go` placeholder body with `return nrt.New(ctx, args, h)`
+   wrap pattern (mirror hccs/args.go parseArgs structure for our
+   NumaAffinityArgs · pre-construct upstream `NodeResourceTopologyMatchArgs`
+   with `LeastAllocated` scoring strategy + cpu/memory weight=1)
+4. Add 3 sanity tests per phase7-plan §3 T002 acceptance (TestNameConstants
+   already exists · TestDefaultArgsWeight · TestParseArgsAcceptsTypedAndUnknown)
+5. Updating T101 chart's KubeSchedulerConfiguration to enable
+   NumaAffinity in profile + `numaAffinity.enabled=true` chart default
+6. Close known-issues #12 (this entry) when wrap lands
 
 Until then, operators wanting NUMA-aware scheduling can run upstream
 sched-plugins binary as a second scheduler alongside our HCCSTopology+

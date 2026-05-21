@@ -331,9 +331,65 @@ operator polish may stamp this automatically; gated on T105 decision).
 
 **Proposed resolution**: P6-T-105 evaluates whether inference-operator
 deployment_builder should default `spec.schedulerName=npu-scheduler`
-when the chart is enabled. Phase 7+ may add a MutatingWebhook to
-flip the field for Pods carrying the
-`inference.ocloud.edge.example.com/model-service` label.
+when the chart is enabled. **P7-T-003** lands the
+inference-operator deployment_builder auto-stamp (entry pending);
+known-issues #11 will flip RESOLVED at that commit.
+
+---
+
+### #12 — NumaAffinity plugin wrap re-deferred from Phase 7 to Phase 8 (K8s baseline bump prerequisite)
+
+Severity: low · Status: **OPEN** (2026-05-20, P7-T-002 doc-only fallback).
+
+The NumaAffinity scheduler plugin (`operators/scheduler-plugin/internal/plugins/numa/`)
+ships a Name()-only placeholder since Phase 6 T006 because at Phase 6
+entry the upstream `sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology`
+release line referenced `framework.GVK` — a symbol K8s 1.32 removed
+(per ADR-0010 §3 T006 落地状态 note).
+
+**Phase 7 P7-T-002 re-attempt outcome (2026-05-20)**: doc-only
+fallback. v0.32.7 (2024-08-06) is GA along with v0.33.5 / v0.34.7;
+upstream's `framework.GVK` reference IS removed in v0.32+. However,
+attempting `go get sigs.k8s.io/scheduler-plugins@v0.32.7` + bumping
+the replace block uniformly to v0.32.7 then `go mod tidy` surfaces
+`k8s.io/apimachinery v0.32.7` missing newer `pkg/api/{safe,operation,validate}`
+packages along the import chain
+`cmd/main.go → kube-scheduler/app → pkg/scheduler → pkg/apis/core/{validation,v1}`.
+These apimachinery packages are post-v0.32 additions (likely v1.33+);
+our K8s 1.32 baseline pin (ADR-0010 §1) cannot absorb the transitive
+expectation without a broader baseline bump.
+
+Revert is clean (single `git checkout go.mod go.sum` discards the
+attempted upgrade with no commit on the upgrade path).
+
+**Observable symptom** when forgotten: `kube-scheduler --help`
+lists `NumaAffinity` factory but the chart's KubeSchedulerConfiguration
+intentionally OMITS it from filter/score enabled lists —
+no NUMA-aware scoring occurs for `npu-scheduler` profile Pods.
+
+**Workaround** for operators wanting NUMA-aware scheduling today:
+run upstream sched-plugins binary as a SECOND second-scheduler alongside
+our HCCSTopology+Binpack binary (functional today, more operational
+overhead — two extra schedulers running side-by-side).
+
+**Proposed resolution** (Phase 8 candidate):
+1. Bump K8s baseline from 1.32 → 1.33 (or 1.34) — coordinate with
+   kind smoke `kindest/node` baseline (currently `v1.32.x` per
+   P5-T-114)
+2. Bump sched-plugins to matching minor (v0.33.x or v0.34.x — pick
+   based on Phase 8 K8s minor decision)
+3. Replace `plugin.go` placeholder body with `return nrt.New(ctx,
+   args, h)` wrap pattern (mirror hccs/args.go parseArgs structure
+   for NumaAffinityArgs · pre-construct upstream
+   `NodeResourceTopologyMatchArgs` with `LeastAllocated` strategy +
+   cpu/memory weight=1 defaults)
+4. Add 3 sanity tests per phase7-plan §3 T002 acceptance pattern
+5. Update T101 chart KubeSchedulerConfiguration to enable
+   NumaAffinity in profile + `numaAffinity.enabled=true` chart default
+
+Cross-references: `operators/scheduler-plugin/DESIGN.md` §5.2 +
+ADR-0010 §3 T006 + P7-T-002 attempt notes + phase7-plan.md §3 T002
++ `docs/devlog/phase-7-t002.md`.
 
 ---
 

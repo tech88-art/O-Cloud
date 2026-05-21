@@ -109,13 +109,28 @@ scheduler-plugins 框架启动时注册。
 **默认 Weight**:2(per arch §5.6 + cni-hccl-research §4 间接 — NUMA 在 vllm-ascend
 PD 场景下次于 HCCS,因 HCCL 通信带宽是主要瓶颈;NUMA cache locality 次之)。
 
-**T006 落地状态(2026-05-20 update)**:placeholder · upstream wrap deferred。
+**T006 落地状态(2026-05-20 P6 update)**:placeholder · upstream wrap deferred。
 直接 `nrt.New(...)` 委托在 P6-T-006 entry 时构建失败 — 上游
 `sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology` v0.31.8 引用
 `framework.GVK` 符号,K8s 1.31 `pkg/scheduler/framework` 包内有但 K8s
 1.32(本仓库 go.mod replace block baseline · ADR §1)已移除。等 sched-
 plugins v0.32.x 发布(或 v0.31.y backport)再补 wrap。详 DESIGN.md §5.2 +
 phase-6-t006 devlog。
+
+**P7-T-002 升级尝试结果(2026-05-20)**:**doc-only fallback** · 重新 defer to
+Phase 8 baseline bump · 详 DESIGN.md §5.2 + phase-7-t002 devlog + 新
+known-issues #12。verified GA matrix:v0.32.7(2024-08-06) / v0.33.5
+(2024-10-27) / v0.34.7(2025-04-20 latest)。直接 `go get
+sigs.k8s.io/scheduler-plugins@v0.32.7` + 把 replace block uniformly bump
+到 v0.32.7 后 → `go mod tidy` surface k8s.io/apimachinery v0.32.7 缺
+`pkg/api/{safe,operation,validate}` packages 沿 import chain
+`cmd/main.go → kube-scheduler/app → pkg/scheduler → pkg/apis/core/{validation,v1}`。
+这些 apimachinery packages 是 post-v0.32 添加(估 v1.33+),本 ADR §1
+K8s 1.32 baseline pin 无法吸收 transitive expectation。Revert clean(单
+`git checkout go.mod go.sum`),无 commit 走升级路径。Phase 8 候选:bump
+K8s baseline 1.32 → 1.33 / 1.34(同时升 kind smoke `kindest/node` 基线)
++ sched-plugins 同 minor + 补 wrap body + 3 sanity tests + chart toggle
+flip default。
 
 ### 4. BinpackPlugin opt-in(P6-T-007)
 
