@@ -35,5 +35,20 @@
     "npuSlice": []
   },
   "presets": [],
-  "events": []
+  "networkSwitches": [
+    {
+      "id": "switch-tor-a-01",
+      "name": "ToR-Site-A-01",
+      "type": "tor",
+      "location": "site-a-shanghai",
+      "portsTotal": 48,
+      "portsUsed": 6,
+      "bandwidthGbps": 100,
+      "vlans": [
+        "vlan-100-mgmt",
+        "vlan-200-fabric"
+      ],
+      "status": "up"
+    }
+  ]
 }

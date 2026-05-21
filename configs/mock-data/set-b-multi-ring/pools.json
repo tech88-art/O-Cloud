@@ -1,0 +1,199 @@
+{
+  "meta": {
+    "name": "set-b-multi-ring",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Phase 7 P7-T-104 synthetic multi-ring fixture: 2 nodes x 8 NPUs = 16 devices spanning 4 HCCS rings; exercises 4-tier HCCS scoring (per ADR-0010 + ADR-0011 P7-T-008 chart default adjacency). Inherits non-npus payload sections from set-a-small for schema compliance only.",
+    "scenario": "small-cluster"
+  },
+  "clusters": [
+    {
+      "id": "cluster-prod-a-01",
+      "name": "cluster-prod-a-01",
+      "role": "edge-single",
+      "location": "site-a-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 3,
+      "npuCount": 24,
+      "labels": {
+        "environment": "prod",
+        "region": "cn-east-1",
+        "site": "a"
+      },
+      "createdAt": "2026-04-19T08:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [
+      {
+        "name": "edge-cluster-pool-a",
+        "clusters": [
+          {
+            "clusterId": "cluster-prod-a-01",
+            "syncPolicy": "Push"
+          }
+        ],
+        "status": {
+          "healthyClusters": [
+            "cluster-prod-a-01"
+          ]
+        }
+      }
+    ],
+    "node": [
+      {
+        "name": "site-a-worker-pool",
+        "clusterPoolRef": "edge-cluster-pool-a",
+        "role": "edge",
+        "location": "site-a-shanghai",
+        "selector": {
+          "matchLabels": {
+            "npu.huawei.com/model": "Ascend910B"
+          }
+        },
+        "status": {
+          "nodes": [
+            "worker-site-a-01",
+            "worker-site-a-02",
+            "worker-site-a-03"
+          ],
+          "totalCPU": {
+            "raw": "288"
+          },
+          "totalMemory": {
+            "raw": "2304Gi"
+          }
+        }
+      }
+    ],
+    "npu": [
+      {
+        "name": "ascend-910b-pool-a",
+        "nodePoolRef": "site-a-worker-pool",
+        "npuModel": "Ascend910B",
+        "sliceStrategy": "FixedTemplate+Dynamic",
+        "status": {
+          "totalNPUs": 24,
+          "healthyNPUs": 23,
+          "allocatedNPUs": 18,
+          "hccsTopology": {
+            "groups": [
+              {
+                "id": "worker-site-a-01-hccs-0",
+                "npus": [
+                  "worker-site-a-01-npu-0",
+                  "worker-site-a-01-npu-1",
+                  "worker-site-a-01-npu-2",
+                  "worker-site-a-01-npu-3"
+                ],
+                "topology": "full-mesh"
+              },
+              {
+                "id": "worker-site-a-01-hccs-1",
+                "npus": [
+                  "worker-site-a-01-npu-4",
+                  "worker-site-a-01-npu-5",
+                  "worker-site-a-01-npu-6",
+                  "worker-site-a-01-npu-7"
+                ],
+                "topology": "full-mesh"
+              },
+              {
+                "id": "worker-site-a-02-hccs-0",
+                "npus": [
+                  "worker-site-a-02-npu-0",
+                  "worker-site-a-02-npu-1",
+                  "worker-site-a-02-npu-2",
+                  "worker-site-a-02-npu-3"
+                ],
+                "topology": "full-mesh"
+              },
+              {
+                "id": "worker-site-a-02-hccs-1",
+                "npus": [
+                  "worker-site-a-02-npu-4",
+                  "worker-site-a-02-npu-5",
+                  "worker-site-a-02-npu-6",
+                  "worker-site-a-02-npu-7"
+                ],
+                "topology": "full-mesh"
+              },
+              {
+                "id": "worker-site-a-03-hccs-0",
+                "npus": [
+                  "worker-site-a-03-npu-0",
+                  "worker-site-a-03-npu-1",
+                  "worker-site-a-03-npu-2",
+                  "worker-site-a-03-npu-3"
+                ],
+                "topology": "full-mesh"
+              },
+              {
+                "id": "worker-site-a-03-hccs-1",
+                "npus": [
+                  "worker-site-a-03-npu-4",
+                  "worker-site-a-03-npu-5",
+                  "worker-site-a-03-npu-6",
+                  "worker-site-a-03-npu-7"
+                ],
+                "topology": "full-mesh"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "npuSlice": [
+      {
+        "name": "fixed-template-slice-pool",
+        "npuPoolRef": "ascend-910b-pool-a",
+        "strategy": "FixedTemplate",
+        "fixedTemplates": [
+          {
+            "name": "vir01",
+            "aiCoreCount": 4,
+            "memoryMiB": 8192
+          },
+          {
+            "name": "vir02",
+            "aiCoreCount": 8,
+            "memoryMiB": 16384
+          },
+          {
+            "name": "vir04",
+            "aiCoreCount": 16,
+            "memoryMiB": 32768
+          }
+        ],
+        "status": {
+          "totalSlices": 54,
+          "allocatedSlices": 27,
+          "availableSlices": 27
+        }
+      },
+      {
+        "name": "dynamic-slice-pool",
+        "npuPoolRef": "ascend-910b-pool-a",
+        "strategy": "Dynamic",
+        "dynamicSlicing": {
+          "minAICore": 2,
+          "maxAICore": 32,
+          "memoryGranularityMiB": 4096,
+          "allowAggregation": false
+        },
+        "status": {
+          "totalSlices": 12,
+          "allocatedSlices": 12,
+          "availableSlices": 0
+        }
+      }
+    ]
+  },
+  "presets": [],
+  "events": []
+}

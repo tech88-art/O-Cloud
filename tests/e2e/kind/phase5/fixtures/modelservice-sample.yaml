@@ -44,3 +44,13 @@ spec:
     fallbackImage: busybox:1.36
   npuSlicePoolRef:
     name: smoke-pool
+  # Phase 7 P7-T-003 added auto-stamp of spec.schedulerName="npu-scheduler"
+  # on every PD-pair Pod template (closes known-issues #11). The Phase 5
+  # kind smoke step runs BEFORE Phase 6 installs scheduler-plugin, so
+  # Pods stamped with "npu-scheduler" would stay Pending forever (the
+  # scheduler isn't installed yet). Opt out via schedulerOverride to
+  # route this fixture's Pods through the default-scheduler, preserving
+  # Phase 5 step ordering. Phase 6+ kind fixtures (modelservice-multiring
+  # / modelservice-with-template) do NOT opt out — they exercise the
+  # npu-scheduler path on purpose.
+  schedulerOverride: default-scheduler

@@ -1,0 +1,496 @@
+{
+  "meta": {
+    "name": "set-b-multi-ring",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Phase 7 P7-T-104 synthetic multi-ring fixture: 2 nodes x 8 NPUs = 16 devices spanning 4 HCCS rings; exercises 4-tier HCCS scoring (per ADR-0010 + ADR-0011 P7-T-008 chart default adjacency). Inherits non-npus payload sections from set-a-small for schema compliance only.",
+    "scenario": "small-cluster"
+  },
+  "clusters": [
+    {
+      "id": "cluster-prod-a-01",
+      "name": "cluster-prod-a-01",
+      "role": "edge-single",
+      "location": "site-a-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 3,
+      "npuCount": 24,
+      "labels": {
+        "environment": "prod",
+        "region": "cn-east-1",
+        "site": "a"
+      },
+      "createdAt": "2026-04-19T08:00:00Z"
+    }
+  ],
+  "nodes": [],
+  "npus": [],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": [
+    {
+      "timestamp": "2026-05-17T12:00:00Z",
+      "type": "topology.update",
+      "payload": {
+        "clusters": 1,
+        "nodes": 3,
+        "npus": 24,
+        "snapshot": "initial",
+        "stage": "overview-page-open"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:03Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-02-npu-5",
+        "from": "healthy",
+        "to": "degraded",
+        "reason": "ECC error threshold exceeded (overview banner)",
+        "temperature": 71.4
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:08Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-03-npu-1",
+        "from": "healthy",
+        "to": "healthy",
+        "reason": "heartbeat",
+        "aiCoreUtilization": 88,
+        "vramUtilization": 82
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:12Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "qwen-8b-pd",
+        "namespace": "ai-inference",
+        "from": "running",
+        "to": "running",
+        "reason": "metrics-tick",
+        "stage": "workloads-page-open",
+        "throughputTokensPerSec": 2400
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:18Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-02-npu-1",
+        "from": "healthy",
+        "to": "healthy",
+        "reason": "heartbeat",
+        "aiCoreUtilization": 41
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:24Z",
+      "type": "topology.update",
+      "payload": {
+        "clusters": 1,
+        "nodes": 3,
+        "npus": 24,
+        "delta": "user filtered workloads by status=running",
+        "stage": "workloads-page-filter"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:32Z",
+      "type": "workload.created",
+      "payload": {
+        "name": "pi-3b-demo",
+        "namespace": "ai-inference",
+        "preset": "pi-3b",
+        "stage": "deploy-page-submit"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:36Z",
+      "type": "slice.allocated",
+      "payload": {
+        "sliceId": "worker-site-a-01-npu-3-slice-0",
+        "to": {
+          "namespace": "ai-inference",
+          "podName": "pi-3b-demo-0",
+          "containerName": "server"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:40Z",
+      "type": "slice.allocated",
+      "payload": {
+        "sliceId": "worker-site-a-01-npu-4-slice-1",
+        "to": {
+          "namespace": "ai-inference",
+          "podName": "pi-3b-demo-1",
+          "containerName": "server"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:44Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "pi-3b-demo",
+        "namespace": "ai-inference",
+        "from": "pending",
+        "to": "running",
+        "reason": "all replicas scheduled"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:50Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-01-npu-3",
+        "from": "healthy",
+        "to": "healthy",
+        "reason": "util-ramp",
+        "aiCoreUtilization": 55,
+        "delta": "+17 (pi-3b-demo workload)"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:00:58Z",
+      "type": "topology.update",
+      "payload": {
+        "clusters": 1,
+        "nodes": 3,
+        "npus": 24,
+        "delta": "added pi-3b-demo workload (1 deployment, 2 pods)",
+        "stage": "deploy-page-success"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:04Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-01-npu-3",
+        "from": "healthy",
+        "to": "healthy",
+        "reason": "util-ramp",
+        "aiCoreUtilization": 71,
+        "stage": "metrics-page-open"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:12Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-01-npu-3",
+        "from": "healthy",
+        "to": "healthy",
+        "reason": "util-ramp",
+        "aiCoreUtilization": 79,
+        "memoryBandwidthUtilization": 71.1
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:20Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-01-npu-2",
+        "from": "healthy",
+        "to": "healthy",
+        "reason": "heartbeat",
+        "aiCoreUtilization": 31,
+        "subject": "vllm-bench"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:28Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "pi-3b",
+        "namespace": "ai-inference",
+        "from": "running",
+        "to": "running",
+        "reason": "log-surge",
+        "stage": "logs-page-open",
+        "logLinesPerSec": 84
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:35Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-01-npu-2",
+        "from": "healthy",
+        "to": "healthy",
+        "reason": "vllm-bench wrapping up",
+        "aiCoreUtilization": 38,
+        "temperature": 47.2
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:42Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "vllm-bench",
+        "namespace": "benchmark",
+        "from": "running",
+        "to": "succeeded",
+        "reason": "benchmark duration elapsed (300s)",
+        "exitCode": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:48Z",
+      "type": "slice.released",
+      "payload": {
+        "sliceId": "worker-site-a-01-npu-2-slice-0",
+        "reason": "vllm-bench complete"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:01:55Z",
+      "type": "topology.update",
+      "payload": {
+        "clusters": 1,
+        "nodes": 3,
+        "npus": 24,
+        "delta": "vllm-bench succeeded, 1 slice released",
+        "stage": "logs-page-watching"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:02Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "internlm-7b",
+        "namespace": "ai-inference",
+        "from": "pending",
+        "to": "running",
+        "reason": "capacity freed by vllm-bench"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:08Z",
+      "type": "slice.allocated",
+      "payload": {
+        "sliceId": "worker-site-a-01-npu-2-slice-0",
+        "to": {
+          "namespace": "ai-inference",
+          "podName": "internlm-7b-mn92x-0",
+          "containerName": "server"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:14Z",
+      "type": "slice.allocated",
+      "payload": {
+        "sliceId": "worker-site-a-02-npu-2-slice-1",
+        "to": {
+          "namespace": "ai-inference",
+          "podName": "internlm-7b-mn92x-1",
+          "containerName": "server"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:21Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-02-npu-5",
+        "from": "degraded",
+        "to": "degraded",
+        "reason": "still-degraded heartbeat",
+        "temperature": 72.1,
+        "eccErrorRatePer15min": 4
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:28Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "llama2-7b-finetune",
+        "namespace": "training",
+        "from": "pending",
+        "to": "pending",
+        "reason": "still waiting for 4 HCCS-grouped NPUs",
+        "waitTimeSec": 88
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:35Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-03-npu-7",
+        "from": "healthy",
+        "to": "healthy",
+        "reason": "heartbeat",
+        "aiCoreUtilization": 24
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:42Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "qwen-8b-pd",
+        "namespace": "ai-inference",
+        "from": "running",
+        "to": "running",
+        "reason": "metrics-tick (PD pair throughput)",
+        "throughputTokensPerSec": 2480,
+        "ttftMsP50": 108
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:50Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-01-npu-3",
+        "from": "healthy",
+        "to": "healthy",
+        "reason": "util-plateau",
+        "aiCoreUtilization": 82,
+        "subject": "pi-3b-demo steady-state"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:54Z",
+      "type": "slice.released",
+      "payload": {
+        "sliceId": "worker-site-a-03-npu-3-slice-1",
+        "reason": "bench-historical archived"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:58Z",
+      "type": "workload.deleted",
+      "payload": {
+        "name": "oom-test-model",
+        "namespace": "ai-inference",
+        "reason": "ttl-after-failed (24h auto-cleanup)"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:02:59Z",
+      "type": "npu.statusChanged",
+      "payload": {
+        "npuId": "worker-site-a-01-npu-0",
+        "from": "healthy",
+        "to": "healthy",
+        "reason": "heartbeat",
+        "aiCoreUtilization": 5
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:03:00Z",
+      "type": "topology.update",
+      "payload": {
+        "clusters": 1,
+        "nodes": 3,
+        "npus": 24,
+        "delta": "demo steady state: 8 running, 1 pending, 1 succeeded",
+        "stage": "demo-end",
+        "snapshot": "final"
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:03:05Z",
+      "type": "workload.created",
+      "payload": {
+        "name": "qwen-8b-pd-affinity",
+        "namespace": "ai-inference",
+        "stage": "d6-affinity-demo-start",
+        "note": "Spec D6: same-node Qwen-8B PD pair with intra-NUMA/HCCS placement (npu-0 + npu-1 on worker-site-a-03)."
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:03:10Z",
+      "type": "workload.created",
+      "payload": {
+        "name": "qwen-8b-pd-cross-numa",
+        "namespace": "ai-inference",
+        "stage": "d6-non-affinity-demo-start",
+        "note": "Spec D6: same-node Qwen-8B PD pair with cross-NUMA placement (npu-0 numa=0 / npu-4 numa=1 on worker-site-a-01). Contrast vs qwen-8b-pd-affinity above."
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:03:30Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "qwen-8b-pd-affinity",
+        "namespace": "ai-inference",
+        "from": "running",
+        "to": "running",
+        "reason": "metrics-tick",
+        "stage": "d6-affinity-steady-state",
+        "ttftMs": 52,
+        "itlMs": 14,
+        "throughputTokPerSec": 1020
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:03:35Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "qwen-8b-pd-cross-numa",
+        "namespace": "ai-inference",
+        "from": "running",
+        "to": "running",
+        "reason": "metrics-tick",
+        "stage": "d6-cross-numa-steady-state",
+        "ttftMs": 87,
+        "itlMs": 24,
+        "throughputTokPerSec": 642
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:04:00Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "qwen-8b-pd-affinity",
+        "namespace": "ai-inference",
+        "from": "running",
+        "to": "running",
+        "reason": "metrics-tick",
+        "stage": "d6-affinity-steady-state",
+        "ttftMs": 49,
+        "itlMs": 15,
+        "throughputTokPerSec": 1085
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:04:05Z",
+      "type": "workload.statusChanged",
+      "payload": {
+        "name": "qwen-8b-pd-cross-numa",
+        "namespace": "ai-inference",
+        "from": "running",
+        "to": "running",
+        "reason": "metrics-tick",
+        "stage": "d6-cross-numa-steady-state",
+        "ttftMs": 91,
+        "itlMs": 26,
+        "throughputTokPerSec": 615
+      }
+    },
+    {
+      "timestamp": "2026-05-17T12:04:10Z",
+      "type": "topology.update",
+      "payload": {
+        "clusters": 1,
+        "nodes": 3,
+        "npus": 24,
+        "delta": "d6 affinity comparison: ~60% TTFT delta (49ms vs 91ms), ~75% throughput delta (1085 vs 615 tok/s) — NUMA+HCCS affinity matters",
+        "stage": "d6-demo-end",
+        "snapshot": "final"
+      }
+    }
+  ]
+}

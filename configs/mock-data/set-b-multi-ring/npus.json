@@ -1,20 +1,232 @@
 {
+  "meta": {
+    "name": "set-b-multi-ring",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Phase 7 P7-T-104 synthetic multi-ring fixture: 2 nodes x 8 NPUs = 16 devices spanning 4 HCCS rings; exercises 4-tier HCCS scoring (per ADR-0010 + ADR-0011 P7-T-008 chart default adjacency). Inherits non-npus payload sections from set-a-small for schema compliance only.",
+    "scenario": "small-cluster"
+  },
+  "clusters": [
+    {
+      "id": "cluster-prod-a-01",
+      "name": "cluster-prod-a-01",
+      "role": "edge-single",
+      "location": "site-a-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 3,
+      "npuCount": 24,
+      "labels": {
+        "environment": "prod",
+        "region": "cn-east-1",
+        "site": "a"
+      },
+      "createdAt": "2026-04-19T08:00:00Z"
+    }
+  ],
+  "nodes": [],
   "npus": [
-    {"id":"nodeA-npu-0","nodeName":"nodeA","index":0,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeA-ring-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeA-npu-1","nodeName":"nodeA","index":1,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeA-ring-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeA-npu-2","nodeName":"nodeA","index":2,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeA-ring-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeA-npu-3","nodeName":"nodeA","index":3,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeA-ring-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeA-npu-4","nodeName":"nodeA","index":4,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeA-ring-1","hccsRing":1,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeA-npu-5","nodeName":"nodeA","index":5,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeA-ring-1","hccsRing":1,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeA-npu-6","nodeName":"nodeA","index":6,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeA-ring-1","hccsRing":1,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeA-npu-7","nodeName":"nodeA","index":7,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeA-ring-1","hccsRing":1,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeB-npu-0","nodeName":"nodeB","index":0,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeB-ring-2","hccsRing":2,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeB-npu-1","nodeName":"nodeB","index":1,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeB-ring-2","hccsRing":2,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeB-npu-2","nodeName":"nodeB","index":2,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeB-ring-2","hccsRing":2,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeB-npu-3","nodeName":"nodeB","index":3,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeB-ring-2","hccsRing":2,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeB-npu-4","nodeName":"nodeB","index":4,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeB-ring-3","hccsRing":3,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeB-npu-5","nodeName":"nodeB","index":5,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeB-ring-3","hccsRing":3,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeB-npu-6","nodeName":"nodeB","index":6,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeB-ring-3","hccsRing":3,"status":"healthy","sliceMode":"whole"},
-    {"id":"nodeB-npu-7","nodeName":"nodeB","index":7,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeB-ring-3","hccsRing":3,"status":"healthy","sliceMode":"whole"}
-  ]
+    {
+      "id": "nodea-npu-0",
+      "nodeName": "nodeA",
+      "index": 0,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "nodeA-ring-0",
+      "hccsRing": 0,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodea-npu-1",
+      "nodeName": "nodeA",
+      "index": 1,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "nodeA-ring-0",
+      "hccsRing": 0,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodea-npu-2",
+      "nodeName": "nodeA",
+      "index": 2,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "nodeA-ring-0",
+      "hccsRing": 0,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodea-npu-3",
+      "nodeName": "nodeA",
+      "index": 3,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "nodeA-ring-0",
+      "hccsRing": 0,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodea-npu-4",
+      "nodeName": "nodeA",
+      "index": 4,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "nodeA-ring-1",
+      "hccsRing": 1,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodea-npu-5",
+      "nodeName": "nodeA",
+      "index": 5,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "nodeA-ring-1",
+      "hccsRing": 1,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodea-npu-6",
+      "nodeName": "nodeA",
+      "index": 6,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "nodeA-ring-1",
+      "hccsRing": 1,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodea-npu-7",
+      "nodeName": "nodeA",
+      "index": 7,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "nodeA-ring-1",
+      "hccsRing": 1,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodeb-npu-0",
+      "nodeName": "nodeB",
+      "index": 0,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "nodeB-ring-2",
+      "hccsRing": 2,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodeb-npu-1",
+      "nodeName": "nodeB",
+      "index": 1,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "nodeB-ring-2",
+      "hccsRing": 2,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodeb-npu-2",
+      "nodeName": "nodeB",
+      "index": 2,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "nodeB-ring-2",
+      "hccsRing": 2,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodeb-npu-3",
+      "nodeName": "nodeB",
+      "index": 3,
+      "aiCoreTotal": 32,
+      "numaNode": 0,
+      "hccsGroup": "nodeB-ring-2",
+      "hccsRing": 2,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodeb-npu-4",
+      "nodeName": "nodeB",
+      "index": 4,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "nodeB-ring-3",
+      "hccsRing": 3,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodeb-npu-5",
+      "nodeName": "nodeB",
+      "index": 5,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "nodeB-ring-3",
+      "hccsRing": 3,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodeb-npu-6",
+      "nodeName": "nodeB",
+      "index": 6,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "nodeB-ring-3",
+      "hccsRing": 3,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    },
+    {
+      "id": "nodeb-npu-7",
+      "nodeName": "nodeB",
+      "index": 7,
+      "aiCoreTotal": 32,
+      "numaNode": 1,
+      "hccsGroup": "nodeB-ring-3",
+      "hccsRing": 3,
+      "status": "healthy",
+      "sliceMode": "whole",
+      "model": "Ascend910B"
+    }
+  ],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": []
 }

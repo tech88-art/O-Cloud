@@ -35,5 +35,33 @@
     "npuSlice": []
   },
   "presets": [],
-  "events": []
+  "networkLinks": [
+    {
+      "id": "link-tor01-worker01",
+      "from": "switch-tor-a-01",
+      "to": "worker-site-a-01",
+      "bandwidthGbps": 100,
+      "medium": "fiber",
+      "utilization": 18.5,
+      "rttUs": 5.4
+    },
+    {
+      "id": "link-tor01-worker02",
+      "from": "switch-tor-a-01",
+      "to": "worker-site-a-02",
+      "bandwidthGbps": 100,
+      "medium": "fiber",
+      "utilization": 32.1,
+      "rttUs": 6.2
+    },
+    {
+      "id": "link-tor01-worker03",
+      "from": "switch-tor-a-01",
+      "to": "worker-site-a-03",
+      "bandwidthGbps": 100,
+      "medium": "fiber",
+      "utilization": 12.7,
+      "rttUs": 5.1
+    }
+  ]
 }

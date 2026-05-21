@@ -1,0 +1,571 @@
+{
+  "meta": {
+    "name": "set-b-multi-ring",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-17T12:00:00Z",
+    "description": "Phase 7 P7-T-104 synthetic multi-ring fixture: 2 nodes x 8 NPUs = 16 devices spanning 4 HCCS rings; exercises 4-tier HCCS scoring (per ADR-0010 + ADR-0011 P7-T-008 chart default adjacency). Inherits non-npus payload sections from set-a-small for schema compliance only.",
+    "scenario": "small-cluster"
+  },
+  "clusters": [
+    {
+      "id": "cluster-prod-a-01",
+      "name": "cluster-prod-a-01",
+      "role": "edge-single",
+      "location": "site-a-shanghai",
+      "status": "healthy",
+      "kubernetesVersion": "v1.31.0",
+      "nodeCount": 3,
+      "npuCount": 24,
+      "labels": {
+        "environment": "prod",
+        "region": "cn-east-1",
+        "site": "a"
+      },
+      "createdAt": "2026-04-19T08:00:00Z"
+    }
+  ],
+  "nodes": [
+    {
+      "name": "worker-site-a-01",
+      "clusterId": "cluster-prod-a-01",
+      "role": [
+        "worker"
+      ],
+      "status": "Ready",
+      "cpu": {
+        "raw": "96"
+      },
+      "memory": {
+        "raw": "768Gi"
+      },
+      "arch": "amd64",
+      "kernelVersion": "5.15.0-105-generic",
+      "os": "Ubuntu 22.04.4 LTS",
+      "kubeletVersion": "v1.31.0",
+      "npuCount": 8,
+      "numa": [
+        {
+          "id": 0,
+          "cpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47
+          ],
+          "memory": {
+            "raw": "384Gi"
+          },
+          "npus": [
+            "worker-site-a-01-npu-0",
+            "worker-site-a-01-npu-1",
+            "worker-site-a-01-npu-2",
+            "worker-site-a-01-npu-3"
+          ]
+        },
+        {
+          "id": 1,
+          "cpus": [
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69,
+            70,
+            71,
+            72,
+            73,
+            74,
+            75,
+            76,
+            77,
+            78,
+            79,
+            80,
+            81,
+            82,
+            83,
+            84,
+            85,
+            86,
+            87,
+            88,
+            89,
+            90,
+            91,
+            92,
+            93,
+            94,
+            95
+          ],
+          "memory": {
+            "raw": "384Gi"
+          },
+          "npus": [
+            "worker-site-a-01-npu-4",
+            "worker-site-a-01-npu-5",
+            "worker-site-a-01-npu-6",
+            "worker-site-a-01-npu-7"
+          ]
+        }
+      ],
+      "networkInterfaces": [
+        {
+          "name": "eth0",
+          "mac": "aa:bb:cc:dd:ee:00",
+          "ips": [
+            "10.0.10.11"
+          ],
+          "speed": "25Gbps"
+        },
+        {
+          "name": "eth1",
+          "mac": "aa:bb:cc:dd:ee:01",
+          "ips": [
+            "10.0.20.11"
+          ],
+          "speed": "25Gbps"
+        }
+      ],
+      "storage": [
+        {
+          "device": "/dev/nvme0n1",
+          "size": {
+            "raw": "2Ti"
+          },
+          "type": "nvme"
+        }
+      ],
+      "labels": {
+        "node.kubernetes.io/instance-type": "atlas-800t-a2",
+        "npu.huawei.com/model": "Ascend910B",
+        "topology.kubernetes.io/zone": "zone-1"
+      }
+    },
+    {
+      "name": "worker-site-a-02",
+      "clusterId": "cluster-prod-a-01",
+      "role": [
+        "worker"
+      ],
+      "status": "Ready",
+      "cpu": {
+        "raw": "96"
+      },
+      "memory": {
+        "raw": "768Gi"
+      },
+      "arch": "amd64",
+      "kernelVersion": "5.15.0-105-generic",
+      "os": "Ubuntu 22.04.4 LTS",
+      "kubeletVersion": "v1.31.0",
+      "npuCount": 8,
+      "numa": [
+        {
+          "id": 0,
+          "cpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47
+          ],
+          "memory": {
+            "raw": "384Gi"
+          },
+          "npus": [
+            "worker-site-a-02-npu-0",
+            "worker-site-a-02-npu-1",
+            "worker-site-a-02-npu-2",
+            "worker-site-a-02-npu-3"
+          ]
+        },
+        {
+          "id": 1,
+          "cpus": [
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69,
+            70,
+            71,
+            72,
+            73,
+            74,
+            75,
+            76,
+            77,
+            78,
+            79,
+            80,
+            81,
+            82,
+            83,
+            84,
+            85,
+            86,
+            87,
+            88,
+            89,
+            90,
+            91,
+            92,
+            93,
+            94,
+            95
+          ],
+          "memory": {
+            "raw": "384Gi"
+          },
+          "npus": [
+            "worker-site-a-02-npu-4",
+            "worker-site-a-02-npu-5",
+            "worker-site-a-02-npu-6",
+            "worker-site-a-02-npu-7"
+          ]
+        }
+      ],
+      "networkInterfaces": [
+        {
+          "name": "eth0",
+          "mac": "aa:bb:cc:dd:ee:02",
+          "ips": [
+            "10.0.10.12"
+          ],
+          "speed": "25Gbps"
+        },
+        {
+          "name": "eth1",
+          "mac": "aa:bb:cc:dd:ee:03",
+          "ips": [
+            "10.0.20.12"
+          ],
+          "speed": "25Gbps"
+        }
+      ],
+      "storage": [
+        {
+          "device": "/dev/nvme0n1",
+          "size": {
+            "raw": "2Ti"
+          },
+          "type": "nvme"
+        }
+      ],
+      "labels": {
+        "node.kubernetes.io/instance-type": "atlas-800t-a2",
+        "npu.huawei.com/model": "Ascend910B",
+        "topology.kubernetes.io/zone": "zone-2"
+      }
+    },
+    {
+      "name": "worker-site-a-03",
+      "clusterId": "cluster-prod-a-01",
+      "role": [
+        "worker"
+      ],
+      "status": "Ready",
+      "cpu": {
+        "raw": "96"
+      },
+      "memory": {
+        "raw": "768Gi"
+      },
+      "arch": "amd64",
+      "kernelVersion": "5.15.0-105-generic",
+      "os": "Ubuntu 22.04.4 LTS",
+      "kubeletVersion": "v1.31.0",
+      "npuCount": 8,
+      "numa": [
+        {
+          "id": 0,
+          "cpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47
+          ],
+          "memory": {
+            "raw": "384Gi"
+          },
+          "npus": [
+            "worker-site-a-03-npu-0",
+            "worker-site-a-03-npu-1",
+            "worker-site-a-03-npu-2",
+            "worker-site-a-03-npu-3"
+          ]
+        },
+        {
+          "id": 1,
+          "cpus": [
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69,
+            70,
+            71,
+            72,
+            73,
+            74,
+            75,
+            76,
+            77,
+            78,
+            79,
+            80,
+            81,
+            82,
+            83,
+            84,
+            85,
+            86,
+            87,
+            88,
+            89,
+            90,
+            91,
+            92,
+            93,
+            94,
+            95
+          ],
+          "memory": {
+            "raw": "384Gi"
+          },
+          "npus": [
+            "worker-site-a-03-npu-4",
+            "worker-site-a-03-npu-5",
+            "worker-site-a-03-npu-6",
+            "worker-site-a-03-npu-7"
+          ]
+        }
+      ],
+      "networkInterfaces": [
+        {
+          "name": "eth0",
+          "mac": "aa:bb:cc:dd:ee:04",
+          "ips": [
+            "10.0.10.13"
+          ],
+          "speed": "25Gbps"
+        },
+        {
+          "name": "eth1",
+          "mac": "aa:bb:cc:dd:ee:05",
+          "ips": [
+            "10.0.20.13"
+          ],
+          "speed": "25Gbps"
+        }
+      ],
+      "storage": [
+        {
+          "device": "/dev/nvme0n1",
+          "size": {
+            "raw": "2Ti"
+          },
+          "type": "nvme"
+        }
+      ],
+      "labels": {
+        "node.kubernetes.io/instance-type": "atlas-800t-a2",
+        "npu.huawei.com/model": "Ascend910B",
+        "topology.kubernetes.io/zone": "zone-3"
+      }
+    }
+  ],
+  "npus": [],
+  "slices": [],
+  "workloads": [],
+  "pools": {
+    "cluster": [],
+    "node": [],
+    "npu": [],
+    "npuSlice": []
+  },
+  "presets": [],
+  "events": []
+}
