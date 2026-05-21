@@ -102,7 +102,7 @@ NPUVerticalScaler.Reconcile()
 | any | current == decision target | stay (no-op) | 已经在目标 template,不必 patch |
 | any | cooldown active | stay + requeue cooldown remainder | 防 flapping |
 
-**多租户 Phase 9 forward note**:Phase 9 引入 Quota CRD 时,decision rules 加 row "if Quota.ScalingAllowed=False → stay + reason QuotaExhausted";本 ADR 不预占该字段。
+**多租户 Phase 9 forward note**:Phase 9 引入 Quota CRD 时,decision rules 加 row "if Quota.ScalingAllowed=False → stay + reason QuotaExhausted";本 ADR 不预占该字段。**Status update(2026-05-21 · ADR-0014 / P9-T-002 落)**:Phase 9 multi-tenant fair scaling reads NPUVerticalScaler.status(scaleHistory + lastScaleTime · §4)to coordinate with Quota CRD admission · 实际 enforcement 走 ADR-0014 §5 enforcement contract — `ValidatingAdmissionWebhook` Webhook B on NPUVerticalScaler.spec.scaleSlice.{busy,idle}TemplateName patch · failurePolicy=Fail · 拒绝时 NPUVerticalScaler controller 内部 reconcile 走 stay 路径(本 ADR §3 decision rules 自然 fallback) · 不需要在 NPUVerticalScaler.spec 内加 `ScalingAllowed` 字段 · 详 ADR-0014 §2 Decision C Webhook B + §5 Webhook ManifestEvent。
 
 **不引入** auto-scaling 加速因子 / 预测性 scaling / 时间窗口 scheduling(cron-style ramp)— 这些都是 Phase 9+ 范围。Phase 8 = 简单 threshold + hysteresis + cooldown。
 
@@ -378,7 +378,7 @@ const (
 
 ## 7. Forward notes(Phase 9-10)
 
-> 🆕 **Phase 9 候选**:多租户 fair scaling policy(读 NPUVerticalScaler.status + Quota CRD)+ Prometheus PromQL custom metric extension(`spec.metric.type=PrometheusQuery` enum 值)。Phase 8 ships only NPUUtilization built-in metric · Phase 9 加 PrometheusQuery 时 PromQL 表达式带 namespace + model_service label 自动注入(与 Phase 8 NPUUtilization 同 scoping)。
+> 🆕 **Phase 9 候选**:多租户 fair scaling policy(读 NPUVerticalScaler.status + Quota CRD)+ Prometheus PromQL custom metric extension(`spec.metric.type=PrometheusQuery` enum 值)。Phase 8 ships only NPUUtilization built-in metric · Phase 9 加 PrometheusQuery 时 PromQL 表达式带 namespace + model_service label 自动注入(与 Phase 8 NPUUtilization 同 scoping)。**Status update(2026-05-21 · ADR-0014 / P9-T-002 落)**:多租户 fair scaling reads NPUVerticalScaler.status.scaleHistory + lastScaleTime(本 ADR §4)to coordinate · ADR-0014 Webhook B 拦截 NPUVerticalScaler.spec.scaleSlice.{busy,idle}TemplateName patch(用户或 O2 NB 触发 scale rule change · 不拦 controller 内部 reconcile patch ModelService.annotation 路径 per §5)· 详 ADR-0014 §2 Decision C + §3 risk row "webhook reject 透传"。PromQL custom metric extension 走 P9-T-007 独立 task。
 
 > 🆕 **Phase 9 候选**:Karmada 多站点 federation 时,NPUVerticalScaler.status.scaleHistory 由本地控制平面 own,fair scaling decision 由 federation 控制平面统一(每站点 NPUVerticalScaler 是 propagated 副本)。Phase 8 单 cluster · 不预占 federation schema。
 

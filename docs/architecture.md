@@ -550,11 +550,13 @@ type ClusterPoolStatus struct {
 
 **Phase 3 修复**:✅ skeleton landed(P3-T-005 · `operators/pool-operator/config/admission/{validating-admission-policy,validating-admission-policy-binding,kustomization}.yaml` + e2e 测试在 `operators/pool-operator/test/e2e/admission/` · CEL expression `metadata.namespace == 'ocloud-system' || labels['npu.huawei.com/multi-tenancy-bypass'] == 'true'` · `failurePolicy: Fail`)。
 
-**Phase 9 完整**:multi-tenancy + Karmada RBAC 联动。
+**Phase 9 完整**:multi-tenancy + Karmada RBAC 联动 — Phase 9 ADR-0014(2026-05-21 P9-T-002)落 multi-tenancy + NPU-aware Quota admission(`Quota` CRD namespace-scope + 2 ValidatingAdmissionWebhooks · namespace = tenant boundary 落实)· Karmada RBAC 联动 推 Phase 10 polish per ADR-0013 §6 forward note。
 
-### 6.8 Allocation / Quota 模型占位(TODO Phase 5 启动前)
+### 6.8 Allocation / Quota 模型(Phase 5 NPUSliceAllocation landed · Phase 9 Quota landed)
 
-> **TODO**:当前 CRD hierarchy 缺 Pool ↔ Pod 之间的 `NPUSliceAllocation` / `Quota` 对象。Phase 5 inference-operator 需要这层抽象表达"谁占用了哪个切片"和"namespace 配额"。Phase 5 启动前补完本节。见 `docs/phase0-review.md` SHOULD-FIX #3。
+- **NPUSliceAllocation**:Phase 5 落地(P5-T-004 / 8173e83 CRD types + 3 round-trip tests · P5-T-005 / c283e94 controller + audit lifecycle)· `ocloud.edge.example.com/v1alpha1, kind: NPUSliceAllocation` · namespace-scoped · 表达"谁占用了哪个切片"
+- **Quota**:Phase 9 落地(ADR-0014 / P9-T-002 design · P9-T-005 CRD + samples · P9-T-006 controller + 2 ValidatingAdmissionWebhooks)· `ocloud.edge.example.com/v1alpha1, kind: Quota` · namespace-scoped · spec.enforcement.{maxSliceAllocations, maxScaleEventsPerWindow, maxNPUSliceTemplateRefs} · 表达"namespace 配额" — 与 K8s 原生 ResourceQuota orthogonal(NPU-aware vs generic)
+- **TODO 关闭**(2026-05-21):本节 Phase 5 启动前 carry-forward 完整解锁 · cluster-scope `ClusterQuota` + Karmada cross-cluster propagation 走 ADR-0014 §6 Open question (b)+(c)Phase 10 polish
 
 ---
 
@@ -826,8 +828,8 @@ ocloud-edge-platform/
 | Phase 5 | npu-dra-driver allocation logic + DeviceClass 注册 per ADR-0009 | **landed** (2026-05-19 · P5-T-001 / 41cd04e DeviceClass helm template + P5-T-002 / a423dd9 real allocator greedy first-fit + P5-T-003 / 6ef715d allocator tests + BestFit) — claim controller writes status.allocation + status.devices[Ready=True]; Phase 4 annotation path DEPRECATED |
 | Phase 5 | PD Router webhook impl per ADR-0008(`npu.huawei.com/slice-bindings` annotation 写入路径,mutating webhook · failurePolicy=Fail · cert-manager 依赖) | **landed** (2026-05-19 · P5-T-101 c3452d3 cert-manager + P5-T-102 94c7c99 webhook scaffold + P5-T-103 ca81ead mutating logic + P5-T-104 1300f30 envtest) — same binary as inference-operator (ADR-0008 design choice) |
 | Phase 7 | 动态切分若 fallback "多模板组合" 削弱设计目标 | **landed phase-7-complete (2026-05-20)** — P7-T-001 → ADR-0011 + 14 task chain(bd6f223..bf0c03c)· 多模板组合 fallback 实际 deliverable: NPUSliceTemplate CRD (T006) + template engine + reconciler (T007) + allocator AllocateBundle (T105 · controller wiring deferred Phase 10) + Source 接口 (T004) + npu-smi parser scaffold (T005) + HCCS 8-card adjacency chart 默认 (T008) + schedulerName auto-stamp (T003 · closes #11) + kind smoke ext + multi-ring fixture (T103+T104) + Partitionable Devices spike (T106 · `docs/research/k8s-partitionable-devices-spike.md` · KEP-4815 Beta confirmed · GA timing unconfirmed)。Lab-gating: T101 RealAscend body deferred Phase 10 per ADR-0011 §3 default · NumaAffinity wrap re-deferred per known-issues #12 (Phase 8 baseline bump candidate) · ProxyImage chart default 仍 empty per T102 doc-only refresh |
-| Phase 9 | 多站点 demo backend 缓存重构(LRU 进程内 → Redis/singleton/stateless) | Phase 9 启动前 ADR + 重构路径 |
-| Phase 9 | 安全模型(authn/z + multi-tenancy RBAC + NPUSlicePool admission policy) | Phase 9 启动前完整安全设计 + Karmada RBAC 联动 |
+| Phase 9 | 多站点 demo backend 缓存重构(LRU 进程内 → Redis/singleton/stateless) | Phase 9 启动前 ADR + 重构路径 · P9-T-107 docs-only spike landed(评估 3 路径 + ADR-0015 draft for Phase 10 实施决策) |
+| Phase 9 | 安全模型(authn/z + multi-tenancy RBAC + NPUSlicePool admission policy) | **in flight via ADR-0014 (2026-05-21 · P9-T-002)** — multi-tenancy + NPU-aware Quota admission:`Quota` CRD namespace-scope(`ocloud.edge.example.com/v1alpha1`)+ 2 ValidatingAdmissionWebhooks(A: NPUSliceAllocation create · B: NPUVerticalScaler.spec patch · per ADR-0014 §2 Decision C)· colocated with inference-operator binary(cert-manager 重用 P5-T-101)· Phase 9 namespace-scope only(cluster-scope ClusterQuota Phase 10 polish per §6 Open question (b))· Karmada RBAC 联动 Phase 10 polish per ADR-0013 §6 forward note · authn/z full(OIDC + RBAC fine-grained)Phase 10 polish · 详 ADR-0014 §1 Context + §3 Consequences |
 | Phase 5+ | NPU pod 网络考量(CNI + HCCL RDMA / RoCE / IPoIB 兼容) | research doc landed (P5-T-105 · `docs/cni-hccl-research.md`); **selection landed Phase 6 ADR-0010** — Cilium + Multus + SR-IOV 推荐 / Calico + Multus + SR-IOV fallback;scheduler-plugin CNI-portable(不依赖任何 CNI 特有 API) |
 | Phase 6 | scheduler-plugin(HCCS / NUMA / Binpack)+ HCCS 拓扑接口(npu-smi / DCMI 调研) | **landed phase-6-complete (2026-05-20)** — ADR-0010 (P6-T-001 / cfa6260) 设计冻结 · scheduler-plugin scaffold + HCCS Filter+Score + Binpack ScorePlugin + 集成 composition tests (P6-T-002..T008) · NumaAffinity placeholder ⏳ upstream wrap deferred to sched-plugins v0.32.x · pool-operator NPUPool.status.hccsTopology 聚合 (T003) · Helm chart (T101) · inference-operator metrics 3 collectors (T104) · vllm-ascend PD proxy_server schema substrate (T105) · kind smoke 扩展 (T106) · npu-smi 真硬件接口 deferred Phase 7 · 13/15 tasks done · 2 deferred (T102/T103 workloads sliceBindings 待 RFC) |
 

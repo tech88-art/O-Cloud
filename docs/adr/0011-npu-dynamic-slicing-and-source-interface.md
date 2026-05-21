@@ -38,6 +38,8 @@ Phase 6 (`phase-6-complete` @ 4b5acbe + T102/T103 post-tag polish) 落地了 HCC
 - Allocator 扩展(P7-T-105)读 Bundle 后按既有 NPU 级别 allocate 多次,每次对应 Bundle 中的一个 item;保持 Phase 5 greedy first-fit + Phase 6 topology-aware hint 不变;仅"per claim 多 device 分配"被拆成"per bundle item 多 claim";状态写回 NPUSliceTemplate.status.conditions[Allocatable]。
 - **关键不变量**:不带 `npu.huawei.com/slice-template=<name>` label 的 Pod 走 Phase 5 既有 whole-NPU 路径,不感知 NPUSliceTemplate 存在。NPUSliceTemplate 是 opt-in,不是替换。
 
+**Phase 9 Quota substrate interaction(2026-05-21 · ADR-0014 / P9-T-002)**:NPUSliceTemplate cluster-scoped name 是 Quota CRD `spec.enforcement.maxNPUSliceTemplateRefs []string` whitelist 的引用 unit · cluster admin 可显式限定某 namespace 仅允许引用列表内 NPUSliceTemplate(NPUVerticalScaler.spec.scaleSlice.{busy,idle}TemplateName 必须 IN whitelist 否则被 Quota Webhook B Reject reason=TemplateRefNotAllowed)· 防止跨 namespace 越权引用 · NPUSliceTemplate substrate 端无 schema 变化 · 仅作为 Quota whitelist 引用对象。详 ADR-0014 §2 Decision B `maxNPUSliceTemplateRefs` 字段 + §2 Decision C Webhook B logic。
+
 ### 2. Source 接口抽象
 
 **Go 接口契约**(P7-T-004 落地):

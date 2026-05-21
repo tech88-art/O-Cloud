@@ -50,6 +50,8 @@ operators/npu-dra-driver/
 
 **关键不变量**:driver name 全栈唯一固定为 `npu.ocloud.edge.example.com`(`operators/npu-dra-driver/api/v1alpha1.DriverName` const)。`ResourceSlice.spec.driver` + `DeviceClass` 名前缀 + claim 控制器 prefix 过滤都用这个串。Phase 4 T102 pool-operator NPUSlicePool Reconcile 也按这个串 filter ResourceSlices 计入 `status.resourceSlicesObserved`。
 
+**Phase 9 Quota admission cross-ref(2026-05-21 · ADR-0014 / P9-T-002)**:`NPUSliceAllocation` create(Phase 5 P5-T-004/T005 落地)在 Phase 9 起被 Quota Webhook A 拦截 — `ocloud.edge.example.com/v1alpha1.Quota` namespace-scoped CRD `spec.enforcement.maxSliceAllocations int32` 限定该 namespace 同时存在 `NPUSliceAllocation` 上限 · failurePolicy=Fail · matchPolicy=Equivalent · admission 拒绝时 claim_controller 内部 reconcile 走 backoff 路径(不卡 reconcile · Pod scheduling backoff)· 详 ADR-0014 §2 Decision C Webhook A + §3 risk row "NPUSliceAllocation create 路径 是 claim_controller owner-ref 创建"。Phase 11+ 候选 claim_controller pre-check Quota(避免 admission round-trip)走 ADR-0014 §7 forward note。
+
 ### 3. KubeEdge gap(承袭 ADR-0001 v3 §5)
 
 **事实**:KubeEdge v1.22 release notes(2026-04-12 latest)不提 `resource.k8s.io`,依赖 K8s 1.31.x — DRA v1beta1 在 K8s 1.31 已 alpha 可启,但 KubeEdge 上游**未发布 edgecore DRA 适配**。
