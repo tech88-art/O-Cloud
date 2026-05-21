@@ -37,6 +37,18 @@ rules:
   - apiGroups: ["npu.ocloud.edge.example.com"]
     resources: ["npusliceallocations/status"]
     verbs: ["get", "update", "patch"]
+  # NPUSliceTemplate — Phase 7 P7-T-006 CRD + P7-T-007
+  # NPUSliceTemplateReconciler watches + stamps status.conditions[
+  # Validated + Allocatable]. Without these verbs the shared informer
+  # cache fails to list/watch the CRD → cache sync blocks → other
+  # reconcilers (ClaimReconciler / AllocationReconciler) never start →
+  # NPUSliceAllocation never reaches Allocated (P7-fix-003 root cause).
+  - apiGroups: ["npu.ocloud.edge.example.com"]
+    resources: ["npuslicetemplates"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["npu.ocloud.edge.example.com"]
+    resources: ["npuslicetemplates/status"]
+    verbs: ["get", "update", "patch"]
   # Leader election lease.
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
