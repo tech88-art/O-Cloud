@@ -68,9 +68,14 @@ fi
 echo "OK: ${device_count} devices in first matching slice"
 
 # Assertion 4: at least one device carries npu.huawei.com/index.
-# v1beta1.Device.Basic.Attributes is a map; check any device has the key.
+# Schema-compat for K8s 1.34 DRA GA(per P10-T-003 三件套 part 1 baseline bump):
+#   - v1beta1(K8s 1.32 baseline): device.basic.attributes (nested under basic)
+#   - v1 GA(K8s 1.34 baseline · post-P10-T-003): device.attributes (flattened ·
+#     BasicDevice intermediate removed in v1 promotion)
+# kubectl prefers v1 when both are served · prefer .attributes path with
+# .basic.attributes fallback for any pre-1.34 cluster smoke run.
 has_index_attr="$(echo "${slice_json}" | jq --arg attr "${EXPECTED_ATTR}" \
-  '[.spec.devices[] | select(.basic.attributes[$attr] != null)] | length')"
+  '[.spec.devices[] | select((.attributes // .basic.attributes // {})[$attr] != null)] | length')"
 if [[ "${has_index_attr}" -lt 1 ]]; then
   echo "::error::no device carries the ${EXPECTED_ATTR} attribute" >&2
   echo "::error::sample device: $(echo "${slice_json}" | jq -r '.spec.devices[0] | tojson')" >&2

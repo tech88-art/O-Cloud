@@ -91,7 +91,14 @@ fi
 
 # T104-1: multi-ring topology in ResourceSlices
 echo "== T104-1: ResourceSlices span 4 HCCS rings (set-b-multi-ring fixture) =="
-RINGS="$(kubectl get resourceslices -o jsonpath='{range .items[*]}{range .spec.devices[*]}{.basic.attributes.hccs_ring.int}{"\n"}{end}{end}' 2>/dev/null | sort -u | tr '\n' ' ' || true)"
+# K8s 1.34 DRA GA flattens BasicDevice → attributes directly on device (per
+# P10-T-003 三件套 part 1 baseline bump · P10-fix-001 schema compat). Try v1
+# (flat) path first, fall back to v1beta1 (nested under .basic) for any
+# pre-1.34 cluster smoke run.
+RINGS="$(kubectl get resourceslices -o jsonpath='{range .items[*]}{range .spec.devices[*]}{.attributes.hccs_ring.int}{"\n"}{end}{end}' 2>/dev/null | sort -u | tr '\n' ' ' || true)"
+if [ -z "${RINGS// /}" ]; then
+  RINGS="$(kubectl get resourceslices -o jsonpath='{range .items[*]}{range .spec.devices[*]}{.basic.attributes.hccs_ring.int}{"\n"}{end}{end}' 2>/dev/null | sort -u | tr '\n' ' ' || true)"
+fi
 echo "  observed rings: [${RINGS}]"
 for r in 0 1 2 3; do
   if ! echo "${RINGS}" | grep -qE "(^|[^0-9])${r}([^0-9]|$)"; then
