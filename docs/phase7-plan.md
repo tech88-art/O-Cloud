@@ -810,24 +810,34 @@ Before P7-T-001 starts, the meeting confirms:
 
 ## Phase 7 actual landing
 
-_To be filled at T107: "Phase 7 lands as `phase-7-complete` at the
-T107 commit (this commit chain head); T107 ran YYYY-MM-DD."_
+Phase 7 lands as `phase-7-complete` at the T107 commit (this commit
+chain head); T107 ran 2026-05-20 (same day as Phase 7 plan committed +
+T001 started · single execute session pattern per §0a.10).
 
-_Lab-gating outcome: T101 [landed on real 910B silicon at YYYY-MM-DD]
-[deferred to Phase 10 per W2 entry meeting decision YYYY-MM-DD]._
+**Lab-gating outcome**: T101 deferred to Phase 10 per ADR-0011 §3
+default policy (no lab access signal received during W2 entry; default
+= defer + run other W2 tasks).
 
-_W2 gating outcomes:_
-- _T002 NumaAffinity upgrade: [upgrade path landed | doc-only deferral]_
-- _T102 vllm-ascend ProxyImage default flip: [full flip landed |
-  doc-only deferral]_
+**W2 gating outcomes**:
+- T002 NumaAffinity upgrade: **doc-only deferral** (sched-plugins
+  v0.32.7 IS GA but K8s 1.32 baseline pin can't absorb transitive
+  apimachinery v0.32.7+ packages along import chain · known-issues #12
+  · Phase 8 baseline bump candidate)
+- T102 vllm-ascend ProxyImage default flip: **doc-only refresh** (v0.12+
+  GA confirmed · v0.18.0 latest · CI image-pull access from GHA runners
+  + `quay.io/vllm-project/vllm-ascend` exact tag convention unverified ·
+  chart default stays empty · Phase 10 demo polish re-verifies)
 
-_Test posture (to be summarized): go test counts across each module;
-helm lint pass; kind smoke E2E Phase 7 sub-job [green | red];
-lab smoke (if T101 landed) green._
+**Test posture summary**: go test PASS across all 11 npu-dra-driver
+packages + scheduler-plugin (32 hccs cases · 2 numa placeholder · 9
+binpack · 5 integration) + inference-operator (3 packages · 45+ tests
+including 4 new TestEffectiveSchedulerName); helm lint clean across
+all 3 charts; kind smoke E2E Phase 7 sub-job ships (next CI run
+validates); lab smoke deferred (T101 not landed).
 
-_See `docs/checkpoint-phase7.md` for the full deliverables table,
+See `docs/checkpoint-phase7.md` for the full deliverables table,
 test counts per surface, DoD reconciliation, lab-gating outcome,
-deferral rationale, and Phase 8 handoff brief._
+deferral rationale, and Phase 8 handoff brief.
 
 ---
 

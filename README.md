@@ -2,10 +2,10 @@
 
 > 基于 O-Cloud 形态的边缘云平台样机，具备**异构算力（昇腾 910B）基础设施管理**与 **AI 推理服务编排部署**两大能力。
 
-**当前阶段**:Phase 6 complete — HCCS/NUMA-aware scheduler-plugin + pool-operator HCCS topology aggregation + inference-operator Prometheus metrics + vllm-ascend PD proxy_server schema substrate + backend/frontend workloads sliceBindings[] — **完成**(15/15 tasks · tag `phase-6-complete` · T102/T103 landed post-tag same day via chat+ADR self-RFC)。NumaAffinity upstream wrap deferred to sched-plugins v0.32.x release(T006 placeholder ships)。
-**上一阶段**:Phase 5(real claim allocation + NPUSliceAllocation CRD + inference-operator controller body + PD Router mutating webhook + cert-manager wiring)— 完成(15/15 tasks · tag `phase-5-complete`)
-**早期阶段**:Phase 1(核心样机 + Mock 数据)44/44 · Phase 2(真实数据源切入)15/15 · Phase 3(pool controllers + ascend-npu-exporter-plus + ADR-0008 PD Router design)15/15 · Phase 4(npu-dra-driver scaffold + ADR-0001 v3 + CANN matrix)15/15 · 全部完成
-**下一阶段**:Phase 7(real Ascend hardware integration + NPU 动态切分 + Standard-K8s 1.34+ DRA spike + NumaAffinity wrap upgrade · 详见 `docs/checkpoint-phase6.md §7` handoff)
+**当前阶段**:Phase 7 complete — NPU 动态切分 (多模板组合 fallback per ADR-0011) + Source 接口抽象 (mockjson + realascend stub + factory dispatch) + NPUSliceTemplate CRD + template engine + reconciler + AllocateBundle 函数 + HCCS adjacency 8-card 默认 + schedulerName auto-stamp (closes known-issues #11) + npu-smi parser scaffold + kind smoke ext + Partitionable Devices spike — **完成**(15/15 statuses: 13 net-new + 2 doc-only fallback per gating + 1 lab-deferred · tag `phase-7-complete`)。Lab-gating outcome: T101 Source.RealAscend body deferred to Phase 10 per ADR-0011 §3 default policy(no lab signal)。NumaAffinity 仍 placeholder(T002 re-deferred · K8s 1.32 baseline pin · Phase 8 baseline bump candidate per known-issues #12)。ProxyImage chart default 仍 empty(T102 doc-only · operators 显式 set tag · Phase 10 demo polish verifies CI image-pull)。
+**上一阶段**:Phase 6 complete — HCCS/NUMA-aware scheduler-plugin + pool-operator HCCS topology aggregation + inference-operator Prometheus metrics + vllm-ascend PD proxy_server schema substrate + backend/frontend workloads sliceBindings[] — 完成(15/15 tasks · tag `phase-6-complete` · T102/T103 landed post-tag same day via chat+ADR self-RFC)
+**早期阶段**:Phase 1(核心样机 + Mock 数据)44/44 · Phase 2(真实数据源切入)15/15 · Phase 3(pool controllers + ascend-npu-exporter-plus + ADR-0008 PD Router design)15/15 · Phase 4(npu-dra-driver scaffold + ADR-0001 v3 + CANN matrix)15/15 · Phase 5(real claim allocation + NPUSliceAllocation CRD + inference-operator controller body + PD Router mutating webhook + cert-manager wiring)15/15 · 全部完成
+**下一阶段**:Phase 8(K8s baseline bump 1.32 → 1.36+ · unblocks NumaAffinity + ProxyImage flip + Partitionable Devices Beta · busy-idle vertical scaling controller · AllocateBundle controller wiring T105-v2 · 详见 `docs/checkpoint-phase7.md §6` handoff)
 
 **协作模式**：协调者 + N 个并行 AI Agent + 集成 Agent（详见 `docs/agent-coordination.md`）
 
