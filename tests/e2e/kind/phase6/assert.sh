@@ -131,32 +131,79 @@ assert_scheduler_name() {
 
 scrape_inference_metrics() {
   echo "== scrape inference-operator /metrics endpoint =="
-  # Port-forward in background; kill on exit.
-  trap 'kill %1 2>/dev/null || true' EXIT
-  kubectl -n "${NS_INF}" port-forward svc/inference-operator-metrics 18082:8082 >/dev/null 2>&1 &
-  sleep 3
+  # P8-fix-001 (2026-05-21): wrap in retry loop with fresh port-forward
+  # per attempt + body / pod-log diagnostic dump on final failure.
+  #
+  # Root cause hypothesis (from e2e-kind #42 e24f365 failure where
+  # inference_modelservice_reconcile_duration_seconds Histogram TYPE
+  # was missing despite Phase 5/6/7/8 all using the same metrics.go
+  # registration code): transient race between port-forward establishment
+  # / curl response read / inference-operator manager registry serving,
+  # OR truncated response body cutting off the last (3rd) collector.
+  # The 3 collectors register via metrics.go init() → MustRegister(...);
+  # if any one is missing from a scrape, the issue is transient (the
+  # other 2 found means registration ran fine), so retry resolves it.
+  local max_attempts=3
+  local sleep_between=10
+  local missing=0
+  local body=""
 
-  if ! body=$(curl -sf http://localhost:18082/metrics 2>&1); then
-    echo "::error::failed to curl inference-operator metrics endpoint"
-    kubectl -n "${NS_INF}" get svc -l app.kubernetes.io/name=inference-operator -o yaml || true
-    return 1
-  fi
-  # Assert the 3 P6-T-104 collectors are present (HELP / TYPE lines).
-  missing=0
-  for metric in \
-      inference_modelservice_phase_transitions_total \
-      inference_pdrouter_decisions_total \
-      inference_modelservice_reconcile_duration_seconds; do
-    if ! echo "${body}" | grep -q "^# TYPE ${metric}"; then
-      echo "::error::expected metric not found: ${metric}"
-      missing=$((missing + 1))
+  for attempt in $(seq 1 ${max_attempts}); do
+    echo "  attempt ${attempt}/${max_attempts}: starting fresh port-forward"
+    # Port-forward in background; kill on exit. Each attempt uses a
+    # fresh port-forward so a dropped/half-open connection from a prior
+    # attempt doesn't poison the response.
+    kubectl -n "${NS_INF}" port-forward svc/inference-operator-metrics 18082:8082 >/dev/null 2>&1 &
+    pf_pid=$!
+    # shellcheck disable=SC2064
+    trap "kill ${pf_pid} 2>/dev/null || true" EXIT
+    sleep 3
+
+    if ! body=$(curl -sf --max-time 10 http://localhost:18082/metrics 2>&1); then
+      echo "  attempt ${attempt}: failed to curl inference-operator metrics endpoint"
+      kill ${pf_pid} 2>/dev/null || true
+      sleep ${sleep_between}
+      continue
     fi
+
+    # Assert the 3 P6-T-104 collectors are present (HELP / TYPE lines).
+    missing=0
+    for metric in \
+        inference_modelservice_phase_transitions_total \
+        inference_pdrouter_decisions_total \
+        inference_modelservice_reconcile_duration_seconds; do
+      if ! printf '%s' "${body}" | grep -q "^# TYPE ${metric}"; then
+        echo "  attempt ${attempt}: metric not found: ${metric}"
+        missing=$((missing + 1))
+      fi
+    done
+
+    if [ "${missing}" -eq 0 ]; then
+      echo "inference-operator /metrics: 3/3 Phase 6 collectors present (attempt ${attempt})."
+      kill ${pf_pid} 2>/dev/null || true
+      return 0
+    fi
+
+    echo "  attempt ${attempt}: ${missing}/3 collectors missing · retrying in ${sleep_between}s"
+    kill ${pf_pid} 2>/dev/null || true
+    sleep ${sleep_between}
   done
-  if [ "${missing}" -gt 0 ]; then
-    echo "::error::${missing}/3 inference-operator collectors missing"
-    return 1
-  fi
-  echo "inference-operator /metrics: 3/3 Phase 6 collectors present."
+
+  # All attempts exhausted → emit diagnostic dump before failing.
+  echo "::error::inference-operator /metrics scrape failed after ${max_attempts} attempts · ${missing}/3 collectors missing"
+  echo "::group::Final /metrics response body (last attempt)"
+  printf '%s\n' "${body}" || true
+  echo "::endgroup::"
+  echo "::group::inference-operator Pod describe"
+  kubectl -n "${NS_INF}" describe pod -l app.kubernetes.io/name=inference-operator || true
+  echo "::endgroup::"
+  echo "::group::inference-operator Pod logs (last 200)"
+  kubectl -n "${NS_INF}" logs deploy/inference-operator --tail=200 || true
+  echo "::endgroup::"
+  echo "::group::inference-operator metrics Service"
+  kubectl -n "${NS_INF}" get svc -l app.kubernetes.io/name=inference-operator -o yaml || true
+  echo "::endgroup::"
+  return 1
 }
 
 assert_kubescheduler_config
