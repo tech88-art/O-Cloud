@@ -80,6 +80,41 @@ P5-T-114 落地;具体 patch 版本在 P6-T-002 task entry 按当时 latest rele
 >
 > **下一次 baseline bump 评估时机**:Phase 10 W1 entry · 或 sched-plugins v0.35+/v0.36+ 发布时(re-eval whether v0.35+ relaxes framework restructuring · 现 v0.34.x 是 K8s 1.34 framework GA baseline · v0.35+ 可能进一步演进)。
 
+> 🆕 **2026-05-21 update (P10-T-003 · 三件套 part 1 lands · option B per-module skew accepted)**:Phase 10 W1 entry re-WebFetch findings + per-module state survey:
+> - upstream **sched-plugins v0.34.7** GA(2026-04-20 · 不变 vs Phase 9)— v0.35.x / v0.36.x 仍未发布
+> - **kind v0.31.0**(2024-12-18 latest)ships kindest/node:**v1.35.0 / v1.34.3 / v1.33.7 / v1.32.11 / v1.31.14** — v1.34.3 是 1.34 cohort 最新 patch
+> - **KEP-4815 Partitionable Devices** Beta in K8s 1.36 · GA not targeted yet · T202 cascade Phase 11+ regardless of 1.36 bump(详 `docs/adr/0016-lab-onboarding-and-phase-11-outlook.md` §3 Stream 6)
+> - **唯一 feasible bump target = 1.34**(1.35 sched-plugins blocked · 1.36 sched-plugins + kindest 双 blocked · defer 不必要)
+>
+> **Per-module current K8s state**(verified at T003 entry · grep `k8s.io/api` 每 module go.mod):
+> - operators/scheduler-plugin · `v0.32.0`(P9-T-003 revert · 唯一 laggard)
+> - operators/o2-dms-adapter · `v0.36.1`(Phase 9 P9-T-008 new module · 自然 picks latest)
+> - operators/{npu-dra-driver, inference-operator, pool-operator} · `v0.35.0`(Phase 7 期间 `go mod tidy` drift up · per Phase 8 P8-T-002 policy "不主动 downgrade 也不主动 upgrade")
+> - operators/{node-lifecycle-operator, software-mgmt-operator, bare-metal-provisioning-operator} · 无直接 `k8s.io/api` dep(Phase 9 P9-T-105 scaffold · 仅 controller-runtime indirect)
+> - exporters/ascend-npu-exporter-plus · 无直接 `k8s.io/api` dep
+> - backend · `v0.31.4`(**KubeEdge v1.22 compat lock per ADR-0001 v3 §5** · K8s 1.31.x 是 KubeEdge primary edge-path constraint · 不动)
+> - tests/e2e/kind kindest/node · `v1.32.0`(必须移)
+>
+> **用户决策**(2026-05-21 chat · Phase 10 W1 entry T003 path choice):**选项 B · 务实 lockstep runtime + 尊重既有 locks**(plan literal "lockstep no skew" 与 reality skew 矛盾 · 务实修正而非假装 clean · P3 verify-before-claim):
+> - 真 bump = `scheduler-plugin/go.mod v0.32.0 → v0.34.7 cohort`(sched-plugins lockstep 必须)+ `kindest/node v1.32.0 → v1.34.3`(3 places)+ `e2e-kind.yml kind v0.25.0 → v0.31.0` + comment update
+> - 已 drift 模块(v0.35.0 / v0.36.1)留 — client-go is backward-compat(对 K8s 1.34 runtime 仍 work)
+> - backend `v0.31.4` 留 — KubeEdge v1.22 compat 是 hard requirement per ADR-0001 v3 §5
+> - 3 IMS scaffold + exporter 不动(无 direct k8s.io/api dep)
+>
+> **执行过程 + 复盘**(2026-05-21 main agent · 同 P9-T-003 main agent 主动汇报模式):
+> 1. 编辑 `scheduler-plugin/go.mod` v0.32.0 → v0.34.7(require + replace block 30 lines + indirect block v0.31.8 → v0.34.7 + comment refresh)· `kind-config.yaml` v1.32.0 → v1.34.3(replace_all · 3 places · control-plane + 2 worker)· `e2e-kind.yml` kind v0.25.0 → v0.31.0 + comment block update(DRA `resource.k8s.io/v1` GA in 1.34 note · Partitionable Devices Beta in 1.36 ADR-0016 §3 Stream 6 cross-ref)
+> 2. `go mod tidy` clean exit 0(下载 K8s v0.34.7 cohort + transitive deps · indirect block 全 propagate)
+> 3. **`go build ./operators/scheduler-plugin/...` FAIL**:同 P9-T-003 框架 drift error pattern · 15 errors across 9 files(`framework.Status` / `NewStatus` / `Error` / `StateKey` / `StateData` / `NodeInfo` interface vs `*NodeInfo` struct pointer)· **Phase 10 plan §3 T003 acceptance 明示**:"scheduler-plugin module may show stale due to framework API drift · expected · T004 owns fix-up" · T003 part 1 deliver scope = baseline bump ONLY,framework migration 是 T004 part 2 owner
+> 4. **其他 modules `go build ./...` clean**:npu-dra-driver / inference-operator / pool-operator / o2-dms-adapter / backend 各 rc=0(Phase 10 T003 option B "不动" 模块 build status 与 T003 前一致 · 验证 client-go backward compat)
+>
+> **Phase 10 影响**:
+> - **T003 outcome** = **baseline bump landed**(本 update segment + ADR-0001 v3 §5 per-module skew policy explicit + `docs/devlog/phase-10-t003.md`)· scheduler-plugin v0.32.0 → v0.34.7 · kindest/node v1.32 → v1.34.3 · 已 drift 模块不动 · backend KubeEdge lock 不动
+> - **T004**(K8s baseline bump 三件套 part 2 · scheduler framework migration · 9 files NodeInfo+CycleState interface conversion)→ T003 entry 条件 met · 主 work start(per Phase 10 plan §3 T004 Allowed Paths)
+> - **T005**(三件套 part 3 · NumaAffinity wrap upgrade body)→ depend on T004 完成
+> - **T202**(Partitionable Devices Beta + partition-aware allocator)→ cascade decision unchanged · KEP-4815 Beta only in 1.36 · 1.34 bump 不 unlock T202 · Phase 11+ defer per ADR-0016 §3 Stream 6
+>
+> **下一次 baseline bump 评估时机**:Phase 11+ entry · 或 sched-plugins v0.35+/v0.36+ 发布时(re-eval 1.35/1.36 cohort 可行性)。known-issues #12 prerequisite met(K8s 1.34 baseline landed)· closer 是 T004 + T005 完成。
+
 **部署形态**:**独立 kube-scheduler 二进制**(`bin/kube-scheduler` from
 `operators/scheduler-plugin/cmd/main.go`),作为**第二 scheduler** 运行,通过
 KubeSchedulerConfiguration 注册 profile `npu-scheduler`。**不修改 default-scheduler。**

@@ -33,6 +33,13 @@
 #
 # Image pin
 # ---------
+# 🆕 2026-05-21 update (P10-T-003 · 三件套 part 1):**kindest/node:v1.34.3**
+# bumped from v1.32.0 · kind v0.31.0 supported set (lockstep with scheduler-plugin
+# go.mod v0.34.7 cohort per docs/adr/0010-scheduler-plugin.md §1 + P10-T-003
+# update segment). K8s 1.34 ships **DRA GA `resource.k8s.io/v1`** alongside
+# `v1beta1` (backward compat preserved for Phase 5+ charts).
+#
+# Historical context (kept for trail):
 #   kindest/node:v1.32.0 — picked at P5-T-112 / P5-T-114 for the kind
 #   v0.25.0 supported set. K8s 1.32 has the v1.31 scheduler bug fixed
 #   (cert-manager pods stayed Pending on 1.31 + DRA feature gate), but
@@ -73,7 +80,7 @@ featureGates:
   DynamicResourceAllocation: true
 nodes:
   - role: control-plane
-    image: kindest/node:v1.32.0
+    image: kindest/node:v1.34.3
     kubeadmConfigPatches:
       # Explicit kubeadm config — apiserver gets BOTH --feature-gates
       # AND --runtime-config; controller-manager + scheduler get
@@ -103,7 +110,7 @@ nodes:
         hostPort: 30090
         protocol: TCP
   - role: worker
-    image: kindest/node:v1.32.0
+    image: kindest/node:v1.34.3
     kubeadmConfigPatches:
       - |
         kind: JoinConfiguration
@@ -116,7 +123,7 @@ nodes:
       site: site-a
       role: edge
   - role: worker
-    image: kindest/node:v1.32.0
+    image: kindest/node:v1.34.3
     kubeadmConfigPatches:
       - |
         kind: JoinConfiguration

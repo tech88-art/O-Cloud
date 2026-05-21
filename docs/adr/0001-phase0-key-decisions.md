@@ -108,6 +108,31 @@ O-Cloud 边缘云平台样机启动期。基于昇腾 910B（amd64-only），需
 
 v3 与 v2 区别:v2 把 "Phase 4 主路径"与"Phase 4 後段"混在一段散文中;v3 明确**双轨**(Edge 与 Standard-K8s 路径互不阻塞)+ scaffold 不再是"未来"而是 Phase 4 实际交付物(P4-T-003+),并新增 §7 Phase 4 落地交叉引用。
 
+**2026-05-21 update (P10-T-003 · 三件套 part 1 · per-module K8s version skew policy explicit)** — Phase 10 W1 entry T003 实测发现 per-module go.mod K8s 版本已 drift 出 plan "lockstep no skew" 假定的 clean state · 落 explicit policy 替换 implicit "不动":
+
+| Module | k8s.io/api version | Source of truth | Phase 10+ posture |
+|---|---|---|---|
+| `operators/scheduler-plugin` | **v0.34.7**(P10-T-003 lockstep bump 自 v0.32.0)| sched-plugins v0.34.7 lockstep · `k8s.io/kubernetes v1.34.7` replace block | **active lockstep** with sched-plugins;next bump when sched-plugins v0.35+ GA released |
+| `operators/o2-dms-adapter` | v0.36.1 | Phase 9 P9-T-008 new module · 自然 picks latest at scaffold time | **drift-tolerant**(client-go backward compat to 1.34 runtime);不主动 downgrade |
+| `operators/{npu-dra-driver, inference-operator, pool-operator}` | v0.35.0 | Phase 7 期间 `go mod tidy` drift up | **drift-tolerant**;P8-T-002 policy 延续 — 不主动 downgrade 也不主动 upgrade |
+| `operators/{node-lifecycle-operator, software-mgmt-operator, bare-metal-provisioning-operator}` | (无直接 dep) | Phase 9 P9-T-105 scaffold · 仅 `sigs.k8s.io/controller-runtime` indirect | **transitively constrained**;controller-runtime 决定有效 K8s API surface |
+| `exporters/ascend-npu-exporter-plus` | (无直接 dep) | exporter pattern · Prometheus client + npu-smi parser | **K8s-version-agnostic**;无 direct K8s API call |
+| **`backend`** | **v0.31.4** | **KubeEdge v1.22 primary edge-path constraint**(v1.22 仍无 DRA · 依赖 K8s 1.31.x · 本节 v3 §1 事实第 4 行)| **冻结 v0.31.x**;backend 通过 KubeEdge cloud core / mapper 触达 edge node · K8s API compat 必须 ≤ KubeEdge 当前支持版本 |
+
+**Runtime baseline**:`kindest/node v1.34.3`(P10-T-003 三件套 part 1 lands · kind v0.31.0 lockstep)· 是 demo 集群实际 K8s runtime · 所有 module client-go 调用都对此 runtime 作。
+
+**Policy 解读**(Phase 10+ operative):
+
+1. **"Lockstep" 仅指 runtime baseline + scheduler-plugin** — scheduler-plugin 必须与 sched-plugins 上游严格同 version cohort;runtime baseline kindest/node 与 plan 决定的 K8s minor 同步。
+2. **Per-module client-go drift accepted** — client-go 对 K8s minor server 是 backward-compat(N-2 一般 work)· 各 module 自然 drift 到不同 minor 不强制 lockstep,直到出现 API 不兼容 incident 才介入。
+3. **backend 是显式例外** — KubeEdge compat 是 *hard* requirement(non-negotiable until KubeEdge gets DRA · 6-month review per §5 v2 fallback condition);任何 backend bump 必须先核 KubeEdge release notes 是否升级。
+4. **3 IMS scaffold + exporter 透传** — 无直接 K8s API dep,跟随各自上游 dep(controller-runtime / Prometheus client)。
+
+**Phase 11+ re-evaluation triggers**:
+- sched-plugins v0.35+/v0.36+ GA → scheduler-plugin lockstep bump 评估
+- KubeEdge 引入 DRA support → backend lock 解除路径打开 · §5 v2 fallback condition close
+- 任意 module 出现 K8s API 不兼容 incident → ad-hoc policy review
+
 ---
 
 ### 6. 边缘 / 多站点：KubeEdge + Karmada

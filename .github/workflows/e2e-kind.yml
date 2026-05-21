@@ -83,7 +83,17 @@ jobs:
           # Pending with no scheduling events on v1.31 + manual DRA
           # feature gate). v1.32 lets us drop the manual featureGates
           # line in kind-config.yaml entirely.
-          version: v0.25.0
+          # P10-T-003 (2026-05-21 · 三件套 part 1): bump kind v0.25.0
+          # → v0.31.0 to consume kindest/node:v1.34.3 (latest 1.34 patch
+          # image · K8s 1.34 has DRA GA `resource.k8s.io/v1` alongside
+          # `v1beta1` served by default). scheduler-plugin v0.32 → v0.34.7
+          # lockstep per `operators/scheduler-plugin/go.mod`. framework
+          # API migration (9 source files · NodeInfo + CycleState
+          # struct→interface) carries forward to T004 part 2. K8s 1.36 +
+          # KEP-4815 Partitionable Devices GA still pending (Beta in 1.36
+          # per `docs/adr/0016-lab-onboarding-and-phase-11-outlook.md` §3
+          # Stream 6 · T202 cascade Phase 11+ unless GA materialises).
+          version: v0.31.0
 
       - name: kind create cluster + install components
         # install.sh `up` is idempotent — it skips cluster creation if
