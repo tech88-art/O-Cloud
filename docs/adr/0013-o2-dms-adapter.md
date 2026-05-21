@@ -101,7 +101,7 @@ Phase 8 (`phase-8-complete` @ e24f365 + P8-fix-001 series · CI gate dev HEAD �
 
 ### 正面
 
-- **arch §1.3 Phase 9 deliverable 承诺兑现**:本 ADR + P9-T-008 scaffold + P9-T-104 body 三件套合上 Phase 9 唯一明示 deliverable(M4 工程化对外 milestone 头条)。
+- **arch §1.3 Phase 9 deliverable 承诺兑现**:本 ADR + P9-T-008 scaffold + P9-T-104 body 三件套合上 Phase 9 唯一明示 deliverable(M4 工程化对外 milestone 头条)。**2026-05-21 P9-T-104 body landed**:7 stub handlers 全 replaced with real impl(inventory.DynamicClient via dynamic + core K8s clients + translator package O2 ↔ unstructured · LifecycleOperationQueue in-memory · 13 handler tests + 8 translator tests = 21 cases · degraded NoopClient fallback on K8s config 不可达)· 详 `docs/devlog/phase-9-t104.md`。
 - **arch §13 review-table Phase 9 row 解锁**:Phase 9 row "锁定一个版本(如 O2 IMS R1)" 在 §1 Context 锁定 R003-v04.00 + R004 forward-note + ATIS MVP cross-ref · 风险条目 close。
 - **Phase 3-8 substrate 立即变现**:NPUSlicePool(Phase 3)/ NPUSliceAllocation(Phase 5)/ ModelService(Phase 5)/ NPUVerticalScaler(Phase 8)/ NPUSliceTemplate(Phase 7) — 5 个 CRD 同时被 inventory reflection 消费,跨 Phase 复用清晰可见。
 - **inference-operator 解耦保持**:O2 DMS Adapter **不**修改 inference-operator 任何代码(P9-T-008 scaffold Forbidden Paths 明示)· inference-operator + npu-dra-driver + pool-operator 三个 controller binary 内部模型不变;O2 DMS Adapter 是 *上游 facade* 不是 *内部组件*。

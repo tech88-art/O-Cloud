@@ -24,7 +24,13 @@ import (
 	"syscall"
 	"time"
 
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+
 	"github.com/tech88-art/O-Cloud/operators/o2-dms-adapter/internal/api"
+	"github.com/tech88-art/O-Cloud/operators/o2-dms-adapter/internal/inventory"
 )
 
 func main() {
@@ -35,7 +41,14 @@ func main() {
 	flag.DurationVar(&shutdownTimeout, "shutdown-timeout", 10*time.Second, "Graceful shutdown timeout.")
 	flag.Parse()
 
-	handler := api.NewHandler()
+	// Construct K8s clients · per ADR-0013 §2 Decision D dynamic +
+	// core client wiring. In-cluster default; KUBECONFIG fallback for
+	// local dev. Failure to construct → NoopClient (degraded · log
+	// warning) so binary still serves /o2dms/v1/* (returns empty
+	// inventories) for testing.
+	inv := buildInventoryClient(os.Getenv("KUBECONFIG"), os.Getenv("O2DMS_CLUSTER_ID"))
+
+	handler := api.NewHandler(inv)
 	router := api.NewRouter(handler)
 
 	srv := &http.Server{
@@ -67,4 +80,33 @@ func main() {
 	}
 	<-idleClosed
 	log.Printf("o2-dms-adapter: shutdown complete")
+}
+
+// buildInventoryClient constructs a DynamicClient from in-cluster or
+// KUBECONFIG config. On any failure returns NoopClient (degraded mode)
+// so the binary still serves the NB API surface for testing.
+func buildInventoryClient(kubeconfig, clusterID string) inventory.Client {
+	var cfg *rest.Config
+	var err error
+	if kubeconfig != "" {
+		cfg, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+	} else {
+		cfg, err = rest.InClusterConfig()
+	}
+	if err != nil {
+		log.Printf("o2-dms-adapter: K8s config not available (%v) · using NoopClient (degraded · inventory returns empty)", err)
+		return inventory.NewNoopClient()
+	}
+	dyn, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		log.Printf("o2-dms-adapter: dynamic client construction failed (%v) · NoopClient", err)
+		return inventory.NewNoopClient()
+	}
+	core, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Printf("o2-dms-adapter: core client construction failed (%v) · NoopClient", err)
+		return inventory.NewNoopClient()
+	}
+	log.Printf("o2-dms-adapter: K8s clients wired · cluster=%s", clusterID)
+	return inventory.NewDynamicClient(dyn, core, clusterID)
 }

@@ -13,9 +13,13 @@ package api
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
+	chi "github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
+
+// Compile-time ensure chi router import is used in routes.go (the
+// IDE / `goimports` would otherwise drop it).
+var _ = chi.NewRouter
 
 // BasePath is the O2 IMS R1 NB base path per ADR-0013 §2 Decision B.
 const BasePath = "/o2dms/v1"
