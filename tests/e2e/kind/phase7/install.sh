@@ -25,6 +25,17 @@ set -euo pipefail
 
 KIND_CLUSTER="${KIND_CLUSTER:-ocloud-e2e}"
 NS_INF="${NS_INF:-ocloud-system}"
+# P7-fix-004 (2026-05-21): NS_DRA is the npu-dra-driver chart's release
+# namespace (matches `helm install -n "${NS}"` in tests/e2e/kind/install.sh
+# where NS defaults to ocloud-system). Earlier W2 install.sh wrote
+# `kube-system` here, breaking `kubectl rollout restart deploy/npu-dra-driver`
+# in CI with "deployments.apps 'npu-dra-driver' not found".
+NS_DRA="${NS_DRA:-ocloud-system}"
+# P7-fix-004: ConfigMap name matches chart's mockConfigMapName helper
+# = "<release>-mock" → "npu-dra-driver-mock" for the default
+# release-name=npu-dra-driver install. Pod volumeMount references this
+# specific name; reseeding under a different name is silently ignored.
+DRA_MOCK_CM="${DRA_MOCK_CM:-npu-dra-driver-mock}"
 WAIT_NST_SECONDS="${WAIT_NST_SECONDS:-30}"
 WAIT_DEPLOY_SECONDS="${WAIT_DEPLOY_SECONDS:-60}"
 
@@ -37,13 +48,16 @@ SET_B_NPUS="${REPO_ROOT}/configs/mock-data/set-b-multi-ring/npus.json"
 cmd_reseed_mockdata() {
   echo "== Phase 7 T104: reseed npu-dra-driver mock data with set-b-multi-ring =="
   # Replace the ConfigMap key `npus.json` with set-b-multi-ring's
-  # npus.json so MockJSONSource publishes 4-ring topology.
-  kubectl -n kube-system create configmap npu-dra-mock \
+  # npus.json so MockJSONSource publishes 4-ring topology. NS_DRA +
+  # DRA_MOCK_CM match the chart's mockConfigMapName helper output
+  # (= "<release>-mock") + chart release namespace (per
+  # tests/e2e/kind/install.sh NS=ocloud-system).
+  kubectl -n "${NS_DRA}" create configmap "${DRA_MOCK_CM}" \
     --from-file=npus.json="${SET_B_NPUS}" \
     --dry-run=client -o yaml | kubectl apply -f -
   echo "== restart npu-dra-driver to reload mock data =="
-  kubectl -n kube-system rollout restart deploy/npu-dra-driver
-  kubectl -n kube-system rollout status deploy/npu-dra-driver --timeout="${WAIT_DEPLOY_SECONDS}s"
+  kubectl -n "${NS_DRA}" rollout restart deploy/npu-dra-driver
+  kubectl -n "${NS_DRA}" rollout status deploy/npu-dra-driver --timeout="${WAIT_DEPLOY_SECONDS}s"
 }
 
 cmd_label_nodes() {
