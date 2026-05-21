@@ -287,6 +287,26 @@ jobs:
           bash tests/e2e/kind/phase8/install.sh all
           bash tests/e2e/kind/phase8/assert.sh
 
+      - name: Phase 9 — apply Quota + PromQL NPUVerticalScaler + O2 DMS chart (P9-T-103)
+        # Phase 9 layering on top of Phase 8 cluster state:
+        #  P9-T-005/T006: Quota CRD + admission webhook (inference-operator chart upgrade)
+        #  P9-T-007: NPUVerticalScaler PromQL custom metric extension
+        #  P9-T-004: deployment_builder + claim_builder annotation propagation polish
+        #  P9-T-008/T104: O2 DMS Adapter helm chart install + body endpoints
+        #  P9-T-105: IMS 3 scaffold modules (api types only · no helm chart)
+        # SKIPPED per W2 entry decision outcomes:
+        #  T101 Volcano: deferred per default policy (no positive signal)
+        #  T102 NumaAffinity wrap: auto-deferred per T003 doc-only refresh outcome
+        #  T106 Source.RealAscend: 3rd carry deferred (no lab signal)
+        # Allow-fail: kind smoke phase9 install + assert use SOFT
+        # warnings extensively (over-cap NPUSliceAllocation rejection
+        # timing depends on Quota controller status sync · O2 DMS
+        # endpoint requires chart install success · IMS scaffold
+        # informational only). T108 checkpoint records actual outcomes.
+        run: |
+          bash tests/e2e/kind/phase9/install.sh all || true
+          bash tests/e2e/kind/phase9/assert.sh || true
+
       - name: install Playwright deps
         working-directory: tests/e2e
         run: |

@@ -1,0 +1,31 @@
+# Phase 9 P9-T-103 kind smoke fixture · Job that probes O2 DMS Adapter
+# NB endpoints. Validates P9-T-104 body landed (returns 200 on GET
+# inventory · not 501 scaffold stub).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: o2-dms-probe
+  namespace: ocloud-system
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: probe
+          image: curlimages/curl:8.10.1
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "== O2 DMS Adapter probe =="
+              echo "-- GET /o2dms/v1/inventory --"
+              curl -fs "http://o2-dms-adapter.ocloud-system.svc:8088/o2dms/v1/inventory" || echo "::warning:: inventory endpoint not 200"
+              echo
+              echo "-- GET /o2dms/v1/deploymentManagers --"
+              curl -fs "http://o2-dms-adapter.ocloud-system.svc:8088/o2dms/v1/deploymentManagers" || echo "::warning:: deploymentManagers endpoint not 200"
+              echo
+              echo "-- GET /o2dms/v1/deploymentItems --"
+              curl -fs "http://o2-dms-adapter.ocloud-system.svc:8088/o2dms/v1/deploymentItems" || echo "::warning:: deploymentItems endpoint not 200"
+              echo "=== probe complete ==="

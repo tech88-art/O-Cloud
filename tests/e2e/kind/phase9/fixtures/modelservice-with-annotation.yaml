@@ -1,0 +1,21 @@
+# Phase 9 P9-T-103 kind smoke fixture · ModelService with
+# slice-template annotation pre-stamped (validates P9-T-004 propagation
+# chain end-to-end · no manual annotate workaround needed).
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: ModelService
+metadata:
+  name: qwen-pd-test
+  namespace: ai-edge-demo
+  annotations:
+    npu.huawei.com/slice-template: qwen-pd-idle
+spec:
+  model:
+    image: vllm-ascend:v0.11.0
+    modelPath: /models/qwen-pd
+  npuSlicePoolRef:
+    name: qwen-pool
+  pdPair:
+    prefill:
+      replicas: 1
+    decode:
+      replicas: 1

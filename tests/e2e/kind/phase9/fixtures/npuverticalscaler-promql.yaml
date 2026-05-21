@@ -1,0 +1,24 @@
+# Phase 9 P9-T-103 kind smoke fixture · NPUVerticalScaler with
+# metric.type=PrometheusQuery (P9-T-007 extension landed).
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: NPUVerticalScaler
+metadata:
+  name: qwen-pd-promql-scaler
+  namespace: ai-edge-demo
+spec:
+  target:
+    apiVersion: inference.ocloud.edge.example.com/v1alpha1
+    kind: ModelService
+    name: qwen-pd-test
+    namespace: ai-edge-demo
+  metric:
+    type: PrometheusQuery
+    prometheusQuery: |
+      sum(rate(vllm_decode_tokens_total{namespace="ai-edge-demo", model_service="qwen-pd-test"}[5m]))
+    busyThreshold: 800
+    idleThreshold: 200
+    windowSeconds: 300
+  scaleSlice:
+    busyTemplateName: qwen-pd-busy
+    idleTemplateName: qwen-pd-idle
+  cooldownSeconds: 300

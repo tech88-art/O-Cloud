@@ -1,0 +1,20 @@
+# Phase 9 P9-T-103 kind smoke fixture · NPUSliceAllocation that exceeds
+# Quota.spec.enforcement.maxSliceAllocations (4 per quota-default.yaml).
+# 5th allocation in ai-edge-demo namespace should be rejected by
+# Webhook A per ADR-0014 §2 Decision C.
+#
+# Note: Webhook A enforcement depends on Quota controller having synced
+# status.usage.currentSliceAllocations to 4 (matching cap). Test timing:
+# Quota fixture applied first, controller 60s reconcile tick syncs usage,
+# then this allocation create should be rejected. assert.sh tolerates
+# warning (not hard fail) since timing may vary.
+apiVersion: npu.ocloud.edge.example.com/v1alpha1
+kind: NPUSliceAllocation
+metadata:
+  name: over-cap-alloc
+  namespace: ai-edge-demo
+spec:
+  modelServiceRef: "ai-edge-demo/qwen-pd-test"
+  npuPoolRef:
+    name: qwen-pool
+  sliceTemplate: qwen-pd-busy

@@ -1,0 +1,15 @@
+# Phase 9 P9-T-103 kind smoke fixture · default Quota for ai-edge-demo ns.
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: Quota
+metadata:
+  name: ai-edge-demo-quota
+  namespace: ai-edge-demo
+spec:
+  enforcement:
+    maxSliceAllocations: 4
+    maxScaleEventsPerWindow:
+      count: 5
+      windowSeconds: 3600
+    maxNPUSliceTemplateRefs:
+      - qwen-pd-busy
+      - qwen-pd-idle
