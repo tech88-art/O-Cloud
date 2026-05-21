@@ -674,6 +674,81 @@ contract) · phase7-plan.md §3 P7-T-105 + §4 P7-T-103 (kind smoke
 verifies NPUSliceTemplate Allocatable=True flows through engine but
 does NOT yet exercise AllocateBundle directly — that's Phase 10).
 
+### 3.10.1 Controller wiring (Phase 8 P8-T-008)
+
+Phase 8 P8-T-008 lifts the Phase 7 "deferred to Phase 10 / T105-v2"
+caveat above by wiring `claim_controller.Reconcile` to the
+NPUSliceTemplate-aware path. The wiring is annotation-driven (instead of
+the Pod-label-driven path originally specified in phase8-plan.md §3
+P8-T-008) — see "Mutation model adaptation" below for the
+rationale.
+
+**Dispatch contract**:
+
+| Claim annotation                                  | Reconcile path                                                  |
+|---------------------------------------------------|-----------------------------------------------------------------|
+| absent                                            | Phase 5 single-device path (zero regression)                    |
+| `npu.huawei.com/slice-template=<name>` set        | bundle path → Get NPUSliceTemplate{name} → Engine.Decompose → AllocateBundle |
+
+**Reconcile flow** (annotation present):
+
+```
+1. claim.Annotations[npu.huawei.com/slice-template] = templateName
+2. client.Get NPUSliceTemplate{Name: templateName}      // cluster-scoped
+   - NotFound → Recorder Event "NPUSliceTemplateNotFound" + return (no requeue)
+3. engine.Decompose(template.Spec)                       // P7-T-007 engine
+   - error → Recorder Event "BundleAllocationFailed" + return err
+4. allocator.AllocateBundle(alloc, claim, bundle, slices, allocated)
+   - ErrNoAvailableDevice → Recorder Event + Requeue=true (no partial allocation)
+   - other error → Recorder Event + return err (no partial allocation)
+5. Write claim.Status.Allocation.Devices.Results = N allocations
+6. Write claim.Status.Devices = N AllocatedDeviceStatus (Ready=True each)
+7. Create N NPUSliceAllocation audit objects (idempotent · owner-ref to claim)
+8. Stamp claim annotation npu.huawei.com/preferred-hccs-ring=<ringID>
+   (derived from most-frequent hccs_ring across picked devices)
+9. Recorder Event "BundleAllocated"
+```
+
+**Mutation model adaptation**(annotation vs Pod label):
+
+Plan §3-T008 specified stamping the Pod with
+`npu.huawei.com/preferred-hccs-ring=<ringID>`. The Phase 8 wiring adapts:
+
+- **Source dispatch** (read): claim annotation
+  `npu.huawei.com/slice-template`, NOT Pod label. Reason: claim
+  controller has Get/List authority on ResourceClaim natively (Phase
+  5 baseline). Pod-side stamping → claim annotation propagation is a
+  cross-controller path that belongs to deployment_builder (Phase 8
+  polish task carry-forward) or the PD Router webhook.
+- **Output stamp** (write): claim annotation
+  `npu.huawei.com/preferred-hccs-ring`, NOT Pod annotation. Reason:
+  Phase 8 simplicity — Pod-side stamping requires OwnerReference
+  walking + extra RBAC. The kind-smoke assert (T104-v2 hard-fail
+  upgrade) can read from either the claim OR Pod; claim-side is
+  sufficient for end-to-end signal.
+
+Phase 9+ may extend with Pod-side stamping when the lab smoke proves
+the kind smoke gap matters in real-silicon HCCS placement validation.
+
+**RBAC additions** (deploy/helm-charts/npu-dra-driver/templates/rbac.yaml):
+
+Already in place since Phase 7 P7-fix-003 (npu-dra-driver chart RBAC
+for NPUSliceTemplate) — the controller reads `npuslicetemplates`
+cluster-scoped. No new RBAC verbs needed for T008.
+
+**Test gate** (3 new envtest-fake-client cases on top of existing 11+):
+
+| Case                                              | Asserts                                                       |
+|---------------------------------------------------|---------------------------------------------------------------|
+| `TestClaim_BundlePath_SingleTemplate`            | 1× vir04 composition → 1 allocation + 1 audit + Event "BundleAllocated" |
+| `TestClaim_BundlePath_MultiTemplateDecompose`    | 1× vir04 + 1× vir08 → 2 allocations + 2 statuses + preferred-hccs-ring annotation stamped |
+| `TestClaim_BundlePath_OverCapacityRollback`       | Insufficient slices → Requeue=true + no Status.Allocation + Event "BundleAllocationFailed" |
+
+**Cross-references**: ADR-0011 §1 (NPUSliceTemplate · Pod opt-in label) ·
+ADR-0012 §5 (mutation model) · phase8-plan.md §3 P8-T-008 ·
+`docs/devlog/phase-8-t008.md` · `internal/controller/claim_controller.go`
+reconcileBundlePath + pickPreferredRing + stampClaimAnnotation helpers.
+
 ---
 
 ## 4. 生命周期

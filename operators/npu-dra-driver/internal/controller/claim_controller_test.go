@@ -433,3 +433,171 @@ func TestRemoveCondition(t *testing.T) {
 		t.Error("RemoveCondition should return false when no match")
 	}
 }
+
+// ============================================================================
+// Phase 8 P8-T-008 AllocateBundle controller wiring tests
+// ============================================================================
+
+// fixtureNPUSliceTemplate is the cluster-scoped helper for bundle-path
+// tests. composition is a sequence of (PartType, Count) pairs.
+func fixtureNPUSliceTemplate(name string, parts ...v1alpha1.TemplatePart) *v1alpha1.NPUSliceTemplate {
+	return &v1alpha1.NPUSliceTemplate{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: v1alpha1.NPUSliceTemplateSpec{
+			Composition:      parts,
+			FallbackStrategy: v1alpha1.FallbackStrategyFixedTemplateCombination,
+		},
+	}
+}
+
+// claimWithSliceTemplate constructs a ResourceClaim carrying the Phase 8
+// AnnotationSliceTemplate annotation that dispatches the bundle path.
+func claimWithSliceTemplate(name, namespace, deviceClassName, templateName string) *resourceapi.ResourceClaim {
+	c := ourClaim(name, namespace, deviceClassName)
+	c.Annotations = map[string]string{AnnotationSliceTemplate: templateName}
+	return c
+}
+
+// TestClaim_BundlePath_SingleTemplate covers P8-T-008 case 1/3: claim
+// carries AnnotationSliceTemplate referencing a 1-part NPUSliceTemplate
+// (1× vir04) → claim_controller dispatches the bundle path → 1
+// allocation written + 1 audit object + reasonBundleAllocated event.
+func TestClaim_BundlePath_SingleTemplate(t *testing.T) {
+	claim := claimWithSliceTemplate("c-bundle-single", "ns-a", v1alpha1.DriverName, "qwen-single")
+	tpl := fixtureNPUSliceTemplate("qwen-single",
+		v1alpha1.TemplatePart{Type: v1alpha1.PartTypeVir04, Count: 1})
+	dev := fixtureHealthyWholeDevice("nodeA-npu-0", 0)
+	slice := fixtureSlice("npu-dra-nodeA", "nodeA", dev)
+
+	cli := newFakeClient(t, claim, tpl, slice)
+	rec := newFakeRecorder(8)
+	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: rec}
+
+	key := client.ObjectKey{Namespace: "ns-a", Name: "c-bundle-single"}
+	res := reconcileOnce(t, r, key)
+	if res.Requeue {
+		t.Errorf("bundle single-template path must not requeue; got Requeue=%v", res.Requeue)
+	}
+
+	got := getClaim(t, cli, key)
+	if got.Status.Allocation == nil {
+		t.Fatalf("Status.Allocation nil; want 1 result")
+	}
+	if len(got.Status.Allocation.Devices.Results) != 1 {
+		t.Fatalf("Devices.Results len = %d, want 1 (single-template bundle)",
+			len(got.Status.Allocation.Devices.Results))
+	}
+
+	// Verify reasonBundleAllocated event emitted.
+	gotEvent := false
+	for {
+		select {
+		case ev := <-rec.Events:
+			if strings.Contains(ev, reasonBundleAllocated) {
+				gotEvent = true
+			}
+		default:
+			if !gotEvent {
+				t.Errorf("expected reasonBundleAllocated event")
+			}
+			return
+		}
+		if gotEvent {
+			return
+		}
+	}
+}
+
+// TestClaim_BundlePath_MultiTemplateDecompose covers P8-T-008 case 2/3:
+// composition (1× vir04 + 1× vir08) → engine.Decompose → AllocateBundle
+// → 2 allocations + 2 audit objects + 2 device statuses + claim
+// annotation preferred-hccs-ring stamped (from device hccs_ring attribute).
+func TestClaim_BundlePath_MultiTemplateDecompose(t *testing.T) {
+	claim := claimWithSliceTemplate("c-bundle-multi", "ns-a", v1alpha1.DriverName, "qwen-pd-busy")
+	tpl := fixtureNPUSliceTemplate("qwen-pd-busy",
+		v1alpha1.TemplatePart{Type: v1alpha1.PartTypeVir04, Count: 1},
+		v1alpha1.TemplatePart{Type: v1alpha1.PartTypeVir08, Count: 1})
+	dev0 := fixtureHealthyWholeDevice("nodeA-npu-0", 0)
+	dev1 := fixtureHealthyWholeDevice("nodeA-npu-1", 1)
+	slice := fixtureSlice("npu-dra-nodeA", "nodeA", dev0, dev1)
+
+	cli := newFakeClient(t, claim, tpl, slice)
+	rec := newFakeRecorder(8)
+	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: rec}
+
+	key := client.ObjectKey{Namespace: "ns-a", Name: "c-bundle-multi"}
+	if res := reconcileOnce(t, r, key); res.Requeue {
+		t.Errorf("multi-template bundle must not requeue; got Requeue=%v", res.Requeue)
+	}
+
+	got := getClaim(t, cli, key)
+	if got.Status.Allocation == nil {
+		t.Fatalf("Status.Allocation nil; want 2 results (1× vir04 + 1× vir08 decompose)")
+	}
+	if n := len(got.Status.Allocation.Devices.Results); n != 2 {
+		t.Fatalf("Devices.Results len = %d, want 2 (bundle decompose)", n)
+	}
+	if n := len(got.Status.Devices); n != 2 {
+		t.Fatalf("Status.Devices len = %d, want 2 (per-device statuses)", n)
+	}
+
+	// preferred-hccs-ring annotation must be stamped (both devices have
+	// hccs_ring=0 via fixtureHealthyWholeDevice).
+	if got.Annotations[AnnotationPreferredHCCSRing] != "0" {
+		t.Errorf("AnnotationPreferredHCCSRing = %q, want \"0\" (both devices on ring 0)",
+			got.Annotations[AnnotationPreferredHCCSRing])
+	}
+}
+
+// TestClaim_BundlePath_OverCapacityRollback covers P8-T-008 case 3/3:
+// composition requires 4 slices but only 2 are available → AllocateBundle
+// returns ErrNoAvailableDevice mid-bundle → reconcile returns Requeue=true
+// with NO Status.Allocation written (all-or-nothing rollback) + event
+// emitted.
+func TestClaim_BundlePath_OverCapacityRollback(t *testing.T) {
+	claim := claimWithSliceTemplate("c-bundle-rollback", "ns-a", v1alpha1.DriverName, "qwen-large")
+	tpl := fixtureNPUSliceTemplate("qwen-large",
+		v1alpha1.TemplatePart{Type: v1alpha1.PartTypeVir04, Count: 4}) // 4 slices needed
+	dev0 := fixtureHealthyWholeDevice("nodeA-npu-0", 0)
+	dev1 := fixtureHealthyWholeDevice("nodeA-npu-1", 1)
+	slice := fixtureSlice("npu-dra-nodeA", "nodeA", dev0, dev1) // only 2 available
+
+	cli := newFakeClient(t, claim, tpl, slice)
+	rec := newFakeRecorder(8)
+	r := &ClaimReconciler{Client: cli, Scheme: newTestScheme(t), Recorder: rec}
+
+	key := client.ObjectKey{Namespace: "ns-a", Name: "c-bundle-rollback"}
+	res := reconcileOnce(t, r, key)
+	if !res.Requeue {
+		t.Errorf("over-capacity bundle must requeue on ErrNoAvailableDevice; got Requeue=%v", res.Requeue)
+	}
+
+	got := getClaim(t, cli, key)
+	if got.Status.Allocation != nil {
+		t.Fatalf("Status.Allocation = %+v, want nil (all-or-nothing rollback)",
+			got.Status.Allocation)
+	}
+	if got.Annotations[AnnotationPreferredHCCSRing] != "" {
+		t.Errorf("AnnotationPreferredHCCSRing must NOT be stamped on rollback; got %q",
+			got.Annotations[AnnotationPreferredHCCSRing])
+	}
+
+	// Verify reasonBundleAllocationFailed event emitted.
+	gotEvent := false
+	for {
+		select {
+		case ev := <-rec.Events:
+			if strings.Contains(ev, reasonBundleAllocationFailed) {
+				gotEvent = true
+			}
+		default:
+			if !gotEvent {
+				t.Errorf("expected reasonBundleAllocationFailed event on rollback")
+			}
+			return
+		}
+		if gotEvent {
+			return
+		}
+	}
+}

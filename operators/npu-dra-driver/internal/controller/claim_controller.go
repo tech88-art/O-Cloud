@@ -35,6 +35,7 @@ import (
 	v1alpha1 "github.com/tech88-art/O-Cloud/operators/npu-dra-driver/api/v1alpha1"
 	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/allocator"
 	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/publisher"
+	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/template"
 )
 
 // Phase 4 "AllocationDeferred" annotations.
@@ -89,6 +90,35 @@ const (
 	reasonAllocationFailed = "AllocationFailed"
 	reasonNoAvailable      = "NoAvailableDevice"
 	reasonMigrated         = "Phase4AnnotationStripped"
+
+	// Phase 8 P8-T-008 bundle-path events.
+	reasonBundleAllocated        = "BundleAllocated"
+	reasonBundleAllocationFailed = "BundleAllocationFailed"
+	reasonTemplateNotFound       = "NPUSliceTemplateNotFound"
+)
+
+// Phase 8 P8-T-008 annotation keys consumed / stamped by the claim
+// controller bundle path.
+//
+// AnnotationSliceTemplate: when this annotation is set on a ResourceClaim,
+//   the claim controller dispatches the AllocateBundle path (P7-T-105
+//   free function · ADR-0011 §4 NPUSliceTemplate substrate). Annotation
+//   value is the cluster-scoped NPUSliceTemplate name. End-to-end source
+//   of the annotation: NPUVerticalScaler (P8-T-007) patches ModelService
+//   annotation `npu.huawei.com/slice-template=<name>` → deployment_builder
+//   (carry-forward Phase 8 polish task) propagates to Pod label →
+//   PD Router webhook or claim_builder propagates to ResourceClaim
+//   annotation here. Direct test path: fixtures stamp this annotation
+//   on the claim.
+//
+// AnnotationPreferredHCCSRing: stamped by the claim controller on the
+//   ResourceClaim after a successful bundle allocation. Records the HCCS
+//   ring the allocator selected for the bundle (computed from the first
+//   allocation's Pool / Device topology). T104-v2 hard-fail kind smoke
+//   asserts this annotation matches the synthetic ring fixture.
+const (
+	AnnotationSliceTemplate     = "npu.huawei.com/slice-template"
+	AnnotationPreferredHCCSRing = "npu.huawei.com/preferred-hccs-ring"
 )
 
 // ClaimReconciler observes upstream resource.k8s.io/v1beta1.ResourceClaim
@@ -110,6 +140,13 @@ type ClaimReconciler struct {
 	// shape working without a wiring change. Tests can inject custom
 	// allocators (e.g. table-driven mocks in T003).
 	Allocator allocator.Allocator
+
+	// TemplateEngine drives the Phase 8 P8-T-008 bundle path
+	// (NPUSliceTemplate-aware allocation). When nil, a zero-value
+	// template.Engine{} is used. Phase 5/6/7 callers can leave this nil
+	// without behavioural change because the bundle path is opt-in via
+	// claim annotation (see AnnotationSliceTemplate).
+	TemplateEngine *template.Engine
 }
 
 // Reconcile implements the controller-runtime Reconciler contract.
@@ -190,6 +227,16 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	allocated := allocator.ComputeAllocatedFromClaims(allClaims.Items, string(claim.UID))
 
 	alloc := r.allocatorOrDefault()
+
+	// Phase 8 P8-T-008 bundle path dispatch: when the claim carries
+	// AnnotationSliceTemplate, look up the NPUSliceTemplate, decompose
+	// into a FixedTemplateBundle, and run AllocateBundle (P7-T-105 free
+	// function) instead of the single-device path. Absence of the
+	// annotation = Phase 5 single-device path (zero regression).
+	if templateName := claim.Annotations[AnnotationSliceTemplate]; templateName != "" {
+		return r.reconcileBundlePath(ctx, &claim, slices.Items, allocated, templateName, alloc)
+	}
+
 	pick, err := alloc.Allocate(claim, slices.Items, allocated)
 	if err != nil {
 		if errors.Is(err, allocator.ErrNoAvailableDevice) {
@@ -263,6 +310,195 @@ func (r *ClaimReconciler) allocatorOrDefault() allocator.Allocator {
 		return r.Allocator
 	}
 	return &allocator.Greedy{}
+}
+
+func (r *ClaimReconciler) templateEngineOrDefault() *template.Engine {
+	if r.TemplateEngine != nil {
+		return r.TemplateEngine
+	}
+	return &template.Engine{}
+}
+
+// reconcileBundlePath handles the Phase 8 P8-T-008 bundle allocation
+// flow: claim has AnnotationSliceTemplate → look up NPUSliceTemplate →
+// Engine.Decompose → AllocateBundle → write N allocations + N audit
+// objects + stamp preferred-hccs-ring annotation. All-or-nothing on
+// failure (no partial allocation leaks; ResourceClaim.Status.Allocation
+// stays nil so the next reconcile cycle retries).
+func (r *ClaimReconciler) reconcileBundlePath(
+	ctx context.Context,
+	claim *resourceapi.ResourceClaim,
+	slices []resourceapi.ResourceSlice,
+	allocated allocator.AllocatedSet,
+	templateName string,
+	alloc allocator.Allocator,
+) (ctrl.Result, error) {
+	lg := log.FromContext(ctx).WithName("claim-controller-bundle").WithValues(
+		"claim", claim.Namespace+"/"+claim.Name,
+		"slice-template", templateName,
+		"task", "P8-T-008",
+	)
+
+	var tpl v1alpha1.NPUSliceTemplate
+	if err := r.Client.Get(ctx, client.ObjectKey{Name: templateName}, &tpl); err != nil {
+		if apierrors.IsNotFound(err) {
+			if r.Recorder != nil {
+				r.Recorder.Eventf(claim, corev1.EventTypeWarning, reasonTemplateNotFound,
+					"NPUSliceTemplate %q not found (cluster-scoped)", templateName)
+			}
+			// No requeue — watch on NPUSliceTemplate (if added later) will
+			// re-trigger. For now, an explicit fixture-creation-then-claim
+			// flow is the expected operator pattern.
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, fmt.Errorf("get NPUSliceTemplate %q: %w", templateName, err)
+	}
+
+	engine := r.templateEngineOrDefault()
+	bundle, _, err := engine.Decompose(tpl.Spec)
+	if err != nil {
+		if r.Recorder != nil {
+			r.Recorder.Eventf(claim, corev1.EventTypeWarning, reasonBundleAllocationFailed,
+				"NPUSliceTemplate %q decompose failed: %v", templateName, err)
+		}
+		return ctrl.Result{}, fmt.Errorf("decompose template %q: %w", templateName, err)
+	}
+
+	picks, err := allocator.AllocateBundle(alloc, *claim, bundle, slices, allocated)
+	if err != nil {
+		if r.Recorder != nil {
+			r.Recorder.Event(claim, corev1.EventTypeWarning, reasonBundleAllocationFailed, err.Error())
+		}
+		if errors.Is(err, allocator.ErrNoAvailableDevice) {
+			return ctrl.Result{Requeue: true}, nil
+		}
+		// All-or-nothing rollback: AllocateBundle returns nil on any
+		// error (no partial allocations to clean up). We never wrote
+		// claim.Status.Allocation, so the next reconcile retries.
+		return ctrl.Result{}, fmt.Errorf("allocator.AllocateBundle: %w", err)
+	}
+
+	base := claim.DeepCopy()
+	results := make([]resourceapi.DeviceRequestAllocationResult, 0, len(picks))
+	deviceStatuses := make([]resourceapi.AllocatedDeviceStatus, 0, len(picks))
+	for _, pick := range picks {
+		results = append(results, resourceapi.DeviceRequestAllocationResult{
+			Request: pick.Request,
+			Driver:  pick.Driver,
+			Pool:    pick.Pool,
+			Device:  pick.Device,
+		})
+		deviceStatuses = append(deviceStatuses, resourceapi.AllocatedDeviceStatus{
+			Driver: pick.Driver,
+			Pool:   pick.Pool,
+			Device: pick.Device,
+			Conditions: []metav1.Condition{{
+				Type:               "Ready",
+				Status:             metav1.ConditionTrue,
+				Reason:             "Allocated",
+				Message:            fmt.Sprintf("BundleAllocated by npu-dra-driver (slice-template=%s, strategy=%s, aiCores=%d)", templateName, pick.Strategy, pick.AICores),
+				LastTransitionTime: metav1.Now(),
+			}},
+		})
+	}
+	claim.Status.Allocation = &resourceapi.AllocationResult{
+		Devices: resourceapi.DeviceAllocationResult{Results: results},
+	}
+	claim.Status.Devices = deviceStatuses
+	if err := r.Client.Status().Patch(ctx, claim, client.MergeFrom(base)); err != nil {
+		return ctrl.Result{}, fmt.Errorf("write status.allocation (bundle): %w", err)
+	}
+
+	// Create one NPUSliceAllocation audit per picked device. We reuse the
+	// single-device createAllocationAudit helper inside a loop; it is
+	// idempotent (AlreadyExists treated as success) so partial-failure
+	// retry is safe.
+	for _, pick := range picks {
+		if err := r.createAllocationAudit(ctx, claim, pick); err != nil {
+			return ctrl.Result{}, fmt.Errorf("create bundle audit (device=%s): %w", pick.Device, err)
+		}
+	}
+
+	// Stamp preferred-hccs-ring annotation derived from the first pick's
+	// ring (T104-v2 hard-fail kind smoke asserts this annotation matches
+	// the synthetic-ring fixture). Plan §3-T008 originally specified Pod
+	// annotation stamping; adapted to claim annotation stamping for
+	// Phase 8 simplicity (Pod-side stamping is a Phase 9 polish task and
+	// the kind-smoke assert can read from either object).
+	if ring := pickPreferredRing(picks, slices); ring != "" {
+		if err := r.stampClaimAnnotation(ctx, claim, AnnotationPreferredHCCSRing, ring); err != nil {
+			// Non-fatal: allocation succeeded; annotation is best-effort.
+			lg.Info("Failed to stamp preferred-hccs-ring; allocation kept",
+				"ring", ring, "err", err)
+		}
+	}
+
+	if r.Recorder != nil {
+		r.Recorder.Eventf(claim, corev1.EventTypeNormal, reasonBundleAllocated,
+			"Allocated bundle for NPUSliceTemplate %q (%d slices)", templateName, len(picks))
+	}
+	lg.Info("Allocated NPUSliceTemplate bundle",
+		"slice-template", templateName,
+		"slices", len(picks))
+	return ctrl.Result{}, nil
+}
+
+// pickPreferredRing inspects the picked devices' ResourceSlice attributes
+// to determine the HCCS ring most slices landed on. Returns empty string
+// when no slice carries an hccs_ring attribute (e.g. set-a-small fixture
+// without ring topology).
+func pickPreferredRing(picks []*allocator.Allocation, slices []resourceapi.ResourceSlice) string {
+	if len(picks) == 0 {
+		return ""
+	}
+	ringCounts := map[string]int{}
+	for _, pick := range picks {
+		for _, slc := range slices {
+			if slc.Spec.Pool.Name != pick.Pool {
+				continue
+			}
+			for _, dev := range slc.Spec.Devices {
+				if dev.Name != pick.Device {
+					continue
+				}
+				if dev.Basic == nil {
+					continue
+				}
+				if attr, ok := dev.Basic.Attributes[v1alpha1.AttrHCCSRing]; ok {
+					if attr.IntValue != nil {
+						ringCounts[fmt.Sprintf("%d", *attr.IntValue)]++
+					} else if attr.StringValue != nil {
+						ringCounts[*attr.StringValue]++
+					}
+				}
+			}
+		}
+	}
+	if len(ringCounts) == 0 {
+		return ""
+	}
+	// Pick the most-frequent ring; ties broken by lexicographic order
+	// for determinism.
+	var best string
+	var bestCount int
+	for r, c := range ringCounts {
+		if c > bestCount || (c == bestCount && r < best) {
+			best = r
+			bestCount = c
+		}
+	}
+	return best
+}
+
+// stampClaimAnnotation patches a single annotation onto the claim via
+// MergeFrom so it does not race with concurrent edits.
+func (r *ClaimReconciler) stampClaimAnnotation(ctx context.Context, claim *resourceapi.ResourceClaim, key, value string) error {
+	base := claim.DeepCopy()
+	if claim.Annotations == nil {
+		claim.Annotations = map[string]string{}
+	}
+	claim.Annotations[key] = value
+	return r.Client.Patch(ctx, claim, client.MergeFrom(base))
 }
 
 // SetupWithManager registers this Reconciler with the manager. Watches
