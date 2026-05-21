@@ -1,0 +1,5 @@
+module github.com/tech88-art/O-Cloud/operators/o2-dms-adapter
+
+go 1.26.3
+
+require github.com/go-chi/chi/v5 v5.1.0

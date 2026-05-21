@@ -265,6 +265,37 @@ jobs:
         run: go run ./hack/validate-crds ./config/crd/bases
 
   # =========================================
+  # O2 DMS Adapter (Phase 9 P9-T-008 scaffold · new module)
+  # =========================================
+  o2-dms-adapter:
+    name: O2 DMS Adapter
+    needs: detect-changes
+    if: needs.detect-changes.outputs.operators == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          # P9-T-008 (2026-05-21): o2-dms-adapter is a fresh module on Go
+          # 1.26.3 (matches backend/go.mod · the highest in workspace).
+          go-version-file: operators/o2-dms-adapter/go.mod
+          cache-dependency-path: operators/o2-dms-adapter/go.sum
+      - name: go build + vet
+        working-directory: operators/o2-dms-adapter
+        run: |
+          go build ./...
+          go vet ./...
+      - name: go test (stub-routing + 404 cases)
+        working-directory: operators/o2-dms-adapter
+        run: go test ./... -count=1 -timeout 120s -v
+      - name: helm lint --strict
+        run: helm lint --strict deploy/helm-charts/o2-dms-adapter
+      - name: helm template (renders 5 resources)
+        run: |
+          helm template test deploy/helm-charts/o2-dms-adapter \
+            | grep -E "^kind: " | sort | uniq -c
+
+  # =========================================
   # E2E (W2 起启用 — 由 P1-T-110 实现)
   # =========================================
   e2e:
@@ -293,6 +324,7 @@ jobs:
       - backend
       - frontend
       - operators
+      - o2-dms-adapter
     runs-on: ubuntu-22.04
     steps:
       - name: Check status

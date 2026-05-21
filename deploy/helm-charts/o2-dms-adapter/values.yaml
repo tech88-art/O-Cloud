@@ -1,0 +1,66 @@
+# Default values for o2-dms-adapter (Phase 9 P9-T-008 scaffold).
+#
+# ADR-0013 §2 Decision D: standalone binary · port 8088 default ·
+# read-only NB API (Phase 9) · authn placeholder static bearer Phase 9
+# · Phase 10 polish OIDC + RBAC + Karmada multi-cluster propagation.
+
+image:
+  repository: o2-dms-adapter
+  tag: "v0.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 1
+
+# Service: ClusterIP exposing port 8088 (TCP).
+service:
+  type: ClusterIP
+  port: 8088
+
+# RBAC: read on NPUSlicePool + ModelService + NPUVerticalScaler +
+# NPUSliceAllocation + Node + ResourceSlice; write on ModelService
+# (only Create/Update/Delete needed for lifecycle endpoints in P9-T-104).
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: ""
+
+# Pod-level securityContext per CLAUDE.md §6 禁止 + ADR-0013 §3
+# Consequences (production-grade).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Static bearer token (Phase 9 placeholder per ADR-0013 §2 Decision B
+# Auth header occurrence + §3 risk row "Auth header 占位静态 token").
+# DO NOT use in production · Phase 10 polish upgrades to OIDC + K8s SA
+# TokenReview per ADR-0013 §5 Open question (c).
+auth:
+  bearerToken: ""

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: o2-dms-adapter
+description: O-RAN O2 DMS Adapter — K8s Profile NB API server per ADR-0013 (Phase 9 P9-T-008 scaffold · P9-T-104 body)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - o-ran
+  - o2-dms
+  - inference
+home: https://github.com/tech88-art/O-Cloud
+sources:
+  - https://github.com/tech88-art/O-Cloud/tree/main/operators/o2-dms-adapter
+maintainers:
+  - name: ocloud-edge
+    email: ocloud-edge@tech88-art.example.com

@@ -1,0 +1,49 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "o2-dms-adapter.fullname" . }}
+  labels:
+    {{- include "o2-dms-adapter.labels" . | nindent 4 }}
+rules:
+  # NPUSlicePool · NPUSliceAllocation · NPU device read for inventory aggregation
+  # (ADR-0013 §3 Decision C table row 2 · §2 Decision D RBAC scope).
+  - apiGroups: ["ims.ocloud.edge.example.com"]
+    resources: ["npuslicepools", "npupools", "nodepools", "clusterpools"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["npu.ocloud.edge.example.com"]
+    resources: ["npusliceallocations", "npuslicetemplates"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["resourceslices"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  # ModelService + NPUVerticalScaler read + ModelService create/update/delete
+  # for lifecycle endpoints (ADR-0013 §4 catalog rows 1+4 → ModelService write).
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["modelservices"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["modelservices/status"]
+    verbs: ["get"]
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["npuverticalscalers"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "o2-dms-adapter.fullname" . }}
+  labels:
+    {{- include "o2-dms-adapter.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "o2-dms-adapter.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "o2-dms-adapter.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

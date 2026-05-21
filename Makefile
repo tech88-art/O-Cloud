@@ -59,6 +59,16 @@ operators/manifests: ## operators: 生成 CRD YAML
 operators/test: ## operators: 单测
 	@$(MAKE) -C operators/pool-operator test
 
+.PHONY: o2-dms-adapter/build o2-dms-adapter/test o2-dms-adapter/lint o2-dms-adapter/image
+o2-dms-adapter/build: ## o2-dms-adapter: 编译 (Phase 9 P9-T-008 scaffold)
+	@$(MAKE) -C operators/o2-dms-adapter build
+o2-dms-adapter/test: ## o2-dms-adapter: 单测 (7 stub-routing + 1 404 cases)
+	@$(MAKE) -C operators/o2-dms-adapter test
+o2-dms-adapter/lint: ## o2-dms-adapter: vet
+	@$(MAKE) -C operators/o2-dms-adapter lint
+o2-dms-adapter/image: ## o2-dms-adapter: docker build
+	@$(MAKE) -C operators/o2-dms-adapter image
+
 .PHONY: configs/validate configs/gen-mock
 configs/validate: ## configs: 校验 mock 数据
 	@$(MAKE) -C configs/mock-data validate
