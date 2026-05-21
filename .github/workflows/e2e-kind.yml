@@ -253,6 +253,24 @@ jobs:
         # hardware); Phase 7+ tightens once lab access lands.
         run: bash tests/e2e/kind/phase6/assert.sh
 
+      - name: Phase 7 — kind smoke extension (T103 + T104)
+        # Layers Phase 7 W2 on top of Phase 6:
+        #  T103: NPUSliceTemplate apply + status assertion (Validated /
+        #        Allocatable / FallbackAppliedReason populated via
+        #        template_controller T007); ModelService with
+        #        slice-template label exercises T003 schedulerName
+        #        auto-stamp (HARD FAIL on absence — closes known-issues #11)
+        #  T104: reseed npu-dra-driver with set-b-multi-ring fixture
+        #        (4 HCCS rings · 2 nodes · 16 NPUs); ResourceSlices span
+        #        rings 0/1/2/3; PD-pair placement best-effort (kind has no
+        #        real HCCS · Phase 7 T101 lab smoke verifies real
+        #        silicon)
+        # NumaAffinity STAYS NOT enabled (P7-T-002 doc-only fallback).
+        # ProxyImage chart default STAYS empty (P7-T-102 doc-only refresh).
+        run: |
+          bash tests/e2e/kind/phase7/install.sh all
+          bash tests/e2e/kind/phase7/assert.sh
+
       - name: install Playwright deps
         working-directory: tests/e2e
         run: |

@@ -1,0 +1,9 @@
+{
+  "meta": {
+    "name": "set-b-multi-ring",
+    "version": "0.1.0",
+    "generatedAt": "2026-05-20T12:00:00Z",
+    "description": "Phase 7 P7-T-104 synthetic multi-ring fixture: 2 nodes × 8 NPUs = 16 devices · each node has 2 HCCS rings of 4 NPUs each · exercises 4-tier HCCS scoring (same 100 · adjacent 70 per chart default · disjoint 30 · no candidate 0). Drives kind smoke hard-assertion that PD-pair Pods land on same / adjacent rings rather than disjoint when prefill + decode are created.",
+    "scenario": "multi-ring-placement-assertion"
+  }
+}

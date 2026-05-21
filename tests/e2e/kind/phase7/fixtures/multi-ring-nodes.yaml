@@ -1,0 +1,31 @@
+# Phase 7 P7-T-104 kind smoke fixture: synthetic ring labels on kind
+# nodes. Maps kind worker hostname → synthetic HCCS ring id matching
+# the set-b-multi-ring mock-data fixture.
+#
+# Apply via `kubectl label` in install.sh (not directly via
+# `kubectl apply`) because kind nodes pre-exist; this YAML is the
+# canonical reference for the labels assert.sh checks.
+#
+# Note: kind has no real HCCS hardware; ResourceSlice
+# `npu.huawei.com/hccs_ring` attribute is the actual ground truth read
+# by HCCSTopologyPlugin Filter / Score. These node labels are kept as
+# documentary / debugging aids — `kubectl get nodes -L
+# ocloud.edge.example.com/synthetic-hccs-ring` shows the topology at a
+# glance.
+#
+# Rings 0-1 on nodeA (from set-b-multi-ring npus.json); 2-3 on nodeB.
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: ocloud-e2e-worker
+      labels:
+        ocloud.edge.example.com/synthetic-hccs-ring: "0,1"
+  - apiVersion: v1
+    kind: Node
+    metadata:
+      name: ocloud-e2e-worker2
+      labels:
+        ocloud.edge.example.com/synthetic-hccs-ring: "2,3"

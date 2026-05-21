@@ -1,0 +1,21 @@
+# Phase 7 P7-T-103 kind smoke fixture: NPUSliceTemplate sample.
+# Apply order: AFTER npu-dra-driver chart installs the
+# NPUSliceTemplate CRD (Phase 7 P7-T-006 chart bundle).
+#
+# Reconciler (P7-T-007 NPUSliceTemplateReconciler) stamps:
+#   - Status.Conditions[Validated] = True (composition valid)
+#   - Status.Conditions[Allocatable] = True (W1 placeholder · T105 wires real check)
+#   - Status.FallbackAppliedReason = "decomposed into 1×vir04 + 1×vir08"
+#
+# assert.sh verifies the stamped status via kubectl jsonpath wait.
+apiVersion: npu.ocloud.edge.example.com/v1alpha1
+kind: NPUSliceTemplate
+metadata:
+  name: qwen-8b-pd-pair
+spec:
+  composition:
+    - type: vir04
+      count: 1
+    - type: vir08
+      count: 1
+  fallbackStrategy: fixed-template-combination

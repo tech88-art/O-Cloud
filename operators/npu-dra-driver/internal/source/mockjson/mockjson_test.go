@@ -164,6 +164,50 @@ func TestQueryTopologyReturnsRings(t *testing.T) {
 	}
 }
 
+// TestLoadSetBMultiRingFixture covers Phase 7 P7-T-104 acceptance for
+// the mockjson side: the source can load the
+// configs/mock-data/set-b-multi-ring/npus.json fixture and surface
+// 16 devices across 2 nodes with 4 distinct HCCS rings (rings 0/1
+// on nodeA · 2/3 on nodeB).
+//
+// The fixture is the kind smoke ground truth — T103/T104 install.sh
+// reseeds the npu-dra-driver ConfigMap from this same file so
+// ResourceSlices published in the cluster span all 4 rings (HCCSPlugin
+// Score uses this to exercise the 4-tier 100/70/30/0 grading per
+// chart default DefaultAdjacency910B8Card per ADR-0011 + P7-T-008).
+func TestLoadSetBMultiRingFixture(t *testing.T) {
+	// Locate the repo-relative fixture from the test's cwd
+	// (operators/npu-dra-driver/internal/source/mockjson/ — 4 hops up).
+	path := filepath.Join("..", "..", "..", "..", "..", "configs", "mock-data", "set-b-multi-ring", "npus.json")
+	if _, err := os.Stat(path); err != nil {
+		t.Skipf("set-b-multi-ring fixture not at %s: %v", path, err)
+	}
+
+	src := New(Config{Path: path})
+	got, err := src.List(context.Background())
+	if err != nil {
+		t.Fatalf("List set-b-multi-ring: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("len(NodeDevices) = %d, want 2 (nodeA + nodeB)", len(got))
+	}
+	// Collect distinct ring IDs across all devices.
+	rings := map[int64]struct{}{}
+	for _, nd := range got {
+		for _, d := range nd.Devices {
+			rings[d.HCCSRing] = struct{}{}
+		}
+	}
+	if len(rings) != 4 {
+		t.Fatalf("distinct HCCS rings = %d, want 4 (set-b-multi-ring spans rings 0/1/2/3)", len(rings))
+	}
+	for r := int64(0); r < 4; r++ {
+		if _, ok := rings[r]; !ok {
+			t.Fatalf("ring %d not in observed set (%v)", r, rings)
+		}
+	}
+}
+
 // TestEmptyConfigReturnsEmptyList covers the corner case the Phase 4
 // prototype documented: a Config with Path="" surfaces an error from
 // List instead of crashing; an empty `npus` array returns an empty

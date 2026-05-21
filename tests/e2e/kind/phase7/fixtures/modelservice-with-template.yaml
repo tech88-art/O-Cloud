@@ -1,0 +1,29 @@
+# Phase 7 P7-T-103 kind smoke fixture: ModelService that references
+# the qwen-8b-pd-pair NPUSliceTemplate (Phase 7 W1 W2 path: Pod label
+# wiring is deferred to Phase 10 / T105-v2 per devlog phase-7-t105.md,
+# but this fixture demonstrates the operator-facing API surface and
+# exercises the T003 schedulerName auto-stamp).
+#
+# Apply order: after npuslicetemplate-qwen-pd.yaml is Validated=True.
+# fallbackImage=busybox keeps CI image-pull cost low (no real
+# vllm-ascend pull; Phase 7 T102 retains this pattern).
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: ModelService
+metadata:
+  name: qwen-8b-multi-ring
+  namespace: ocloud-system
+  labels:
+    npu.huawei.com/slice-template: qwen-8b-pd-pair
+spec:
+  model:
+    image: registry.example.com/vllm-ascend:v0.18.0
+    modelPath: /models/qwen-8b
+  pdPair:
+    prefill:
+      replicas: 1
+    decode:
+      replicas: 1
+    routerLabel: inference.ocloud.edge.example.com/pd-role
+    fallbackImage: busybox:1.36
+  npuSlicePoolRef:
+    name: ascend-910b-pool

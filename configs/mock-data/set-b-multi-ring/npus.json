@@ -1,0 +1,20 @@
+{
+  "npus": [
+    {"id":"nodeA-npu-0","nodeName":"nodeA","index":0,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeA-ring-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeA-npu-1","nodeName":"nodeA","index":1,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeA-ring-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeA-npu-2","nodeName":"nodeA","index":2,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeA-ring-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeA-npu-3","nodeName":"nodeA","index":3,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeA-ring-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeA-npu-4","nodeName":"nodeA","index":4,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeA-ring-1","hccsRing":1,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeA-npu-5","nodeName":"nodeA","index":5,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeA-ring-1","hccsRing":1,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeA-npu-6","nodeName":"nodeA","index":6,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeA-ring-1","hccsRing":1,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeA-npu-7","nodeName":"nodeA","index":7,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeA-ring-1","hccsRing":1,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeB-npu-0","nodeName":"nodeB","index":0,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeB-ring-2","hccsRing":2,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeB-npu-1","nodeName":"nodeB","index":1,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeB-ring-2","hccsRing":2,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeB-npu-2","nodeName":"nodeB","index":2,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeB-ring-2","hccsRing":2,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeB-npu-3","nodeName":"nodeB","index":3,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"nodeB-ring-2","hccsRing":2,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeB-npu-4","nodeName":"nodeB","index":4,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeB-ring-3","hccsRing":3,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeB-npu-5","nodeName":"nodeB","index":5,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeB-ring-3","hccsRing":3,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeB-npu-6","nodeName":"nodeB","index":6,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeB-ring-3","hccsRing":3,"status":"healthy","sliceMode":"whole"},
+    {"id":"nodeB-npu-7","nodeName":"nodeB","index":7,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"nodeB-ring-3","hccsRing":3,"status":"healthy","sliceMode":"whole"}
+  ]
+}
