@@ -147,6 +147,8 @@ v3 与 v2 区别:v2 把 "Phase 4 主路径"与"Phase 4 後段"混在一段散文
 
 **未来**：如 Phase 9+ 需要事件审计 / 操作历史，再引入数据库（候选 PostgreSQL）。
 
+**2026-05-21 update (P9-T-107 spike landed)**:Phase 9 P9-T-107 spike `docs/research/demo-backend-cache-spike.md` 评估 multi-site Phase 10 cache pattern 3 路径(Redis-backed / stateless / singleton failover)· 推荐 Phase 10 路径 §3.3 singleton with active-active failover(保留 in-process LRU benefit + 加 K8s Lease leader-elect · 0 new external dependency)· ADR-0015 draft outline 详 spike §6 · Phase 10 W1 entry 起草 ADR-0015 时直接 pick up。
+
 ---
 
 ### 9. 监控前端：Grafana iframe 嵌入
