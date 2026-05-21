@@ -1,0 +1,30 @@
+# NPUSliceTemplate sample: Qwen 8B PD-pair on a single NPU.
+#
+# Composition: 1× vir04 (prefill side) + 1× vir08 (decode side).
+# Both parts allocate from the same physical NPU (decoder needs more
+# AI cores than prefill in steady-state; PD-pair on one chip cuts
+# HCCS latency vs cross-chip layout).
+#
+# Pod opt-in: label `npu.huawei.com/slice-template=qwen-8b-pd-pair`
+# on PD-pair Deployment Pod template (Phase 7 T105 allocator reads
+# the label + looks up this NPUSliceTemplate → template engine
+# Decompose → allocator handles bundle as all-or-nothing).
+#
+# fallbackStrategy=fixed-template-combination → template engine
+# decomposes "1× vir04 + 1× vir08" directly into the existing fixed
+# templates (Phase 7 default · per ADR-0011 §1 §4).
+#
+# References:
+#   - ADR-0011 §1 NPU 动态切分 fallback + §4 NPUSliceTemplate schema
+#   - phase7-plan.md §3 P7-T-006 sample acceptance
+apiVersion: npu.ocloud.edge.example.com/v1alpha1
+kind: NPUSliceTemplate
+metadata:
+  name: qwen-8b-pd-pair
+spec:
+  composition:
+    - type: vir04
+      count: 1
+    - type: vir08
+      count: 1
+  fallbackStrategy: fixed-template-combination

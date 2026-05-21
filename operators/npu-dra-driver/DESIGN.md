@@ -417,6 +417,100 @@ discovery via npu-smi) · ADR-0011 §2 (Source interface + lab gating
 policy) · phase7-plan §3 P7-T-005 (this task) + §4 P7-T-101 (lab body
 that wires ExecClient).
 
+### 3.8 NPUSliceTemplate CRD (Phase 7 P7-T-006 · operative)
+
+Phase 7 P7-T-006 ships the `NPUSliceTemplate` CRD per ADR-0011 §1 §4 to
+express user-defined complex slice compositions that the Phase 7
+template engine (P7-T-007) + allocator (P7-T-105) decompose into
+existing fixed-template requests.
+
+**Go types** (`api/v1alpha1/npuslicetemplate_types.go`):
+
+```go
+type NPUSliceTemplate struct {
+    metav1.TypeMeta   `json:",inline"`
+    metav1.ObjectMeta `json:"metadata,omitempty"`
+    Spec   NPUSliceTemplateSpec   `json:"spec,omitempty"`
+    Status NPUSliceTemplateStatus `json:"status,omitempty"`
+}
+
+type NPUSliceTemplateSpec struct {
+    Composition       []TemplatePart    `json:"composition"`            // required · MinItems=1
+    FallbackStrategy  FallbackStrategy  `json:"fallbackStrategy,omitempty"` // default fixed-template-combination
+}
+
+type TemplatePart struct {
+    Type          PartType  // enum: whole | vir04 | vir08 | vir16 | dynamic-shard
+    Count         int32     // required · Minimum=1
+    AICoreRequest int32     // dynamic-shard only · ignored otherwise
+}
+
+type NPUSliceTemplateStatus struct {
+    Conditions             []metav1.Condition  // Validated + Allocatable
+    FallbackAppliedReason  string              // "decomposed into 1×vir04 + 1×vir08"
+    ObservedGeneration     int64
+}
+```
+
+**Enum constants** (drift here = silent migration break · TestEnumValuesArePinned guards):
+
+| Const                                          | String value                |
+|------------------------------------------------|-----------------------------|
+| `PartTypeWhole`                                | `"whole"`                   |
+| `PartTypeVir04`                                | `"vir04"`                   |
+| `PartTypeVir08`                                | `"vir08"`                   |
+| `PartTypeVir16`                                | `"vir16"`                   |
+| `PartTypeDynamicShard`                         | `"dynamic-shard"`           |
+| `FallbackStrategyFixedTemplateCombination`     | `"fixed-template-combination"` |
+| `FallbackStrategyRefuse`                       | `"refuse"`                  |
+| `ConditionTypeValidated`                       | `"Validated"`               |
+| `ConditionTypeAllocatable`                     | `"Allocatable"`             |
+
+**Pod opt-in via label** `npu.huawei.com/slice-template=<NPUSliceTemplate.metadata.name>`
+on the Pod template. Absent label → Pod takes Phase 5 existing
+whole-NPU allocator path (zero regression). Phase 7 T105 allocator
+reads the label + looks up the NPUSliceTemplate + invokes Engine.Decompose
++ allocates as bundle (all-or-nothing semantics per ADR-0011 §後果 row 4).
+
+**Validation rules** (template_controller T007 enforces):
+
+| Spec violation                                                | Validated condition |
+|---------------------------------------------------------------|--------------------|
+| MinItems=1 on Composition (empty array)                       | False · `reason="EmptyComposition"` |
+| Count < 1 on any part                                         | False · `reason="InvalidCount"` |
+| Type=dynamic-shard + FallbackStrategy=fixed-template-combination | False · `reason="DynamicShardNotSupported"` (Phase 7 fallback only knows fixed templates · gated on driver-layer breakthrough OR KEP-4815 GA per ADR-0011 §後果) |
+| Type=<unknown enum>                                           | Rejected at admission · kubebuilder enum marker enforces |
+
+**Sample compositions** (`config/samples/`):
+
+| Sample file                              | Composition                   | FallbackStrategy            | Use case                              |
+|------------------------------------------|-------------------------------|-----------------------------|---------------------------------------|
+| `npuslicetemplate_qwen_pd.yaml`          | 1× vir04 + 1× vir08           | fixed-template-combination  | Qwen 8B PD-pair on single NPU         |
+| `npuslicetemplate_deepseek_20b.yaml`     | 1× whole                      | refuse                       | DeepSeek 20B strict mode demo         |
+
+**Chart bundling** (Phase 5 chart-bundles-CRD convention preserved):
+CRD YAML lives at `deploy/helm-charts/npu-dra-driver/crds/npuslicetemplates.yaml`
+alongside `npusliceallocations.yaml`. Helm install applies both before
+templates render (per chart-bundles-CRD pattern; not subject to
+`helm template` rendering output count).
+
+**Test gate** (4 round-trip cases · Phase 7 P7-T-006 acceptance):
+
+| Case                                | Asserts                                                       |
+|-------------------------------------|---------------------------------------------------------------|
+| `TestRoundTripJSONMarshal`          | NPUSliceTemplate marshal → unmarshal preserves all fields     |
+| `TestDeepCopyPreservesComposition`  | DeepCopy returns detached object (mutating copy doesn't leak) |
+| `TestEmptyStatusOmitted`            | Empty Status fields omit from marshaled JSON (omitempty)      |
+| `TestEnumValuesArePinned`           | PartType + FallbackStrategy + ConditionType strings pinned     |
+
+**Cross-references**: ADR-0011 §1 NPU 动态切分 fallback + §4 schema
+detail + §後果 row 4 (all-or-nothing bundle allocation invariant) · ADR-0009
+§4 Partitionable Devices forward note (long-term replacement after KEP-4815 GA) ·
+phase7-plan.md §3 P7-T-006 + §3 P7-T-007 (template engine consumer) + §4
+P7-T-105 (allocator consumer).
+
+---
+
 ## 4. 生命周期
 
 ### 4.1 Manager startup

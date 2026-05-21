@@ -1,0 +1,27 @@
+# NPUSliceTemplate sample: DeepSeek 20B strict whole-NPU mode.
+#
+# Composition: 1× whole (full 910B per replica). DeepSeek 20B fits in
+# the AI core + HBM budget of a single whole NPU; PD-pair colocates
+# on the same chip via deployment_builder rather than cross-chip
+# splitting.
+#
+# fallbackStrategy=refuse → template engine emits Validated=False if
+# composition cannot be served by existing templates (no decomposition
+# attempted). Useful for production workloads that must fail-fast
+# instead of silently falling back to a sub-optimal layout.
+#
+# Pod opt-in: label `npu.huawei.com/slice-template=deepseek-20b-whole`
+# (Phase 7 T105 reads the label).
+#
+# References:
+#   - ADR-0011 §1 fallback strategies + §4 enum semantics
+#   - phase7-plan.md §3 P7-T-006 sample acceptance (strict mode demo)
+apiVersion: npu.ocloud.edge.example.com/v1alpha1
+kind: NPUSliceTemplate
+metadata:
+  name: deepseek-20b-whole
+spec:
+  composition:
+    - type: whole
+      count: 1
+  fallbackStrategy: refuse
