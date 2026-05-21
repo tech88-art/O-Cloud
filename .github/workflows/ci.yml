@@ -265,6 +265,33 @@ jobs:
         run: go run ./hack/validate-crds ./config/crd/bases
 
   # =========================================
+  # IMS 3 scaffold modules (Phase 9 P9-T-105 · per ADR-0003 v2 + CLAUDE.md §14.2)
+  # =========================================
+  ims-scaffold:
+    name: IMS 3 scaffold modules
+    needs: detect-changes
+    if: needs.detect-changes.outputs.operators == 'true'
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        module:
+          - node-lifecycle-operator
+          - software-mgmt-operator
+          - bare-metal-provisioning-operator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: operators/${{ matrix.module }}/go.mod
+          cache-dependency-path: operators/${{ matrix.module }}/go.sum
+      - name: go build + test (api types only · scaffold)
+        working-directory: operators/${{ matrix.module }}
+        run: |
+          go build ./...
+          go vet ./...
+          go test ./... -count=1 -timeout 120s
+
+  # =========================================
   # O2 DMS Adapter (Phase 9 P9-T-008 scaffold · new module)
   # =========================================
   o2-dms-adapter:
@@ -324,6 +351,7 @@ jobs:
       - backend
       - frontend
       - operators
+      - ims-scaffold
       - o2-dms-adapter
     runs-on: ubuntu-22.04
     steps:

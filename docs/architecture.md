@@ -425,6 +425,51 @@ operators/o2-dms-adapter/
 
 K8s Profile only (per ADR-0013 §2 Decision A) · HTTP REST per O-RAN ALLIANCE WG6 O2 IMS Interface Specification R003-v04.00 (per ADR-0013 §2 Decision B) · reflects NPUSlicePool / NPUSliceAllocation / ModelService / NPUVerticalScaler 内部资源到 O-RAN 北向 (per ADR-0013 §2 Decision C 6-row mapping table) · 独立 binary · informer-based read 路径 + client.Create/Delete 写路径 (ADR-0013 §2 Decision D) · 详细设计 + NB endpoint catalog + 推翻条件见 **ADR-0013** (`docs/adr/0013-o2-dms-adapter.md`)。
 
+### 5.9 节点生命周期 `node-lifecycle-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body）
+
+IMS 7 服务剩 3 项之一(per ADR-0003 v2 + ADR-0001 v3 §6)· StarlingX node lifecycle 状态机 adapted for O-Cloud edge platform context(multi-site Karmada + edge KubeEdge nodes)。
+
+```
+operators/node-lifecycle-operator/
+├── api/v1alpha1/{groupversion_info,nodelifecycle_types,nodelifecycle_types_test}.go
+├── config/samples/lifecycle_v1alpha1_nodelifecycle.yaml
+├── cmd/main.go              # scaffold-only: banner + exit 0
+├── PROJECT                  # kubebuilder PROJECT
+└── go.mod
+```
+
+CRD: `lifecycle.ocloud.edge.example.com/v1alpha1.NodeLifecycle`(cluster-scoped)· 8 state enum(Provisioning / Bootstrap / Available / DegradedAvailable / Unavailable / Locked / Unlocked / RebootRequired)· nodeName + desiredState + maintenanceWindow spec · state + conditions + lastTransitionTime status。**Phase 9 scaffold-only · controller body Phase 10**(per CLAUDE.md §14.2 scaffold pattern + ADR-0003 v2)。详 ADR-0003 v2 §"Phase 9 W2 P9-T-105 实际 outcome"。
+
+### 5.10 软件管理 `software-mgmt-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body）
+
+IMS 7 服务剩 3 项之二 · StarlingX sw-deployment 适配 · 节点级软件 patches inventory + 升级 workflow。
+
+```
+operators/software-mgmt-operator/
+├── api/v1alpha1/{groupversion_info,softwarebundle_types,softwarebundle_types_test}.go
+├── config/samples/softwaremgmt_v1alpha1_softwarebundle.yaml
+├── cmd/main.go              # scaffold-only
+├── PROJECT
+└── go.mod
+```
+
+CRD: `softwaremgmt.ocloud.edge.example.com/v1alpha1.SoftwareBundle`(cluster-scoped)· version + patches[] + rolloutPolicy(RollingUpdate/Parallel/Sequential)+ nodeSelector spec · appliedVersion + appliedNodeCount + failedNodeCount status。**Phase 9 scaffold-only**。
+
+### 5.11 裸机配置 `bare-metal-provisioning-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body · 与 Phase 10 真机对接同期）
+
+IMS 7 服务剩 3 项之三 · Metal3 / cluster-api BareMetalHost 适配 · BMC discovery + OS provisioning state machine。
+
+```
+operators/bare-metal-provisioning-operator/
+├── api/v1alpha1/{groupversion_info,baremetalnode_types,baremetalnode_types_test}.go
+├── config/samples/provisioning_v1alpha1_baremetalnode.yaml
+├── cmd/main.go              # scaffold-only
+├── PROJECT
+└── go.mod
+```
+
+CRD: `provisioning.ocloud.edge.example.com/v1alpha1.BareMetalNode`(cluster-scoped)· bmc{address,credentialsRef} + image{url,checksum} + desiredState spec · provisioningState 7 enum + macAddress + hardwareInfo(CPU/memory/NPU count)+ conditions status。**Phase 9 scaffold-only**。
+
 ---
 
 ## 6. CRD Schema 设计（草案）
@@ -841,7 +886,7 @@ ocloud-edge-platform/
 | Phase 1 W3 | Topology API + 前端 toggle `includeFabric` / `includeWorkloads` | T211/T212(fabric)+ T213/T214(workload) | ADR-0004 + ADR-0005 |
 | Phase 2 | 真实 fabric discovery(LLDP / SNMP / SONiC API 选型) | Phase 2 启动前调研 + ADR | ADR-0004 |
 | Phase 2 | 真实 Pod→slice binding(K8s scheduler annotation) | Phase 2 启动前 | ADR-0005 |
-| Phase 9 | **IMS 7 服务剩 3 项**(资源准备 / 软件管理 / 生命周期)— Option A 拍板(2026-05-18 v2) | Phase 9 起草时落 P9-T-IMS-{1,2,3}:node-lifecycle-operator / software-mgmt / bare-metal-provisioning(参考 StarlingX);Phase 1 不做占位 UI | ADR-0003 v2 Accepted |
+| Phase 9 | **IMS 7 服务剩 3 项**(资源准备 / 软件管理 / 生命周期)— Option A 拍板(2026-05-18 v2) | **scaffold landed via P9-T-105 (2026-05-21)** — 3 个 operator 模块 api/v1alpha1 types only · `operators/node-lifecycle-operator/`(group `lifecycle.ocloud.edge.example.com` · NodeLifecycle CRD · 8 state enum)+ `operators/software-mgmt-operator/`(group `softwaremgmt.ocloud.edge.example.com` · SoftwareBundle CRD · 3 rollout strategy)+ `operators/bare-metal-provisioning-operator/`(group `provisioning.ocloud.edge.example.com` · BareMetalNode CRD · 7 state enum)· 每模块 3 round-trip tests pass(9 total)· controller body + helm + reconcile loops Phase 10 per ADR-0003 v2 + CLAUDE.md §14.2 scaffold pattern · 详 ADR-0003 v2 §"Phase 9 W2 P9-T-105 实际 outcome" + arch §5.9-§5.11 | ADR-0003 v2 Accepted |
 | Phase 4 | CANN 8.1 锁定 + Ascend driver ≥ 24.x 配套验证 | 2026-05-19 P4-T-002 **matrix doc landed**(`docs/cann-driver-matrix.md` · 7 列 5 行 · baseline/floor/known-bad/warn 全覆盖);**real-hw verification deferred Phase 7** | architecture §3.4 + `docs/cann-driver-matrix.md` |
 
 ---

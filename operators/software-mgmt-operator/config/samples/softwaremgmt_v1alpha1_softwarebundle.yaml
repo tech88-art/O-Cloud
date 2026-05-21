@@ -1,0 +1,21 @@
+# Sample SoftwareBundle per P9-T-105 scaffold + ADR-0003 v2 IMS 7
+# services phasing. Phase 9 ships scaffold-only · controller body
+# Phase 10 reconciles patch rollout.
+apiVersion: softwaremgmt.ocloud.edge.example.com/v1alpha1
+kind: SoftwareBundle
+metadata:
+  name: bundle-2026-05
+spec:
+  version: v1.2.0
+  patches:
+    - name: kernel-update
+      sourceURI: oci://registry.example.com/patches/kernel:v1.2.0
+      checksum: abc123def456
+    - name: cann-update
+      sourceURI: oci://registry.example.com/patches/cann:8.1.0
+      checksum: 789abc012def
+  rolloutPolicy:
+    strategy: RollingUpdate
+    maxUnavailable: 1
+  nodeSelector:
+    huawei.com/Ascend910B: "true"

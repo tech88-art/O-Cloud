@@ -1,0 +1,10 @@
+# Sample NodeLifecycle per P9-T-105 scaffold + ADR-0003 v2 IMS 7
+# services phasing. Phase 9 ships scaffold-only · controller body
+# Phase 10 reconciles state transitions.
+apiVersion: lifecycle.ocloud.edge.example.com/v1alpha1
+kind: NodeLifecycle
+metadata:
+  name: worker-1
+spec:
+  nodeName: worker-1.ocloud.example.com
+  desiredState: Unlocked

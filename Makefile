@@ -69,6 +69,18 @@ o2-dms-adapter/lint: ## o2-dms-adapter: vet
 o2-dms-adapter/image: ## o2-dms-adapter: docker build
 	@$(MAKE) -C operators/o2-dms-adapter image
 
+# Phase 9 P9-T-105 IMS 3 scaffold modules (api types only · controller
+# body Phase 10 per ADR-0003 v2 + CLAUDE.md §14.2).
+.PHONY: ims/build ims/test
+ims/build: ## ims: build 3 IMS scaffold modules (node-lifecycle + software-mgmt + bare-metal-provisioning)
+	@cd operators/node-lifecycle-operator && go build ./...
+	@cd operators/software-mgmt-operator && go build ./...
+	@cd operators/bare-metal-provisioning-operator && go build ./...
+ims/test: ## ims: test 3 IMS scaffold modules (3 round-trip cases each)
+	@cd operators/node-lifecycle-operator && go test ./... -count=1
+	@cd operators/software-mgmt-operator && go test ./... -count=1
+	@cd operators/bare-metal-provisioning-operator && go test ./... -count=1
+
 .PHONY: configs/validate configs/gen-mock
 configs/validate: ## configs: 校验 mock 数据
 	@$(MAKE) -C configs/mock-data validate

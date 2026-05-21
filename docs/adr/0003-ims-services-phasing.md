@@ -89,6 +89,21 @@ v1 曾选 Option C(Phase 1 W4 加占位 UI + Phase 3 真实)。用户复盘"根�
 
 **Phase 9 plan 落地状态**(2026-05-21 起草 · `docs/phase9-plan.md` §4 P9-T-105):3 项合并为单任务 P9-T-105 — `operators/node-lifecycle-operator/` + `operators/software-mgmt-operator/` + `operators/bare-metal-provisioning-operator/` **api/v1alpha1 types only scaffold**(per CLAUDE.md §14.2 scaffold pattern)· controller bodies + helm + 真 reconcile loops deferred Phase 10。
 
+**Phase 9 W2 P9-T-105 实际 outcome(2026-05-21)**:**LANDED 3 modules scaffold-only**。每模块结构:
+- **group** per kubebuilder per-operator convention(不用 plan 写的 bare `ocloud.edge.example.com` group · 同 P9-T-002-fix-001 group correction spirit · 无现存 CRD 使用 bare group):
+  - `node-lifecycle-operator` → `lifecycle.ocloud.edge.example.com/v1alpha1` · CRD: `NodeLifecycle`(8 state enum: Provisioning/Bootstrap/Available/DegradedAvailable/Unavailable/Locked/Unlocked/RebootRequired · StarlingX adapted)
+  - `software-mgmt-operator` → `softwaremgmt.ocloud.edge.example.com/v1alpha1` · CRD: `SoftwareBundle`(patches[] + rolloutPolicy + appliedVersion · StarlingX sw-deployment model)
+  - `bare-metal-provisioning-operator` → `provisioning.ocloud.edge.example.com/v1alpha1` · CRD: `BareMetalNode`(bmc{address,credentials} + provisioning state machine 7 enum + macAddress · Metal3/cluster-api adapted)
+- 每模块 9 文件:`go.mod` + `go.sum` + `PROJECT` + `hack/boilerplate.go.txt` + `api/v1alpha1/{groupversion_info,name_types,name_types_test}.go` + `config/samples/{group}_v1alpha1_{name}.yaml` + `cmd/main.go`(minimal binary · prints banner exits 0 · "DESIGN.md deferred to controller-body task per CLAUDE.md §14.2")
+- 每模块 3 round-trip tests pass(RoundTrip + StateEnum + GroupVersion · 9 cases total across 3 modules)
+- Per ADR-0003 v2 + plan §3 P9-T-105 acceptance Forbidden Paths:**unchanged**(各 module 的 internal/controller/** 与 helm chart 都 deferred Phase 10)
+
+Cross-ref:
+- arch §5 模块划分 加 §5.9 + §5.10 + §5.11 (3 new module rows)
+- arch §13 review-table Phase 9 IMS 3 项 scaffold row updated · status flip "P9-T-105 scaffold landed" with commit SHA
+- Root `Makefile` + `.github/workflows/ci.yml` 3 modules build/test targets + jobs added
+- `docs/devlog/phase-9-t105.md` 记录 3 module scaffold outcomes + group choice rationale
+
 ### O2 DMS NB 与 IMS Core 关系(2026-05-21 · P9-T-001 ADR-0013 落地后增补)
 
 `docs/adr/0013-o2-dms-adapter.md`(2026-05-21 Phase 9 P9-T-001 落)锁定 **O2 DMS Adapter** 作为对 O-RAN 联盟北向的生产契约 — K8s Profile only · HTTP REST `/o2dms/v1` 7 endpoint · reflect 内部 ocloud 资源(NPUSlicePool / ModelService / NPUVerticalScaler / NPUSliceAllocation)。**O2 DMS Adapter ≠ IMS Core**,二者职责正交:

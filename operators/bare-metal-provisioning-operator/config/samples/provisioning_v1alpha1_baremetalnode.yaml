@@ -1,0 +1,17 @@
+# Sample BareMetalNode per P9-T-105 scaffold + ADR-0003 v2 IMS 7
+# services phasing. Phase 9 ships scaffold-only · controller body
+# Phase 10 reconciles BMC discovery + OS provisioning state machine.
+apiVersion: provisioning.ocloud.edge.example.com/v1alpha1
+kind: BareMetalNode
+metadata:
+  name: edge-rack-1-server-3
+spec:
+  bmc:
+    address: redfish+https://bmc-rack1-3.example.com
+    credentialsRef:
+      name: bmc-rack1-3-creds
+      namespace: ocloud-system
+  image:
+    url: oci://registry.example.com/os/ascend-host:v1.0.0
+    checksum: abcdef123456
+  desiredState: Ready
