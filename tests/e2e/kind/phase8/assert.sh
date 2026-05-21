@@ -78,8 +78,20 @@ if [[ "${ms_annotation}" != "qwen-pd-idle" ]]; then
 fi
 echo "  OK · annotation=${ms_annotation}"
 
-# T103-4: T008 bundle path — ResourceClaim carries slice-template annotation
-echo "== T103-4: ResourceClaim slice-template annotation propagated (install.sh demo workaround) =="
+# T103-4 / T104: T008 bundle path — ResourceClaim carries slice-template
+# annotation + preferred-hccs-ring HARD FAIL upgrade (Phase 7 T104 v1
+# soft-warning → Phase 8 P8-T-104 hard fail).
+#
+# T104-v2 upgrade rationale: Phase 7 T104 shipped synthetic ring fixture
+# (set-b-multi-ring with 4 HCCS rings across 2 nodes) + PD-pair placement
+# soft-warning. The soft-warning was because Phase 7 had no controller
+# wiring stamping the annotation on Pods / claims · making strict assert
+# impossible. Phase 8 P8-T-008 wiring DOES stamp `preferred-hccs-ring`
+# on the claim after AllocateBundle commits. T104 flips that assertion
+# from soft-warning to HARD FAIL when the claim is allocated AND set-b-
+# multi-ring fixture is reseeded (Phase 7 install.sh `reseed-mockdata`
+# already ran in CI chain so hccs_ring attribute IS present).
+echo "== T103-4 / T104: ResourceClaim slice-template annotation propagated + preferred-hccs-ring HARD FAIL (T104-v2) =="
 claims="$(kubectl -n "${NS_INF}" get resourceclaims -l app.kubernetes.io/instance=qwen-pd -o name 2>/dev/null || true)"
 if [[ -z "${claims}" ]]; then
   echo "::warning::No ResourceClaims found for qwen-pd ModelService · bundle path demo skipped"
@@ -92,18 +104,30 @@ else
       echo "  OK · ${claim} carries npu.huawei.com/slice-template=qwen-pd-idle"
     fi
 
-    # When claim is allocated, verify preferred-hccs-ring annotation
-    # stamped by claim_controller bundle path (P8-T-008).
+    # T104-v2 hard fail: when claim is allocated, preferred-hccs-ring
+    # annotation MUST be stamped (claim_controller pickPreferredRing
+    # path uses v1alpha1.AttrHCCSRing qualified attribute key; set-b-
+    # multi-ring fixture's npus.json carries hccsRing field; publisher
+    # writes it into ResourceSlice attribute).
     allocation_present="$(kubectl -n "${NS_INF}" get "${claim}" -o jsonpath='{.status.allocation}' 2>/dev/null || echo "")"
     if [[ -n "${allocation_present}" ]]; then
       ring="$(kubectl -n "${NS_INF}" get "${claim}" -o jsonpath='{.metadata.annotations.npu\.huawei\.com/preferred-hccs-ring}' 2>/dev/null || echo "")"
       if [[ -z "${ring}" ]]; then
-        echo "::warning::${claim} allocated but preferred-hccs-ring annotation missing (claim_controller pickPreferredRing path didn't find hccs_ring attribute · expected with set-a-small fixture · set-b-multi-ring has the attribute)" >&2
-      else
-        echo "  OK · ${claim} preferred-hccs-ring=${ring}"
+        echo "::error::${claim} allocated BUT preferred-hccs-ring annotation MISSING (T104-v2 hard fail · claim_controller pickPreferredRing didn't stamp · publisher may not be emitting hccs_ring attribute · check set-b-multi-ring reseed in Phase 7 install.sh)" >&2
+        kubectl -n "${NS_INF}" describe "${claim}" || true
+        kubectl get resourceslices -o yaml | head -120 || true
+        exit 1
       fi
+      # Ring value must be one of {0,1,2,3} from set-b-multi-ring fixture.
+      case "${ring}" in
+        0|1|2|3) echo "  OK · ${claim} preferred-hccs-ring=${ring} (T104-v2 hard-fail PASS)" ;;
+        *)
+          echo "::error::${claim} preferred-hccs-ring=${ring} not in expected set {0,1,2,3} from set-b-multi-ring fixture" >&2
+          exit 1
+          ;;
+      esac
     else
-      echo "  ${claim} not yet allocated (bundle path requires NPUSliceTemplate qwen-pd-idle reachable + slices available)"
+      echo "  ${claim} not yet allocated (bundle path requires NPUSliceTemplate qwen-pd-idle reachable + slices available · T104-v2 hard-fail gated on allocation)"
     fi
   done
 fi
