@@ -38,6 +38,27 @@ const (
 	// later short-circuits with a hit — cache hits are tracked
 	// separately via MetricCacheHitsTotal.
 	MetricDispatchCallsTotal = "ocloud_backend_dispatch_calls_total"
+
+	// MetricLeaseHolder is a gauge (per instance) that reports 1 when the
+	// instance currently holds the demo-backend Lease (singleton cache
+	// active replica), 0 otherwise. Phase 10 P10-T-006 per ADR-0015 §2
+	// Decision D. Sum across all instances should be 1 in steady state;
+	// during failover the sum may transiently dip to 0 for < RenewDeadline
+	// (10s default per controller-runtime).
+	MetricLeaseHolder = "demo_backend_lease_holder"
+
+	// MetricLeaseRenewalsTotal counts Lease renewal attempts (success and
+	// error) per instance. Labels: result ∈ {success, error}. Per
+	// ADR-0015 §2 Decision D, error rate spike is the degraded read-only
+	// mode trigger signal.
+	MetricLeaseRenewalsTotal = "demo_backend_lease_renewals_total"
+
+	// MetricCacheHitRatio is a gauge derived from cumulative hits / (hits +
+	// evictions) per resource. Phase 10 P10-T-006 monitoring signal for
+	// failover cold-cache observation: dip below steady-state baseline
+	// indicates cache warm-up in progress after a leader transition.
+	// Labels: resource. Per ADR-0015 §2 Decision D.
+	MetricCacheHitRatio = "demo_backend_cache_hit_ratio"
 )
 
 // Ocloud-prefixed counter handles (P4-T-008). Constructed by

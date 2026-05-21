@@ -137,6 +137,18 @@
 
 ### §3.1 Phase 10 W1 immediate impact
 
+**Status update(2026-05-21 P10-T-006)**:Singleton 包装层 + Lease state machine
++ 3 个新 Prometheus 指标常量已 land at `backend/pkg/cache/singleton.go` +
+`backend/pkg/api/prom_metrics.go`(MetricLeaseHolder / MetricLeaseRenewalsTotal /
+MetricCacheHitRatio)+ 5 sanity test cases · build/vet/test clean。完整集成
+(main.go 接 controller-runtime leader-elect goroutine · X-Cache-Status middleware ·
+demo-backend chart 创建 + replicaCount + Lease RBAC + readinessProbe wiring)
+deferred to Phase 10 W2 polish(devlog `phase-10-t006.md` scope adaptation rationale)
+· demo-backend chart 不存(only inference-operator / scheduler-plugin / npu-dra-driver /
+o2-dms-adapter / ascend-npu-exporter-plus 5 charts in deploy/helm-charts/)·
+Phase 11+ chart packaging or ocloud-edge umbrella chart 是 carry-forward。本 commit
+ships reusable substrate · 不阻塞 T007/T008/T101 controller body 推进。
+
 - **T006 demo-backend cache impl** 按本 ADR §2.1-§2.4 落地 · 估 1.5-2d:
   - `backend/cmd/demo-backend/main.go` 加 leader-elect 启动 path(~50 lines · 同 inference-operator pattern)
   - `backend/pkg/api/health.go`(new or extend)`/healthz/ready` 与 leader-elect 状态机分发
