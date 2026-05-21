@@ -222,6 +222,8 @@ CNI 选型只影响 HCCL 数据面是否能跑通(secondary nic 路径)· 不影
 
 ### 7. Phase 7+ forward notes
 
+> 🆕 **2026-05-20 update (P7-T-001 / ADR-0011)**:`Source.RealAscend.queryTopology()`(下表第 1 行)实际落地分两步:**P7-T-004** ship Source 接口 + RealAscendSource stub(返回 ErrNotImplemented)+ factory 选择;**P7-T-101 lab-conditional** 在 W2 entry meeting 用户 signal lab access available 时 light up 真实现(npu-smi 解析 + DCMI health poll)。缺省 = defer to Phase 10 — 详 **ADR-0011 §3 Lab gating 政策**。同时本节下表第 2 行(HCCS Adjacency map 经验数据缺失 · §256 risk row)对应的 Phase 7 fix 是 **P7-T-008**:chart values 默认 910B 8 卡 ring-of-rings adjacency,运行时通过 Args 可覆盖。
+
 | 演进项 | 触发 | 切换路径 |
 |---|---|---|
 | 真硬件 HCCS ring 发现 | Phase 7 实机 + CANN driver ≥ 24.x | 替换 npu-dra-driver `Source.RealAscend.queryTopology()` · 走 `npu-smi info -t topo` 解析 HCCS group 拓扑;ResourceSlice attribute 写法不变 |

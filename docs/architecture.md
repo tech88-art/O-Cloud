@@ -221,6 +221,8 @@ flowchart LR
 > 🔁 **修订 v3(2026-05-19, P4-T-001 · Phase 4 入口)**:参见 **ADR-0001 v3 §5(双轨路径)** — Edge 路径(KubeEdge)stay Device Plugin v1;Standard-K8s small-cluster 路径可选 DRA spike based on **Phase 4 npu-dra-driver scaffold**(P4-T-003+)。CANN 8.1 / Ascend driver ≥ 24.x 兼容矩阵详见 `docs/cann-driver-matrix.md`(P4-T-002 落地)。
 >
 > 🎯 **npu-dra-driver design(2026-05-19, P4-T-105)**:slice ↔ ResourceClaim 语义映射表 + KubeEdge gap + Partitionable Devices(Phase 7)forward note + Phase 5 实施要点详见 **ADR-0009 npu-dra-driver design**。
+>
+> 🆕 **Phase 7 动态切分(2026-05-20, P7-T-001)**:NPUSliceTemplate CRD(composition + fallbackStrategy)+ template engine(Validate + Decompose)+ allocator extension + Source 接口抽象(MockJSONSource preserve Phase 4-6 / RealAscendSource stub W1 / lab-conditional T101 真实现)+ lab gating 政策详见 **ADR-0011** · `docs/adr/0011-npu-dynamic-slicing-and-source-interface.md`。Pod opt-in via label `npu.huawei.com/slice-template=<name>`,不带 label 走 Phase 5 既有 whole-NPU 路径(零回归)。
 
 ### 3.5 监控与日志
 
@@ -786,7 +788,7 @@ ocloud-edge-platform/
 | Phase 4 (DRA) | K8s DRA 1.31+ 文档少，案例少 | 直接 clone dra-example-driver 改 |
 | Phase 5 (PD分离) | vLLM PD 分离仍在快速迭代 | 锁定一个稳定 commit；准备 llm-d 作为备选 |
 | Phase 6 (HCCS 调度) | HCCS 拓扑获取接口可能要走 Huawei SDK | 调研 npu-smi / DCMI 接口 |
-| Phase 7 (动态切分) | 突破硬模板需要驱动层能力 | 与昇腾团队交互；准备 fallback：多模板组合 |
+| Phase 7 (动态切分) | 突破硬模板需要驱动层能力 | 与昇腾团队交互；准备 fallback：多模板组合（**Phase 7 P7-T-001 落 ADR-0011 提交 fallback 作为 deliverable + Source 接口抽象 + lab gating 政策**） |
 | Phase 8 (垂直伸缩) | NPU 在线缩容是否支持 | 调研，可能只支持横向，垂直走"重启切片" |
 | Phase 9 (O2 DMS) | O-RAN O2 规范持续演进 | 锁定一个版本（如 O2 IMS R1） |
 
@@ -798,7 +800,7 @@ ocloud-edge-platform/
 | Phase 5 | `NPUSliceAllocation` / `Quota` 对象设计(§6.8) | **landed** (2026-05-19 · P5-T-004 / 8173e83) — CRD types + scheme + 3 round-trip tests; controller + audit lifecycle landed at P5-T-005 / c283e94. Phase 9 quota controller reads this CRD as substrate. |
 | Phase 5 | npu-dra-driver allocation logic + DeviceClass 注册 per ADR-0009 | **landed** (2026-05-19 · P5-T-001 / 41cd04e DeviceClass helm template + P5-T-002 / a423dd9 real allocator greedy first-fit + P5-T-003 / 6ef715d allocator tests + BestFit) — claim controller writes status.allocation + status.devices[Ready=True]; Phase 4 annotation path DEPRECATED |
 | Phase 5 | PD Router webhook impl per ADR-0008(`npu.huawei.com/slice-bindings` annotation 写入路径,mutating webhook · failurePolicy=Fail · cert-manager 依赖) | **landed** (2026-05-19 · P5-T-101 c3452d3 cert-manager + P5-T-102 94c7c99 webhook scaffold + P5-T-103 ca81ead mutating logic + P5-T-104 1300f30 envtest) — same binary as inference-operator (ADR-0008 design choice) |
-| Phase 7 | 动态切分若 fallback "多模板组合" 削弱设计目标 | Phase 7 启动前 ADR,明确触发 fallback 的条件 |
+| Phase 7 | 动态切分若 fallback "多模板组合" 削弱设计目标 | **landed 2026-05-20 P7-T-001 → ADR-0011** — Phase 7 commit 多模板组合 fallback 为 deliverable;driver-layer 突破是 opportunistic upside;NPUSliceTemplate CRD + template engine + allocator extension (P7-T-006/007/105) 实现 fallback;Source 接口抽象 (P7-T-004) + lab gating 政策同 ADR |
 | Phase 9 | 多站点 demo backend 缓存重构(LRU 进程内 → Redis/singleton/stateless) | Phase 9 启动前 ADR + 重构路径 |
 | Phase 9 | 安全模型(authn/z + multi-tenancy RBAC + NPUSlicePool admission policy) | Phase 9 启动前完整安全设计 + Karmada RBAC 联动 |
 | Phase 5+ | NPU pod 网络考量(CNI + HCCL RDMA / RoCE / IPoIB 兼容) | research doc landed (P5-T-105 · `docs/cni-hccl-research.md`); **selection landed Phase 6 ADR-0010** — Cilium + Multus + SR-IOV 推荐 / Calico + Multus + SR-IOV fallback;scheduler-plugin CNI-portable(不依赖任何 CNI 特有 API) |

@@ -63,6 +63,8 @@ operators/npu-dra-driver/
 
 ### 4. Partitionable Devices forward note(Phase 7)
 
+> 🆕 **2026-05-20 update (P7-T-001 / ADR-0011)**:Phase 7 introduces a `Source` Go interface (`internal/source/source.go`) abstracting where the publisher gets device inventory + topology. MockJSONSource preserves Phase 4-6 behavior bit-for-bit; RealAscendSource stub ships W1 (P7-T-004), lit up by lab-conditional P7-T-101 on real 910B silicon. The `Source.QueryTopology()` method (referenced by ADR-0010 §7 forward note as `Source.RealAscend.queryTopology()`) lives here. Cross-reference: **ADR-0011 §2 Source interface**. Source abstraction does NOT supersede the Partitionable Devices forward note below — both layers coexist (Source = where inventory comes from; Partitionable Devices = how each device decomposes into partitions).
+
 **事实**:KEP-4815(Partitionable Devices)在 K8s 1.35 Alpha / 1.36 Beta / **est. K8s 1.37 GA**(per SIG-node roadmap)。
 
 **升级路径**(Phase 7):
@@ -74,6 +76,8 @@ operators/npu-dra-driver/
 - Ascend 厂商 npu-smi / DCMI 暴露真切分能力(arch §13 Phase 7 risk + ADR-0001 §"Phase 7 动态切分若 fallback")
 
 切换不破坏 API:`AscendDevice` 类型(T004)的字段不变;publisher 内部多 emit partition entry 即可。Claim 消费者(inference-operator)不感知。
+
+> 🆕 **2026-05-20 update (P7-T-001 / ADR-0011 §1)**:在 Partitionable Devices GA(K8s 1.37 est.)之前,Phase 7 通过 **NPUSliceTemplate CRD + 多模板组合 fallback** 提供动态切分能力。`NPUSliceTemplate.spec.composition` 表达用户期望切分,template engine 把 composition 拆解为现存固定模板(vir04/vir08/vir16/whole)的 bundle,allocator 按 bundle 多次分配。Pod opt-in via label `npu.huawei.com/slice-template=<name>`;absent → 走本 ADR §5 + §6 既有 whole-NPU 路径(零回归)。详 **ADR-0011 §1 NPU 动态切分** + §4 NPUSliceTemplate CRD schema。Phase 7 fallback 路径与 Partitionable Devices(本节)长期共存:driver-layer 突破或 KEP-4815 GA 后,fallback 标 deprecated 但 backward-compat。
 
 ### 5. Phase 5 实施要点(immediate next-phase work)
 
