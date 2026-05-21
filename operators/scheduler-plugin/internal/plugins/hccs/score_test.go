@@ -202,6 +202,54 @@ func TestScore(t *testing.T) {
 		}
 	})
 
+	t.Run("Phase 7 T008 · default 910B 8-card adjacency → adjacent ring 70", func(t *testing.T) {
+		sLister := newFakeLister()
+		// worker-a has device on ring 0; sibling allocated on ring 0.
+		sLister.addSlice("worker-a", makeDevice("npu-0", 0, "Healthy"))
+		// worker-b has device on ring 1; default 8-card adj has 0↔{1,3} so
+		// ring 1 is adjacent to ring 0.
+		sLister.addSlice("worker-b", makeDevice("npu-0", 1, "Healthy"))
+		aLister := newFakeAllocationLister()
+		aLister.addAllocation("ns/llama", "worker-a", "npu-0") // ring 0
+
+		args := defaultArgs()
+		args.Adjacency = DefaultAdjacency910B8Card()
+		p := NewForTest(args, sLister, aLister)
+
+		// worker-a is same-ring → 100
+		if score := runPreScoreAndScore(t, p, makePodWithMS("ns/llama"), "worker-a"); score != ScoreSame {
+			t.Fatalf("worker-a score = %d, want %d (same-ring)", score, ScoreSame)
+		}
+		// worker-b is adjacent-ring per default 8-card adj → 70
+		if score := runPreScoreAndScore(t, p, makePodWithMS("ns/llama"), "worker-b"); score != ScoreAdjacent {
+			t.Fatalf("worker-b score = %d, want %d (adjacent-ring per DefaultAdjacency910B8Card)",
+				score, ScoreAdjacent)
+		}
+	})
+
+	t.Run("Phase 7 T008 · explicit empty Adjacency falls back to binary 100/30", func(t *testing.T) {
+		sLister := newFakeLister()
+		sLister.addSlice("worker-a", makeDevice("npu-0", 0, "Healthy"))
+		sLister.addSlice("worker-b", makeDevice("npu-0", 1, "Healthy"))
+		aLister := newFakeAllocationLister()
+		aLister.addAllocation("ns/llama", "worker-a", "npu-0")
+
+		args := defaultArgs()
+		args.Adjacency = map[string][]int32{} // explicit empty
+		p := NewForTest(args, sLister, aLister)
+
+		// worker-a same-ring → 100
+		if score := runPreScoreAndScore(t, p, makePodWithMS("ns/llama"), "worker-a"); score != ScoreSame {
+			t.Fatalf("worker-a score = %d, want %d (same-ring)", score, ScoreSame)
+		}
+		// worker-b ring 1, sibling ring 0 — without adjacency map this is
+		// DISJOINT (no 70 tier reachable) → 30 binary fallback
+		if score := runPreScoreAndScore(t, p, makePodWithMS("ns/llama"), "worker-b"); score != ScoreDisjoint {
+			t.Fatalf("worker-b score = %d, want %d (disjoint · binary fallback · no adjacency map)",
+				score, ScoreDisjoint)
+		}
+	})
+
 	t.Run("MS label with sibling but node has no candidate device → 0", func(t *testing.T) {
 		sLister := newFakeLister()
 		sLister.addSlice("worker-a", makeDevice("npu-0", 0, "Healthy"))

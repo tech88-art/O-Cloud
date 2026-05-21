@@ -89,15 +89,27 @@ hccsTopology:
   # missing the annotation. Default false (permissive) until inference-
   # operator T105 polish starts stamping the annotation.
   failIfMissing: false
-  # Adjacency map — string-keyed for JSON compat. Empty default = no
-  # adjacency (strict same-ring scoring; cross-ring placements score
-  # disjoint=30). Example for an 8-NPU ring 0↔1↔2↔3:
-  #   adjacency:
-  #     "0": [1]
-  #     "1": [0, 2]
-  #     "2": [1, 3]
-  #     "3": [2]
-  adjacency: {}
+  # Adjacency map — string-keyed for JSON compat. Phase 7 P7-T-008
+  # (ADR-0010 §256 + ADR-0011) flips the chart default from `{}` to
+  # the 910B 8-card ring-of-rings shape `0↔1↔2↔3↔0` per
+  # operators/scheduler-plugin/internal/plugins/hccs/adjacency.go
+  # DefaultAdjacency910B8Card.
+  #
+  # When this map is in effect, Score grades nodes:
+  #   100 = same-ring as sibling Pods
+  #    70 = adjacent ring (per this map)
+  #    30 = disjoint ring
+  #     0 = no eligible device on the node
+  #
+  # Override for a different physical topology (e.g. 16-card 910B-pro
+  # with 4 rings of 4) by replacing the map; set `adjacency: {}` to
+  # disable adjacency scoring entirely (Score falls back to binary
+  # 100/30 — no 70 tier).
+  adjacency:
+    "0": [1, 3]
+    "1": [0, 2]
+    "2": [1, 3]
+    "3": [2, 0]
 
 # NumaAffinity — DEFERRED per T006 (upstream sched-plugins v0.31.8
 # references framework.GVK removed in K8s 1.32). Placeholder binary

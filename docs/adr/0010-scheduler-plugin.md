@@ -270,7 +270,7 @@ CNI 选型只影响 HCCL 数据面是否能跑通(secondary nic 路径)· 不影
 | sched-plugins 框架 API 在 v0.30→v0.31 已有 breaking change | Phase 6 后任何 plugin framework bump 都要 review wrap 层 | T002 pin specific release tag · Makefile 锁定;升级走专项 task 不混进其他 phase |
 | 多 scheduler 运维复杂度 + leader election 配置错误 | 调度卡住 / 双调度抢资源 | T101 chart 默认 leader election 在 `kube-system` namespace · known-issues #11 documents schedulerName 必要 · 监控 metric `scheduler_pending_pods` 异常告警 |
 | Pod 不显式设置 schedulerName 时 plugin 失活 | 集群运维忘了配置 → 拓扑感知功能不生效但无错误 | inference-operator deployment_builder Phase 6 polish 主动 stamp schedulerName(P6 后续 polish · 可能 P6-T-105 中);kind smoke T106 显式验证 schedulerName 字段 |
-| HCCSTopology Score Adjacency map 经验数据缺失 | 默认空 map → Score 表现退化为"同 ring 100 · 其他 30"二分 | Phase 6 ship empty default · Phase 7 实机验证后 chart values 加默认 adjacency(如 910B 8 卡机的环形拓扑 0↔1↔2↔3↔0) |
+| HCCSTopology Score Adjacency map 经验数据缺失 | 默认空 map → Score 表现退化为"同 ring 100 · 其他 30"二分 | Phase 6 ship empty default · **Phase 7 P7-T-008 落 910B 8 卡机的 ring-of-rings `0↔1↔2↔3↔0` chart 默认** + `DefaultAdjacency910B8Card()` + `BuildAdjacency()` pre-flight validator(`internal/plugins/hccs/adjacency.go`) · 4 单元测试 + 2 score 集成测试覆盖 · Phase 10 实机验证后再 fine-tune chart 默认或文档化"如何按真硬件 override"|
 | NPUSliceAllocation reverse-lookup 性能 (Score 每节点 list 一次) | 大集群 Score 阶段延迟 | Phase 6 单集群 ≤ 100 节点 × 8 NPU 量级,list 廉价;Phase 9 多集群引入 indexer cache · 单 list query 不超过 1ms |
 | FailIfMissing=true 误配导致集群全卡 | 所有 Pod 都被 filter 掉 | Args 默认 false · README 强警告; e2e-kind smoke 含 strict + permissive 双路径 |
 | Cilium 1.16+ RoCE 支持仍 experimental(per cni-hccl-research §2.1 confidence C) | Phase 7 实机部署可能 fallback Calico + Multus | ADR-0010 §6 已明记 fallback 路径 · Phase 7 入口实测后 ADR 增补 v2 if needed |

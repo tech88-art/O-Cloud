@@ -64,13 +64,85 @@ type HCCSTopologyArgs struct {
     Weight           int32              // [0..100], default 5
     PreferAnnotation string             // default "npu.huawei.com/preferred-hccs-ring"
     FailIfMissing    bool               // default false (permissive)
-    Adjacency        map[string][]int32 // T005 Score; default empty
+    Adjacency        map[string][]int32 // T005 Score; default = 8-card ring (T008)
 }
 ```
 
 Encoded inside `KubeSchedulerConfiguration.profiles[*].pluginConfig`
 when the chart (T101) renders the ConfigMap. Defaults applied by
 `parseArgs` when args fields are zero / nil.
+
+### 2.1.1 HCCS Adjacency map (Phase 7 P7-T-008 · operative)
+
+Phase 6 T006 + T101 shipped `adjacency: {}` chart default — Score
+degenerated to binary 100/30 (same vs disjoint) because no ring
+adjacency was known. Phase 7 P7-T-008 (ADR-0010 §256 closure + ADR-0011
+follow-on) flips the chart default to the **8-card 910B ring-of-rings
+topology** `0↔1↔2↔3↔0`:
+
+```yaml
+# deploy/helm-charts/scheduler-plugin/values.yaml
+hccsTopology:
+  adjacency:
+    "0": [1, 3]
+    "1": [0, 2]
+    "2": [1, 3]
+    "3": [2, 0]
+```
+
+**Go helpers** (`operators/scheduler-plugin/internal/plugins/hccs/adjacency.go`):
+
+```go
+func DefaultAdjacency910B8Card() map[string][]int32    // chart default
+func BuildAdjacency(spec map[string][]int32) (map[int32][]int32, error)
+                                                       // chart pre-flight validation
+var ErrMalformedAdjacency error                        // sentinel for non-int keys, negative
+                                                       // values, self-loops
+```
+
+BuildAdjacency validates:
+- Every key parses as a non-negative int32 (rejects "abc", "-1")
+- Every value is a non-negative int32 (kubebuilder int32 type already
+  enforces; BuildAdjacency defensively re-validates)
+- No self-loops (`"3": [3, ...]` rejected; ring 3 adjacent to itself
+  is a misconfiguration — Score's 100 tier already handles same-ring)
+
+Operators with a different physical topology override `adjacency`
+chart value. Setting `adjacency: {}` explicitly (or `adjacency: null`
+via `--set`) returns to the Phase 6 binary 100/30 behavior — verified
+by the chart `helm template --set hccsTopology.adjacency=null`
+rendering (no adjacency block in ConfigMap).
+
+**Score impact**: when adjacency is non-empty, Score grades nodes in
+4 tiers (per §3.3):
+
+| Tier | Score | Condition                                              |
+|------|-------|--------------------------------------------------------|
+| Same | 100   | Node has a healthy device in a ring sibling Pods occupy |
+| Adjacent | 70 | Node's ring is in `adjacency[sibling-ring]`           |
+| Disjoint | 30 | Node has a device but on no occupied or adjacent ring |
+| NoCandidate | 0 | Node has no healthy device the plugin recognises    |
+
+**Test gate** (4 adjacency cases per phase7-plan §3 T008 acceptance,
+adjacency_test.go):
+
+| Case                                       | Asserts                                              |
+|--------------------------------------------|------------------------------------------------------|
+| `TestDefaultAdjacency910B8CardRingClosure` | 4 rings × 2 neighbors each · exact `{0:[1,3],...}`   |
+| `TestBuildAdjacencyCustomMapParse`         | well-formed custom map parses; dup values dedup       |
+| `TestBuildAdjacencyEmptyMapNoAdjacency`    | nil + empty → nil out (binary 100/30 fallback)        |
+| `TestBuildAdjacencyMalformedRejects`       | non-int key / negative / self-loop → ErrMalformedAdjacency |
+
+Plus 2 new score_test.go cases:
+- "Phase 7 T008 · default 910B 8-card adjacency → adjacent ring 70"
+  — sibling on ring 0, this node on ring 1 → Score=70
+- "Phase 7 T008 · explicit empty Adjacency falls back to binary 100/30"
+  — same setup with explicit `args.Adjacency={}` → Score=30
+
+**Cross-references**: ADR-0010 §256 risk row (HCCS Adjacency map
+empty default · Phase 7 T008 closes) · ADR-0011 (Phase 7 W1 entry
+includes T008 as a polish item alongside the Source interface refactor) ·
+phase7-plan.md §3 P7-T-008.
 
 ### 2.2 ResourceSlice attribute contract (types.go)
 
