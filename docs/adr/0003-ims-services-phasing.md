@@ -89,6 +89,13 @@ v1 曾选 Option C(Phase 1 W4 加占位 UI + Phase 3 真实)。用户复盘"根�
 
 **Phase 9 plan 落地状态**(2026-05-21 起草 · `docs/phase9-plan.md` §4 P9-T-105):3 项合并为单任务 P9-T-105 — `operators/node-lifecycle-operator/` + `operators/software-mgmt-operator/` + `operators/bare-metal-provisioning-operator/` **api/v1alpha1 types only scaffold**(per CLAUDE.md §14.2 scaffold pattern)· controller bodies + helm + 真 reconcile loops deferred Phase 10。
 
+**Phase 10 W1+W2 落地状态(2026-05-21 P10-T-007 + T008 + T101)**:**3 IMS controller body 全 land**:
+- **IMS-1 node-lifecycle-operator** P10-T-007 commit `d01a5c3`:`internal/state/transitions.go`(12 transitions · 8 states)+ `internal/controller/nodelifecycle_controller.go`(ReconcileOnce pure-Go · NodeReady auto-transition · 7 Conditions)+ 14 unit tests + DESIGN.md §1-§7。
+- **IMS-2 software-mgmt-operator** P10-T-008 commit `ed5e4fc`:`internal/rollout/strategy.go`(3 strategies RollingUpdate/Parallel/Sequential · NextBatch pure-Go)+ `internal/controller/softwarebundle_controller.go`(ReconcileOnce · 4 Conditions · 3 counts · AppliedVersion semantics)+ 15 unit tests + DESIGN.md §1-§7。
+- **IMS-3 bare-metal-provisioning-operator** P10-T-101 commit `213e1a7`:`internal/state/provisioning.go`(13 transitions · 7 ProvisioningStates · Metal3-adapted)+ `internal/controller/baremetalnode_controller.go`(ReconcileOnce · 5 Conditions · BMCError short-circuit + recovery)+ 17 unit tests + DESIGN.md §1-§7。
+
+**Pure-Go Reconcile pattern**(3 IMS modules 共同 idiom):state machine logic decoupled from controller-runtime wiring · 单元测试无 envtest 需求 · cross-controller awareness 方便(IMS-3 reboot 时调 IMS-1 NodeLifecycle state · import `internal/state.IsPermitted` 验证转换)。Phase 11+ chart packaging stream(per ADR-0016 §3 真生产化 spine)将 4 chart 联动:IMS-1 + IMS-2 + IMS-3 + demo-backend · 每 chart 加 cmd/main.go controller-runtime manager + Dockerfile + RBAC + envtest 真集群 verify。
+
 **Phase 9 W2 P9-T-105 实际 outcome(2026-05-21)**:**LANDED 3 modules scaffold-only**。每模块结构:
 - **group** per kubebuilder per-operator convention(不用 plan 写的 bare `ocloud.edge.example.com` group · 同 P9-T-002-fix-001 group correction spirit · 无现存 CRD 使用 bare group):
   - `node-lifecycle-operator` → `lifecycle.ocloud.edge.example.com/v1alpha1` · CRD: `NodeLifecycle`(8 state enum: Provisioning/Bootstrap/Available/DegradedAvailable/Unavailable/Locked/Unlocked/RebootRequired · StarlingX adapted)
