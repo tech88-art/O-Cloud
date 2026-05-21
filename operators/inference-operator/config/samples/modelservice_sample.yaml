@@ -1,0 +1,39 @@
+# ModelService sample — Phase 5+ controller targets / kubectl apply --dry-run gate.
+#
+# Phase 7 P7-T-003 (ADR-0011 §1 · closes known-issues #11):
+# deployment_builder auto-stamps spec.schedulerName="npu-scheduler" on every
+# PD-pair Pod template so HCCS-aware scheduling is automatic. Operators opt
+# out via spec.schedulerOverride (commented below).
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: ModelService
+metadata:
+  name: llama-7b
+  namespace: ocloud-system
+spec:
+  model:
+    image: registry.example.com/vllm-ascend:v0.11.0
+    modelPath: /models/llama-7b
+  pdPair:
+    prefill:
+      replicas: 2
+    decode:
+      replicas: 4
+    routerLabel: inference.ocloud.edge.example.com/pd-role
+    # proxyImage + fallbackImage left empty — Phase 5 single-container
+    # behavior; Phase 6 T105 / Phase 7 T102 flip ProxyImage default once
+    # vllm-ascend v0.12+ is GA + image-pull access in CI.
+  npuSlicePoolRef:
+    name: ascend-910b-pool
+  # schedulerOverride is OMITTED → Phase 7 P7-T-003 default applies:
+  # PD-pair Pods get spec.schedulerName="npu-scheduler" auto-stamped.
+  #
+  # To opt out (route to default-scheduler instead of HCCS-aware scheduler-plugin):
+  #   schedulerOverride: "default-scheduler"
+  #
+  # To route to a custom scheduler (e.g. Volcano during Phase 8 training-job
+  # experiments):
+  #   schedulerOverride: "volcano-scheduler"
+  #
+  # Empty-string override (`schedulerOverride: ""`) resolves to the default
+  # "npu-scheduler" for safety — see internal/controller/deployment_builder.go
+  # effectiveSchedulerName().

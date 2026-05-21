@@ -601,6 +601,69 @@ machinery. Allocator metrics belong in npu-dra-driver (Phase 7+).
       relabelings: []
   ```
 
+## 5.2 Scheduler routing (Phase 7 T003 · operative)
+
+Phase 7 P7-T-003 (ADR-0011 §1 · closes known-issues #11) wires
+`deployment_builder` to auto-stamp `spec.schedulerName="npu-scheduler"`
+on every PD-pair Pod template the controller materialises. Operators
+opt out via `ms.Spec.SchedulerOverride`.
+
+**Why**:Phase 6 T101 ships scheduler-plugin (`operators/scheduler-plugin/`)
+as a SECOND scheduler — Pods opt in via `spec.schedulerName=npu-scheduler`.
+Without this auto-stamp, ModelService Pods schedule via default-scheduler
+and bypass HCCSTopology Filter+Score / Binpack. Phase 6 known-issues #11
+documented this gap; Phase 7 T003 closes it.
+
+**Cross-reference**: ADR-0010 §6.1 (multi-scheduler design) + ADR-0011 §1
+(P7-T-003 lands deployment_builder auto-stamp) + known-issues #11 (RESOLVED
+via T003).
+
+### 5.2.1 Resolution table
+
+```
+ms.Spec.SchedulerOverride         → effective spec.schedulerName
+-----------------------------------+--------------------------------
+nil (default)                      | "npu-scheduler"
+*ptr → ""                          | "npu-scheduler"  (empty == nil)
+*ptr → "default-scheduler"         | "default-scheduler"
+*ptr → "volcano-scheduler"         | "volcano-scheduler"
+```
+
+The empty-string-pointer path is intentional safety: a chart-rendered
+ModelService with `schedulerOverride: ""` (e.g. accidental empty default
+in a Helm chart template) STILL gets `npu-scheduler` auto-stamped.
+Operators wanting default-scheduler must explicitly set a non-empty
+override.
+
+### 5.2.2 Impl
+
+- Constant `SchedulerNameDefault = "npu-scheduler"` in
+  `internal/controller/deployment_builder.go` — matches the chart
+  profileName per ADR-0010 §1 (changing one without the other = silent
+  HCCS bypass).
+- Function `effectiveSchedulerName(ms)` returns the resolution-table
+  output; called inline in `buildDeployment` Pod template Spec.
+- Field `ModelServiceSpec.SchedulerOverride *string` (pointer, optional)
+  — kubebuilder marker `+optional`; CRD YAML generates with
+  `schedulerOverride: string` at `spec.schedulerOverride` JSONPath.
+
+### 5.2.3 Test coverage
+
+`internal/controller/deployment_builder_test.go::TestEffectiveSchedulerName`
+covers all 4 resolution-table rows plus the buildDeployment round-trip
+(asserts the Pod template actually carries the stamped name + reacts to
+override mutation). 4 sub-tests pass via `go test`.
+
+### 5.2.4 kind smoke assertion (Phase 7 T103 forward)
+
+Phase 6 T106 kind smoke had a warning-not-fail `assert_scheduler_name`
+check; Phase 7 T103 flips it to HARD FAIL on absence per phase7-plan.md
+§4 T103 acceptance. The chart-rendered modelservice fixture must produce
+Pods carrying `spec.schedulerName=npu-scheduler` — any Pod missing it
+fails the workflow.
+
+---
+
 ## 6. 扩展点
 
 ### 6.1 Phase 5 controller body (immediate next-phase work)

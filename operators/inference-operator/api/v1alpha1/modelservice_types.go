@@ -130,6 +130,28 @@ type ModelServiceSpec struct {
 	// operators/CLAUDE.md §4 "Phase 1-2 隔离 by convention only").
 	// +kubebuilder:validation:Required
 	NPUSlicePoolRef corev1.LocalObjectReference `json:"npuSlicePoolRef"`
+
+	// SchedulerOverride opts out of the default Phase 7 auto-stamp of
+	// spec.schedulerName on PD-pair Pods. Phase 7 P7-T-003 (ADR-0011 §1 +
+	// closes known-issues #11) wires deployment_builder to stamp
+	// spec.schedulerName="npu-scheduler" by default — putting PD-pair
+	// Pods on our HCCS-aware scheduler-plugin (operators/scheduler-plugin/
+	// per ADR-0010 §1). When this field is non-nil, the controller stamps
+	// the override value instead; when nil OR empty-string-pointer, the
+	// default "npu-scheduler" applies.
+	//
+	// Typical operator overrides:
+	//   - "default-scheduler" — opt out of HCCS-aware placement (e.g. for
+	//     a single-replica diagnostic ModelService that doesn't need ring
+	//     affinity)
+	//   - "<custom-scheduler-name>" — route to a third scheduler (e.g.
+	//     Volcano during Phase 8 training-job experiments)
+	//
+	// Defaults to nil ("auto-stamp npu-scheduler"). Empty pointer
+	// (`*string` to "") also resolves to the default for safety — see
+	// internal/controller/deployment_builder.go effectiveSchedulerName.
+	// +optional
+	SchedulerOverride *string `json:"schedulerOverride,omitempty"`
 }
 
 // ModelServiceStatus is the Status block of a ModelService.

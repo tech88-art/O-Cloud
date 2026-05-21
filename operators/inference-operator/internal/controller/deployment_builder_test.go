@@ -132,3 +132,52 @@ func TestBuildPDPairContainers(t *testing.T) {
 		}
 	})
 }
+
+// TestEffectiveSchedulerName covers Phase 7 P7-T-003 auto-stamp logic
+// per ADR-0011 §1 + closes known-issues #11. Three plan-listed cases
+// (default / override set / empty override pointer) plus the
+// buildDeployment round-trip assertion (4th case) that the Pod template
+// actually carries SchedulerName=npu-scheduler.
+func TestEffectiveSchedulerName(t *testing.T) {
+	t.Run("nil override → default npu-scheduler", func(t *testing.T) {
+		ms := makeTestModelService()
+		// SchedulerOverride is nil by default in makeTestModelService.
+		if got := effectiveSchedulerName(ms); got != SchedulerNameDefault {
+			t.Fatalf("effectiveSchedulerName(nil-override) = %q, want %q", got, SchedulerNameDefault)
+		}
+	})
+
+	t.Run("override = default-scheduler → uses override", func(t *testing.T) {
+		ms := makeTestModelService()
+		override := "default-scheduler"
+		ms.Spec.SchedulerOverride = &override
+		if got := effectiveSchedulerName(ms); got != "default-scheduler" {
+			t.Fatalf("effectiveSchedulerName(override=default-scheduler) = %q, want \"default-scheduler\"", got)
+		}
+	})
+
+	t.Run("empty-string override pointer → default npu-scheduler", func(t *testing.T) {
+		ms := makeTestModelService()
+		empty := ""
+		ms.Spec.SchedulerOverride = &empty
+		if got := effectiveSchedulerName(ms); got != SchedulerNameDefault {
+			t.Fatalf("effectiveSchedulerName(empty-string-override) = %q, want %q (empty == nil fallback)", got, SchedulerNameDefault)
+		}
+	})
+
+	t.Run("buildDeployment Pod template stamps SchedulerName", func(t *testing.T) {
+		ms := makeTestModelService()
+		dep := buildDeployment(ms, PDSidePrefill)
+		got := dep.Spec.Template.Spec.SchedulerName
+		if got != SchedulerNameDefault {
+			t.Fatalf("buildDeployment(default-override).Pod.SchedulerName = %q, want %q", got, SchedulerNameDefault)
+		}
+		// And with override set, buildDeployment should respect it.
+		custom := "volcano-scheduler"
+		ms.Spec.SchedulerOverride = &custom
+		dep2 := buildDeployment(ms, PDSideDecode)
+		if got := dep2.Spec.Template.Spec.SchedulerName; got != "volcano-scheduler" {
+			t.Fatalf("buildDeployment(custom-override).Pod.SchedulerName = %q, want \"volcano-scheduler\"", got)
+		}
+	})
+}

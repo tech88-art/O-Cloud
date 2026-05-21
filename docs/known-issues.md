@@ -294,7 +294,7 @@ helmfile orchestrator if cluster operators report friction.
 
 ### #11 — scheduler-plugin runs as a SECOND scheduler — Pods must opt in via schedulerName
 
-Severity: low · Status: **OPEN** (2026-05-20, P6-T-101).
+Severity: low · Status: **RESOLVED** (2026-05-20, P7-T-003) — inference-operator deployment_builder auto-stamps `spec.schedulerName=npu-scheduler` on every PD-pair Pod template; operators opt out via `ms.Spec.SchedulerOverride`. The OPEN-state narrative below is retained for the historical record (it remains accurate for Pods created OUTSIDE the inference-operator path · e.g. raw `kubectl apply` of a Deployment).
 
 The `scheduler-plugin` helm chart (`deploy/helm-charts/scheduler-plugin/`)
 deploys a custom kube-scheduler binary as a SECOND scheduler in the

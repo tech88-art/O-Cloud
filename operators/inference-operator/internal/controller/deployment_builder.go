@@ -85,6 +85,37 @@ func claimTemplateName(ms *inferencev1alpha1.ModelService, side PDSide) string {
 // reference this name via container.Resources.Claims[].
 const claimRefNameInPod = "npu-slice"
 
+// SchedulerNameDefault is the kube-scheduler profile name our
+// scheduler-plugin (operators/scheduler-plugin/) registers under per
+// ADR-0010 §1. Phase 7 P7-T-003 auto-stamps this value on
+// spec.schedulerName for every PD-pair Pod the controller materialises
+// (closes known-issues #11). Operators opt out via
+// ms.Spec.SchedulerOverride per ADR-0011 §1.
+const SchedulerNameDefault = "npu-scheduler"
+
+// effectiveSchedulerName returns the scheduler name to stamp on PD-pair
+// Pod specs. Defaults to SchedulerNameDefault ("npu-scheduler") so HCCS-
+// aware scheduling is automatic; operators opt out via
+// ms.Spec.SchedulerOverride.
+//
+// Resolution table:
+//
+//	ms.Spec.SchedulerOverride         → effective schedulerName
+//	-----------------------------------+--------------------------
+//	nil (default)                     | "npu-scheduler"
+//	*ptr → ""                         | "npu-scheduler"  (empty == nil)
+//	*ptr → "default-scheduler"        | "default-scheduler"
+//	*ptr → "<custom>"                 | "<custom>"
+//
+// Test coverage: TestEffectiveSchedulerName in deployment_builder_test.go
+// exercises all 4 rows.
+func effectiveSchedulerName(ms *inferencev1alpha1.ModelService) string {
+	if ms.Spec.SchedulerOverride == nil || *ms.Spec.SchedulerOverride == "" {
+		return SchedulerNameDefault
+	}
+	return *ms.Spec.SchedulerOverride
+}
+
 // buildDeployment returns the desired Deployment for one side of the
 // PD pair. Pure function — caller is responsible for Create/Update.
 //
@@ -142,6 +173,10 @@ func buildDeployment(ms *inferencev1alpha1.ModelService, side PDSide) *appsv1.De
 					Labels: podLabels,
 				},
 				Spec: corev1.PodSpec{
+					// Phase 7 P7-T-003 auto-stamp: closes known-issues #11
+					// (scheduler-plugin opt-in). Operators opt out via
+					// ms.Spec.SchedulerOverride per ADR-0011 §1.
+					SchedulerName: effectiveSchedulerName(ms),
 					ResourceClaims: []corev1.PodResourceClaim{{
 						Name:                      claimRefNameInPod,
 						ResourceClaimTemplateName: ptrString(claimTemplateName(ms, side)),
