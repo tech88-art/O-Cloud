@@ -24,7 +24,9 @@
 #   - Partitionable Devices(T202): KEP-4815 Beta only · SKIPPED
 #
 # Active assertions(per Phase 10 substrates that landed without chart deferral):
-#   T107-1 · NumaAffinity profile enabled in scheduler-plugin chart(T005)
+#   T107-1 · NumaAffinity wrap substrate present in scheduler-plugin chart
+#            values.yaml(T005 wrap landed · P10-fix-002 default disabled until
+#            NRT CRDs bundled · Phase 11+ chart packaging stream candidate)
 #   T107-2 · vllm-ascend ProxyImage chart `defaults.proxyImage` field present
 #            (T106 · default empty preserves Phase 7-8 behavior · CI smoke
 #            doesn't override · just verifies chart render path)
@@ -47,14 +49,15 @@ echo "  - software-mgmt-operator chart(T008 deferred · same stream)"
 echo "  - bare-metal-provisioning-operator chart(T101 deferred · same stream)"
 echo ""
 echo "Active P10 chart deltas verified via inference-operator + scheduler-"
-echo "plugin chart upgrades(NumaAffinity enabled by default + ProxyImage"
-echo "defaults.proxyImage field surface)."
+echo "plugin chart upgrades(ProxyImage defaults.proxyImage field surface +"
+echo "NumaAffinity wrap substrate present · default DISABLED per P10-fix-002 ·"
+echo "operators opt-in after installing NodeResourceTopology CRDs)."
 
-# T107-active(P10-T-005): scheduler-plugin chart has numaAffinity.enabled
-# default flipped from false → true(per devlog phase-10-t005.md + values.yaml).
-# Re-apply scheduler-plugin chart with the new default.
+# T107-active(P10-T-005 substrate landed · P10-fix-002 chart default reverted
+# to false because nrt.New needs NodeResourceTopology CRDs not bundled in
+# chart yet). Chart upgrade is no-op with default(numaAffinity.enabled=false).
 echo ""
-echo "[T107-A] scheduler-plugin chart upgrade for NumaAffinity default ENABLED"
+echo "[T107-A] scheduler-plugin chart upgrade(NumaAffinity wrap substrate · default disabled per P10-fix-002)"
 helm upgrade --install -n "${NS_INF}" --create-namespace scheduler-plugin \
   /d/code/ai-edge/deploy/helm-charts/scheduler-plugin/ \
   --wait --timeout 60s 2>&1 || echo "(chart upgrade may be no-op if already Phase 9 state)"
