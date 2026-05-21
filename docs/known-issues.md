@@ -337,9 +337,9 @@ known-issues #11 will flip RESOLVED at that commit.
 
 ---
 
-### #12 — NumaAffinity plugin wrap re-deferred from Phase 7 → Phase 8 → Phase 9 (K8s baseline bump prerequisite)
+### #12 — NumaAffinity plugin wrap re-deferred from Phase 7 → Phase 8 → Phase 9 → Phase 10 → RESOLVED at P10-T-005
 
-Severity: low · Status: **OPEN** (2026-05-21 update · P9-T-003 doc-only refresh outcome · bump 1.34 attempted but framework API drift exceeded T003 scope · prerequisite expanded · Phase 10 carry).
+Severity: low · Status: **RESOLVED** (2026-05-21 · P10-T-005 三件套 part 3 landed · `sigs.k8s.io/scheduler-plugins v0.34.7` + `noderesourcetopology.New(ctx, args, h)` wrap delegate + args=nil defaultArgs fallback + chart numaAffinity.enabled true default · 4 sanity tests + build/vet/test/lint clean · 详 ADR-0010 §1 + §3 P10-T-005 update segments + `docs/devlog/phase-10-t005.md`).
 
 > 🆕 **2026-05-21 update (P8-T-002 · K8s baseline stay decision)**:Phase 8 W1 entry P8-T-002 re-WebFetch findings(upstream snapshot 2026-05-21):
 > - sched-plugins latest = **v0.34.7**(2026-04-20)· v0.35.x / v0.36.x **未发布**
@@ -372,6 +372,13 @@ Severity: low · Status: **OPEN** (2026-05-21 update · P9-T-003 doc-only refres
 > - **4th carry tally**:Phase 7 T002 doc-only fallback → Phase 8 T003 user stay 1.32 → Phase 9 T003 bump 1.34 attempted + framework drift → **Phase 9 T102 auto-deferred per T003 doc-only refresh outcome**(plan §4 P9-T-102 default decision)
 > - **决策**:plan §4 P9-T-102 "Auto-deferred if T003 doc-only refresh" 触发器命中 · 走 auto-deferred 路径 · 0 代码 0 chart change · CI no-op
 > - **Phase 10 起手任务统一**:NumaAffinity wrap upgrade 必须 coordinate K8s baseline bump + framework migration 在同 Phase 10 task chain · 不分拆 · 详 `docs/devlog/phase-9-t102.md` 1-line + `docs/devlog/phase-9-t003.md` framework migration matrix
+
+> 🆕 **2026-05-21 RESOLVED (P10-T-005 · 三件套 part 3 lands)**:
+> - **三件套 coordinated chain 全 land**:T003 part 1(baseline bump K8s 1.32 → 1.34.3 / sched-plugins v0.32 → v0.34.7 cohort)+ T004 part 2(framework migration NodeInfo/CycleState struct→interface · 9 files · `k8s.io/kube-scheduler/framework` data contract)+ T005 part 3(NumaAffinity wrap body delegate `nrt.New` + args=nil defaultArgs fallback + chart `numaAffinity.enabled: true` default)
+> - **5 phase carry tally closer**:Phase 7 T002 doc-only(1st)→ Phase 8 T003 user stay 1.32(2nd)→ Phase 9 T003 bump attempted + framework drift(3rd)→ Phase 9 T102 auto-deferred(4th)→ **Phase 10 T005 RESOLVED**
+> - **Verify**:build/vet/test/helm-lint 全 clean · 4 sanity tests · `go.mod` 引入 `sigs.k8s.io/scheduler-plugins v0.34.7` + `k8s.io/kubernetes/pkg/scheduler/apis/config`
+> - **Real upstream nrt behavior**(NodeResourceTopology CRD present / multi-NUMA SCC mode score / Pod-spec override annotation honoured)→ kind smoke phase6/install.sh post-tag CI gate
+> - 详 `docs/adr/0010-scheduler-plugin.md` §1 + §3 P10-T-005 update segments + `docs/devlog/phase-10-t005.md`
 
 ---
 

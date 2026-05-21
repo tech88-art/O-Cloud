@@ -14,89 +14,110 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package numa is the NumaAffinity plugin for kube-scheduler — Phase 6
-// T006 placeholder body.
+// Package numa is the NumaAffinity plugin for kube-scheduler — Phase 10
+// T005 三件套 part 3 · upstream wrap body landed.
 //
-// **Status: placeholder · not a no-op wrap of upstream yet**
+// **Status: wrap delegation to upstream sigs.k8s.io/scheduler-plugins/
+// pkg/noderesourcetopology v0.34.7** (K8s 1.34 lockstep per ADR-0010 §1
+// P10-T-003 + P10-T-004 update segments + ADR-0001 v3 §5 per-module skew
+// policy).
 //
-// Per ADR-0010 §3 this plugin SHOULD wrap upstream
-// `sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology` without
-// modification ("wrap, don't fork"). However, a direct `nrt.New(...)`
-// delegation pattern at T006 entry FAILED to build because the upstream
-// v0.31.8 release references `framework.GVK` — a symbol that exists in
-// K8s 1.31's `pkg/scheduler/framework` but was removed in K8s 1.32
-// (our pinned baseline per `go.mod` replace block / ADR-0010 §1).
+// Per ADR-0010 §3 this plugin wraps upstream `noderesourcetopology.New`
+// without modification ("wrap, don't fork"). The placeholder body
+// (Phase 6 T006 / Phase 7 P7-T-002 / Phase 8 P8-T-003 / Phase 9 P9-T-102
+// 4× carry) finally lands at Phase 10 T005 because:
 //
-// API drift table (observed 2026-05-20):
+//   - K8s baseline bumped 1.32 → 1.34 at T003 (kindest/node v1.34.3,
+//     scheduler-plugin go.mod v0.34.7 cohort).
+//   - Framework migration at T004 (NodeInfo / CycleState struct→interface
+//     via `k8s.io/kube-scheduler/framework` plan contract).
+//   - sched-plugins v0.34.7 GA in 2024-04 (K8s 1.34 lockstep) — first
+//     release where `noderesourcetopology` plugin compiles cleanly against
+//     K8s 1.34 framework. Earlier v0.31.8 referenced `framework.GVK`
+//     (removed K8s 1.32) blocking 4 prior Phase carry windows.
 //
-//   sched-plugins | targets K8s | framework.GVK present | our K8s 1.32 baseline
-//   v0.30.x       | 1.30        | yes                    | INCOMPATIBLE (replace block K8s = v0.32.0)
-//   v0.31.x       | 1.31        | yes                    | INCOMPATIBLE  ("framework.GVK undefined" at build)
-//   v0.32.x       | 1.32        | (removed)              | COMPATIBLE — not yet released as of 2026-05-20
+// Why local plugin name "NumaAffinity":
+//   - chart ConfigMap profile readability (vs upstream's "NodeResourceTopologyMatch")
+//   - stable chart-facing identity across upstream upgrades
 //
-// **Operative**: T006 ships a Name()-only placeholder (mirrors T002
-// scaffold for this package); kube-scheduler registers the plugin under
-// "NumaAffinity" but invokes no Filter/Score because we don't implement
-// the extension-point interfaces. T101 chart will NOT enable NumaAffinity
-// in its KubeSchedulerConfiguration default until the wrap lands.
+// The wrapped plugin's `Name()` returns upstream's "NodeResourceTopologyMatch"
+// — only surfaces in scheduler log lines, NOT in KubeSchedulerConfiguration
+// profile lookup (which uses registration key from cmd/main.go
+// `app.WithPlugin(numa.Name, numa.New)`). Documented via `UpstreamName`
+// constant for log correlation.
 //
-// **Forward path** (T006 follow-up): once sched-plugins releases a
-// v0.32.x tag (or downstream releases a v0.31.y with K8s 1.32
-// compatibility patch), revisit with:
-//   - update `go.mod` replace block + require sched-plugins direct
-//   - replace this file's placeholder body with `return nrt.New(ctx, args, h)`
-//     plus the UpstreamName log-correlation hint constant
-//   - chart KubeSchedulerConfiguration enables NumaAffinity in profile
+// Args defaulting:
+//   - When chart KubeSchedulerConfiguration profile omits pluginConfig
+//     block for NumaAffinity (args=nil), wrap injects sensible defaults
+//     (ScoringStrategy=LeastAllocated, Resources=[cpu, memory]).
+//   - Defaulting avoids requiring upstream apis/config/v1 scheme registration
+//     in cmd/main.go (Forbidden Path per T005 Allowed Paths).
+//   - Chart-provided pluginConfig still flows through unchanged.
 //
-// Until then, operators wanting NUMA-aware scheduling can:
-//   - run upstream sched-plugins binary as a second scheduler alongside
-//     our HCCSTopology+Binpack binary (more operational overhead but
-//     functional today)
-//   - OR wait for the v0.32.x wrap landing
+// Forward path:
+//   - sched-plugins v0.35+/v0.36+ release → re-evaluate K8s 1.35/1.36
+//     baseline bump (per ADR-0001 v3 §5 Phase 11+ re-eval triggers).
+//   - Pod-spec override `numa.affinity/disable=true` annotation
+//     (4th plan acceptance sanity test) deferred to Phase 11+ if production
+//     demand emerges; current wrap is pure passthrough.
 package numa
 
 import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	schedconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
+
+	apiconfig "sigs.k8s.io/scheduler-plugins/apis/config"
+	nrt "sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology"
 )
-// Note (P10-T-004): K8s 1.34 plugin data types(NodeInfo / CycleState / Status
-// / Code constants / StateKey / StateData)moved to `k8s.io/kube-scheduler/
-// framework`. NumaAffinity placeholder body imports only the contract
-// `framework.Plugin` + `framework.Handle` from `k8s.io/kubernetes/pkg/
-// scheduler/framework`, which are unchanged. T005 三件套 part 3
-// (NumaAffinity wrap body) introduces `fwk` data-type imports alongside the
-// upstream `sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology` wrap.
 
 // Name is the plugin name registered with kube-scheduler. T101 helm chart
-// MUST omit this plugin from the KubeSchedulerConfiguration filter / score
-// enabled lists until the upstream wrap lands per the doc above.
+// KubeSchedulerConfiguration profile filter/score `enabled[]` lists reference
+// this name (lockstep with cmd/main.go `app.WithPlugin(numa.Name, numa.New)`).
 const Name = "NumaAffinity"
 
 // UpstreamName documents the upstream plugin's internal Name() for
-// log-correlation once the wrap lands. Placeholder retains the name so
-// downstream chart updates can flip the wrap on by editing one import
-// + one body line.
+// log-correlation. The wrap delegates to upstream nrt.New which constructs
+// a NodeResourceTopologyMatch plugin instance — that instance's Name()
+// method returns this string, not our "NumaAffinity". Surfaces in
+// kube-scheduler log lines (e.g. "plugin NodeResourceTopologyMatch Filter
+// returned ...") — registration / profile lookup uses Name (above).
 const UpstreamName = "NodeResourceTopologyMatch"
 
-// NumaAffinity is the placeholder plugin struct. T006 ships only the Name()
-// method (framework.Plugin satisfied). When the upstream wrap lands, this
-// type either gets replaced by `return nrt.New(...)` directly OR becomes
-// an embedded wrap struct.
-type NumaAffinity struct{}
-
-// Compile-time interface assertion (framework.Plugin only — Filter / Score
-// land alongside the upstream wrap).
-var _ framework.Plugin = &NumaAffinity{}
-
-// Name returns the plugin name. Required by framework.Plugin.
-func (p *NumaAffinity) Name() string {
-	return Name
+// defaultArgs returns sensible NodeResourceTopologyMatchArgs when chart
+// KubeSchedulerConfiguration omits a pluginConfig block for NumaAffinity.
+// ScoringStrategy=LeastAllocated favors nodes with the most allocatable
+// remaining (lower binpacking pressure) — aligns with Phase 6 P6-T-007
+// Binpack plugin opt-in posture (Binpack handles fill-up; NumaAffinity
+// handles topology preference orthogonally). Resource weights at 1:1 for
+// cpu+memory keep score contribution balanced; NPU resources are deliberately
+// absent here — HCCSTopology plugin (filter+score) handles NPU-specific
+// placement, NumaAffinity is host-level NUMA awareness only.
+func defaultArgs() *apiconfig.NodeResourceTopologyMatchArgs {
+	return &apiconfig.NodeResourceTopologyMatchArgs{
+		ScoringStrategy: apiconfig.ScoringStrategy{
+			Type: apiconfig.LeastAllocated,
+			Resources: []schedconfig.ResourceSpec{
+				{Name: "cpu", Weight: 1},
+				{Name: "memory", Weight: 1},
+			},
+		},
+	}
 }
 
-// New constructs a NumaAffinity placeholder. T006 placeholder body — see
-// package doc for the upstream-wrap deferral rationale.
-func New(_ context.Context, _ runtime.Object, _ framework.Handle) (framework.Plugin, error) {
-	return &NumaAffinity{}, nil
+// New constructs the NumaAffinity plugin as a thin delegate of upstream
+// noderesourcetopology.New. Args=nil triggers defaultArgs() fallback so
+// chart KubeSchedulerConfiguration profile pluginConfig block is optional.
+//
+// Return type framework.Plugin per upstream contract; kube-scheduler
+// detects FilterPlugin / ScorePlugin / PreFilterPlugin via interface
+// assertion at profile load time (the upstream NodeResourceTopologyMatch
+// struct implements all three).
+func New(ctx context.Context, args runtime.Object, h framework.Handle) (framework.Plugin, error) {
+	if args == nil {
+		args = defaultArgs()
+	}
+	return nrt.New(ctx, args, h)
 }

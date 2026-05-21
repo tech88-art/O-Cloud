@@ -4,10 +4,11 @@
 # Pods that need HCCS-aware placement. The default-scheduler in the
 # cluster remains untouched.
 #
-# NumaAffinity is INTENTIONALLY OMITTED from the rendered
-# KubeSchedulerConfiguration filter/score enabled lists until the
-# upstream sched-plugins wrap lands per T006 deferral (see
-# operators/scheduler-plugin/DESIGN.md §5.2).
+# NumaAffinity wrap LANDED at P10-T-005 三件套 part 3 (2026-05-21);
+# chart now defaults `numaAffinity.enabled: true`. See
+# `operators/scheduler-plugin/internal/plugins/numa/plugin.go` package
+# doc + `operators/scheduler-plugin/DESIGN.md §5.2` for the wrap
+# delegation contract.
 
 image:
   # Locally-built image — `make docker-build IMG=scheduler-plugin:v0.1.0`
@@ -111,14 +112,23 @@ hccsTopology:
     "2": [1, 3]
     "3": [2, 0]
 
-# NumaAffinity — DEFERRED per T006 (upstream sched-plugins v0.31.8
-# references framework.GVK removed in K8s 1.32). Placeholder binary
-# is registered but NOT enabled in KubeSchedulerConfiguration.
-# Flip `numaAffinity.enabled: true` once a v0.32.x release lands AND
-# `operators/scheduler-plugin/internal/plugins/numa/plugin.go` body is
-# upgraded to `return nrt.New(ctx, args, h)`.
+# NumaAffinity wrap body LANDED at P10-T-005 三件套 part 3
+# (2026-05-21 · K8s 1.34 baseline + sched-plugins v0.34.7 lockstep · ADR-0010
+# §1 + §3 update segments · known-issues #12 RESOLVED). Default is now
+# ENABLED — chart consumers wanting NUMA-aware scheduling get it out of
+# the box; opt out via `numaAffinity.enabled: false` if dedicated NUMA
+# tooling (e.g. external topology manager) is already in place.
+#
+# Args defaulting handled in `operators/scheduler-plugin/internal/plugins/
+# numa/plugin.go defaultArgs()` (ScoringStrategy=LeastAllocated · Resources
+# cpu+memory weight 1:1). Chart-side pluginConfig block IS NOT required
+# for the wrap to work; chart-default profile leaves pluginConfig absent
+# and the wrap injects defaults at New() time. Operators wanting a
+# different ScoringStrategy (MostAllocated · BalancedAllocation) can add
+# a pluginConfig block manually in a custom KubeSchedulerConfiguration
+# overlay.
 numaAffinity:
-  enabled: false
+  enabled: true
   weight: 2
 
 # Binpack per ADR-0010 §4. Default disabled — chart operators opt in

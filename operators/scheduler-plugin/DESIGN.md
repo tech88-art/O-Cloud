@@ -295,7 +295,26 @@ Score hot-path O(devices_on_node × |ringsOccupied|).
   no-MS-label + multi-ring same. Plus `TestBuildAdjacency` 3-case
   sub-suite for the string→int adjacency conversion.
 
-### 5.2 T006 NumaAffinity (placeholder; upstream wrap deferred)
+### 5.2 NumaAffinity (Phase 10 P10-T-005 wrap body LANDED)
+
+Status: **wrap body LANDED at P10-T-005**(2026-05-21 · 三件套 part 3 of
+K8s 1.34 baseline bump + scheduler framework migration + NumaAffinity wrap
+chain · ADR-0010 §1 + §3 update segments · known-issues #12 RESOLVED)。
+`operators/scheduler-plugin/internal/plugins/numa/plugin.go` 现 delegate
+to `nrt.New(ctx, args, h)`(upstream `sigs.k8s.io/scheduler-plugins/pkg/
+noderesourcetopology` v0.34.7)+ args=nil fallback to `defaultArgs()`
+(ScoringStrategy=LeastAllocated · Resources cpu+memory weight 1:1)避免
+chart 必带 pluginConfig + scheme 注册 cmd/main.go。chart `values.yaml`
+`numaAffinity.enabled` default `false → true`。**4 sanity tests** :
+TestNameConstants / TestDefaultArgs / TestArgsPassthrough /
+TestScoringStrategyTypes · build/vet/test/helm-lint 全 clean。Real upstream
+nrt behavior(NodeResourceTopology CRD present / multi-NUMA SCC mode score /
+Pod-spec override annotation honoured)→ kind smoke phase6/install.sh post-tag
+CI gate(per `feedback_post_tag_ci_gate`)。**P10-T-005 之前的 placeholder
+status + 4 prior phase carry tally(P6-T-006 → P7-T-002 → P8-T-003 →
+P9-T-102)保留在下面作历史 trail**。
+
+### 5.2-historical T006 NumaAffinity (placeholder; pre-P10 trail)
 
 Status: **T006 placeholder landed Phase 6**; upstream wrap **attempted
 Phase 7 T002 · re-deferred to Phase 8 baseline bump**.

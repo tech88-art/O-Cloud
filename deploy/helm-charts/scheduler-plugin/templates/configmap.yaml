@@ -18,8 +18,9 @@ data:
     - schedulerName: {{ .Values.profileName }}
       plugins:
         # Filter chain. HCCSTopology gates Pods by HCCS-ring annotation
-        # match against ResourceSlice device attributes.
-        # NumaAffinity DEFERRED per T006 (upstream wrap pending v0.32.x).
+        # match against ResourceSlice device attributes. NumaAffinity wrap
+        # body landed at P10-T-005 三件套 part 3 (default enabled per
+        # values.yaml · args defaulting in plugin.go defaultArgs).
         filter:
           enabled:
           - name: HCCSTopology

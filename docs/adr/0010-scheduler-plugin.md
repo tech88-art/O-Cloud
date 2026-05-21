@@ -227,7 +227,9 @@ scheduler-plugins 框架启动时注册。
 **默认 Weight**:2(per arch §5.6 + cni-hccl-research §4 间接 — NUMA 在 vllm-ascend
 PD 场景下次于 HCCS,因 HCCL 通信带宽是主要瓶颈;NUMA cache locality 次之)。
 
-**T006 落地状态(2026-05-20 P6 update)**:placeholder · upstream wrap deferred。
+**T006 状态(2026-05-21 P10-T-005 LANDED)**:NumaAffinity wrap body landed at P10-T-005 三件套 part 3 · `nrt.New(ctx, args, h)` delegate · args=nil fallback to defaultArgs()(ScoringStrategy=LeastAllocated · Resources cpu+memory weight 1:1)· chart values.yaml `numaAffinity.enabled: true` default flip · 4 sanity tests(TestNameConstants + TestDefaultArgs + TestArgsPassthrough + TestScoringStrategyTypes)+ build/vet/test/lint 全 clean。详 §1 P10-T-005 update segment + `docs/devlog/phase-10-t005.md`。known-issues #12 RESOLVED。下面的"T006 placeholder body" + "P7-T-002 升级尝试" 段保留作为历史 trail(2026-05-20 → 2026-05-21 演进)。
+
+**T006 placeholder body(2026-05-20 P6 update · 历史 trail)**:placeholder · upstream wrap deferred。
 直接 `nrt.New(...)` 委托在 P6-T-006 entry 时构建失败 — 上游
 `sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology` v0.31.8 引用
 `framework.GVK` 符号,K8s 1.31 `pkg/scheduler/framework` 包内有但 K8s
@@ -257,6 +259,25 @@ owner ship(`sigs.k8s.io/scheduler-plugins v0.34.7` 引入 + `noderesourcetopolog
 wrap + 4 sanity tests + chart toggle default flip · 估 0.5-1d)。known-
 issues #12 prerequisite expanded("baseline bump + framework migration")
 现已全部 met · T005 即可 light up。
+
+**2026-05-21 update (P10-T-005 · 三件套 part 3 LANDED · NumaAffinity wrap body)**:
+Phase 6 T006 / Phase 7 P7-T-002 / Phase 8 P8-T-003 / Phase 9 P9-T-102 4×
+carry 终结于 P10-T-005。`operators/scheduler-plugin/internal/plugins/numa/plugin.go`
+placeholder body 替换为 `nrt.New(ctx, args, h)` 直接 delegate · 加 args=nil
+fallback to `defaultArgs()`(ScoringStrategy=LeastAllocated · Resources cpu+memory
+weight 1:1)避免 chart 必带 pluginConfig + scheme 注册到 cmd/main.go(Forbidden
+Path per T005)。`sigs.k8s.io/scheduler-plugins v0.34.7` + `k8s.io/kubernetes/
+pkg/scheduler/apis/config` 直接 require introduced via `go mod tidy`。Chart
+`values.yaml` `numaAffinity.enabled` default flip `false → true`(operators 默认
+得 NUMA-aware scheduling · 显式 opt out 仍可)。4 sanity tests 实施:
+TestNameConstants(local "NumaAffinity" + upstream "NodeResourceTopologyMatch"
+log-correlation hint)+ TestDefaultArgs(默认 args 合法性)+ TestArgsPassthrough
+(non-nil args 不被覆写)+ TestScoringStrategyTypes(upstream type constants
+import contract)。Real upstream nrt behavior(NodeResourceTopology CRD present /
+multi-NUMA SCC mode score / Pod-spec override annotation honoured)deferred to
+kind smoke phase6/install.sh post-tag CI gate(per `feedback_post_tag_ci_gate`)。
+build/vet/test/lint 全 clean。known-issues #12 RESOLVED · §3 NumaAffinityPlugin
+reuse status flip below。三件套 全部 land。
 
 ### 4. BinpackPlugin opt-in(P6-T-007)
 
