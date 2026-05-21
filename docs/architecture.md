@@ -789,7 +789,7 @@ ocloud-edge-platform/
 | Phase 5 (PD分离) | vLLM PD 分离仍在快速迭代 | 锁定一个稳定 commit；准备 llm-d 作为备选 |
 | Phase 6 (HCCS 调度) | HCCS 拓扑获取接口可能要走 Huawei SDK | 调研 npu-smi / DCMI 接口 |
 | Phase 7 (动态切分) | 突破硬模板需要驱动层能力 | 与昇腾团队交互；准备 fallback：多模板组合（**Phase 7 P7-T-001 落 ADR-0011 提交 fallback 作为 deliverable + Source 接口抽象 + lab gating 政策**） |
-| Phase 8 (垂直伸缩) | NPU 在线缩容是否支持 | 调研，可能只支持横向，垂直走"重启切片" |
+| Phase 8 (垂直伸缩) | NPU 在线缩容是否支持 | 调研，可能只支持横向，垂直走"重启切片"(Phase 7 NPUSliceTemplate substrate · ADR-0011 §1);**Phase 7 P7-T-106 spike 也勘察 Partitionable Devices KEP-4815 status**(1.36 Beta confirmed · GA unconfirmed · `docs/research/k8s-partitionable-devices-spike.md`)— Phase 8 baseline bump 同时 unblocks NumaAffinity(known-issues #12)+ ProxyImage flip(P7-T-102)+ partition-aware allocator |
 | Phase 9 (O2 DMS) | O-RAN O2 规范持续演进 | 锁定一个版本（如 O2 IMS R1） |
 
 **2026-05-17 评审追加(flag-to-phase, baseline 不修, 各 Phase 入口检查)**:

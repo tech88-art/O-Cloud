@@ -65,7 +65,7 @@ operators/npu-dra-driver/
 
 > 🆕 **2026-05-20 update (P7-T-001 / ADR-0011)**:Phase 7 introduces a `Source` Go interface (`internal/source/source.go`) abstracting where the publisher gets device inventory + topology. MockJSONSource preserves Phase 4-6 behavior bit-for-bit; RealAscendSource stub ships W1 (P7-T-004), lit up by lab-conditional P7-T-101 on real 910B silicon. The `Source.QueryTopology()` method (referenced by ADR-0010 §7 forward note as `Source.RealAscend.queryTopology()`) lives here. Cross-reference: **ADR-0011 §2 Source interface**. Source abstraction does NOT supersede the Partitionable Devices forward note below — both layers coexist (Source = where inventory comes from; Partitionable Devices = how each device decomposes into partitions).
 
-**事实**:KEP-4815(Partitionable Devices)在 K8s 1.35 Alpha / 1.36 Beta / **est. K8s 1.37 GA**(per SIG-node roadmap)。
+**事实**(refreshed 2026-05-20 P7-T-106):KEP-4815(Partitionable Devices)在 K8s 1.35 Alpha confirmed · K8s 1.36 Beta confirmed("Tracked for Docs Freeze" complete · `stage/beta` label set)· **GA timing unconfirmed**(ADR-0009 v1 "est. K8s 1.37 GA" 估计未在 upstream tracker 上 commit · 应作 "1.37 minimum, possibly 1.38+")。详 `docs/research/k8s-partitionable-devices-spike.md` §1。
 
 **升级路径**(Phase 7):
 1. **当前(Phase 4-6)**:每个 NPU 发布为一个 `Device` 条目,Capacity 上 `slice-aicore=<chip total>`;allocator 按设备级粒度分配(整 NPU 给一个 claim 或 deny)。
