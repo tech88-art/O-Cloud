@@ -337,9 +337,24 @@ known-issues #11 will flip RESOLVED at that commit.
 
 ---
 
-### #12 — NumaAffinity plugin wrap re-deferred from Phase 7 to Phase 8 (K8s baseline bump prerequisite)
+### #12 — NumaAffinity plugin wrap re-deferred from Phase 7 → Phase 8 → Phase 9 (K8s baseline bump prerequisite)
 
-Severity: low · Status: **OPEN** (2026-05-20, P7-T-002 doc-only fallback).
+Severity: low · Status: **OPEN** (2026-05-21 update · P8-T-002 user decision: stay K8s 1.32 baseline · re-evaluated Phase 9 W1 entry).
+
+> 🆕 **2026-05-21 update (P8-T-002 · K8s baseline stay decision)**:Phase 8 W1 entry P8-T-002 re-WebFetch findings(upstream snapshot 2026-05-21):
+> - sched-plugins latest = **v0.34.7**(2026-04-20)· v0.35.x / v0.36.x **未发布**
+> - kindest/node **v1.36 镜像不存在** in kind v0.31(2025-12-18 最新)· kindest/node 最高 prebuilt = v1.35.0
+> - K8s 1.36.1 GA upstream(2026-05-12)but cluster-tooling lag
+>
+> **用户决策**(2026-05-21 chat):Phase 8 不主动 bump K8s baseline · **stay K8s 1.32**(降低本期风险)。
+>
+> 影响:NumaAffinity wrap upgrade **deferred from Phase 8 → Phase 9**(known-issues #12 maintains OPEN · severity low)。下次评估在 **Phase 9 W1 entry**(届时 sched-plugins v0.35+ / kindest/node v1.36+ 若 GA · 重新评估)。
+>
+> 用户可在 Phase 8 内任意 chat 启动 mid-phase bump 决策(本 known-issues 政策 default = defer)。
+
+---
+
+**历史背景**:
 
 The NumaAffinity scheduler plugin (`operators/scheduler-plugin/internal/plugins/numa/`)
 ships a Name()-only placeholder since Phase 6 T006 because at Phase 6
@@ -372,24 +387,24 @@ run upstream sched-plugins binary as a SECOND second-scheduler alongside
 our HCCSTopology+Binpack binary (functional today, more operational
 overhead — two extra schedulers running side-by-side).
 
-**Proposed resolution** (Phase 8 candidate):
-1. Bump K8s baseline from 1.32 → 1.33 (or 1.34) — coordinate with
+**Proposed resolution** (Phase 9 candidate · was Phase 8 before P8-T-002 user decision):
+1. Bump K8s baseline from 1.32 → 1.33 / 1.34 / 1.35 / 1.36 — coordinate with
    kind smoke `kindest/node` baseline (currently `v1.32.x` per
-   P5-T-114)
-2. Bump sched-plugins to matching minor (v0.33.x or v0.34.x — pick
-   based on Phase 8 K8s minor decision)
+   P5-T-114)· Phase 9 W1 entry re-WebFetch sched-plugins / kindest/node
+   release tracker · 拍 target minor
+2. Bump sched-plugins to matching minor — at 2026-05-21 上游最新 v0.34.7
 3. Replace `plugin.go` placeholder body with `return nrt.New(ctx,
    args, h)` wrap pattern (mirror hccs/args.go parseArgs structure
    for NumaAffinityArgs · pre-construct upstream
    `NodeResourceTopologyMatchArgs` with `LeastAllocated` strategy +
    cpu/memory weight=1 defaults)
 4. Add 3 sanity tests per phase7-plan §3 T002 acceptance pattern
-5. Update T101 chart KubeSchedulerConfiguration to enable
+5. Update chart KubeSchedulerConfiguration to enable
    NumaAffinity in profile + `numaAffinity.enabled=true` chart default
 
 Cross-references: `operators/scheduler-plugin/DESIGN.md` §5.2 +
-ADR-0010 §3 T006 + P7-T-002 attempt notes + phase7-plan.md §3 T002
-+ `docs/devlog/phase-7-t002.md`.
+ADR-0010 §1 §3 T006 + P7-T-002 attempt notes + phase7-plan.md §3 T002
++ phase8-plan.md §3 T002 + `docs/devlog/phase-7-t002.md` + `docs/devlog/phase-8-t002.md`.
 
 ---
 

@@ -41,6 +41,23 @@ T002-T008 直接按本表实施,不再设计。
 P5-T-114 落地;具体 patch 版本在 P6-T-002 task entry 按当时 latest release notes 拍定)。
 使用上游 plugin framework 的 **factory + KubeSchedulerConfiguration** 模式;不 fork,只 wrap。
 
+> 🆕 **2026-05-21 update (P8-T-002 · K8s baseline stay at 1.32)**:Phase 8 W1 entry re-WebFetch findings:
+> - **upstream sched-plugins latest = v0.34.7**(2026-04-20 GA);v0.35.x / v0.36.x **未发布**
+> - **kind v0.31.0** 仍最新(2025-12-18)· `kindest/node:v1.36` 镜像**不存在** · 最高 prebuilt = v1.35.0
+> - **K8s 1.36.1** itself GA(2026-05-12)but cluster-tooling lag(kind / sched-plugins)blocks 1.36 baseline
+>
+> **用户决策**(2026-05-21 chat):**Phase 8 stay at K8s 1.32 baseline**,不主动 upgrade(降低本期风险 · 不引入 baseline drift)。具体效果:
+> - scheduler-plugin go.mod 维持 K8s v0.32.0 / sched-plugins replace block v0.32.0(本节 §1 baseline 不变)
+> - 主模块(npu-dra-driver / inference-operator / pool-operator)go.mod 维持当前状态(K8s v0.35.0 · controller-runtime v0.23.3 — Phase 7 期间因日常 `go mod tidy` 微飘升 · 不主动 downgrade · 也不主动 upgrade)
+> - kindest/node v1.32.0 不变;CI workflow / Helm chart kubeVersion 不变
+>
+> **Phase 8 影响**:
+> - **T003**(NumaAffinity wrap upgrade)→ **doc-only carry to Phase 9**:sched-plugins v0.32.x 与 K8s 1.32 baseline 的 framework.GVK 不兼容(详 `operators/scheduler-plugin/internal/plugins/numa/plugin.go` API drift 表)· 不 bump baseline 即无法 light up
+> - **T101 / T102**(Partitionable Devices Beta + partition-aware allocator)→ **doc-only refresh + carry to Phase 10**:KEP-4815 1.36 Beta 需要 K8s 1.36 cluster · 但 kindest/node v1.36 不在 kind v0.31 · 加上用户 stay 1.32 决策,Beta enable 路径完全 blocked
+> - **T004**(vllm-ascend ProxyImage chart 默认 flip)、**T005-T008**(NPUVerticalScaler CRD + ingestor + controller + AllocateBundle wiring)、**T103/T104**(kind smoke ext + HCCS hard-fail upgrade)、**T106**(Volcano spike)、**T107**(checkpoint + tag)— 均**独立于 K8s baseline 升级** · 按 plan 继续
+>
+> **下一次 baseline bump 评估时机**:Phase 9 W1 entry re-WebFetch — 届时若 sched-plugins v0.35.x+ GA + kindest/node v1.36+ 在 kind release · 重新评估升级路径。known-issues #12(NumaAffinity)继续 OPEN 跟踪。
+
 **部署形态**:**独立 kube-scheduler 二进制**(`bin/kube-scheduler` from
 `operators/scheduler-plugin/cmd/main.go`),作为**第二 scheduler** 运行,通过
 KubeSchedulerConfiguration 注册 profile `npu-scheduler`。**不修改 default-scheduler。**
