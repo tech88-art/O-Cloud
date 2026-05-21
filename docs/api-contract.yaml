@@ -264,6 +264,53 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: includeO2DMSExposed
+          in: query
+          description: |
+            P10-T-105 opt-in flag (Phase 10 frontend Workload page
+            extension per ADR-0013 §6 forward note). When true, each
+            returned Workload entry includes the boolean
+            `o2DMSExposed` field — true if the workload was
+            instantiated via the O2 DMS Adapter NB endpoint
+            (`/o2ims-infrastructureManagement/v1/deploymentManagers/.../resources`),
+            false for direct K8s API creation. The backend determines
+            this by checking the owner ModelService for the annotation
+            `dms.o2.ocloud.edge.example.com/exposed: "true"` which the
+            O2 DMS Adapter stamps on its created ModelServices.
+            Default false — keeps response shape stable for non-O2 demos.
+          schema:
+            type: boolean
+            default: false
+        - name: includeQuotaUsage
+          in: query
+          description: |
+            P10-T-105 opt-in flag (Phase 10 frontend Workload page
+            extension per ADR-0014 §7 forward note). When true, each
+            returned Workload entry includes the object
+            `quotaUsage{cap, used, remaining, scaleEventsLast5min,
+            rateAlgorithm}` summarising the workload's namespace
+            Quota state (joined from inference-operator Quota CRD +
+            scaleHistory ring-buffer). Default false — keeps response
+            shape stable. The detail endpoint always populates the
+            field when the underlying source has Quota data.
+          schema:
+            type: boolean
+            default: false
+        - name: includeScaleHistory
+          in: query
+          description: |
+            P10-T-105 opt-in flag (Phase 10 frontend Workload page
+            extension per ADR-0012 §5 NPUVerticalScaler.scaleHistory
+            forward note). When true, each returned Workload entry
+            includes the array `scaleHistory[]` containing rolling
+            10-entry scale events (timestamp + direction up/down +
+            slice template change) for the workload's bound
+            NPUVerticalScaler (if any). Default false. The detail
+            endpoint always populates the field when the underlying
+            NPUVerticalScaler has scaleHistory data.
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: OK
