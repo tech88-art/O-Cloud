@@ -147,9 +147,14 @@ spec:
                       Empty (default) keeps the Phase 5 single-container behavior:
                       each Pod runs only Spec.Model.Image with --pd-role flag.
 
-                      Gated on vllm-ascend v0.12+ stability per ADR-0010 §3 forward
-                      notes; until then chart values keep this empty + use
-                      FallbackImage below for kind-smoke-friendly env.
+                      **P7-T-102 gating (2026-05-20)**: vllm-ascend v0.12+ IS GA
+                      (latest stable v0.18.0 · 2024-04-30 per release page). Chart
+                      default for this field STAYS empty pending Phase 10 demo polish
+                      verification of (a) CI image-pull access from GHA runners
+                      (~5GB) and (b) `quay.io/vllm-project/vllm-ascend` exact tag
+                      convention. Operators wanting the proxy sidecar today set
+                      e.g. `proxyImage: "quay.io/vllm-project/vllm-ascend:v0.18.0"`
+                      explicitly. See DESIGN.md §5.0.1.
                     type: string
                   routerLabel:
                     default: inference.ocloud.edge.example.com/pd-role
@@ -164,6 +169,28 @@ spec:
                 - decode
                 - prefill
                 type: object
+              schedulerOverride:
+                description: |-
+                  SchedulerOverride opts out of the default Phase 7 auto-stamp of
+                  spec.schedulerName on PD-pair Pods. Phase 7 P7-T-003 (ADR-0011 §1 +
+                  closes known-issues #11) wires deployment_builder to stamp
+                  spec.schedulerName="npu-scheduler" by default — putting PD-pair
+                  Pods on our HCCS-aware scheduler-plugin (operators/scheduler-plugin/
+                  per ADR-0010 §1). When this field is non-nil, the controller stamps
+                  the override value instead; when nil OR empty-string-pointer, the
+                  default "npu-scheduler" applies.
+
+                  Typical operator overrides:
+                    - "default-scheduler" — opt out of HCCS-aware placement (e.g. for
+                      a single-replica diagnostic ModelService that doesn't need ring
+                      affinity)
+                    - "<custom-scheduler-name>" — route to a third scheduler (e.g.
+                      Volcano during Phase 8 training-job experiments)
+
+                  Defaults to nil ("auto-stamp npu-scheduler"). Empty pointer
+                  (`*string` to "") also resolves to the default for safety — see
+                  internal/controller/deployment_builder.go effectiveSchedulerName.
+                type: string
             required:
             - model
             - npuSlicePoolRef
