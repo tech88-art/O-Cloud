@@ -1233,33 +1233,45 @@ Before P9-T-001 starts, the W1 entry meeting confirms:
 
 ## Phase 9 actual landing
 
-> _This section is empty at plan-commit time. T108 fills it in at
-> phase close, mirroring `docs/phase8-plan.md` "Phase 8 actual landing"
-> section pattern._
+> **T108 filled (2026-05-21)** — Phase 9 lands as `phase-9-complete` at this T108 commit.
 
-Phase 9 will land as `phase-9-complete` at the T108 commit. T108 fills:
-- **DECISION-gating outcome (T101 Volcano)**: <full install OR doc-only deferred OR auto-deferred>
-- **DECISION-gating outcome (T102 NumaAffinity)**: <full wrap OR auto-deferred>
-- **K8s baseline target (T003)**: <bumped 1.34/1.35/1.36 OR stay 1.32 doc-only>
-- **Lab-gating outcome (T106)**: <lab impl OR 4th defer Phase 10>
-- **IMS scaffold outcome (T105)**: <3 modules landed scaffold-only OR specific module body included if W1 signal>
-- **Mutation model adaptation** (if any): <ModelService schema or O2 NB shape changes if discovered mid-W1/W2>
+**Outcomes**:
+- **DECISION-gating T101 Volcano**: **doc-only deferred** per default policy (no training-job demo signal at W2 entry · per spike doc §4 default fallback path C)
+- **DECISION-gating T102 NumaAffinity**: **auto-deferred** per T003 doc-only refresh outcome (4th carry · prerequisite expanded to "coordinated K8s baseline bump + framework migration + wrap" 三件套 Phase 10)
+- **K8s baseline target T003**: **stay 1.32 doc-only refresh** (bump 1.34 attempted but K8s 1.34 scheduler framework restructuring NodeInfo + CycleState struct→interface exceeded T003 Forbidden Paths · reverted · Phase 10 carry as 三件套 task chain · 2-3d estimate)
+- **Lab-gating T106**: **3rd carry Phase 10** per ADR-0011 §3 default(no lab access signal · synthetic ring fixture continues to cover CI)
+- **IMS scaffold T105**: **3 modules landed scaffold-only** (api types only per CLAUDE.md §14.2 scaffold pattern · 9 test cases · controller body + helm chart Phase 10)
+- **Mutation model adaptation P9-T-002-fix-001**: Quota CRD group corrected from bare `ocloud.edge.example.com/v1alpha1` (no existing CRD uses bare group) to `inference.ocloud.edge.example.com/v1alpha1` (same scheme as inference-operator binary's ModelService + NPUVerticalScaler · simpler single-group operator)
 
-**Test posture summary** (to be filled at T108):
-- inference-operator: <Quota tests added + NPUVerticalScaler PromQL extension tests + propagation tests · `go test ./...` PASS · helm lint clean>
-- o2-dms-adapter: <handler tests + inventory client tests + translator tests · `go test ./...` PASS · helm lint clean>
-- npu-dra-driver: <T106 lab tests if landed · preserved Phase 5-8 baseline · `go test ./...` PASS>
-- scheduler-plugin: <T102 NumaAffinity tests if landed · preserved Phase 6-8 baseline · `go test ./...` PASS>
-- 3 IMS operator modules: <9 round-trip tests + `make manifests` clean · scaffold-only>
-- kind smoke phase9: <`bash -n` + `yaml.safe_load` PASS on install.sh + assert.sh + fixtures + workflow yaml · CI实证 carry-forward at next push>
-- lab smoke: <T106 outcome>
+**Test posture summary**:
+- inference-operator: 22 P9 new tests (4 Quota controller + 6 Quota webhook + 4 Quota types + 2 PromQL types + 2 PromQL ingestor + 4 SliceTemplateLabel propagation) · 51+ pre-existing preserved · `go test ./...` PASS clean · `helm lint --strict` clean
+- o2-dms-adapter: 21 tests (13 handler body + 8 translator · client tests deferred Phase 10 polish)
+- npu-dra-driver: no P9 code changes · Phase 5-8 baseline preserved
+- scheduler-plugin: no P9 code changes (T102 auto-deferred) · Phase 6-8 baseline preserved
+- 3 IMS operator modules: 9 round-trip tests (3 × {RoundTrip + Enum + GroupVersion}) · `go build + go test` clean per module
+- kind smoke phase9: `bash -n` syntax + `yaml.safe_load` parse PASS on install.sh + assert.sh + 5 fixtures + e2e-kind.yml workflow · runtime validation via CI ubuntu runner post-tag push
 
 See `docs/checkpoint-phase9.md` for the full deliverables table, test
 counts per surface, DoD reconciliation, gating outcomes, deferral
 rationales, and Phase 10 handoff brief.
 
-**Phase 9 commit chain** (to be filled at T108 with N commits since
-`<phase-9 plan commit SHA>` plan commit).
+**Phase 9 commit chain** (16 commits since `7017ba9` plan commit · 2026-05-21):
+- `28e660e` P9-T-001 ADR-0013 O2 DMS Adapter
+- `77ee142` P9-T-002 ADR-0014 Multi-tenant Quota
+- `614c569` P9-T-003 K8s baseline bump → doc-only refresh
+- `7e51e3b` P9-T-004 propagation polish
+- `d161f78` P9-T-005 Quota CRD types + fix-001 batched
+- `c2d4e43` P9-T-006 Quota controller + 2 webhooks
+- `ffb72a4` P9-T-007 PromQL custom metric extension
+- `de5c446` P9-T-008 O2 DMS Adapter scaffold
+- `07bcf1a` P9-T-101 Volcano doc-only deferred
+- `328499c` P9-T-102 NumaAffinity auto-deferred
+- `ac9e336` P9-T-106 Source.RealAscend 3rd carry
+- `4809659` P9-T-107 cache spike + ADR-0015 draft
+- `b39f1c7` P9-T-105 IMS 3 scaffold
+- `7a70b18` P9-T-104 O2 DMS body
+- `01f00c6` P9-T-103 kind smoke E2E ext
+- this commit · P9-T-108 checkpoint + tag phase-9-complete
 
 ---
 
