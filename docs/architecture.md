@@ -792,7 +792,7 @@ ocloud-edge-platform/
 | Phase 6 (HCCS 调度) | HCCS 拓扑获取接口可能要走 Huawei SDK | 调研 npu-smi / DCMI 接口 |
 | Phase 7 (动态切分) | 突破硬模板需要驱动层能力 | 与昇腾团队交互；准备 fallback：多模板组合（**Phase 7 P7-T-001 落 ADR-0011 提交 fallback 作为 deliverable + Source 接口抽象 + lab gating 政策**） |
 | Phase 8 (垂直伸缩) | NPU 在线缩容是否支持 | **in flight via ADR-0012**(2026-05-21 · P8-T-001)— 调研结论 commit "重启切片" pattern 为 Phase 8 deliverable(NPU vendor stack 不暴露 live re-partition 而保持 device state;workload state 无法 mid-flight transfer)。NPUVerticalScaler CRD(inference.ocloud.edge.example.com/v1alpha1 · namespace-scoped · co-located with inference-operator binary)patch target ModelService.spec.template.sliceTemplate → inference-operator rolling restart → claim_controller(P8-T-008 wiring · 消费 Phase 7 NPUSliceTemplate substrate)按 label 解析 → AllocateBundle → N allocations。NPUSliceTemplate substrate(ADR-0011 §1/§4)立即变现;Phase 7 P7-T-106 spike 也勘察 Partitionable Devices KEP-4815 status(1.36 Beta confirmed · GA unconfirmed · `docs/research/k8s-partitionable-devices-spike.md`)— Phase 8 baseline bump(T002 1.32→1.36+)同时 unblocks NumaAffinity(known-issues #12)+ ProxyImage flip(P7-T-102)+ partition-aware allocator(BETA-GATED T101+T102)|
-| Phase 9 (O2 DMS) | O-RAN O2 规范持续演进 | 锁定一个版本（如 O2 IMS R1） |
+| Phase 9 (O2 DMS) | O-RAN O2 规范持续演进 | 锁定一个版本（如 O2 IMS R1） · **训练大批量 job 场景** Phase 8 P8-T-106 spike landed(`docs/research/volcano-gang-scheduling-spike.md`):推荐 Phase 9 W1 entry 引入 Volcano binary(独立 helm · 1-2d 工作量)· 训练 Pod opt-in via `schedulerName=volcano` + PodGroup atomicity · npu-scheduler 继续 own NPU device 级 Filter+Score · 解耦清晰 |
 
 **2026-05-17 评审追加(flag-to-phase, baseline 不修, 各 Phase 入口检查)**:
 

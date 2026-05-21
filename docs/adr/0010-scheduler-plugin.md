@@ -264,7 +264,7 @@ CNI 选型只影响 HCCL 数据面是否能跑通(secondary nic 路径)· 不影
 | Partitionable Devices(KEP-4815 GA · K8s 1.37 est.) | npu-dra-driver Phase 7 升级 · per ADR-0009 §4 | 每个 NPU emit N 个 partition entries · 各自带 `hccs_ring` 属性;Filter/Score 不变,只是粒度更细 |
 | 同一 ModelService Pod 跨节点 HCCL 通信 | Phase 7 多机训练 / 推理需求 | 引入 Cilium + Mellanox CX-7 SR-IOV;scheduler-plugin Score 加入 "同 NIC 链路 / 同 leaf switch" 维度(读 ADR-0007 fabric discovery 产出的 Node label) |
 | Per-Pod RDMA bandwidth quota | Phase 9 multi-tenancy | 引入 SR-IOV VF partitioning;quota controller 读 NPUSliceAllocation by namespace 累加 |
-| Volcano gang-scheduling 整合 | Phase 8+ 训练大批量 job 时 | 评估 Volcano PodGroup CRD 集成本插件;**当前 Phase 6 不引入** — 推理场景 PD-pair 2-4 个 Pod 不需要 gang |
+| Volcano gang-scheduling 整合 | Phase 8+ 训练大批量 job 时 | 评估 Volcano PodGroup CRD 集成本插件;**当前 Phase 6 不引入** — 推理场景 PD-pair 2-4 个 Pod 不需要 gang。**2026-05-21 P8-T-106 spike landed**:`docs/research/volcano-gang-scheduling-spike.md` — 推荐 Phase 9 W1 entry 引入 Volcano binary(独立 helm · 1-2d 工作量 · 路径 A)· 训练 job 走 `schedulerName=volcano` + PodGroup atomicity · npu-scheduler 继续 own NPU device 级 Filter+Score · 解耦清晰 |
 
 ---
 
