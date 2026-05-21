@@ -19,6 +19,7 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -37,6 +38,9 @@ import (
 	v1alpha1 "github.com/tech88-art/O-Cloud/operators/npu-dra-driver/api/v1alpha1"
 	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/controller"
 	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/publisher"
+	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/source"
+	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/source/mockjson"
+	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/source/realascend"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -69,6 +73,8 @@ func main() {
 	var enableClaimController bool
 	var enableAllocationController bool
 	var mockDataPath string
+	var sourceType string
+	var realAscendMode string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8082",
 		"The address the metrics endpoint binds to. Set to 0 to disable.")
@@ -100,7 +106,19 @@ func main() {
 	flag.StringVar(&mockDataPath, "mock-data-path", "",
 		"Path to the simulator NPU JSON (e.g. /etc/npu-dra-driver/mock/npus.json "+
 			"or configs/mock-data/set-a-small/npus.json on host dev). "+
-			"Required when --enable-publisher is set.")
+			"Required when --enable-publisher is set with --source-type=mock-json (default).")
+
+	// Phase 7 P7-T-004 (ADR-0011 §2): selectSource dispatch + source type
+	// + realascend mode. Default "mock-json" preserves Phase 4-6 behavior
+	// bit-for-bit; "real-ascend" Phase 7 W1 stub returns ErrNotImplemented
+	// (Phase 7 T101 lab-conditional lights up the real silicon body).
+	flag.StringVar(&sourceType, "source-type", "mock-json",
+		"Source backend for the publisher (Phase 7 P7-T-004 / ADR-0011 §2). "+
+			"One of 'mock-json' (default · reads --mock-data-path JSON) | "+
+			"'real-ascend' (Phase 7 W1 stub · lab-conditional T101 body).")
+	flag.StringVar(&realAscendMode, "source-real-ascend-mode", "exec",
+		"Backend mode for real-ascend source (Phase 7 W1 stub honors no modes · "+
+			"Phase 7 T101 lab body uses 'exec' to shell out to npu-smi).")
 
 	opts := zap.Options{
 		Development: true,
@@ -131,23 +149,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Phase 4 T005: register the simulator ResourceSlice publisher when
-	// --enable-publisher is set. Phase 4 T006 wires the ResourceClaim
-	// controller behind --enable-claim-controller.
+	// Phase 4 T005 / Phase 7 T004: register the ResourceSlice publisher
+	// when --enable-publisher is set. Phase 4 T006 wires the ResourceClaim
+	// controller behind --enable-claim-controller. Phase 7 P7-T-004
+	// (ADR-0011 §2) switched the inline SimulatorSource construction to
+	// the source-type dispatch below — mock-json default preserves Phase
+	// 4-6 behavior bit-for-bit; real-ascend stub is the Phase 7 W1
+	// scaffold for the lab-conditional T101 body.
 	if enablePublisher {
-		if mockDataPath == "" {
-			setupLog.Error(nil, "--enable-publisher requires --mock-data-path; refusing to start")
+		src, err := selectSource(sourceType, mockDataPath, realAscendMode)
+		if err != nil {
+			setupLog.Error(err, "Failed to construct publisher source")
 			os.Exit(1)
 		}
 		pub := &publisher.Publisher{
 			Client: mgr.GetClient(),
-			Source: &publisher.SimulatorSource{Path: mockDataPath},
+			Source: src,
 		}
 		if err := pub.SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "Failed to register publisher with manager")
 			os.Exit(1)
 		}
-		setupLog.Info("Publisher registered", "task", "P4-T-005", "mock-data-path", mockDataPath)
+		setupLog.Info("Publisher registered",
+			"task", "P4-T-005 + P7-T-004",
+			"source-type", sourceType,
+			"mock-data-path", mockDataPath)
 	}
 	if enableClaimController {
 		cr := &controller.ClaimReconciler{
@@ -193,5 +219,36 @@ func main() {
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "Failed to run manager")
 		os.Exit(1)
+	}
+}
+
+// selectSource dispatches CLI flag values to the matching source backend
+// constructor per Phase 7 P7-T-004 (ADR-0011 §2 + factory pattern).
+// Lives in cmd/main.go (not internal/source/factory.go) to avoid an
+// internal/source → internal/source/{mockjson,realascend} → internal/source
+// import cycle. The source pkg owns the enum + config type; cmd/main.go
+// owns the switch + subpackage imports.
+func selectSource(sourceType, mockDataPath, realAscendMode string) (source.Source, error) {
+	t, err := source.ParseSourceType(sourceType)
+	if err != nil {
+		return nil, err
+	}
+	switch t {
+	case source.SourceTypeMockJSON:
+		if mockDataPath == "" {
+			return nil, fmt.Errorf("source mock-json: --mock-data-path required")
+		}
+		return mockjson.New(mockjson.Config{Path: mockDataPath}), nil
+	case source.SourceTypeRealAscend:
+		// Phase 7 W1 stub: constructs but returns ErrNotImplemented at
+		// first call. Operators who explicitly opt in are warned in
+		// publisher reconcile logs. Phase 7 T101 lab body lights up.
+		setupLog.Info("source real-ascend selected · Phase 7 W1 stub "+
+			"(returns ErrNotImplemented; lab body lands in T101)",
+			"mode", realAscendMode)
+		return realascend.New(realascend.Config{Mode: realAscendMode}), nil
+	default:
+		// Defensive — ParseSourceType already rejects unknown values.
+		return nil, fmt.Errorf("source: unhandled type %q", t)
 	}
 }

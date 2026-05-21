@@ -27,6 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/source/mockjson"
 )
 
 // Phase 4 T005 publisher tests use sigs.k8s.io/controller-runtime/pkg/client/fake
@@ -46,6 +48,42 @@ import (
 //   - "File update mid-flight (atomic rename)" -> TestPublisher_FileUpdate
 //   - "Stale slice cleanup" -> TestPublisher_StaleCleanup
 
+// minimal2NodeFixture is the smallest payload exercised by the unit tests.
+// Two nodes, four NPUs each (8 total) — mirrors the plan happy path
+// description but keeps the test fixture independent of the real
+// configs/mock-data/set-a-small/npus.json so set-a-small can evolve
+// without churning these tests.
+//
+// Phase 7 P7-T-004: lifted from the deleted internal/publisher/source_simulator_test.go
+// (mockjson has its own fixture in internal/source/mockjson/mockjson_test.go);
+// publisher_test.go retains the 2-node fixture because its tests exercise
+// the full publish-loop diff/upsert/delete-stale pipeline not just the
+// source's List shape.
+const minimal2NodeFixture = `{
+  "npus": [
+    {"id":"node-a-npu-0","nodeName":"node-a","index":0,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"node-a-hccs-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
+    {"id":"node-a-npu-1","nodeName":"node-a","index":1,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"node-a-hccs-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
+    {"id":"node-a-npu-2","nodeName":"node-a","index":2,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"node-a-hccs-1","hccsRing":1,"status":"degraded","sliceMode":"fixed-template"},
+    {"id":"node-a-npu-3","nodeName":"node-a","index":3,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"node-a-hccs-1","hccsRing":1,"status":"healthy","sliceMode":"dynamic"},
+    {"id":"node-b-npu-0","nodeName":"node-b","index":0,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"node-b-hccs-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
+    {"id":"node-b-npu-1","nodeName":"node-b","index":1,"aiCoreTotal":32,"numaNode":0,"hccsGroup":"node-b-hccs-0","hccsRing":0,"status":"healthy","sliceMode":"whole"},
+    {"id":"node-b-npu-2","nodeName":"node-b","index":2,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"node-b-hccs-1","hccsRing":1,"status":"unknown","sliceMode":"whole"},
+    {"id":"node-b-npu-3","nodeName":"node-b","index":3,"aiCoreTotal":32,"numaNode":1,"hccsGroup":"node-b-hccs-1","hccsRing":1,"status":"healthy","sliceMode":"whole"}
+  ]
+}`
+
+const emptyNPUsFixture = `{"npus":[]}`
+
+func writeTempFixture(t *testing.T, content string) string {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "npus.json")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write temp fixture: %v", err)
+	}
+	return path
+}
+
 func newScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
 	s := runtime.NewScheme()
@@ -64,7 +102,7 @@ func newPublisher(t *testing.T, path string) *Publisher {
 	t.Helper()
 	return &Publisher{
 		Client:          newFakeClient(t),
-		Source:          &SimulatorSource{Path: path, WatchPollInterval: 50 * time.Millisecond},
+		Source:          mockjson.New(mockjson.Config{Path: path, WatchPollInterval: 50 * time.Millisecond}),
 		RequeueInterval: 100 * time.Millisecond,
 	}
 }

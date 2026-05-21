@@ -72,13 +72,34 @@ metricsBindAddress: ":8082"
 
 # ---------------------------------------------------------------- Publisher
 # Phase 4 default: ON. Loads NPU seeds from a simulator JSON file mounted
-# from a ConfigMap (templates/configmap.yaml). Phase 5+ Replace by a real
-# Ascend Source impl behind the same Source interface.
+# from a ConfigMap (templates/configmap.yaml). Phase 7 P7-T-004 (ADR-0011
+# §2) introduced the Source interface — publisher.sourceType selects
+# between mock-json (default · Phase 4-6 behavior preserved) and
+# real-ascend (Phase 7 W1 stub · lab-conditional T101 lights up real
+# silicon body).
 publisher:
   enabled: true
-  # Path inside the container the manager's --mock-data-path points at.
-  # Matches templates/configmap.yaml + deployment.yaml volume mount.
+  # Path inside the container the manager's --mock-data-path points at
+  # (sourceType=mock-json only). Matches templates/configmap.yaml +
+  # deployment.yaml volume mount.
   mockDataPath: /etc/npu-dra-driver/mock/npus.json
+
+  # Phase 7 P7-T-004: sourceType selects the publisher's Source backend.
+  # Options:
+  #   - "mock-json" (default · Phase 4-6 behavior preserved) — reads
+  #     mockDataPath via internal/source/mockjson/MockJSONSource
+  #   - "real-ascend" (Phase 7 W1 stub) — returns ErrNotImplemented;
+  #     lab-conditional P7-T-101 lights up the real npu-smi / DCMI body.
+  #     Setting this without lab access surfaces non-fatal warnings in
+  #     reconcile logs; chart does NOT block selection so a future Phase
+  #     10 session can light it up without re-rolling the chart
+  sourceType: "mock-json"
+
+  # Phase 7 P7-T-004: realAscendMode forwarded to RealAscendSource as
+  # --source-real-ascend-mode (Phase 7 T101 lab body uses "exec" to
+  # shell out to npu-smi; future "library" mode may link libdcmi).
+  # Ignored when sourceType != "real-ascend".
+  realAscendMode: "exec"
 
 # ----------------------------------------------------------- ConfigMap (mock)
 # When `publisher.enabled: true`, the chart mounts a ConfigMap containing

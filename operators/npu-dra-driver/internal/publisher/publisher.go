@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	v1alpha1 "github.com/tech88-art/O-Cloud/operators/npu-dra-driver/api/v1alpha1"
+	"github.com/tech88-art/O-Cloud/operators/npu-dra-driver/internal/source"
 )
 
 // DefaultRequeueInterval is the publisher's baseline reconcile cadence. The
@@ -63,7 +64,12 @@ type Publisher struct {
 	Client client.Client
 
 	// Source produces the device inventory. Required.
-	Source Source
+	//
+	// Phase 7 P7-T-004 (ADR-0011 §2) lifted this interface OUT of this
+	// package into internal/source/. Phase 4-6 SimulatorSource is now
+	// mockjson.MockJSONSource; cmd/main.go constructs the right impl via
+	// the --source-type flag + selectSource dispatch.
+	Source source.Source
 
 	// RequeueInterval overrides the publisher's reconcile cadence. Zero
 	// means use DefaultRequeueInterval (30s). Tests can shrink this.
@@ -207,7 +213,7 @@ func (p *Publisher) Reconcile(ctx context.Context) error {
 // buildSlice constructs the desired ResourceSlice for one node's devices.
 // Owner refs left blank per P4-T-005 acceptance — Phase 5 may add ownership
 // when inference-operator consumes claims.
-func (p *Publisher) buildSlice(nd NodeDevices) resourceapi.ResourceSlice {
+func (p *Publisher) buildSlice(nd source.NodeDevices) resourceapi.ResourceSlice {
 	devs := make([]resourceapi.Device, 0, len(nd.Devices))
 	for _, d := range nd.Devices {
 		devs = append(devs, d.ToUpstream())

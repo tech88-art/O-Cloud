@@ -247,12 +247,19 @@ func (a AscendClaimAnnotations) ToMap() map[string]string
 func AscendClaimAnnotationsFromMap(m map[string]string) AscendClaimAnnotations
 ```
 
-### 3.6 Source interface (internal/publisher)
+### 3.6 Source interface (internal/source · Phase 7 P7-T-004)
+
+**Phase 7 update** (2026-05-20 · ADR-0011 §2): Source interface lifted
+OUT of internal/publisher/ into a dedicated `internal/source/` package
+so multiple impls (mockjson + realascend) coexist. Phase 4-6
+SimulatorSource preserved bit-for-bit as `mockjson.MockJSONSource`.
 
 ```go
+// internal/source/source.go
 type Source interface {
     List(ctx context.Context) ([]NodeDevices, error)
     Watch(ctx context.Context) <-chan Event
+    QueryTopology(ctx context.Context, nodeName string) (*HCCSTopology, error)
 }
 
 type NodeDevices struct {
@@ -261,14 +268,54 @@ type NodeDevices struct {
 }
 
 type Event struct {
-    Source string  // "simulator" / "real-ascend"
+    Source string  // "mock-json" / "real-ascend"
     Reason string  // "file-modified" / "hotplug" / "tick"
 }
+
+type HCCSTopology struct {
+    NodeName string
+    Rings    map[int32][]string  // ringID → device names
+    NUMA     map[int32][]string  // numaNode → device names
+}
+
+var ErrNotImplemented = errors.New("source: not implemented")
 ```
 
 **Implementations**:
-- `SimulatorSource{Path, WatchPollInterval, SliceAICoreCapacityFallback}` — Phase 4 default
-- `AscendSource` (Phase 5+) — real npu-smi / DCMI discovery
+- `mockjson.MockJSONSource{Config}` — Phase 4-6 behavior preserved
+  bit-for-bit; reads `configs/mock-data/set-a-small/*.json`; **Phase 7
+  default** (chart values `publisher.sourceType: mock-json`)
+- `realascend.RealAscendSource{Config}` — Phase 7 W1 stub returning
+  `source.ErrNotImplemented` from List/QueryTopology + closed Watch
+  channel; Phase 7 T101 lab-conditional lights up the real
+  `npu-smi info -t topo` + DCMI body. Operators opt in via chart
+  values `publisher.sourceType: real-ascend` (chart does NOT block
+  selection; reconcile-loop logs surface ErrNotImplemented warnings)
+
+**Factory dispatch**: `cmd/main.go::selectSource(sourceType, mockDataPath,
+realAscendMode)` switches on `source.ParseSourceType(--source-type
+flag)`. Lives in cmd/main.go (not source pkg) to avoid an
+`internal/source → internal/source/{mockjson,realascend} →
+internal/source` import cycle. The source pkg owns `SourceType` enum +
+`FactoryConfig` struct; cmd/main.go owns the switch + subpackage
+imports.
+
+**Phase 4-6 → Phase 7 import path migration**:
+
+| Phase 4-6 (deleted)                              | Phase 7 (operative)                                                                                          |
+|--------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| `publisher.Source` interface                     | `source.Source` (interface · 3 methods: List + Watch + QueryTopology)                                       |
+| `publisher.NodeDevices` / `publisher.Event`      | `source.NodeDevices` / `source.Event`                                                                       |
+| `publisher.SimulatorSource{Path, ...}`           | `mockjson.New(mockjson.Config{Path, WatchPollInterval, SliceAICoreCapacityFallback})`                       |
+| `publisher.go` uses `Source` (local interface)   | `publisher.go` uses `source.Source` (imported from internal/source)                                         |
+| `cmd/main.go` constructs `&publisher.SimulatorSource{...}` | `cmd/main.go` calls `selectSource(...)` which dispatches via `source.ParseSourceType` → mockjson.New OR realascend.New |
+
+**Tests**: existing `internal/publisher/publisher_test.go` 5 cases pass
+unchanged (now wired through `mockjson.New(...)` instead of inline
+`&SimulatorSource{...}`). NEW `internal/source/mockjson/mockjson_test.go`
+4 cases cover Source contract (List shape + Watch event + QueryTopology
+rings + empty/error edge). NEW `internal/source/realascend/realascend_test.go`
+1 case asserts stub returns `source.ErrNotImplemented` per ADR-0011 §2.
 
 ## 4. 生命周期
 

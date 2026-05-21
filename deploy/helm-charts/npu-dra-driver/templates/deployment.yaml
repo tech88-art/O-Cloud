@@ -50,6 +50,11 @@ spec:
             {{- if .Values.publisher.enabled }}
             - --enable-publisher
             - --mock-data-path={{ .Values.publisher.mockDataPath }}
+            # Phase 7 P7-T-004 (ADR-0011 §2): source-type dispatch.
+            - --source-type={{ .Values.publisher.sourceType | default "mock-json" }}
+            {{- if eq .Values.publisher.sourceType "real-ascend" }}
+            - --source-real-ascend-mode={{ .Values.publisher.realAscendMode | default "exec" }}
+            {{- end }}
             {{- end }}
             {{- if .Values.claimController.enabled }}
             - --enable-claim-controller
