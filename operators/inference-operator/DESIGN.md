@@ -735,6 +735,101 @@ fails the workflow.
 
 ---
 
+## 5.3 Busy-idle metrics ingestor (Phase 8 T006 · operative)
+
+The Phase 8 NPUVerticalScaler controller (T007) consumes a windowed
+NPU-utilization metric to decide busy / idle template switches. The
+ingestor lives in `internal/metrics/` alongside the existing Phase 6
+exposition collectors but is the **opposite direction**: it READS from
+Prometheus, where the exposition layer WRITES to /metrics.
+
+### 5.3.1 Interface
+
+```go
+type Ingestor interface {
+    Query(ctx context.Context, q IngestorQuery) IngestorResult
+}
+
+type IngestorQuery struct {
+    Namespace     string
+    ModelService  string
+    WindowSeconds int32
+}
+
+type IngestorResult struct {
+    Value  float64
+    NoData bool
+    Err    error
+}
+```
+
+Two implementations ship in P8-T-006:
+- `PrometheusIngestor` — production impl; HTTP GET against
+  `/api/v1/query` with PromQL shape below
+- `FakeIngestor` — testing impl; canned `IngestorResult` slice in order
+
+Compile-time assertion `var _ Ingestor = (*FakeIngestor)(nil)` lives in
+`fake_ingestor.go` per P8-T-006 acceptance.
+
+### 5.3.2 PromQL contract
+
+Phase 8 ships only `MetricTypeNPUUtilization` (per ADR-0012 §4 enum);
+Phase 9 forward note adds `PrometheusQuery` for custom PromQL. The
+built-in query shape:
+
+```promql
+avg_over_time(ascend_npu_utilization_percent{namespace="$ns", model_service="$ms"}[$window])
+```
+
+The `$ns` + `$ms` labels are emitted by ascend-npu-exporter-plus (Phase
+2+); `$window` is `NPUVerticalScalerSpec.Metric.WindowSeconds` from
+ADR-0012 §4 (default 300s).
+
+### 5.3.3 NoData semantics (ADR-0012 §1 reconcile step 3 contract)
+
+The ingestor **folds** the following into `IngestorResult{NoData: true}`
+(not `Err`):
+- Empty `PrometheusURL` config → degraded mode, no HTTP I/O performed
+- Connection / DNS / timeout errors → transient, controller stays current
+  template + requeues 30s
+- HTTP 5xx from Prometheus → transient, same treatment as connection error
+- Prometheus returned `status=success` + empty result vector → series
+  missing from Prometheus (e.g. NPUVerticalScaler created before metrics
+  ramp up)
+
+The ingestor reports `IngestorResult{Err: ...}` for:
+- HTTP 4xx (e.g. 400 invalid PromQL) → genuine bug surfaced to controller
+- JSON parse failure → ingestor /response shape mismatch
+- `status` != "success" with non-empty `error` field → query-time error
+
+Per ADR-0012 §1, T007 controller treats `NoData=true` as "no scaling
+decision this tick"; `Err` is surfaced via `ConditionActive=False
+reason=MetricsUnreachable` after N consecutive ticks (T007 will define N).
+
+### 5.3.4 Chart wiring (P8-T-006)
+
+`deploy/helm-charts/inference-operator/values.yaml` adds:
+- `metrics.prometheusURL` (default `""` — degraded mode; set by operator
+  to e.g. `http://prometheus.observability:9090` to enable scaling)
+- `metrics.queryTimeout` (default `"5s"`)
+- `metrics.scrapeIntervalSeconds` (default `30` — informational; T007
+  controller drives cadence via `Reconcile.RequeueAfter`)
+
+The Deployment template injects these as env vars
+`NPUVERTICAL_SCALER_PROMETHEUS_URL` + `NPUVERTICAL_SCALER_QUERY_TIMEOUT`
+on the manager container. `cmd/main.go` reads them at startup and
+constructs the `PrometheusIngestor`.
+
+### 5.3.5 Phase 9 forward path (ADR-0012 §7)
+
+When `MetricSpec.Type` enum extends with `PrometheusQuery`, the ingestor
+will accept a user-supplied PromQL expression on `IngestorQuery` and run
+it instead of the built-in NPUUtilization template. The `Ingestor`
+interface contract is forward-compatible — additional fields on
+`IngestorQuery` + `IngestorOpts` only.
+
+---
+
 ## 6. 扩展点
 
 ### 6.1 Phase 5 controller body (immediate next-phase work)

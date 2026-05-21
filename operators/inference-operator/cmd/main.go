@@ -33,7 +33,10 @@ import (
 
 	inferencev1alpha1 "github.com/tech88-art/O-Cloud/operators/inference-operator/api/v1alpha1"
 	"github.com/tech88-art/O-Cloud/operators/inference-operator/internal/controller"
+	"github.com/tech88-art/O-Cloud/operators/inference-operator/internal/metrics"
 	"github.com/tech88-art/O-Cloud/operators/inference-operator/internal/webhook"
+	"time"
+
 	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 	ctrladmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	// +kubebuilder:scaffold:imports
@@ -133,6 +136,34 @@ func main() {
 			"port", 9443,
 			"deny-on-orphaned", true)
 	}
+
+	// Phase 8 P8-T-006: Construct the busy-idle metrics Ingestor.
+	// The T007 NPUVerticalScaler controller will consume this. Reading
+	// chart-injected env vars: NPUVERTICAL_SCALER_PROMETHEUS_URL +
+	// NPUVERTICAL_SCALER_QUERY_TIMEOUT (per ADR-0012 §1 reconcile step 3
+	// contract — empty URL → ingestor returns NoData=true for every
+	// query; controller treats NoData as "no scaling decision this tick").
+	promURL := os.Getenv("NPUVERTICAL_SCALER_PROMETHEUS_URL")
+	queryTimeout := 5 * time.Second
+	if v := os.Getenv("NPUVERTICAL_SCALER_QUERY_TIMEOUT"); v != "" {
+		if d, perr := time.ParseDuration(v); perr == nil {
+			queryTimeout = d
+		}
+	}
+	ingestor := metrics.NewPrometheusIngestor(metrics.IngestorOpts{
+		PrometheusURL: promURL,
+		QueryTimeout:  queryTimeout,
+	})
+	setupLog.Info("Busy-idle metrics ingestor constructed",
+		"task", "P8-T-006",
+		"prometheusURL", promURL,
+		"queryTimeout", queryTimeout.String(),
+		"degraded", promURL == "")
+	// T007 will register NPUVerticalScalerReconciler with `ingestor` as
+	// a dependency once the controller body lands. Phase 8 P8-T-006
+	// ships the ingestor + cmd wire only; controller registration is T007.
+	_ = ingestor
+
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

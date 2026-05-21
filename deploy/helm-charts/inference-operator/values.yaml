@@ -109,6 +109,25 @@ metrics:
     labels: {}
     # Prometheus relabel_config[] verbatim. Pass-through.
     relabelings: []
+  # ------------- Phase 8 NPUVerticalScaler busy-idle ingestor (P8-T-006)
+  # The NPUVerticalScaler controller (P8-T-007) pulls
+  # `ascend_npu_utilization_percent` from Prometheus via
+  # internal/metrics.PrometheusIngestor. Per ADR-0012 §1 reconcile step 3
+  # the ingestor folds connection / DNS / 5xx failures into NoData=true
+  # so transient Prometheus outages do NOT flip the scaler ConditionActive=False.
+  #
+  # Leave prometheusURL empty for degraded mode (ingestor returns NoData
+  # for every query; NPUVerticalScaler.Reconcile stays in current template
+  # and requeues). Set to the in-cluster Prometheus URL to enable scaling
+  # decisions.
+  prometheusURL: ""
+  # Per-query roundtrip timeout (Go duration string). Default 5s when
+  # empty. ctx deadline takes precedence at call site.
+  queryTimeout: "5s"
+  # Reconcile-loop scrape cadence (informational; used by chart README +
+  # docs/devlog). The NPUVerticalScaler controller actually drives
+  # cadence via Reconcile.RequeueAfter (T007).
+  scrapeIntervalSeconds: 30
 
 # ----------------------------------------------------- Leader election
 leaderElect: true

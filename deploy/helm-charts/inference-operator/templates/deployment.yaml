@@ -93,10 +93,20 @@ spec:
               mountPath: /tmp/k8s-webhook-server/serving-certs
               readOnly: true
           {{- end }}
-          {{- with .Values.extraEnv }}
           env:
+            {{- if .Values.metrics }}
+            {{- if .Values.metrics.prometheusURL }}
+            - name: NPUVERTICAL_SCALER_PROMETHEUS_URL
+              value: {{ .Values.metrics.prometheusURL | quote }}
+            {{- end }}
+            {{- if .Values.metrics.queryTimeout }}
+            - name: NPUVERTICAL_SCALER_QUERY_TIMEOUT
+              value: {{ .Values.metrics.queryTimeout | quote }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- end }}
       {{- if and .Values.pdRouter.enabled .Values.certManager.enabled }}
       volumes:
         - name: webhook-tls
