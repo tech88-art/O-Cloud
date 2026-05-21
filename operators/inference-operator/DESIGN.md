@@ -942,6 +942,93 @@ ModelService verbs (already present at Phase 5) include `patch` —
 sufficient for the annotation merge patch path. No new ModelService
 RBAC needed in T007.
 
+### 5.4.7 Annotation → Pod label propagation chain (P9-T-004 · 2026-05-21)
+
+P8-T-007 NPUVerticalScaler controller writes annotation
+`npu.huawei.com/slice-template=<template-name>` onto the target
+ModelService (per ADR-0012 §5 mutation model · annotation pattern vs
+spec.template.sliceTemplate adapted at Phase 8 P8-T-007 + T008 wiring).
+P9-T-004 closes the propagation chain so the slice-template ref flows
+naturally from the scaler through to the Pod label that
+claim_controller (npu-dra-driver · P8-T-008 wiring) consumes — no
+manual `kubectl annotate resourceclaim` workaround needed in kind smoke.
+
+**Chain end-to-end** (operative Phase 9 forward · twin propagation
+Pod label + ResourceClaim annotation):
+
+```
+NPUVerticalScaler.spec.scaleSlice.{busy,idle}TemplateName  (user / O2 NB sets)
+   │
+   │ NPUVerticalScaler controller (P8-T-007 · ADR-0012 §5 mutation)
+   ↓
+ModelService.metadata.annotations["npu.huawei.com/slice-template"]
+   │
+   │ deployment_builder.buildDeployment (P9-T-004 · Pod label propagation · §5.4.7)
+   ↓
+Deployment.spec.template.metadata.labels["npu.huawei.com/slice-template"]
+   │
+   │ K8s Deployment controller materialises Pods
+   ↓
+Pod.metadata.labels["npu.huawei.com/slice-template"]   ← human visibility
+
+   AND in parallel:
+
+ModelService.metadata.annotations["npu.huawei.com/slice-template"]
+   │
+   │ claim_builder.buildResourceClaimTemplate (P9-T-004 · annotation propagation · §5.4.7)
+   ↓
+ResourceClaimTemplate.spec.metadata.annotations["npu.huawei.com/slice-template"]
+   │
+   │ K8s materialises per-replica ResourceClaim from ResourceClaimTemplate
+   │ (upstream contract: spec.metadata annotations copy to ResourceClaim)
+   ↓
+ResourceClaim.metadata.annotations["npu.huawei.com/slice-template"]
+   │
+   │ claim_controller (npu-dra-driver · P8-T-008 wiring · AnnotationSliceTemplate
+   │   dispatch in Reconcile when claim has this annotation)
+   ↓
+NPUSliceTemplate "<template-name>" → template.Engine.Decompose
+   ↓
+allocator.AllocateBundle → N NPUSliceAllocation objects +
+   ResourceClaim status.devices[Ready=True] + preferred-hccs-ring
+   annotation stamped on claim (T104-v2 hard-fail input)
+```
+
+**deployment_builder propagation logic** (P9-T-004 ·
+`operators/inference-operator/internal/controller/deployment_builder.go`
+constant `SliceTemplateAnnotation` + `buildDeployment` body):
+
+```go
+if v, ok := ms.Annotations[SliceTemplateAnnotation]; ok && v != "" {
+    podLabels[SliceTemplateAnnotation] = v
+}
+```
+
+Same pattern in `claim_builder.go::buildResourceClaimTemplate`:
+
+```go
+claimAnnotations := map[string]string{
+    AnnotationModelServiceRef: msRefAnnot,
+    AnnotationPreferredPool:   ms.Spec.NPUSlicePoolRef.Name,
+}
+if v, ok := ms.Annotations[SliceTemplateAnnotation]; ok && v != "" {
+    claimAnnotations[SliceTemplateAnnotation] = v
+}
+```
+
+Empty-string annotation treated as absent in both paths. Tests:
+`TestSliceTemplateLabelPropagation` 6 sub-cases (Pod label present /
+absent / empty-string absent / decode-side · ResourceClaim annotation
+present + pre-existing annotations preserved / absent).
+
+**Removes phase8/install.sh workaround**: Phase 8 P8-T-103 used
+`cmd_demo_bundle_path` to directly stamp annotation on ResourceClaims
+via `kubectl annotate resourceclaim` because the propagation chain was
+incomplete (deployment_builder didn't propagate). P9-T-004 closes the
+gap → `cmd_demo_bundle_path` removed from `tests/e2e/kind/phase8/install.sh`
+(replaced with explanatory comment + assert.sh continues to pass via
+natural propagation).
+
 ---
 
 ## 6. 扩展点

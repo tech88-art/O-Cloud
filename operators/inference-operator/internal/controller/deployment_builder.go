@@ -47,6 +47,15 @@ const DefaultRouterLabelKey = "inference.ocloud.edge.example.com/pd-role"
 // form on the annotation). T124 fix · 2026-05-20.
 const LabelModelService = "inference.ocloud.edge.example.com/model-service"
 
+// SliceTemplateAnnotation is the annotation key NPUVerticalScaler controller
+// (ADR-0012 §5 mutation model · Phase 8 P8-T-007) writes onto ModelService.
+// Phase 9 P9-T-004 propagates this annotation to the matching Pod label so
+// claim_controller (npu-dra-driver · P8-T-008 wiring) can look up the
+// NPUSliceTemplate ref from the Pod label without depending on the upstream
+// ModelService annotation chain. Removes the phase8/install.sh
+// `cmd_demo_bundle_path` direct `kubectl annotate resourceclaim` workaround.
+const SliceTemplateAnnotation = "npu.huawei.com/slice-template"
+
 // pdReplicaSpec returns the PDReplicaSpec for the named side.
 func pdReplicaSpec(ms *inferencev1alpha1.ModelService, side PDSide) inferencev1alpha1.PDReplicaSpec {
 	switch side {
@@ -152,6 +161,15 @@ func buildDeployment(ms *inferencev1alpha1.ModelService, side PDSide) *appsv1.De
 		"app.kubernetes.io/part-of":   "ocloud-edge",
 		roleKey:                       roleVal,
 		LabelModelService:             msRefLabel,
+	}
+	// P9-T-004: propagate slice-template annotation (written by
+	// NPUVerticalScaler controller per ADR-0012 §5) to Pod label so
+	// claim_controller (npu-dra-driver · P8-T-008 wiring) can look up
+	// the NPUSliceTemplate ref via the Pod label chain naturally.
+	// Removes the phase8/install.sh `cmd_demo_bundle_path` direct
+	// `kubectl annotate resourceclaim` workaround.
+	if v, ok := ms.Annotations[SliceTemplateAnnotation]; ok && v != "" {
+		podLabels[SliceTemplateAnnotation] = v
 	}
 
 	dep := &appsv1.Deployment{

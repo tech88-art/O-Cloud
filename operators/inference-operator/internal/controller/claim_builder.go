@@ -62,6 +62,23 @@ func buildResourceClaimTemplate(ms *inferencev1alpha1.ModelService, side PDSide)
 	msRefLabel := ms.Name
 	roleVal := string(side)
 
+	// P9-T-004: propagate slice-template annotation (written by
+	// NPUVerticalScaler controller per ADR-0012 §5) from ModelService
+	// onto the embedded ResourceClaim ObjectMeta so K8s copies it onto
+	// every materialised ResourceClaim. npu-dra-driver claim_controller
+	// reads `npu.huawei.com/slice-template` on the ResourceClaim to
+	// dispatch the AllocateBundle (P8-T-008 wiring · ADR-0011 §4) path.
+	// This closes the chain that previously required phase8/install.sh
+	// `cmd_demo_bundle_path` direct `kubectl annotate resourceclaim`
+	// workaround.
+	claimAnnotations := map[string]string{
+		AnnotationModelServiceRef: msRefAnnot,
+		AnnotationPreferredPool:   ms.Spec.NPUSlicePoolRef.Name,
+	}
+	if v, ok := ms.Annotations[SliceTemplateAnnotation]; ok && v != "" {
+		claimAnnotations[SliceTemplateAnnotation] = v
+	}
+
 	return &resourceapi.ResourceClaimTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      claimTemplateName(ms, side),
@@ -75,10 +92,7 @@ func buildResourceClaimTemplate(ms *inferencev1alpha1.ModelService, side PDSide)
 		},
 		Spec: resourceapi.ResourceClaimTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					AnnotationModelServiceRef: msRefAnnot,
-					AnnotationPreferredPool:   ms.Spec.NPUSlicePoolRef.Name,
-				},
+				Annotations: claimAnnotations,
 				Labels: map[string]string{
 					LabelModelService:             msRefLabel,
 					"app.kubernetes.io/component": roleVal,

@@ -181,3 +181,100 @@ func TestEffectiveSchedulerName(t *testing.T) {
 		}
 	})
 }
+
+// TestSliceTemplateLabelPropagation exercises P9-T-004 — the annotation
+// `npu.huawei.com/slice-template` (written onto ModelService by
+// NPUVerticalScaler controller per ADR-0012 §5 mutation model) MUST be
+// propagated to Pod template labels with the same key so claim_controller
+// (npu-dra-driver · P8-T-008 wiring) can look up the NPUSliceTemplate ref
+// via the Pod label chain naturally. Removes phase8/install.sh
+// `cmd_demo_bundle_path` direct annotate ResourceClaim workaround.
+//
+// 3 sub-cases per plan §3 T004 acceptance:
+//   1. ms has annotation set → Pod label present with same value
+//   2. ms has no annotation → Pod label absent (no empty key entry)
+//   3. ms has explicit empty annotation → Pod label absent (treated as absent)
+func TestSliceTemplateLabelPropagation(t *testing.T) {
+	t.Run("ms annotation set → Pod label present with same value", func(t *testing.T) {
+		ms := makeTestModelService()
+		ms.Annotations = map[string]string{
+			SliceTemplateAnnotation: "qwen-pd-idle",
+		}
+		dep := buildDeployment(ms, PDSidePrefill)
+		got, ok := dep.Spec.Template.Labels[SliceTemplateAnnotation]
+		if !ok {
+			t.Fatalf("Pod template label %q missing; want %q", SliceTemplateAnnotation, "qwen-pd-idle")
+		}
+		if got != "qwen-pd-idle" {
+			t.Fatalf("Pod template label %q = %q; want %q", SliceTemplateAnnotation, got, "qwen-pd-idle")
+		}
+	})
+
+	t.Run("ms no annotations → Pod label absent", func(t *testing.T) {
+		ms := makeTestModelService()
+		// Annotations nil by default in makeTestModelService.
+		dep := buildDeployment(ms, PDSidePrefill)
+		if _, ok := dep.Spec.Template.Labels[SliceTemplateAnnotation]; ok {
+			t.Fatalf("Pod template label %q unexpectedly present; want absent", SliceTemplateAnnotation)
+		}
+	})
+
+	t.Run("ms annotation empty string → Pod label absent (empty treated as unset)", func(t *testing.T) {
+		ms := makeTestModelService()
+		ms.Annotations = map[string]string{
+			SliceTemplateAnnotation: "",
+		}
+		dep := buildDeployment(ms, PDSidePrefill)
+		if _, ok := dep.Spec.Template.Labels[SliceTemplateAnnotation]; ok {
+			t.Fatalf("Pod template label %q unexpectedly present for empty annotation; want absent", SliceTemplateAnnotation)
+		}
+	})
+
+	t.Run("propagation works for decode side too", func(t *testing.T) {
+		ms := makeTestModelService()
+		ms.Annotations = map[string]string{
+			SliceTemplateAnnotation: "qwen-pd-busy",
+		}
+		dep := buildDeployment(ms, PDSideDecode)
+		if got := dep.Spec.Template.Labels[SliceTemplateAnnotation]; got != "qwen-pd-busy" {
+			t.Fatalf("decode-side Pod template label %q = %q; want %q", SliceTemplateAnnotation, got, "qwen-pd-busy")
+		}
+	})
+
+	// P9-T-004 ALSO propagates the annotation onto ResourceClaimTemplate.Spec.ObjectMeta.Annotations
+	// (via claim_builder.go) so K8s auto-copies the annotation onto every
+	// materialised ResourceClaim. This closes the chain to claim_controller's
+	// AnnotationSliceTemplate read (npu-dra-driver · P8-T-008 wiring).
+	t.Run("ms annotation set → ResourceClaimTemplate claim spec carries annotation", func(t *testing.T) {
+		ms := makeTestModelService()
+		ms.Spec.NPUSlicePoolRef.Name = "qwen-pool"
+		ms.Annotations = map[string]string{
+			SliceTemplateAnnotation: "qwen-pd-idle",
+		}
+		tmpl := buildResourceClaimTemplate(ms, PDSidePrefill)
+		got, ok := tmpl.Spec.ObjectMeta.Annotations[SliceTemplateAnnotation]
+		if !ok {
+			t.Fatalf("ResourceClaim spec annotation %q missing; want %q", SliceTemplateAnnotation, "qwen-pd-idle")
+		}
+		if got != "qwen-pd-idle" {
+			t.Fatalf("ResourceClaim spec annotation %q = %q; want %q", SliceTemplateAnnotation, got, "qwen-pd-idle")
+		}
+		// Pre-existing annotations (model-service-ref + preferred-pool) MUST also
+		// remain — P9-T-004 ADDS slice-template, does not replace the map.
+		if _, ok := tmpl.Spec.ObjectMeta.Annotations[AnnotationModelServiceRef]; !ok {
+			t.Fatalf("AnnotationModelServiceRef missing on claim template spec")
+		}
+		if _, ok := tmpl.Spec.ObjectMeta.Annotations[AnnotationPreferredPool]; !ok {
+			t.Fatalf("AnnotationPreferredPool missing on claim template spec")
+		}
+	})
+
+	t.Run("ms no annotation → ResourceClaimTemplate claim spec has no slice-template annotation", func(t *testing.T) {
+		ms := makeTestModelService()
+		ms.Spec.NPUSlicePoolRef.Name = "qwen-pool"
+		tmpl := buildResourceClaimTemplate(ms, PDSidePrefill)
+		if _, ok := tmpl.Spec.ObjectMeta.Annotations[SliceTemplateAnnotation]; ok {
+			t.Fatalf("ResourceClaim spec annotation %q unexpectedly present; want absent", SliceTemplateAnnotation)
+		}
+	})
+}
