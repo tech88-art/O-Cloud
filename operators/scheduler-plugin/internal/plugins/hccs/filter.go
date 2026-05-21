@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/kubernetes/pkg/scheduler/framework"
+	fwk "k8s.io/kube-scheduler/framework"
 )
 
 // Filter implements framework.FilterPlugin per ADR-0010 §2 Filter table:
@@ -45,17 +45,17 @@ import (
 // hints become co-location signal.
 func (p *HCCSTopology) Filter(
 	_ context.Context,
-	_ *framework.CycleState,
+	_ fwk.CycleState,
 	pod *v1.Pod,
-	nodeInfo *framework.NodeInfo,
-) *framework.Status {
+	nodeInfo fwk.NodeInfo,
+) *fwk.Status {
 	if nodeInfo == nil || nodeInfo.Node() == nil {
-		return framework.NewStatus(framework.Error, "HCCSTopology Filter: nil nodeInfo")
+		return fwk.NewStatus(fwk.Error, "HCCSTopology Filter: nil nodeInfo")
 	}
 	if p.args == nil {
 		// Defensive — New() always populates args; guards against direct struct
 		// construction in tests that skipped New.
-		return framework.NewStatus(framework.Error, "HCCSTopology Filter: args not initialised")
+		return fwk.NewStatus(fwk.Error, "HCCSTopology Filter: args not initialised")
 	}
 
 	annotationKey := p.args.PreferAnnotation
@@ -63,7 +63,7 @@ func (p *HCCSTopology) Filter(
 
 	if !hasAnnotation || annotation == "" {
 		if p.args.FailIfMissing {
-			return framework.NewStatus(framework.UnschedulableAndUnresolvable,
+			return fwk.NewStatus(fwk.UnschedulableAndUnresolvable,
 				fmt.Sprintf("Pod missing required annotation %q", annotationKey))
 		}
 		return nil // permissive default
@@ -72,7 +72,7 @@ func (p *HCCSTopology) Filter(
 	preferredRings := parsePreferredRings(annotation)
 	if len(preferredRings) == 0 {
 		if p.args.FailIfMissing {
-			return framework.NewStatus(framework.UnschedulableAndUnresolvable,
+			return fwk.NewStatus(fwk.UnschedulableAndUnresolvable,
 				fmt.Sprintf("Pod annotation %q contains no valid ring IDs", annotationKey))
 		}
 		return nil
@@ -84,7 +84,7 @@ func (p *HCCSTopology) Filter(
 		// as "no slices observed" — permissive when FailIfMissing=false,
 		// strict otherwise.
 		if p.args.FailIfMissing {
-			return framework.NewStatus(framework.UnschedulableAndUnresolvable,
+			return fwk.NewStatus(fwk.UnschedulableAndUnresolvable,
 				fmt.Sprintf("HCCSTopology Filter: no ResourceSlice lister wired; cannot satisfy annotation %q", annotationKey))
 		}
 		return nil
@@ -92,7 +92,7 @@ func (p *HCCSTopology) Filter(
 
 	slices, err := p.SliceLister.ListForNode(nodeName)
 	if err != nil {
-		return framework.NewStatus(framework.Error,
+		return fwk.NewStatus(fwk.Error,
 			fmt.Sprintf("HCCSTopology Filter: list ResourceSlices for %q: %v", nodeName, err))
 	}
 
@@ -104,6 +104,6 @@ func (p *HCCSTopology) Filter(
 		}
 	}
 
-	return framework.NewStatus(framework.UnschedulableAndUnresolvable,
+	return fwk.NewStatus(fwk.UnschedulableAndUnresolvable,
 		fmt.Sprintf("no healthy NPU device on node %q matches HCCS ring set %v", nodeName, preferredRings))
 }

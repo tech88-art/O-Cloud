@@ -61,6 +61,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
+// Note (P10-T-004): K8s 1.34 plugin data types(NodeInfo / CycleState / Status
+// / Code constants / StateKey / StateData)moved to `k8s.io/kube-scheduler/
+// framework`. NumaAffinity placeholder body imports only the contract
+// `framework.Plugin` + `framework.Handle` from `k8s.io/kubernetes/pkg/
+// scheduler/framework`, which are unchanged. T005 三件套 part 3
+// (NumaAffinity wrap body) introduces `fwk` data-type imports alongside the
+// upstream `sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology` wrap.
 
 // Name is the plugin name registered with kube-scheduler. T101 helm chart
 // MUST omit this plugin from the KubeSchedulerConfiguration filter / score

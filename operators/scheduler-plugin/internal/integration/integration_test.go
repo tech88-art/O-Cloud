@@ -44,10 +44,16 @@ import (
 	resourceapi "k8s.io/api/resource/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fwk "k8s.io/kube-scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 
 	hccspkg "github.com/tech88-art/O-Cloud/operators/scheduler-plugin/internal/plugins/hccs"
 )
+
+// K8s 1.34 plugin contract: Filter/Score signatures take `fwk.NodeInfo`
+// interface (k8s.io/kube-scheduler/framework). The fixture's *framework.NodeInfo
+// struct pointer (built via framework.NewNodeInfo) satisfies that interface
+// automatically. Per P10-T-004 三件套 part 2.
 
 // fixture builds the standard P6-T-008 test cluster: 2 nodes × 4 NPUs each,
 // HCCS rings split worker-a={0,1} / worker-b={2,3}.
@@ -112,21 +118,23 @@ func (f *fixture) nodeInfoFor(nodeName string) *framework.NodeInfo {
 
 // runHCCSFilter wires PreScore + Filter on a per-pod basis. Returns the
 // Status from Filter (Score path isn't relevant for Filter assertions).
-func (f *fixture) runHCCSFilter(t *testing.T, p *hccspkg.HCCSTopology, pod *v1.Pod, nodeName string) *framework.Status {
+// K8s 1.34: Filter return type is `*fwk.Status` (k8s.io/kube-scheduler).
+func (f *fixture) runHCCSFilter(t *testing.T, p *hccspkg.HCCSTopology, pod *v1.Pod, nodeName string) *fwk.Status {
 	t.Helper()
 	return p.Filter(context.Background(), nil, pod, f.nodeInfoFor(nodeName))
 }
 
 // runHCCSScore wires PreScore + Score on a per-pod, per-node basis. Each
 // call invokes PreScore once (cycleState is fresh) which matches the
-// scheduler framework contract.
+// scheduler framework contract. K8s 1.34: Score takes `fwk.NodeInfo`
+// interface; fixture's `*framework.NodeInfo` struct pointer satisfies it.
 func (f *fixture) runHCCSScore(t *testing.T, p *hccspkg.HCCSTopology, pod *v1.Pod, nodeName string) int64 {
 	t.Helper()
 	cs := framework.NewCycleState()
 	if status := p.PreScore(context.Background(), cs, pod, nil); !status.IsSuccess() {
 		t.Fatalf("PreScore non-success: %v: %s", status.Code(), status.Message())
 	}
-	score, status := p.Score(context.Background(), cs, pod, nodeName)
+	score, status := p.Score(context.Background(), cs, pod, f.nodeInfoFor(nodeName))
 	if !status.IsSuccess() {
 		t.Fatalf("Score non-success: %v: %s", status.Code(), status.Message())
 	}
@@ -195,7 +203,7 @@ func TestIntegrationPlugins(t *testing.T) {
 
 		for _, nodeName := range []string{"worker-a", "worker-b"} {
 			status := f.runHCCSFilter(t, p, pod, nodeName)
-			if status.Code() != framework.UnschedulableAndUnresolvable {
+			if status.Code() != fwk.UnschedulableAndUnresolvable {
 				t.Fatalf("node %q: Filter expected UnschedulableAndUnresolvable, got %v: %s",
 					nodeName, status.Code(), status.Message())
 			}

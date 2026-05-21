@@ -39,6 +39,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	fwk "k8s.io/kube-scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
@@ -84,25 +85,22 @@ func NewForTest(args *BinpackArgs, h framework.Handle) *Binpack {
 	return &Binpack{args: args, handle: h}
 }
 
-// Score implements framework.ScorePlugin. Looks up nodeInfo via the
-// framework's snapshot lister + delegates the math to scoreNodeForPod
-// (testable without a Handle).
+// Score implements framework.ScorePlugin. K8s 1.34 plugin contract passes
+// `nodeInfo fwk.NodeInfo` directly so we no longer need to look it up via
+// `p.handle.SnapshotSharedLister().NodeInfos().Get(nodeName)`. The handle
+// field is retained for forward extensibility (e.g. claim cross-watch).
 func (p *Binpack) Score(
 	_ context.Context,
-	_ *framework.CycleState,
+	_ fwk.CycleState,
 	pod *v1.Pod,
-	nodeName string,
-) (int64, *framework.Status) {
+	nodeInfo fwk.NodeInfo,
+) (int64, *fwk.Status) {
 	if !p.args.Enabled {
 		return 0, nil
 	}
-	if p.handle == nil {
-		return 0, nil
-	}
-	nodeInfo, err := p.handle.SnapshotSharedLister().NodeInfos().Get(nodeName)
-	if err != nil || nodeInfo == nil {
-		return 0, framework.NewStatus(framework.Error,
-			fmt.Sprintf("Binpack Score: NodeInfo for %q: %v", nodeName, err))
+	if nodeInfo == nil || nodeInfo.Node() == nil {
+		return 0, fwk.NewStatus(fwk.Error,
+			fmt.Sprintf("Binpack Score: nil nodeInfo"))
 	}
 	return scoreNodeForPod(p.args, pod, nodeInfo), nil
 }
@@ -118,7 +116,7 @@ func (p *Binpack) ScoreExtensions() framework.ScoreExtensions {
 // request and node allocatable > 0; returns 0 otherwise (empty
 // allocatable → effectively skip the node from binpack preference,
 // OR Args.Enabled=false → plugin is a no-op).
-func scoreNodeForPod(args *BinpackArgs, pod *v1.Pod, nodeInfo *framework.NodeInfo) int64 {
+func scoreNodeForPod(args *BinpackArgs, pod *v1.Pod, nodeInfo fwk.NodeInfo) int64 {
 	if args == nil || !args.Enabled || len(args.ResourceWeights) == 0 {
 		return 0
 	}
@@ -183,24 +181,32 @@ func requestedFor(req v1.ResourceList, resName string) int64 {
 	return q.Value()
 }
 
-// allocatableFor reads the matching scalar from framework.NodeInfo's
-// typed Allocatable. CPU is MilliCPU, memory is Memory (bytes),
-// everything else lives in ScalarResources.
-func allocatableFor(ni *framework.NodeInfo, resName string) int64 {
-	if ni == nil || ni.Allocatable == nil {
+// allocatableFor reads the matching scalar from fwk.NodeInfo's
+// Allocatable Resource. K8s 1.34 plugin contract moved field access
+// (NodeInfo.Allocatable.MilliCPU etc.) behind interface methods
+// (NodeInfo.GetAllocatable().GetMilliCPU() etc.) — same data, different
+// access pattern. CPU is MilliCPU, memory is Memory (bytes), everything
+// else lives in ScalarResources.
+func allocatableFor(ni fwk.NodeInfo, resName string) int64 {
+	if ni == nil {
+		return 0
+	}
+	alloc := ni.GetAllocatable()
+	if alloc == nil {
 		return 0
 	}
 	switch resName {
 	case string(v1.ResourceCPU):
-		return ni.Allocatable.MilliCPU
+		return alloc.GetMilliCPU()
 	case string(v1.ResourceMemory):
-		return ni.Allocatable.Memory
+		return alloc.GetMemory()
 	case string(v1.ResourceEphemeralStorage):
-		return ni.Allocatable.EphemeralStorage
+		return alloc.GetEphemeralStorage()
 	default:
-		if ni.Allocatable.ScalarResources == nil {
+		scalars := alloc.GetScalarResources()
+		if scalars == nil {
 			return 0
 		}
-		return ni.Allocatable.ScalarResources[v1.ResourceName(resName)]
+		return scalars[v1.ResourceName(resName)]
 	}
 }

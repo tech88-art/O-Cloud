@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	v1 "k8s.io/api/core/v1"
+	fwk "k8s.io/kube-scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
@@ -37,7 +38,7 @@ const (
 // hccsStateKey is the CycleState key Score reads PreScore output from.
 // Scheduler framework convention is `<plugin>StateKey` with the plugin's
 // Name() as prefix.
-const hccsStateKey framework.StateKey = "HCCSTopologyState"
+const hccsStateKey fwk.StateKey = "HCCSTopologyState"
 
 // hccsState is the per-Pod CycleState payload Score consumes. Built by
 // PreScore (one List of NPUSliceAllocations per Pod scheduling cycle); read
@@ -58,7 +59,7 @@ type hccsState struct {
 // Clone returns the receiver unchanged — CycleState's clone contract is
 // satisfied by sharing the snapshot because hccsState is read-only after
 // PreScore writes it.
-func (s *hccsState) Clone() framework.StateData {
+func (s *hccsState) Clone() fwk.StateData {
 	return s
 }
 
@@ -82,10 +83,10 @@ var (
 //     degradation; Score also returns ScoreNeutral when state is empty)
 func (p *HCCSTopology) PreScore(
 	_ context.Context,
-	cs *framework.CycleState,
+	cs fwk.CycleState,
 	pod *v1.Pod,
-	_ []*framework.NodeInfo,
-) *framework.Status {
+	_ []fwk.NodeInfo,
+) *fwk.Status {
 	state := &hccsState{
 		adjacency: buildAdjacency(p.args.Adjacency),
 	}
@@ -98,7 +99,7 @@ func (p *HCCSTopology) PreScore(
 
 	allocs, err := p.AllocationLister.ListByModelService(modelService)
 	if err != nil {
-		return framework.NewStatus(framework.Error,
+		return fwk.NewStatus(fwk.Error,
 			fmt.Sprintf("HCCSTopology PreScore: list NPUSliceAllocation for %q: %v", modelService, err))
 	}
 
@@ -127,12 +128,16 @@ func (p *HCCSTopology) PreScore(
 // Score implements framework.ScorePlugin per ADR-0010 §2 Score table.
 // Returns one of the constant ScoreXxx values + nil Status. Errors return
 // Status.Code()=Error so the framework can decide whether to abort.
+//
+// K8s 1.34 ScorePlugin signature passes `nodeInfo fwk.NodeInfo` instead of
+// `nodeName string` (P10-T-004 migration). We derive nodeName via
+// `nodeInfo.Node().Name` to preserve internal logic.
 func (p *HCCSTopology) Score(
 	_ context.Context,
-	cs *framework.CycleState,
+	cs fwk.CycleState,
 	pod *v1.Pod,
-	nodeName string,
-) (int64, *framework.Status) {
+	nodeInfo fwk.NodeInfo,
+) (int64, *fwk.Status) {
 	state, ok := readHCCSState(cs)
 	if !ok {
 		// PreScore was skipped (unusual — framework calls PreScore unconditionally
@@ -158,9 +163,13 @@ func (p *HCCSTopology) Score(
 		return ScoreNeutral, nil
 	}
 
+	if nodeInfo == nil || nodeInfo.Node() == nil {
+		return 0, fwk.NewStatus(fwk.Error, "HCCSTopology Score: nil nodeInfo")
+	}
+	nodeName := nodeInfo.Node().Name
 	nodeRings, err := nodeRingsFor(p.SliceLister, nodeName)
 	if err != nil {
-		return 0, framework.NewStatus(framework.Error,
+		return 0, fwk.NewStatus(fwk.Error,
 			fmt.Sprintf("HCCSTopology Score: list ResourceSlices for %q: %v", nodeName, err))
 	}
 	if len(nodeRings) == 0 {
@@ -197,7 +206,7 @@ func (p *HCCSTopology) ScoreExtensions() framework.ScoreExtensions {
 
 // readHCCSState retrieves the PreScore-stashed state. Returns ok=false when
 // PreScore was skipped or wrote nothing.
-func readHCCSState(cs *framework.CycleState) (*hccsState, bool) {
+func readHCCSState(cs fwk.CycleState) (*hccsState, bool) {
 	raw, err := cs.Read(hccsStateKey)
 	if err != nil {
 		return nil, false

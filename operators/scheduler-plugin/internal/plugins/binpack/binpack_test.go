@@ -25,6 +25,10 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
+// K8s 1.34 plugin contract: Score signature is `Score(ctx, fwk.CycleState,
+// pod, fwk.NodeInfo)`. The test helper builds a `*framework.NodeInfo` via
+// `framework.NewNodeInfo()` which satisfies the `fwk.NodeInfo` interface.
+
 // makeNodeInfo builds a framework.NodeInfo with the given allocatable
 // resources. NPU goes into ScalarResources via SetNode's automatic
 // conversion.
@@ -91,7 +95,8 @@ func TestBinpackScoreNode(t *testing.T) {
 		}
 		// Verify the Score wrapper also short-circuits when disabled.
 		p := NewForTest(args, nil)
-		s, status := p.Score(nil, nil, nil, "test-node")
+		ni := makeNodeInfo(8000, 8<<30, 8)
+		s, status := p.Score(nil, nil, nil, ni)
 		if !status.IsSuccess() || s != 0 {
 			t.Fatalf("wrapper disabled path: status=%v score=%d", status, s)
 		}

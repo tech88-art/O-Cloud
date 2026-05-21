@@ -25,6 +25,10 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
+// K8s 1.34 plugin contract: Score signature is `Score(ctx, fwk.CycleState,
+// pod, fwk.NodeInfo)`. The wiring helper builds a `*framework.NodeInfo` via
+// `framework.NewNodeInfo()` which satisfies the `fwk.NodeInfo` interface.
+
 // fakeAllocationLister implements AllocationLister for tests by returning a
 // pre-populated per-ModelService allocation list.
 type fakeAllocationLister struct {
@@ -77,7 +81,9 @@ func makePodWithoutMS() *v1.Pod {
 
 // runPreScoreAndScore wires PreScore + Score against the plugin for a
 // single (pod, nodeName) tuple. Encapsulates the framework.CycleState
-// dance so each test case stays focused on its assertion.
+// dance so each test case stays focused on its assertion. K8s 1.34 Score
+// takes `fwk.NodeInfo` interface — we build a *framework.NodeInfo via
+// NewNodeInfo + SetNode and pass it (satisfies the interface).
 func runPreScoreAndScore(t *testing.T, p *HCCSTopology, pod *v1.Pod, nodeName string) int64 {
 	t.Helper()
 	cs := framework.NewCycleState()
@@ -85,7 +91,9 @@ func runPreScoreAndScore(t *testing.T, p *HCCSTopology, pod *v1.Pod, nodeName st
 	if !status.IsSuccess() {
 		t.Fatalf("PreScore returned non-success: %v: %s", status.Code(), status.Message())
 	}
-	score, status := p.Score(context.Background(), cs, pod, nodeName)
+	ni := framework.NewNodeInfo()
+	ni.SetNode(&v1.Node{ObjectMeta: metav1.ObjectMeta{Name: nodeName}})
+	score, status := p.Score(context.Background(), cs, pod, ni)
 	if !status.IsSuccess() {
 		t.Fatalf("Score returned non-success: %v: %s", status.Code(), status.Message())
 	}

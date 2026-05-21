@@ -43,6 +43,13 @@ import (
 	resourcelisters "k8s.io/client-go/listers/resource/v1beta1"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
+// Note: K8s 1.34 split plugin data types (NodeInfo / CycleState / Status /
+// Code constants / StateKey / StateData) to `k8s.io/kube-scheduler/framework`
+// (aliased `fwk` in filter.go + score.go). Plugin contract interfaces
+// (Plugin / FilterPlugin / ScorePlugin / PreScorePlugin / Handle /
+// ScoreExtensions) remain in `k8s.io/kubernetes/pkg/scheduler/framework`
+// (aliased `framework` here). Constructors NewNodeInfo / NewCycleState also
+// stay in `framework`. Per P10-T-004 三件套 part 2 migration.
 
 // Name is the plugin name registered with kube-scheduler. KubeSchedulerConfig
 // profiles[*].plugins.{filter,score}.enabled[].name MUST match this string.

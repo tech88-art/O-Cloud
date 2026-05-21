@@ -23,6 +23,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	resourceapi "k8s.io/api/resource/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fwk "k8s.io/kube-scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
@@ -98,8 +99,11 @@ func makePod(annotation string) *v1.Pod {
 	return pod
 }
 
-// makeNodeInfo wraps a Node into a framework.NodeInfo for Filter signature
-// compliance.
+// makeNodeInfo wraps a Node into a *framework.NodeInfo (struct pointer ·
+// k8s.io/kubernetes) which satisfies the fwk.NodeInfo interface (k8s.io/
+// kube-scheduler) per K8s 1.34 plugin contract. Callers pass into Filter
+// which expects `fwk.NodeInfo` interface — interface satisfaction is
+// automatic.
 func makeNodeInfo(nodeName string) *framework.NodeInfo {
 	ni := framework.NewNodeInfo()
 	ni.SetNode(&v1.Node{
@@ -128,7 +132,7 @@ func TestFilter(t *testing.T) {
 		p := NewForTest(nil, lister, nil)
 
 		status := p.Filter(context.Background(), nil, makePod("5"), makeNodeInfo("worker-a"))
-		if status.Code() != framework.UnschedulableAndUnresolvable {
+		if status.Code() != fwk.UnschedulableAndUnresolvable {
 			t.Fatalf("expected UnschedulableAndUnresolvable, got %v: %s", status.Code(), status.Message())
 		}
 	})
@@ -150,7 +154,7 @@ func TestFilter(t *testing.T) {
 		p := NewForTest(args, lister, nil)
 
 		status := p.Filter(context.Background(), nil, makePod(""), makeNodeInfo("worker-a"))
-		if status.Code() != framework.UnschedulableAndUnresolvable {
+		if status.Code() != fwk.UnschedulableAndUnresolvable {
 			t.Fatalf("expected UnschedulableAndUnresolvable, got %v: %s", status.Code(), status.Message())
 		}
 	})
@@ -177,7 +181,7 @@ func TestFilter(t *testing.T) {
 		p := NewForTest(nil, lister, nil)
 
 		status := p.Filter(context.Background(), nil, makePod("0"), makeNodeInfo("worker-a"))
-		if status.Code() != framework.UnschedulableAndUnresolvable {
+		if status.Code() != fwk.UnschedulableAndUnresolvable {
 			t.Fatalf("expected UnschedulableAndUnresolvable (unhealthy filtered), got %v: %s", status.Code(), status.Message())
 		}
 	})

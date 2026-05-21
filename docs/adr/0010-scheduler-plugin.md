@@ -115,6 +115,50 @@ P5-T-114 落地;具体 patch 版本在 P6-T-002 task entry 按当时 latest rele
 >
 > **下一次 baseline bump 评估时机**:Phase 11+ entry · 或 sched-plugins v0.35+/v0.36+ 发布时(re-eval 1.35/1.36 cohort 可行性)。known-issues #12 prerequisite met(K8s 1.34 baseline landed)· closer 是 T004 + T005 完成。
 
+> 🆕 **2026-05-21 update (P10-T-004 · 三件套 part 2 lands · scheduler framework migration 9 files clean)**:T003 baseline bump 之后 scheduler-plugin source build break(15 errors across 9 files · per P10-T-003 update segment expected)· T004 part 2 close。
+>
+> **关键 API drift codify**(P10-T-004 实证):
+> - K8s 1.34 把 plugin 数据契约从 `k8s.io/kubernetes/pkg/scheduler/framework`(struct types)拆出到 `k8s.io/kube-scheduler/framework`(interface types):
+>   - `*framework.NodeInfo`(struct pointer)→ `fwk.NodeInfo`(interface · `GetAllocatable() / GetRequested() / Node()` methods)
+>   - `*framework.CycleState`(struct pointer)→ `fwk.CycleState`(interface)
+>   - `framework.Status / NewStatus / Code constants(Error / Success / UnschedulableAndUnresolvable / etc.)`→ `fwk.Status / fwk.NewStatus / fwk.Error / fwk.Success / fwk.UnschedulableAndUnresolvable`
+>   - `framework.StateKey / StateData`→ `fwk.StateKey / fwk.StateData`
+>   - Resource accessor:`ni.Allocatable.MilliCPU` field → `ni.GetAllocatable().GetMilliCPU()` method
+> - Plugin contract interfaces 留在 `k8s.io/kubernetes/pkg/scheduler/framework`:`Plugin / FilterPlugin / ScorePlugin / PreScorePlugin / Handle / ScoreExtensions`(其 method signatures 引用 `fwk.X` data types)
+> - 构造器 `framework.NewNodeInfo / NewCycleState` 留在 k8s.io/kubernetes(返回 struct pointer · 满足 `fwk.X` interface)
+> - **Score 签名 v1.34 变化**:`Score(ctx, cs, pod, nodeName string)` → `Score(ctx, fwk.CycleState, pod, fwk.NodeInfo)` · 不再需 `p.handle.SnapshotSharedLister().NodeInfos().Get(nodeName)` lookup · 直接 use `nodeInfo.Node().Name` 内部
+> - **Filter / PreScore 签名 v1.34 变化**:同 Score · 用 `fwk.NodeInfo` interface 代替 struct pointer · `[]*framework.NodeInfo` → `[]fwk.NodeInfo`(slice 元素改 interface)
+>
+> **9 files migration outcome**(P10-T-004 实际改动 · `git diff --stat` 实证):
+> | File | lines changed |
+> |---|---|
+> | `internal/plugins/hccs/filter.go` | 22 (-11/+11 · import + Filter signature + 6 fwk.X status calls) |
+> | `internal/plugins/hccs/score.go` | 31 (-15/+16 · import + Score+PreScore signatures + StateKey + StateData + readHCCSState param + Score body nil-check + nodeName via nodeInfo.Node().Name) |
+> | `internal/plugins/hccs/plugin.go` | 7 (+7 · note comment block · framework imports stay for Plugin/FilterPlugin assertions + Handle param + New constructor) |
+> | `internal/plugins/hccs/filter_test.go` | 14 (-3/+11 · import + makeNodeInfo doc + fwk.UnschedulableAndUnresolvable replacements) |
+> | `internal/plugins/hccs/score_test.go` | 12 (-2/+10 · import + Score wiring helper now builds NodeInfo to pass to Score) |
+> | `internal/plugins/binpack/binpack.go` | 54 (-23/+31 · import + Score signature + scoreNodeForPod nodeInfo param + allocatableFor refactor (field access → interface methods) + remove SnapshotSharedLister lookup) |
+> | `internal/plugins/binpack/binpack_test.go` | 7 (-1/+6 · import comment + Score wrapper test passes NodeInfo) |
+> | `internal/plugins/numa/plugin.go` | 7 (+7 · note comment block · placeholder body retained · T005 owns wrap) |
+> | `internal/integration/integration_test.go` | 16 (-6/+10 · import + 2 wiring helpers + Score nodeInfo + fwk.UnschedulableAndUnresolvable) |
+> | **Total** | **9 files · +112/-58 = 170 lines changed** |
+>
+> `cmd/main.go` 不变 — `app.NewSchedulerCommand` 来自 `k8s.io/kubernetes/cmd/kube-scheduler/app`(不是 framework 包)· 不受 plugin 数据契约迁移影响 · plan T004 Allowed Paths 标 `cmd/main.go` 是 conservative scope · 实际无需改动。
+>
+> **Verify outcome**(P3 三项维度全过):
+> - `go build ./operators/scheduler-plugin/...` exit 0(framework drift 关闭)
+> - `go vet ./operators/scheduler-plugin/...` exit 0
+> - `go test ./operators/scheduler-plugin/...` ALL 4 packages PASS:integration(5 sub-tests · 真 fixture) + binpack(6 sub-tests + TestParseArgs) + hccs(filter 6 + score 9 + parsePreferredRings + parseArgs + buildAdjacency) + numa(no tests · placeholder)· 全 P6-T-002..T008 + P7-T-003 + P8-T-005 baseline tests preserved post-migration
+> - `helm lint --strict deploy/helm-charts/scheduler-plugin/` 1 chart(s) linted, 0 chart(s) failed
+>
+> **Phase 10 影响**:
+> - **T004 outcome** = **framework migration landed**(本 update segment + §3 NumaAffinity placeholder cross-ref T005 + `docs/devlog/phase-10-t004.md`)· scheduler-plugin 全 K8s 1.34 framework 兼容
+> - **T005**(三件套 part 3 · NumaAffinity wrap body)→ T004 entry 条件 met · 即开 · `sigs.k8s.io/scheduler-plugins v0.34.7` 引入 + `noderesourcetopology.New(ctx, args, h)` wrap + 4 sanity tests + chart toggle flip default
+> - **kind smoke phase 5-9 re-run** with new K8s 1.34 baseline:CI gate post-phase-10-complete tag push 时跑(本 task verify 范围 = unit + helm lint)
+> - **K8s 1.34 DRA GA `resource.k8s.io/v1`** alongside `v1beta1`(per kind-config.yaml comment update)· npu-dra-driver / inference-operator / pool-operator 各 module 走 `v1beta1` 不变 · Phase 11+ 评估 `v1` migrate
+>
+> **三件套 part 3 prerequisites met**:K8s 1.34 baseline ✓ · framework migration ✓ · sched-plugins v0.34.7 lockstep ✓ · T005 即可 import upstream `noderesourcetopology` plugin + wrap。
+
 **部署形态**:**独立 kube-scheduler 二进制**(`bin/kube-scheduler` from
 `operators/scheduler-plugin/cmd/main.go`),作为**第二 scheduler** 运行,通过
 KubeSchedulerConfiguration 注册 profile `npu-scheduler`。**不修改 default-scheduler。**
@@ -205,6 +249,14 @@ K8s 1.32 baseline pin 无法吸收 transitive expectation。Revert clean(单
 K8s baseline 1.32 → 1.33 / 1.34(同时升 kind smoke `kindest/node` 基线)
 + sched-plugins 同 minor + 补 wrap body + 3 sanity tests + chart toggle
 flip default。
+
+**2026-05-21 update (P10-T-004 · 三件套 part 2 lands)**:K8s 1.34 baseline
++ scheduler framework migration 已 land(详 §1 P10-T-004 update segment)。
+NumaAffinity placeholder body 仍保留 — wrap body 由三件套 **part 3 / T005**
+owner ship(`sigs.k8s.io/scheduler-plugins v0.34.7` 引入 + `noderesourcetopology.New(ctx, args, h)`
+wrap + 4 sanity tests + chart toggle default flip · 估 0.5-1d)。known-
+issues #12 prerequisite expanded("baseline bump + framework migration")
+现已全部 met · T005 即可 light up。
 
 ### 4. BinpackPlugin opt-in(P6-T-007)
 
