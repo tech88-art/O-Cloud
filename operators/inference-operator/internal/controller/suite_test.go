@@ -66,12 +66,16 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 }
 
 // newFakeClient returns a controller-runtime fake client with the
-// status subresource registered for ModelService.
+// status subresource registered for ModelService + NPUVerticalScaler
+// (Phase 8 P8-T-007 adds the latter).
 func newFakeClient(t *testing.T, objs ...client.Object) client.Client {
 	t.Helper()
 	return fake.NewClientBuilder().
 		WithScheme(newTestScheme(t)).
-		WithStatusSubresource(&inferencev1alpha1.ModelService{}).
+		WithStatusSubresource(
+			&inferencev1alpha1.ModelService{},
+			&inferencev1alpha1.NPUVerticalScaler{},
+		).
 		WithObjects(objs...).
 		Build()
 }

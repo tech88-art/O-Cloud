@@ -16,6 +16,17 @@ rules:
   - apiGroups: ["inference.ocloud.edge.example.com"]
     resources: ["modelservices/finalizers"]
     verbs: ["update", "patch"]
+  # NPUVerticalScaler — Phase 8 P8-T-007 controller owns the kind +
+  # patches ModelService annotations per ADR-0012 §5 mutation model.
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["npuverticalscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["npuverticalscalers/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["npuverticalscalers/finalizers"]
+    verbs: ["update", "patch"]
   # NPUSlicePool — read for spec.npuSlicePoolRef resolution. Same-namespace
   # convention (operators/CLAUDE.md §4 Phase 1-2 isolation-by-convention).
   - apiGroups: ["ims.ocloud.edge.example.com"]

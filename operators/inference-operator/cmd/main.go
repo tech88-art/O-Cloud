@@ -159,10 +159,22 @@ func main() {
 		"prometheusURL", promURL,
 		"queryTimeout", queryTimeout.String(),
 		"degraded", promURL == "")
-	// T007 will register NPUVerticalScalerReconciler with `ingestor` as
-	// a dependency once the controller body lands. Phase 8 P8-T-006
-	// ships the ingestor + cmd wire only; controller registration is T007.
-	_ = ingestor
+	// Phase 8 P8-T-007: Register NPUVerticalScalerReconciler with the
+	// manager. Watches NPUVerticalScaler · patches target ModelService
+	// annotation per ADR-0012 §5 mutation model · drives 8-step reconcile
+	// loop (Get scaler → Get target → Query Ingestor → decide → cooldown
+	// → patch annotation → record ScaleEvent → update status).
+	nvsr := &controller.NPUVerticalScalerReconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("npuverticalscaler-controller"),
+		Ingestor: ingestor,
+	}
+	if err := nvsr.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to register NPUVerticalScalerReconciler")
+		os.Exit(1)
+	}
+	setupLog.Info("NPUVerticalScalerReconciler registered", "task", "P8-T-007")
 
 	// +kubebuilder:scaffold:builder
 

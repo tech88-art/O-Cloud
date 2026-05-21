@@ -830,6 +830,120 @@ interface contract is forward-compatible — additional fields on
 
 ---
 
+## 5.4 NPUVerticalScaler controller (Phase 8 T007 · operative)
+
+The Phase 8 NPUVerticalScaler controller drives the busy-idle 重启切片
+pattern per ADR-0012 §1 reconcile loop. It lives in
+`internal/controller/npuverticalscaler_controller.go` (same binary as
+the ModelService controller + PD Router webhook · co-located per
+ADR-0012 §2 to avoid operator-module proliferation).
+
+### 5.4.1 Reconcile flow (ADR-0012 §1)
+
+```
+Reconcile(req)
+  1. Get NPUVerticalScaler → NotFound → nil
+  2. Get target ModelService → NotFound → ConditionActive=False reason=TargetNotFound
+  3. Ingestor.Query(namespace, modelService, windowSeconds)
+     - Err     → ConditionActive=False reason=MetricsUnreachable + requeue 30s
+     - NoData  → ConditionActive=True reason=NoDataThisTick   + requeue 30s
+  4. decideTemplate(metric, current, scaleSlice, value):
+     - value > busyThreshold → target=busyTemplateName
+     - value < idleThreshold → target=idleTemplateName
+     - else                  → target="" (stay current)
+  5. If target == "" || target == current → ConditionActive=True reason=NoActiveTransition
+     + requeue 30s
+  6. Cooldown check (now - lastScaleTime < cooldownSeconds):
+     - blocked → ConditionCooldownActive=True + requeue remainder
+  7. patchModelServiceAnnotation(target, scaler, decision):
+     - merge patch metadata.annotations:
+       - npu.huawei.com/slice-template          = decision.target
+       - ocloud.edge.example.com/vertical-scaler-managed = scaler.Name
+     - append ScaleEvent to status.scaleHistory (FIFO max 10)
+     - lastScaleTime = now
+  8. writeStatus → ConditionScalingInProgress=True + requeue 60s
+```
+
+### 5.4.2 Mutation model adaptation (annotation vs spec.template.sliceTemplate)
+
+Plan §3-T007 originally specified patching `ModelService.spec.template.sliceTemplate`,
+but ModelService's existing schema has no `template` field. Phase 7
+NPUSliceTemplate substrate (ADR-0011 §4) consumes Pod label
+`npu.huawei.com/slice-template=<name>` via claim_controller (P8-T-008
+wiring). The Phase 8 controller therefore patches the **annotation**
+on `ModelService.metadata.annotations` instead of a spec field.
+
+The Pod-label stamping path requires `deployment_builder.go` to read the
+annotation and propagate it as a Pod label when building the PD-pair
+Deployments. This is a **carry-forward task** outside P8-T-007 Allowed
+Paths — the T007 commit ships the controller-side observe + decide +
+annotate loop; end-to-end Pod-label propagation lands in a separate
+deployment_builder polish task (Phase 8 or 9 candidate).
+
+For kind smoke + end-to-end demo: T103 fixtures can stamp the Pod label
+directly via `spec.template.metadata.labels`, decoupling the demo from
+the annotation → label propagation task. Production deployments with
+GitOps tools must configure ignoreDifferences for the annotation per
+ADR-0012 §5.
+
+### 5.4.3 Condition lifecycle
+
+| Condition Type        | True meaning                                  | False meaning                                                   |
+|-----------------------|-----------------------------------------------|----------------------------------------------------------------|
+| Active                | scaler is reconciling normally                | TargetNotFound / MetricsUnreachable                            |
+| ScalingInProgress     | scaling transition committed, awaiting rolling restart | no active transition                                  |
+| CooldownActive        | cooldown blocks scaling decisions             | cooldown expired or never triggered                            |
+
+Phase 8 ships immediate ConditionActive=False on Ingestor Err (simpler
+than N-tick counter); Phase 9 may refine to "Active=False after N
+consecutive Err ticks" if real Prometheus 5xx storms manifest noisy flips.
+
+### 5.4.4 ScaleHistory rolling window
+
+`status.scaleHistory` enforces `MaxScaleHistoryEntries=10` via
+`appendScaleEvent` FIFO eviction. Oldest entry at index 0, newest at
+tail. The schema also carries `+kubebuilder:validation:MaxItems=10`
+marker — but the controller cannot rely on schema validation alone
+(status update patches don't always round-trip validation), so the
+controller enforces the cap explicitly.
+
+Beyond the 10-entry CRD window, long-term audit relies on K8s Events
+emitted by the controller (`Normal ScalingTriggered ...`) — these flow
+through Loki / Promtail (Phase 6 P6-T-104 metrics-side observability)
+and persist beyond the CRD rolling window.
+
+### 5.4.5 Cooldown calculation
+
+`cooldown = NPUVerticalScalerSpec.CooldownSeconds`, default
+`DefaultCooldownSeconds=600s`. Skipped when `lastScaleTime` is nil
+(first scaling event ever). Within cooldown, controller does NOT patch
+the target + sets `ConditionCooldownActive=True` + requeues with the
+remainder (so the next reconcile lands exactly at cooldown expiry, not
+30s later).
+
+### 5.4.6 RBAC (chart-rendered)
+
+`deploy/helm-charts/inference-operator/templates/rbac.yaml` adds (in
+addition to ModelService verbs):
+
+```yaml
+- apiGroups: ["inference.ocloud.edge.example.com"]
+  resources: ["npuverticalscalers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["inference.ocloud.edge.example.com"]
+  resources: ["npuverticalscalers/status"]
+  verbs: ["get", "update", "patch"]
+- apiGroups: ["inference.ocloud.edge.example.com"]
+  resources: ["npuverticalscalers/finalizers"]
+  verbs: ["update", "patch"]
+```
+
+ModelService verbs (already present at Phase 5) include `patch` —
+sufficient for the annotation merge patch path. No new ModelService
+RBAC needed in T007.
+
+---
+
 ## 6. 扩展点
 
 ### 6.1 Phase 5 controller body (immediate next-phase work)
