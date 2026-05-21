@@ -75,6 +75,7 @@ func main() {
 	var mockDataPath string
 	var sourceType string
 	var realAscendMode string
+	var enableTemplateController bool
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8082",
 		"The address the metrics endpoint binds to. Set to 0 to disable.")
@@ -119,6 +120,11 @@ func main() {
 	flag.StringVar(&realAscendMode, "source-real-ascend-mode", "exec",
 		"Backend mode for real-ascend source (Phase 7 W1 stub honors no modes · "+
 			"Phase 7 T101 lab body uses 'exec' to shell out to npu-smi).")
+	flag.BoolVar(&enableTemplateController, "enable-template-controller", true,
+		"Enable the NPUSliceTemplate controller (Phase 7 P7-T-007 · "+
+			"ADR-0011 §1 §4). Stamps Validated + Allocatable conditions on "+
+			"NPUSliceTemplate objects + populates status.fallbackAppliedReason. "+
+			"Default true — disable only for diagnostic builds.")
 
 	opts := zap.Options{
 		Development: true,
@@ -198,6 +204,18 @@ func main() {
 			os.Exit(1)
 		}
 		setupLog.Info("AllocationReconciler registered", "task", "P5-T-005")
+	}
+	if enableTemplateController {
+		tr := &controller.NPUSliceTemplateReconciler{
+			Client:   mgr.GetClient(),
+			Scheme:   mgr.GetScheme(),
+			Recorder: mgr.GetEventRecorderFor("npu-dra-template-controller"),
+		}
+		if err := tr.SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "Failed to register NPUSliceTemplateReconciler with manager")
+			os.Exit(1)
+		}
+		setupLog.Info("NPUSliceTemplateReconciler registered", "task", "P7-T-007")
 	}
 	// +kubebuilder:scaffold:builder
 

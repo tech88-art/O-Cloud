@@ -79,9 +79,19 @@ func newFakeClient(t *testing.T, objs ...client.Object) client.Client {
 	t.Helper()
 	return fake.NewClientBuilder().
 		WithScheme(newTestScheme(t)).
-		WithStatusSubresource(&resourceapi.ResourceClaim{}, &v1alpha1.NPUSliceAllocation{}).
+		WithStatusSubresource(&resourceapi.ResourceClaim{}, &v1alpha1.NPUSliceAllocation{}, &v1alpha1.NPUSliceTemplate{}).
 		WithObjects(objs...).
 		Build()
+}
+
+// newStatusSubresourceClientBuilder is a tunable variant of
+// newFakeClient that lets per-test callers register an explicit set of
+// status-subresource types (Phase 7 P7-T-007 NPUSliceTemplate
+// reconciler tests use this to isolate from the default set).
+func newStatusSubresourceClientBuilder(scheme *runtime.Scheme, statusTypes ...client.Object) *fake.ClientBuilder {
+	return fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithStatusSubresource(statusTypes...)
 }
 
 // newFakeRecorder returns a buffered EventRecorder usable in tests. The

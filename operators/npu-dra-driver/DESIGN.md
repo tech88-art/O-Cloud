@@ -511,6 +511,112 @@ P7-T-105 (allocator consumer).
 
 ---
 
+### 3.9 Template engine + composition decomposition (Phase 7 P7-T-007 · operative)
+
+Phase 7 P7-T-007 ships the template engine + NPUSliceTemplate
+reconciler per ADR-0011 §1 §4 — bridge between user-declared
+`NPUSliceTemplate.Spec.Composition` and the allocator (P7-T-105) input
+contract.
+
+**Package layout**:
+
+```
+operators/npu-dra-driver/
+├── internal/template/
+│   ├── types.go    - FixedTemplateBundle + FixedTemplateItem
+│   ├── engine.go   - Engine.Validate + Engine.Decompose +
+│   │                  ValidationError + 4 Reason constants
+│   └── engine_test.go - 6 cases per phase7-plan §3 T007 acceptance
+└── internal/controller/
+    ├── npuslicetemplate_controller.go      - Reconciler
+    └── npuslicetemplate_controller_test.go - 3 fake-client cases
+```
+
+**Engine API**:
+
+```go
+type Engine struct{}
+func New() *Engine
+func (e *Engine) Validate(spec NPUSliceTemplateSpec) error
+func (e *Engine) Decompose(spec NPUSliceTemplateSpec) (*FixedTemplateBundle, string, error)
+```
+
+Decompose returns (bundle, fallbackAppliedReason, error) where:
+- bundle is the FixedTemplateBundle (Items + IsEmpty + TotalSlices)
+- fallbackAppliedReason is the human-readable summary (e.g.
+  "decomposed into 1×vir04 + 1×vir08") stamped on
+  NPUSliceTemplate.Status.FallbackAppliedReason
+- error is a typed *ValidationError (IsValidationError / AsValidationError
+  helpers) on schema violations; nil on success
+
+**Validation rules** (Engine.Validate enforces beyond kubebuilder
+admission):
+
+| Violation                                     | Reason                            |
+|-----------------------------------------------|-----------------------------------|
+| `Spec.Composition` is empty                   | `EmptyComposition`                |
+| `Composition[i].Count < 1`                    | `InvalidCount`                    |
+| `Composition[i].Type` unknown enum            | `InvalidType`                     |
+| `Composition[i].Type=dynamic-shard`           | `DynamicShardNotSupported`        |
+
+`dynamic-shard` is rejected regardless of `FallbackStrategy` in Phase 7
+W1 — both `fixed-template-combination` and `refuse` strategies fail
+the same way because Phase 7 has no driver-layer hook for dynamic
+sharding (gated on Phase 8+ per ADR-0009 §4 + ADR-0011 §後果).
+
+**Decomposition semantics** (Phase 7 W1 mechanical):
+
+- For each `Composition[i]` of `(Type=X, Count=N)`: emit
+  `FixedTemplateItem{Template: X, Count: N}`
+- Same `Type` appearing twice → merge by summing `Count` (preserves
+  order of first occurrence)
+- `FallbackAppliedReason` sorts items alphabetically by Template name
+  for diff idempotence (e.g. `"decomposed into 1×vir04 + 1×vir08"`)
+
+**Reconciler**:
+
+- Watches `NPUSliceTemplate` objects
+- On change: invokes `Engine.Decompose` → computes desired status
+  - On `ValidationError`: stamps `Validated=False` + reason · `Allocatable=False` (gated)
+  - On success: stamps `Validated=True` + `Allocatable=True` (Phase 7 W1
+    placeholder · T105 allocator replaces with real bundle-vs-pool
+    availability check) + `FallbackAppliedReason`
+- `statusEqual` shallow check ignores `LastTransitionTime` to prevent
+  infinite reconcile churn
+- Emits `Warning` Events with `ValidationError.Reason` as type when
+  validation fails (operators see kubectl-describable feedback)
+
+**Test gate** (6 engine + 3 controller cases per phase7-plan §3 T007):
+
+| Engine test                              | Case                                                       |
+|------------------------------------------|------------------------------------------------------------|
+| `TestDecomposeEmptyCompositionRejects`   | nil/empty Composition → ValidationError EmptyComposition   |
+| `TestDecomposeWholeOnly`                 | 1× whole → 1-item bundle · TotalSlices=1                   |
+| `TestDecomposeSingleVir04`               | 1× vir04 → 1-item bundle                                   |
+| `TestDecomposeVir04PlusVir08`            | Qwen-PD-style 1× vir04 + 1× vir08 → 2-item · sorted reason |
+| `TestDecomposeRefuseRejectsDynamicShard` | dynamic-shard + refuse → ValidationError DynamicShardNotSupported |
+| `TestDecomposeFixedTemplateCombination`  | dup vir04 (×2 + ×1) + whole → merged 3×vir04 + 1×whole     |
+
+| Controller test                                                                       | Case                                  |
+|---------------------------------------------------------------------------------------|---------------------------------------|
+| `TestNPUSliceTemplateReconciler_EmptyCompositionStampsValidatedFalse`                 | empty → Validated=False · Allocatable=False · empty FallbackAppliedReason |
+| `TestNPUSliceTemplateReconciler_ValidCompositionStampsValidatedAndAllocatable`        | Qwen-PD → Validated=True · Allocatable=True · FallbackAppliedReason populated · ObservedGeneration synced |
+| `TestNPUSliceTemplateReconciler_DynamicShardRejected`                                 | dynamic-shard + refuse → Validated=False reason=DynamicShardNotSupported  |
+
+**`cmd/main.go` integration**: `--enable-template-controller` flag
+defaults `true` — registers `NPUSliceTemplateReconciler` alongside
+existing Claim + Allocation controllers. Disable only for diagnostic
+builds.
+
+**Cross-references**: ADR-0011 §1 NPU 动态切分 + §4 NPUSliceTemplate
+schema + §後果 row 4 (all-or-nothing bundle invariant) · ADR-0009 §4
+(Partitionable Devices long-term replacement) · phase7-plan.md §3
+P7-T-007 (this task) + §4 P7-T-105 (allocator consumer reads
+FixedTemplateBundle) + §4 P7-T-103 (kind smoke asserts
+status.Allocatable=True for sample composition).
+
+---
+
 ## 4. 生命周期
 
 ### 4.1 Manager startup
