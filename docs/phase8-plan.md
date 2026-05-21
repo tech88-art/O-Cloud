@@ -1001,19 +1001,38 @@ Before P8-T-001 starts, the meeting confirms:
 
 ## Phase 8 actual landing
 
-Phase 8 lands as `phase-8-complete` at the T107 commit. T107 ran
-<date>. Lab-gating outcome: <T105 landed | deferred>. BETA-gating
-outcome: <T101+T102 full enable | doc-only refresh>. K8s baseline
-target minor: <1.36 | 1.37 | other>. ProxyImage chart default flip
-outcome: <full flip with vX.Y.Z | doc-only fallback>.
+Phase 8 lands as `phase-8-complete` at the T107 commit. T107 ran **2026-05-21**.
 
-**Test posture summary**: <fill at T107 with go test counts across
-modules + helm lint clean confirmation + kind smoke E2E Phase 8 sub-job
-status + lab smoke status if T105 landed>.
+- **Lab-gating outcome**: **T105 deferred** to Phase 10 per ADR-0011 §3
+  default(no lab access signal in Phase 8 W2 entry chat 2026-05-21)。
+- **BETA-gating outcome**: **T101 + T102 deferred** to Phase 10
+  (kindest/node v1.36 not in kind v0.31 + 用户 K8s 1.32 stay 决策双重 block)。
+- **K8s baseline target**: **stay K8s 1.32**(用户 chat 2026-05-21 决策 ·
+  reduces本期 risk · upstream sched-plugins v0.35+/v0.36+ 未发布 + kindest/node v1.36 不存在双重 lag)。
+- **ProxyImage chart default flip outcome**: **doc-only fallback**
+  (vllm-ascend 14 个月 stable 静默 + chart values.yaml 无 defaults.proxyImage
+  字段 · Phase 10 真 flip 时需先 ADD value field + template wiring)。
+- **Mutation model adaptation**: NPUVerticalScaler patches
+  `ModelService.metadata.annotations[npu.huawei.com/slice-template]`
+  + `ocloud.edge.example.com/vertical-scaler-managed=<scaler-name>` GitOps hint
+  · 不 patch `spec.template.sliceTemplate`(字段 plan 假设存在但实际不存在
+  in ModelService schema · 详 T007 devlog Path adaptations)。
+
+**Test posture summary**:
+- inference-operator: **51+ controller tests + 11 metrics tests + 8 api tests** (4 ModelService + 4 NPUVerticalScaler) + webhook tests preserved · `go test ./...` PASS · helm lint clean
+- npu-dra-driver: **14+ controller tests** (Phase 5/6/7 baseline 11 + 3 BundlePath cases) + 4 AllocateBundle (Phase 7) + template + publisher + source preserved · `go test ./...` PASS · helm lint clean
+- kind smoke phase8: `bash -n` + `yaml.safe_load` PASS on install.sh + assert.sh + 4 fixtures + workflow yaml · CI实证 carry-forward at next push
+- lab smoke: deferred(no lab signal)
 
 See `docs/checkpoint-phase8.md` for the full deliverables table, test
 counts per surface, DoD reconciliation, gating outcomes, deferral
 rationales, and Phase 9 handoff brief.
+
+**Phase 8 commit chain**(13 commits since `ac08e89` plan commit):
+9b89ff9 (T001) · 84c5222 (T002) · e82819d (T004) · 646f5f9 (T005) ·
+b636133 (T006) · 45775bc (T007) · d0d1813 (T008) · 5bfc5ba (T103) ·
+5cb461f (T104) · 988ec11 (T105) · 3a7d600 (T106) · this commit (T107) ·
+plus tag `phase-8-complete`.
 
 ---
 
