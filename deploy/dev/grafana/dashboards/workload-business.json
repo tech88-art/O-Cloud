@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "O-Cloud Edge — workload business KPIs: TTFT (time-to-first-token), ITL (inter-token latency), E2E latency, and throughput (input / output tokens, requests). Series pivoted by `$workload` label. Contains the RFC-003 affinity-vs-non-affinity TTFT overlay panel keyed by label `affinity=true/false`.",
+  "description": "⚠ Demo state (P11-fix-002): panels remain No-data until the backend emits workload_*_total counters and workload_*_ms_bucket histograms (T201 / Phase 11+). The dashboard layout, variables, and queries are production-ready — only the data source is pending. Use the cluster-overview / node-detail / npu-detail dashboards for the current demo. — O-Cloud Edge workload business KPIs: TTFT (time-to-first-token), ITL (inter-token latency), E2E latency, throughput (input / output tokens, requests). Series pivoted by `$workload`. Contains the RFC-003 affinity-vs-non-affinity TTFT overlay keyed by label `affinity=true/false`.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,

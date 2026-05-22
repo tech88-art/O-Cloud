@@ -31,9 +31,10 @@ import (
 type SliceCollector struct {
 	source sources.SliceSource
 
-	aicoreCount     *prometheus.Desc
-	memoryUsedBytes *prometheus.Desc
-	allocatedToPod  *prometheus.Desc
+	aicoreCount       *prometheus.Desc
+	memoryUsedBytes   *prometheus.Desc
+	allocatedToPod    *prometheus.Desc
+	aicoreUtilization *prometheus.Desc
 }
 
 // NewSliceCollector constructs a SliceCollector backed by the given
@@ -59,6 +60,15 @@ func NewSliceCollector(source sources.SliceSource) *SliceCollector {
 			[]string{"slice_id", "npu_id", "namespace", "pod"},
 			nil,
 		),
+		// P11-fix-002: per-slice utilization. Emitted only for allocated
+		// slices so workload-resource dashboard `{workload=~"$workload"}`
+		// resolves; `workload` label carries the bound Pod name.
+		aicoreUtilization: prometheus.NewDesc(
+			"ascend_npu_slice_util_percent",
+			"AI Core utilization of one NPU slice instance, as a percentage in [0, 100].",
+			[]string{"slice_id", "npu_id", "node", "template", "workload"},
+			nil,
+		),
 	}
 }
 
@@ -67,6 +77,7 @@ func (c *SliceCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.aicoreCount
 	ch <- c.memoryUsedBytes
 	ch <- c.allocatedToPod
+	ch <- c.aicoreUtilization
 }
 
 // Collect implements prometheus.Collector. Records scrape duration into
@@ -92,6 +103,8 @@ func (c *SliceCollector) Collect(ch chan<- prometheus.Metric) {
 		if s.AllocatedTo != nil {
 			ch <- prometheus.MustNewConstMetric(c.allocatedToPod, prometheus.GaugeValue,
 				1.0, s.ID, s.NPUID, s.AllocatedTo.Namespace, s.AllocatedTo.Pod)
+			ch <- prometheus.MustNewConstMetric(c.aicoreUtilization, prometheus.GaugeValue,
+				s.AICoreUtilization, s.ID, s.NPUID, s.NodeName, s.Template, s.AllocatedTo.Pod)
 		}
 	}
 }

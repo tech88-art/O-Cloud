@@ -133,7 +133,9 @@ func TestSliceCollector_FreeSliceNoAllocatedMetric(t *testing.T) {
 	assert.Equal(t, 0, testutil.CollectAndCount(col, "ascend_slice_allocated_to_pod"))
 }
 
-// TestSliceCollector_Describe: Describe must emit exactly 3 Desc.
+// TestSliceCollector_Describe: Describe must emit exactly 4 Desc:
+// aicore_count, memory_used_bytes, allocated_to_pod (P3-T-101) +
+// aicore_utilization (P11-fix-002).
 func TestSliceCollector_Describe(t *testing.T) {
 	src := &fakeSliceSource{}
 	col := NewSliceCollector(src)
@@ -144,7 +146,7 @@ func TestSliceCollector_Describe(t *testing.T) {
 	for range ch {
 		count++
 	}
-	assert.Equal(t, 3, count)
+	assert.Equal(t, 4, count)
 }
 
 // TestSliceCollector_AllocatedPodLabels: verify the allocated_to_pod

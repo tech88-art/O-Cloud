@@ -96,8 +96,10 @@ func TestNPUCollector_Describe(t *testing.T) {
 	for range ch {
 		count++
 	}
-	// Describe must emit exactly 3 Desc (utilization, memory_used, hbm_bandwidth).
-	assert.Equal(t, 3, count)
+	// Describe must emit exactly 7 Desc: utilization, memory_used,
+	// hbm_bandwidth (P3-T-007) + temperature, power_watts, memory_total,
+	// vram_used_percent (P11-fix-002).
+	assert.Equal(t, 7, count)
 }
 
 func TestNPUCollector_EmptySamples(t *testing.T) {
