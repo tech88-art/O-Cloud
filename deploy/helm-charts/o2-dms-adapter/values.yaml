@@ -58,9 +58,37 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 
-# Static bearer token (Phase 9 placeholder per ADR-0013 §2 Decision B
-# Auth header occurrence + §3 risk row "Auth header 占位静态 token").
-# DO NOT use in production · Phase 10 polish upgrades to OIDC + K8s SA
-# TokenReview per ADR-0013 §5 Open question (c).
+# Authentication mode selection(P11-T-106 · per ADR-0017 §2 Decision A
+# Stream 5 part 1 substrate · 完整 OIDC IdP 部署 Keycloak/Dex 留 Phase
+# 12+):
+#
+# - `placeholder`(Phase 9 default · DO NOT use in production)· static
+#   bearer token in `auth.bearerToken`. Phase 10 P10-T-103 substrate
+#   ships Validator interface · 此模式 仍走 PlaceholderValidator。
+# - `oidc`(Phase 11 P11-T-106 substrate)· OIDC client validates tokens
+#   against `auth.oidc.issuerUrl` + `auth.oidc.audience`. operators
+#   provide issuer URL + audience via chart values · 完整 IdP deploy
+#   (Keycloak/Dex)留 Phase 12+ per ADR-0017 主线 spine "Stream 5 part 2"
+#   not in scope。
+# - `tokenReview`(Phase 11 P11-T-106 substrate)· K8s ServiceAccount
+#   TokenReview API · operators bind SA via auth.tokenReview.serviceAccountName。
+#   chart RBAC 加 `authentication.k8s.io/v1.tokenreviews create` verb。
 auth:
+  # mode = placeholder | oidc | tokenReview
+  mode: placeholder
+  # Phase 9 legacy field — kept for placeholder mode backward compat.
   bearerToken: ""
+  oidc:
+    # OIDC issuer base URL(e.g. https://keycloak.example.com/realms/ocloud).
+    # Empty when mode != oidc. validator dial issuer at startup to fetch
+    # JWKS · 失败时 panic(per ADR-0013 §6 forward note authn 完整实现
+    # § "OIDC client failed-fast init")。
+    issuerUrl: ""
+    # JWT audience claim the validator enforces. Typically the API
+    # gateway / O2 DMS service identifier.
+    audience: ""
+  tokenReview:
+    # SA whose token the validator presents to authentication.k8s.io/v1
+    # TokenReview API. Empty triggers fallback to current Pod SA(via
+    # rest.InClusterConfig).
+    serviceAccountName: ""

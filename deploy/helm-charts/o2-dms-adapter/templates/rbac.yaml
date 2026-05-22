@@ -31,6 +31,15 @@ rules:
   - apiGroups: ["inference.ocloud.edge.example.com"]
     resources: ["npuverticalscalers"]
     verbs: ["get", "list", "watch"]
+  {{- if eq .Values.auth.mode "tokenReview" }}
+  # P11-T-106 · TokenReview API for K8s SA token validation
+  # (per ADR-0017 §2 Decision A Stream 5 part 1 substrate · ADR-0013
+  # §6 forward note authn 完整实现 Validator interface "TokenReview"
+  # impl pathway).
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
