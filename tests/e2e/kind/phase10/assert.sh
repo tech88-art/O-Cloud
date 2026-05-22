@@ -19,24 +19,30 @@ set -euo pipefail
 
 NS_INF="${NS_INF:-ocloud-system}"
 
-echo "== T107-A1: NumaAffinity wrap substrate present + default ENABLED (P11-T-007 restoration) =="
-# Per P10-fix-002 (2026-05-21): chart default flipped to false to unblock
-# phase6 install (NRT CRDs not bundled · upstream nrt.New panics without
-# them). Per P11-T-007 (2026-05-22 · ADR-0017 §2 Decision D 5th):
-# NodeResourceTopology CRD vendored at chart `crds/noderesourcetopologies.
-# yaml` (Approach B per phase11-plan §3 P11-T-007 default) · helm auto
-# pre-install hook 安装 CRD · numaAffinity.enabled default = true 恢复
-# (known-issues #12 完整 close 循环最终步)。
-grep -qE "^numaAffinity:" /d/code/ai-edge/deploy/helm-charts/scheduler-plugin/values.yaml && \
-  grep -qE "^[[:space:]]+enabled: true" /d/code/ai-edge/deploy/helm-charts/scheduler-plugin/values.yaml || {
-    echo "FAIL T107-A1: numaAffinity substrate missing or default not true in chart values.yaml"
-    exit 1
-  }
+echo "== T107-A1: NumaAffinity wrap substrate + NRT CRD bundled + RBAC ready (P11-T-007 + P11-fix-004/005 partial close) =="
+# Trail:P10-fix-002 default flipped to false unblock phase6 install (NRT
+# CRD not bundled · nrt.New panic) → P11-T-007 ADR-0017 §2 Decision D 5th
+# NRT CRD bundled at chart crds/ + default flipped back to true → P11-fix
+# -004 NRT RBAC ClusterRole verbs added (SA NRT access) → P11-fix-005
+# default reverted to false because nrt.New informer cache sync 在 kind
+# 1.34.3 cluster > 180s helm --wait timeout · phase6 仍 red 即使全 ship
+# CRD + RBAC。完整 default true 留 Phase 12+ K8s 1.36+ baseline bump cohort
+# (与 Partitionable Devices Track C 联动) + helm --timeout bump。
+# Operators 全栈 opt in 路径:
+#   helm install scheduler-plugin --set numaAffinity.enabled=true --timeout=300s
+grep -qE "^numaAffinity:" /d/code/ai-edge/deploy/helm-charts/scheduler-plugin/values.yaml || {
+  echo "FAIL T107-A1: numaAffinity substrate missing in chart values.yaml"
+  exit 1
+}
 test -f /d/code/ai-edge/deploy/helm-charts/scheduler-plugin/crds/noderesourcetopologies.yaml || {
   echo "FAIL T107-A1: NRT CRD bundle missing at chart crds/noderesourcetopologies.yaml"
   exit 1
 }
-echo "PASS T107-A1: NumaAffinity wrap substrate present + default ENABLED + NRT CRD bundled (P11-T-007 carry close)"
+grep -q "topology.node.k8s.io" /d/code/ai-edge/deploy/helm-charts/scheduler-plugin/templates/rbac.yaml || {
+  echo "FAIL T107-A1: NRT RBAC verbs missing in chart templates/rbac.yaml"
+  exit 1
+}
+echo "PASS T107-A1: NumaAffinity substrate + NRT CRD bundled + NRT RBAC ready (operator opt-in via --set numaAffinity.enabled=true · default false per P11-fix-005)"
 
 echo ""
 echo "== T107-A2: inference-operator chart defaults.proxyImage field surface =="

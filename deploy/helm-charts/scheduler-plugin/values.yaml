@@ -137,18 +137,30 @@ hccsTopology:
 #      pluginConfig block(default ScoringStrategy=LeastAllocated · Resources
 #      cpu+memory weight 1:1 per plugin.go defaultArgs)
 #
-# Phase 11 P11-T-007 RESOLVED(ADR-0017 §2 Decision D 5th · 同 P10-fix-002
-# close loop):chart 自带 `crds/noderesourcetopologies.yaml`(vendored from
-# sigs.k8s.io/scheduler-plugins@v0.34.7/manifests/noderesourcetopology/
+# Phase 11 P11-T-007 + P11-fix-005 partial RESOLVED(ADR-0017 §2 Decision
+# D 5th):chart ship 自带 `crds/noderesourcetopologies.yaml`(vendored
+# from sigs.k8s.io/scheduler-plugins@v0.34.7/manifests/noderesourcetopology/
 # crd.yaml · Approach B per phase11-plan §3 P11-T-007 default · NOT
-# subchart dependency to keep release cadence self-contained)· helm 自动
-# pre-install hook 安装 NodeResourceTopology CRD · numaAffinity 默认开。
-# Operators 仍可:
-#   1. 关:`--set numaAffinity.enabled=false`(返回 P10-fix-002 临时状态)
-#   2. 外管 CRD:删 crds/noderesourcetopologies.yaml 后 helm package(若
-#      已有上游 NRT operator install CRD)
+# subchart dependency · chart 自管 release cadence)+ NRT RBAC conditional
+# in templates/rbac.yaml(P11-fix-004)。
+#
+# **Default = false**(per P11-fix-005 · 同 P10-fix-002 working state)·
+# 原因:nrt.New informer wait for cache sync 在 kind 1.34.3 cluster 上 >
+# 180s default helm install --wait timeout · phase6 kind smoke 仍 red
+# 即使 NRT CRD + RBAC 全 ship。Phase 12+ K8s 1.36+ baseline bump cohort
+# 同期 evaluate · 提 helm timeout to 300s+ or 改默认 true · 同 Partitionable
+# Devices Track C 联动。
+#
+# Operators 现可全栈 opt in(CRD + RBAC + ConfigMap 全 ready):
+#   helm install scheduler-plugin --set numaAffinity.enabled=true \
+#     --timeout=300s   # 增 timeout 给 nrt.New cache sync 时间
+#
+# known-issues #12 partial close:5-phase carry trail complete(P6 placeholder
+# → P8/9 baseline wait → P10-T-005 wrap body → P10-fix-002 临时禁 →
+# P11-T-007 NRT CRD bundle ship → P11-fix-005 default 维持 false + 完整
+# 基础设施 ready · 完整 default true 留 Phase 12+ with helm timeout bump)。
 numaAffinity:
-  enabled: true
+  enabled: false
   weight: 2
 
 # Binpack per ADR-0010 §4. Default disabled — chart operators opt in

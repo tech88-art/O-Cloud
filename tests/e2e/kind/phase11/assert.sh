@@ -41,12 +41,20 @@ test -f "${REPO_ROOT}/deploy/karmada/policies/propagation-modelservice.yaml" && 
   fail "T107-A0" "PropagationPolicy templates missing"
 
 
-# T107-A1: NRT CRD bundle + numaAffinity ON
-test -f "${REPO_ROOT}/deploy/helm-charts/scheduler-plugin/crds/noderesourcetopologies.yaml" || \
-  fail "T107-A1" "NRT CRD bundle missing"
-grep -qE "^[[:space:]]+enabled: true" "${REPO_ROOT}/deploy/helm-charts/scheduler-plugin/values.yaml" && \
-  pass "T107-A1" "NRT CRD bundled + numaAffinity.enabled=true default" || \
-  fail "T107-A1" "numaAffinity.enabled not true in values.yaml"
+# T107-A1: NRT CRD bundle + RBAC ready(P11-fix-005 default false · operator
+# opt-in via --set numaAffinity.enabled=true after Phase 12+ K8s 1.36+ + helm
+# --timeout bump 解锁)
+NRT_CRD_OK=0
+test -f "${REPO_ROOT}/deploy/helm-charts/scheduler-plugin/crds/noderesourcetopologies.yaml" && NRT_CRD_OK=1
+NRT_RBAC_OK=0
+grep -q "topology.node.k8s.io" "${REPO_ROOT}/deploy/helm-charts/scheduler-plugin/templates/rbac.yaml" && NRT_RBAC_OK=1
+NUMA_PRESENT=0
+grep -qE "^numaAffinity:" "${REPO_ROOT}/deploy/helm-charts/scheduler-plugin/values.yaml" && NUMA_PRESENT=1
+if [ "${NRT_CRD_OK}" = "1" ] && [ "${NRT_RBAC_OK}" = "1" ] && [ "${NUMA_PRESENT}" = "1" ]; then
+  pass "T107-A1" "NRT CRD bundled + RBAC ready + numaAffinity substrate present(operator opt-in via --set · default false per P11-fix-005)"
+else
+  fail "T107-A1" "NRT CRD bundle / RBAC / numaAffinity substrate incomplete (CRD=${NRT_CRD_OK} RBAC=${NRT_RBAC_OK} numa=${NUMA_PRESENT})"
+fi
 
 # T107-A2: demo-backend Lease leader-elect substrate
 test -f "${REPO_ROOT}/deploy/helm-charts/demo-backend/templates/rbac.yaml" && \
