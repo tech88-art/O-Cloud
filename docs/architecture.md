@@ -787,6 +787,8 @@ Grafana dashboard 在 deploy 目录提前 provisioned，前端只是 iframe 切�
 - 多个成员集群（每个站点 1 套）
 - 演示后端连接 Karmada API + 各成员集群
 
+> **Phase 11 T002 forward note**(per ADR-0018 §2 Decision A topology):Phase 11 第一波 production-grade ship 1 host cluster(Karmada control-plane in `karmada-system` namespace · kindest/node v1.34.3 baseline lockstep)+ **2 member kind cluster minimum**(member1/member2 · 单 Docker daemon 模拟 multi-site)· Karmada upstream chart `karmada-charts/karmada` + 自研 `deploy/karmada/policies/*.yaml` PropagationPolicy selector templates · `karmadactl join` push mode default · cross-cluster informer via Karmada karmada-aggregated-apiserver lifted-informer pattern(O2 DMS Adapter + Quota ClusterQuota informer 各自 aggregation)· 真 多机房 / 跨 region / Karmada HA 留 Phase 12+ per ADR-0017 §4 (a) + ADR-0018 §4 (a)。
+
 ---
 
 ## 10. Phase 1 详细计划

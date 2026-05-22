@@ -382,6 +382,7 @@ webhooks:
 ## 7. Forward notes(Phase 10+)
 
 > 🆕 **Phase 10 polish**:cluster-scope Quota(`kind: ClusterQuota`)+ Karmada cross-cluster propagation + aggregator — per §6 Open questions (b) + (c) · 与 ADR-0013 §6 Karmada multi-cluster 同期。
+> 🆕 **Phase 11 T002/T104 子契约**(per ADR-0018 §2 Decision B + Decision D):本 forward note 的 implementation contract 由 ADR-0018 §2 Decision D ClusterQuota aggregation 承载 — ClusterQuota CRD cluster-scope · ClusterPropagationPolicy(`deploy/karmada/policies/cluster-propagation-clusterquota.yaml` · T103 落地)propagate to member cluster · Quota controller 在 host cluster `ocloud-system` ns · 调 karmada-aggregated-apiserver · informer ClusterQuota status.usage 跨 cluster aggregation · 累计 usage view(sum across member)与 ClusterQuota.spec.hard.npuSlices 比对 · admission webhook decision 依据 aggregated usage · status.usage 加 `perCluster` map(member1 / member2 子 usage)· cross-cluster sync 走 60s tick + 5s cache TTL fallback per ADR-0014 §2 Decision D · event-driven sync(本 §7 line 5 polish)留 Phase 12+。
 
 > 🆕 **Phase 10 polish**:strong-consistency webhook 模式(per-Quota strictMode flag · §6 Open question (d))· production-grade strict enforcement · cache miss penalty 接受。
 
