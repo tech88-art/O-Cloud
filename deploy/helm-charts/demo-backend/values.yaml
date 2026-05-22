@@ -1,0 +1,116 @@
+# Default values for demo-backend chart (Phase 11 P11-T-003).
+# Aligned with ADR-0015 §3.3 singleton with active-standby failover.
+
+# replicaCount sets the demo-backend Pod count. ADR-0015 §3.3 Decision B
+# default = 2 (one leader + one standby). Production HA may prefer 3
+# (per ADR-0017 §4 Open question (c) Phase 12+ polish). Setting 1
+# disables failover entirely (Lease still works but no standby ready).
+replicaCount: 2
+
+image:
+  repository: ghcr.io/tech88-art/o-cloud/demo-backend
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# serviceAccount drives the SA + RBAC bindings for Lease access. The SA
+# must have coordination.k8s.io/v1 Lease verbs `get/create/update/delete`
+# in the leaseElection.namespace; see templates/rbac.yaml.
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 8080
+  metricsPort: 8080 # /metrics is served on the same port as REST
+
+# leaseElection ties into backend/pkg/cache.LeaseConfig (ADR-0015 §2
+# Decision B). Defaults mirror controller-runtime convention (LeaseDuration
+# 15s > RenewDeadline 10s > RetryPeriod 2s). The Lease object lives at
+# coordination.k8s.io/v1 Lease `<leaseName>` in `<namespace>`; HolderIdentity
+# defaults to Pod name via downward API POD_NAME env.
+leaseElection:
+  enabled: true
+  namespace: ocloud-system
+  leaseName: demo-backend-leader
+  leaseDurationSeconds: 15
+  renewDeadlineSeconds: 10
+  retryPeriodSeconds: 2
+
+# config injects the Viper YAML the demo-backend reads at startup. Mounted
+# via ConfigMap → /etc/demo-backend/config.yaml. Empty = use baked
+# configs/config.example.yaml from image (mock datasource defaults).
+config:
+  yaml: |
+    server:
+      port: 8080
+      enableCORS: true
+    datasources:
+      mock:
+        enabled: true
+        path: /etc/demo-backend/mock-data
+    mapping:
+      topology: mock
+      workloads: mock
+      metrics: mock
+      presets: mock
+    logging:
+      level: info
+    cache:
+      defaults:
+        max_entries: 1024
+        ttl: 5m
+
+# probes feed the K8s readiness/liveness checks. /healthz is the
+# Phase 1 P1-T-005 endpoint; /version is the appVersion echo.
+probes:
+  readiness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 30
+    periodSeconds: 30
+
+resources:
+  limits:
+    cpu: "1"
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# ServiceMonitor scrapes the 3 cache singleton + Prometheus metrics
+# from ADR-0015 §3.3 Decision D (lease_holder gauge + lease_renewals
+# counter + cache_hit_ratio gauge). Requires Prometheus Operator CRDs.
+serviceMonitor:
+  enabled: false
+  namespace: ""
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+podAnnotations: {}
+podLabels: {}
+
+# securityContext defaults to non-root distroless-static (per Dockerfile)
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL

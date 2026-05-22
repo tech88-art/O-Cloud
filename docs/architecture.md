@@ -312,7 +312,7 @@ backend/
 │   │   └── mock/                   # Mock 实现（Phase 1）
 │   ├── aggregator/                 # 跨源聚合（拓扑、应用详情）
 │   ├── config/                     # 配置加载
-│   ├── cache/                      # 内存 LRU(Phase 10 起 + K8s Lease 选主 single-active failover per ADR-0015)(Phase 11 chart packaging T003 1st 优先级 per ADR-0017 §2 Decision D · cmd/main.go controller-runtime leader-elect wire 落 chart Lease RBAC)
+│   ├── cache/                      # 内存 LRU(Phase 10 起 + K8s Lease 选主 single-active failover per ADR-0015)(Phase 11 P11-T-003 LANDED · client-go tools/leaderelection wire + chart deploy/helm-charts/demo-backend/ 9 file 含 namespaced Lease Role/RoleBinding · 详 backend/docs/cache.md §3)
 │   └── model/                      # DTO/VO 定义
 ├── configs/
 │   ├── config.example.yaml         # 数据源映射配置

@@ -1,0 +1,28 @@
+apiVersion: v2
+name: demo-backend
+description: |
+  O-Cloud edge cloud platform demo backend — Gin REST + WebSocket API
+  with K8s Lease leader-elect for ADR-0015 §3.3 active-standby cache
+  singleton failover. The chart deploys 2 replicas by default (ADR-0015
+  §3.3 Decision B); the holder of the `demo-backend-leader` Lease in
+  `ocloud-system` namespace serves traffic via the in-process LRU
+  cache, followers stay warm for failover. P10-T-006 ships the cache
+  singleton substrate (backend/pkg/cache/singleton.go); P11-T-003
+  ships this chart + cmd/main.go controller-runtime leader-elect wire
+  via client-go/tools/leaderelection.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ocloud
+  - demo-backend
+  - gin
+  - lease
+  - leader-elect
+  - cache-singleton
+home: https://github.com/tech88-art/O-Cloud
+sources:
+  - https://github.com/tech88-art/O-Cloud/tree/main/backend
+maintainers:
+  - name: O-Cloud team
+    url: https://github.com/tech88-art/O-Cloud

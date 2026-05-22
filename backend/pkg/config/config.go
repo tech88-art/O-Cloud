@@ -30,6 +30,20 @@ type Config struct {
 	Logging     LoggingConfig               `mapstructure:"logging"`
 	Grafana     GrafanaConfig               `mapstructure:"grafana"`
 	Cache       CacheConfig                 `mapstructure:"cache"`
+	Lease       LeaseConfig                 `mapstructure:"lease"`
+}
+
+// LeaseConfig drives the K8s Lease leader-elect singleton wrapper
+// (ADR-0015 §2 Decision B · P11-T-003 chart wiring). Disabled by default
+// — single-replica deployments + dev runs skip the Lease loop entirely.
+// Helm chart env vars (OCEDGE_LEASE_*) bind into this struct via Viper.
+type LeaseConfig struct {
+	Enabled              bool   `mapstructure:"enabled"`
+	Namespace            string `mapstructure:"namespace"`
+	Name                 string `mapstructure:"name"`
+	DurationSeconds      int    `mapstructure:"duration_seconds"`
+	RenewDeadlineSeconds int    `mapstructure:"renew_deadline_seconds"`
+	RetryPeriodSeconds   int    `mapstructure:"retry_period_seconds"`
 }
 
 // CacheConfig is the per-resource cache eviction policy (P3-T-008).

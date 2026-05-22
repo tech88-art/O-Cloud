@@ -18,6 +18,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/example/ocloud-edge/backend/pkg/api"
+	"github.com/example/ocloud-edge/backend/pkg/cache"
 	"github.com/example/ocloud-edge/backend/pkg/config"
 	"github.com/example/ocloud-edge/backend/pkg/datasource"
 	"github.com/example/ocloud-edge/backend/pkg/datasource/configmap"
@@ -190,6 +191,43 @@ func runServer(ctx context.Context, configFile string) error {
 
 	rootCtx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	// Phase 11 P11-T-003: optional Lease leader-elect singleton wiring per
+	// ADR-0015 §3.3 Decision B. Enabled when cfg.Lease.Enabled is true
+	// (chart sets OCEDGE_LEASE_ENABLED=true via env). Disabled by default
+	// for single-replica / dev runs so backend stays runnable without K8s
+	// API access. Failure to start leader-elect aborts startup — replicas
+	// shouldn't silently degrade to "all leaders" cache-thrashing mode.
+	if cfg.Lease.Enabled {
+		leaseCfg := cache.ConfigFromOptions(
+			cfg.Lease.Namespace,
+			cfg.Lease.Name,
+			cfg.Lease.DurationSeconds,
+			cfg.Lease.RenewDeadlineSeconds,
+			cfg.Lease.RetryPeriodSeconds,
+		)
+		singleton, err := cache.NewSingleton(leaseCfg)
+		if err != nil {
+			return fmt.Errorf("build cache singleton: %w", err)
+		}
+		handler.CacheSingleton = singleton
+		kubeconfigPath := ""
+		if k8sCfg, ok := cfg.Datasources["k8s"]; ok && k8sCfg.Kubeconfig != "" {
+			kubeconfigPath = k8sCfg.Kubeconfig
+		}
+		go func() {
+			if err := cache.RunLeaderElection(rootCtx, singleton, cache.LeaderElectOptions{
+				KubeconfigPath: kubeconfigPath,
+				Logger:         logger,
+			}); err != nil {
+				logger.Error("leader-elect loop exited with error",
+					zap.Error(err))
+			}
+		}()
+		logger.Info("Lease leader-elect started",
+			zap.String("namespace", leaseCfg.Namespace),
+			zap.String("lease", leaseCfg.LeaseName))
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
