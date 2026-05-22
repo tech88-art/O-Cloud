@@ -259,7 +259,7 @@
         "label": "Node",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": "label_values(ascend_npu_info, node)",
+        "query": "label_values(ascend_npu_utilization_percent, node)",
         "refresh": 2,
         "includeAll": false,
         "multi": false,
