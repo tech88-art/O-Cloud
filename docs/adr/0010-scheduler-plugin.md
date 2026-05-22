@@ -229,6 +229,10 @@ PD 场景下次于 HCCS,因 HCCL 通信带宽是主要瓶颈;NUMA cache locality
 
 **T006 状态(2026-05-21 P10-T-005 LANDED)**:NumaAffinity wrap body landed at P10-T-005 三件套 part 3 · `nrt.New(ctx, args, h)` delegate · args=nil fallback to defaultArgs()(ScoringStrategy=LeastAllocated · Resources cpu+memory weight 1:1)· chart values.yaml `numaAffinity.enabled: true` default flip · 4 sanity tests(TestNameConstants + TestDefaultArgs + TestArgsPassthrough + TestScoringStrategyTypes)+ build/vet/test/lint 全 clean。详 §1 P10-T-005 update segment + `docs/devlog/phase-10-t005.md`。known-issues #12 RESOLVED。下面的"T006 placeholder body" + "P7-T-002 升级尝试" 段保留作为历史 trail(2026-05-20 → 2026-05-21 演进)。
 
+**P10-fix-002 + P11-T-007 NRT CRD bundle 闭环(2026-05-21 → 2026-05-22)**:
+- **P10-fix-002**(`3729bb3`):P10-T-005 wrap body LANDED 后 phase6 install 触发 nrt.New panic("cannot create clientset for NodeTopologyResource")· 因 NodeResourceTopology CRD 不在 cluster · 临时 flip chart `numaAffinity.enabled: false` unblock phase6 install + post-tag CI gate · NRT CRD bundling 推 Phase 11+ chart packaging stream。
+- **P11-T-007**(`<this commit>` · ADR-0017 §2 Decision D 5th 优先级):**Approach B vendored CRD YAML**(per phase11-plan §3 P11-T-007 default · 不引入 noderesourcetopology-api subchart · chart 自管 release cadence)· `deploy/helm-charts/scheduler-plugin/crds/noderesourcetopologies.yaml`(从 `sigs.k8s.io/scheduler-plugins@v0.34.7/manifests/noderesourcetopology/crd.yaml` vendored)· helm 自动 pre-install hook 安装 CRD · `numaAffinity.enabled: true` default 恢复。`tests/e2e/kind/phase10/assert.sh` T107-A1 + `tests/e2e/kind/phase11/assert.sh` T107-A1 同步 update 验证 NRT CRD bundle 存在 + default true。**known-issues #12 完整 close 循环**:(1) Phase 6 引入 NumaAffinity placeholder → (2) Phase 8/9 baseline bump 等待 → (3) P10-T-005 wrap body land → (4) P10-fix-002 default false 临时禁(unblock) → (5) **P11-T-007 NRT CRD bundle + default true 恢复**(全循环 close)。
+
 **T006 placeholder body(2026-05-20 P6 update · 历史 trail)**:placeholder · upstream wrap deferred。
 直接 `nrt.New(...)` 委托在 P6-T-006 entry 时构建失败 — 上游
 `sigs.k8s.io/scheduler-plugins/pkg/noderesourcetopology` v0.31.8 引用

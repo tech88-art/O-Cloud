@@ -19,19 +19,24 @@ set -euo pipefail
 
 NS_INF="${NS_INF:-ocloud-system}"
 
-echo "== T107-A1: NumaAffinity wrap substrate present in scheduler-plugin chart =="
-# Per P10-fix-002 (2026-05-21): chart default flipped back to false because
-# upstream `nrt.New` requires NodeResourceTopology CRDs which aren't bundled
-# in this chart yet (Phase 11+ chart packaging stream candidate per
-# ADR-0016 §3 真生产化 spine). Wrap substrate is landed at P10-T-005 ·
-# operators opt-in via numaAffinity.enabled: true after installing NRT CRDs.
-# This assert just verifies the substrate is present in the chart values.
+echo "== T107-A1: NumaAffinity wrap substrate present + default ENABLED (P11-T-007 restoration) =="
+# Per P10-fix-002 (2026-05-21): chart default flipped to false to unblock
+# phase6 install (NRT CRDs not bundled · upstream nrt.New panics without
+# them). Per P11-T-007 (2026-05-22 · ADR-0017 §2 Decision D 5th):
+# NodeResourceTopology CRD vendored at chart `crds/noderesourcetopologies.
+# yaml` (Approach B per phase11-plan §3 P11-T-007 default) · helm auto
+# pre-install hook 安装 CRD · numaAffinity.enabled default = true 恢复
+# (known-issues #12 完整 close 循环最终步)。
 grep -qE "^numaAffinity:" /d/code/ai-edge/deploy/helm-charts/scheduler-plugin/values.yaml && \
-  grep -qE "^[[:space:]]+enabled: " /d/code/ai-edge/deploy/helm-charts/scheduler-plugin/values.yaml || {
-    echo "FAIL T107-A1: numaAffinity substrate missing from scheduler-plugin chart values.yaml"
+  grep -qE "^[[:space:]]+enabled: true" /d/code/ai-edge/deploy/helm-charts/scheduler-plugin/values.yaml || {
+    echo "FAIL T107-A1: numaAffinity substrate missing or default not true in chart values.yaml"
     exit 1
   }
-echo "PASS T107-A1: NumaAffinity wrap substrate present (default disabled per P10-fix-002 · enable manually after installing NRT CRDs)"
+test -f /d/code/ai-edge/deploy/helm-charts/scheduler-plugin/crds/noderesourcetopologies.yaml || {
+  echo "FAIL T107-A1: NRT CRD bundle missing at chart crds/noderesourcetopologies.yaml"
+  exit 1
+}
+echo "PASS T107-A1: NumaAffinity wrap substrate present + default ENABLED + NRT CRD bundled (P11-T-007 carry close)"
 
 echo ""
 echo "== T107-A2: inference-operator chart defaults.proxyImage field surface =="

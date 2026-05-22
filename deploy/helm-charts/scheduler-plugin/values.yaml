@@ -5,7 +5,10 @@
 # cluster remains untouched.
 #
 # NumaAffinity wrap LANDED at P10-T-005 三件套 part 3 (2026-05-21);
-# chart now defaults `numaAffinity.enabled: true`. See
+# chart defaults `numaAffinity.enabled: true` (P10-fix-002 flipped this
+# to false to unblock phase6 install until NRT CRDs were bundled;
+# P11-T-007 vendors the NRT CRD into chart `crds/` folder and restores
+# the default to true · known-issues #12 完整 close 循环最终步)。 See
 # `operators/scheduler-plugin/internal/plugins/numa/plugin.go` package
 # doc + `operators/scheduler-plugin/DESIGN.md §5.2` for the wrap
 # delegation contract.
@@ -134,11 +137,18 @@ hccsTopology:
 #      pluginConfig block(default ScoringStrategy=LeastAllocated · Resources
 #      cpu+memory weight 1:1 per plugin.go defaultArgs)
 #
-# Phase 11+ chart packaging stream(per ADR-0016 §3 真生产化 spine)candidate:
-# bundle NRT CRDs into scheduler-plugin chart as subchart dependency · flip
-# default back to true.
+# Phase 11 P11-T-007 RESOLVED(ADR-0017 §2 Decision D 5th · 同 P10-fix-002
+# close loop):chart 自带 `crds/noderesourcetopologies.yaml`(vendored from
+# sigs.k8s.io/scheduler-plugins@v0.34.7/manifests/noderesourcetopology/
+# crd.yaml · Approach B per phase11-plan §3 P11-T-007 default · NOT
+# subchart dependency to keep release cadence self-contained)· helm 自动
+# pre-install hook 安装 NodeResourceTopology CRD · numaAffinity 默认开。
+# Operators 仍可:
+#   1. 关:`--set numaAffinity.enabled=false`(返回 P10-fix-002 临时状态)
+#   2. 外管 CRD:删 crds/noderesourcetopologies.yaml 后 helm package(若
+#      已有上游 NRT operator install CRD)
 numaAffinity:
-  enabled: false
+  enabled: true
   weight: 2
 
 # Binpack per ADR-0010 §4. Default disabled — chart operators opt in
