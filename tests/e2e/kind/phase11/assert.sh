@@ -28,9 +28,18 @@ FAIL=0
 fail() { echo "FAIL $1: $2"; FAIL=1; }
 pass() { echo "PASS $1: $2"; }
 
-echo "== Phase 11 kind smoke assertions =="
+echo "== Phase 11 kind smoke assertions(P11-T-107)=="
 echo "REPO_ROOT = ${REPO_ROOT}"
 echo ""
+
+# T107-A0: 4 PropagationPolicy templates ship under deploy/karmada/policies/
+test -f "${REPO_ROOT}/deploy/karmada/policies/propagation-modelservice.yaml" && \
+  test -f "${REPO_ROOT}/deploy/karmada/policies/propagation-npuslicepool.yaml" && \
+  test -f "${REPO_ROOT}/deploy/karmada/policies/propagation-quota.yaml" && \
+  test -f "${REPO_ROOT}/deploy/karmada/policies/cluster-propagation-clusterquota.yaml" && \
+  pass "T107-A0" "4 PropagationPolicy YAML present in deploy/karmada/policies/" || \
+  fail "T107-A0" "PropagationPolicy templates missing"
+
 
 # T107-A1: NRT CRD bundle + numaAffinity ON
 test -f "${REPO_ROOT}/deploy/helm-charts/scheduler-plugin/crds/noderesourcetopologies.yaml" || \
@@ -72,6 +81,37 @@ test -f "${REPO_ROOT}/docs/adr/0017-phase-11-entry-decisions.md" && \
   test -f "${REPO_ROOT}/docs/adr/0018-karmada-deployment-topology.md" && \
   pass "T107-A6" "ADR-0017 + ADR-0018 committed" || \
   fail "T107-A6" "Phase 11 entry ADRs missing"
+
+# T107-A7: O2 DMS authn chart wiring(P11-T-106)
+grep -q "auth.mode" "${REPO_ROOT}/deploy/helm-charts/o2-dms-adapter/values.yaml" || \
+  grep -q "mode: placeholder" "${REPO_ROOT}/deploy/helm-charts/o2-dms-adapter/values.yaml" && \
+  grep -q "O2DMS_AUTH_MODE" "${REPO_ROOT}/deploy/helm-charts/o2-dms-adapter/templates/deployment.yaml" && \
+  grep -q "tokenreviews" "${REPO_ROOT}/deploy/helm-charts/o2-dms-adapter/templates/rbac.yaml" && \
+  pass "T107-A7" "O2 DMS authn chart wiring(auth.mode + OIDC env + tokenreviews RBAC conditional)" || \
+  fail "T107-A7" "O2 DMS authn chart wiring incomplete"
+
+# T107-A8: ClusterQuota CRD(P11-T-104)bundled in inference-operator chart
+test -f "${REPO_ROOT}/deploy/helm-charts/inference-operator/crds/inference.ocloud.edge.example.com_clusterquotas.yaml" && \
+  test -f "${REPO_ROOT}/operators/inference-operator/api/v1alpha1/clusterquota_types.go" && \
+  pass "T107-A8" "ClusterQuota CRD bundled in inference-operator chart + types ship" || \
+  fail "T107-A8" "ClusterQuota CRD bundle or types missing"
+
+# T107-A9: Karmada bootstrap scripts(P11-T-102)+ README
+test -x "${REPO_ROOT}/deploy/karmada/install.sh" && \
+  test -x "${REPO_ROOT}/deploy/karmada/uninstall.sh" && \
+  test -f "${REPO_ROOT}/deploy/karmada/values.yaml" && \
+  test -f "${REPO_ROOT}/deploy/karmada/README.md" && \
+  pass "T107-A9" "Karmada bootstrap install/uninstall scripts + values + README" || \
+  fail "T107-A9" "Karmada bootstrap missing"
+
+# T107-A10: Frontend Workload 3 indicators(P11-T-105)wired
+grep -q "o2DMSExposed" "${REPO_ROOT}/frontend/src/services/workload.ts" && \
+  grep -q "quotaUsage" "${REPO_ROOT}/frontend/src/services/workload.ts" && \
+  grep -q "scaleHistory" "${REPO_ROOT}/frontend/src/services/workload.ts" && \
+  grep -q "includeO2DMSExposed" "${REPO_ROOT}/frontend/src/pages/Workloads/index.tsx" && \
+  grep -q "anyHasO2DMSExposed" "${REPO_ROOT}/frontend/src/pages/Workloads/WorkloadTable.tsx" && \
+  pass "T107-A10" "Frontend 3 indicator columns + service includes wired" || \
+  fail "T107-A10" "Frontend 3 indicator wiring incomplete"
 
 # T107-C1: Karmada(conditional)
 if [ "${KARMADA_ENABLED:-0}" = "1" ]; then
