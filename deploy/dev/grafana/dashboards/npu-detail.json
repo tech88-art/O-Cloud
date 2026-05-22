@@ -37,7 +37,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_aicore_util_percent{node=~\"$node\",npu=~\"$npu\"}",
+          "expr": "ascend_npu_utilization_percent{node=~\"$node\",npu=~\"$npu\"}",
           "refId": "A",
           "legendFormat": "AICore %"
         }
@@ -64,7 +64,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_vram_used_bytes{node=~\"$node\",npu=~\"$npu\"}",
+          "expr": "ascend_npu_memory_used_bytes{node=~\"$node\",npu=~\"$npu\"}",
           "refId": "A",
           "legendFormat": "used"
         },

@@ -144,7 +144,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_aicore_util_percent{node=~\"$node\"}",
+          "expr": "ascend_npu_utilization_percent{node=~\"$node\"}",
           "refId": "A",
           "legendFormat": "{{npu}}"
         }
@@ -198,7 +198,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_aicore_util_percent{node=~\"$node\"}",
+          "expr": "ascend_npu_utilization_percent{node=~\"$node\"}",
           "refId": "A",
           "format": "table",
           "instant": true,

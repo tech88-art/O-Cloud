@@ -37,7 +37,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "count(kube_node_status_condition{condition=\"Ready\",status=\"true\"})",
+          "expr": "count(count by (node)(ascend_npu_utilization_percent))",
           "refId": "A",
           "legendFormat": "ready"
         }
@@ -77,7 +77,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "count(ascend_npu_info)",
+          "expr": "count(ascend_npu_utilization_percent)",
           "refId": "A",
           "legendFormat": "NPUs"
         }
@@ -107,13 +107,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(ascend_npu_slice_allocated)",
+          "expr": "count(ascend_slice_allocated_to_pod)",
           "refId": "A",
           "legendFormat": "allocated"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(ascend_npu_slice_total)",
+          "expr": "count(ascend_slice_aicore_count)",
           "refId": "B",
           "legendFormat": "total"
         }
@@ -139,7 +139,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "avg(ascend_npu_aicore_util_percent)",
+          "expr": "avg(ascend_npu_utilization_percent)",
           "refId": "A",
           "legendFormat": "avg AICore %"
         }
@@ -184,7 +184,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_aicore_util_percent",
+          "expr": "ascend_npu_utilization_percent",
           "refId": "A",
           "format": "heatmap",
           "legendFormat": "{{node}}/{{npu}}"
@@ -216,7 +216,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "topk(10, ascend_npu_aicore_util_percent)",
+          "expr": "topk(10, ascend_npu_utilization_percent)",
           "refId": "A",
           "legendFormat": "{{node}}/{{npu}}"
         }
@@ -252,19 +252,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "avg(ascend_npu_aicore_util_percent)",
+          "expr": "avg(ascend_npu_utilization_percent)",
           "refId": "A",
           "legendFormat": "avg"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "quantile(0.95, ascend_npu_aicore_util_percent)",
+          "expr": "quantile(0.95, ascend_npu_utilization_percent)",
           "refId": "B",
           "legendFormat": "p95"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "max(ascend_npu_aicore_util_percent)",
+          "expr": "max(ascend_npu_utilization_percent)",
           "refId": "C",
           "legendFormat": "max"
         }
