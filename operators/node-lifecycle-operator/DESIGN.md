@@ -43,11 +43,13 @@
   - `Locked` ↔ `Unlocked` → `Available`
 - **Unchanging invariants**:NodeLifecycle 1:1 与 Node;Cluster-scoped(NPUSlicePool 是 namespaced 但 NodeLifecycle 跨 namespace 是 Node 级别);Status.State 由 controller 写不由 admin 写。
 
-## §3. 生命周期
+## §3. 生命周期(P11-T-004 chart wiring LANDED)
 
-- **启动**:controller-runtime manager 启 + Reconciler 注册 watch NodeLifecycle + Node。Phase 11+ chart packaging 时 cmd/main.go orchestration 接入 controller-runtime · 当前 cmd/main.go 仅 banner。
-- **Reconcile 触发**:NodeLifecycle 变化 / Node status 变化 / 周期 requeue(30s steady · 5s during transition)。
-- **退出**:graceful shutdown 走 controller-runtime SIGTERM handler;leader-election deferred to Phase 11+ chart values。
+- **启动**:cmd/main.go 走 controller-runtime manager + Reconciler 注册 + watch NodeLifecycle (primary) + Node (Owns)。Leader-election via `--leader-elect` flag(chart values.leaderElection.enabled default true)走 controller-runtime built-in Lease lock(coordination.k8s.io/v1 Lease in release namespace · LeaseID `node-lifecycle-operator.lifecycle.ocloud.edge.example.com`)。
+- **Reconcile 触发**:NodeLifecycle 变化 / Node status 变化 / 周期 requeue(30s steady · 5s during transition)。`internal/controller.NodeLifecycleReconciler.Reconcile` fetch NodeLifecycle + linked Node · 调 pure-Go `ReconcileOnce` 计算 NextState + Conditions · 通过 Status().Update 写回 apiserver · 不同的 RequeueAfter 返回。
+- **退出**:graceful shutdown 走 controller-runtime SIGTERM handler(`ctrl.SetupSignalHandler()`)· leader 自动 release Lease(controller-runtime 默认 ReleaseOnCancel) · follower 立即接手。
+- **Health probes**:`/healthz` + `/readyz` 走 controller-runtime healthz package · chart deployment readinessProbe/livenessProbe consume。
+- **Metrics**:controller-runtime metricsserver 默认 :8080 暴露 `controller_runtime_reconcile_total` 等 · chart ServiceMonitor opt-in scrape。
 
 ## §4. 错误处理
 
@@ -82,7 +84,10 @@ nodeLifecycleObj.Status.Conditions = out.Conditions
 ## §7. 参考
 
 - ADR-0003 v2 §IMS-1 node-lifecycle-operator
+- ADR-0017 §2 Decision D 2nd chart packaging 优先级(P11-T-004)
 - arch §5.9 node-lifecycle-operator
 - StarlingX node lifecycle 模型(reference inspiration · adapted for K8s-native context)
 - CLAUDE.md §14.2 module DESIGN.md convention
-- `docs/devlog/phase-10-t007.md` 实施 trail
+- `docs/devlog/phase-10-t007.md` controller body 实施 trail
+- `docs/devlog/phase-11-t004.md` chart packaging + cmd wire 实施 trail
+- `deploy/helm-charts/node-lifecycle-operator/` 8 file(Chart.yaml + values.yaml + 5 templates + .helmignore + crds/)

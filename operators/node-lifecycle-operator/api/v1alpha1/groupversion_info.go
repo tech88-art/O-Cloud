@@ -26,7 +26,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
 var (
@@ -35,4 +37,25 @@ var (
 		Group:   "lifecycle.ocloud.edge.example.com",
 		Version: "v1alpha1",
 	}
+
+	// SchemeBuilder is used to add go types to the GroupVersionKind scheme.
+	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
+
+	// AddToScheme adds the types in this group-version to the given scheme.
+	// Called from cmd/main.go at startup (P11-T-004 chart wire).
+	AddToScheme = SchemeBuilder.AddToScheme
 )
+
+func init() {
+	SchemeBuilder.Register(&NodeLifecycle{}, &NodeLifecycleList{})
+}
+
+// Resource is a helper to map a string to a GroupResource for client-go
+// kind discovery. Unused by the controller body but kept symmetric with
+// other Kubebuilder-generated packages.
+func Resource(resource string) schema.GroupResource {
+	return GroupVersion.WithResource(resource).GroupResource()
+}
+
+// Ensure runtime is imported (used transitively by SchemeBuilder.Register).
+var _ = runtime.Object(&NodeLifecycle{})

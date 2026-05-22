@@ -427,7 +427,7 @@ operators/o2-dms-adapter/
 
 K8s Profile only (per ADR-0013 §2 Decision A) · HTTP REST per O-RAN ALLIANCE WG6 O2 IMS Interface Specification R003-v04.00 (per ADR-0013 §2 Decision B) · reflects NPUSlicePool / NPUSliceAllocation / ModelService / NPUVerticalScaler 内部资源到 O-RAN 北向 (per ADR-0013 §2 Decision C 6-row mapping table) · 独立 binary · informer-based read 路径 + client.Create/Delete 写路径 (ADR-0013 §2 Decision D) · 详细设计 + NB endpoint catalog + 推翻条件见 **ADR-0013** (`docs/adr/0013-o2-dms-adapter.md`)。
 
-### 5.9 节点生命周期 `node-lifecycle-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body）
+### 5.9 节点生命周期 `node-lifecycle-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body · Phase 11 P11-T-004 chart packaging LANDED）
 
 IMS 7 服务剩 3 项之一(per ADR-0003 v2 + ADR-0001 v3 §6)· StarlingX node lifecycle 状态机 adapted for O-Cloud edge platform context(multi-site Karmada + edge KubeEdge nodes)。
 

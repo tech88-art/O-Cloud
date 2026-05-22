@@ -96,6 +96,11 @@ v1 曾选 Option C(Phase 1 W4 加占位 UI + Phase 3 真实)。用户复盘"根�
 
 **Pure-Go Reconcile pattern**(3 IMS modules 共同 idiom):state machine logic decoupled from controller-runtime wiring · 单元测试无 envtest 需求 · cross-controller awareness 方便(IMS-3 reboot 时调 IMS-1 NodeLifecycle state · import `internal/state.IsPermitted` 验证转换)。Phase 11+ chart packaging stream(per ADR-0016 §3 真生产化 spine)将 4 chart 联动:IMS-1 + IMS-2 + IMS-3 + demo-backend · 每 chart 加 cmd/main.go controller-runtime manager + Dockerfile + RBAC + envtest 真集群 verify。
 
+**Phase 11 W1 chart packaging 状态(2026-05-22 P11-T-003 + T004 + T005 + T006)**:
+- **demo-backend** P11-T-003 commit `1a46edc`:chart `deploy/helm-charts/demo-backend/` 9 file + `backend/pkg/cache/leaderelect.go` client-go tools/leaderelection wire + main.go cfg.Lease.Enabled 分支 + Handler.CacheSingleton 字段(per ADR-0015 §3.3 + ADR-0017 §2 Decision D 1st)
+- **IMS-1 node-lifecycle-operator** P11-T-004(本 commit):chart `deploy/helm-charts/node-lifecycle-operator/` 8 file + `operators/node-lifecycle-operator/cmd/main.go` controller-runtime manager wire + `internal/controller/reconciler.go` ctrl.Reconciler shell + `api/v1alpha1/groupversion_info.go` SchemeBuilder + AddToScheme + Dockerfile + go.mod controller-runtime/client-go added · `go build ./...` clean + `go test -vet=off ./...` PASS + `helm lint --strict` clean + `helm template` 7 kind render OK
+- **IMS-2 + IMS-3** P11-T-005 / T006:pattern reuse(serial main agent default per ADR-0017 §2 Decision D · subagent batch eligible per phase11-plan §2 if user 显式 batch)
+
 **Phase 9 W2 P9-T-105 实际 outcome(2026-05-21)**:**LANDED 3 modules scaffold-only**。每模块结构:
 - **group** per kubebuilder per-operator convention(不用 plan 写的 bare `ocloud.edge.example.com` group · 同 P9-T-002-fix-001 group correction spirit · 无现存 CRD 使用 bare group):
   - `node-lifecycle-operator` → `lifecycle.ocloud.edge.example.com/v1alpha1` · CRD: `NodeLifecycle`(8 state enum: Provisioning/Bootstrap/Available/DegradedAvailable/Unavailable/Locked/Unlocked/RebootRequired · StarlingX adapted)

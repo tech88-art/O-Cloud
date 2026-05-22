@@ -1,0 +1,117 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "node-lifecycle-operator.fullname" . }}-manager
+  labels:
+    {{- include "node-lifecycle-operator.labels" . | nindent 4 }}
+rules:
+  # NodeLifecycle CRD verbs (ADR-0003 v2 IMS-1)
+  - apiGroups:
+      - lifecycle.ocloud.edge.example.com
+    resources:
+      - nodelifecycles
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - lifecycle.ocloud.edge.example.com
+    resources:
+      - nodelifecycles/status
+    verbs:
+      - get
+      - update
+      - patch
+  # Node read + patch for lifecycle-driven cordon/drain (per ADR-0003 v2
+  # IMS-1 §state-machine)
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/status
+    verbs:
+      - get
+      - patch
+  # Events emission (Reconciler EventRecorder)
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "node-lifecycle-operator.fullname" . }}-manager
+  labels:
+    {{- include "node-lifecycle-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "node-lifecycle-operator.fullname" . }}-manager
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "node-lifecycle-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- if .Values.leaderElection.enabled }}
+---
+# Leader-election Lease access (controller-runtime convention)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "node-lifecycle-operator.fullname" . }}-leader-election
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "node-lifecycle-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "node-lifecycle-operator.fullname" . }}-leader-election
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "node-lifecycle-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "node-lifecycle-operator.fullname" . }}-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "node-lifecycle-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
