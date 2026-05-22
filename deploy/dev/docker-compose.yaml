@@ -33,7 +33,10 @@ services:
     # Mock data path inside container is relative to /app/configs.
     volumes:
       - ../../backend/configs/config.dev.yaml:/app/configs/config.yaml:ro
-      - ../../configs/mock-data:/app/configs/mock-data:ro
+      # Mock fixture path: config.dev.yaml uses `../configs/mock-data/...` (relative
+      # to backend/ on host). Container cwd is /app, so the same relative path
+      # resolves to /configs/mock-data/... — mount data there to match.
+      - ../../configs/mock-data:/configs/mock-data:ro
     ports:
       - "8080:8080"
     networks:
@@ -63,8 +66,9 @@ services:
       - -c
       - |
         corepack enable && \
-        pnpm install --frozen-lockfile=false && \
-        pnpm dev --host 0.0.0.0 --port 3000
+        corepack prepare pnpm@9.15.0 --activate && \
+        pnpm install --ignore-workspace --frozen-lockfile=false && \
+        pnpm --ignore-workspace dev --host 0.0.0.0 --port 3000
     volumes:
       - ../../frontend:/app
       # Anonymous volume protects host node_modules from being clobbered
@@ -115,7 +119,7 @@ services:
 
   # ------------------------------------------------------------------ grafana
   grafana:
-    image: grafana/grafana-oss:11.5.0
+    image: grafana/grafana-oss:11.4.0
     container_name: ocloud-dev-grafana
     environment:
       # Dev defaults — clearly marked. Change for any non-local use.
@@ -180,6 +184,29 @@ services:
       - ocloud-dev
     profiles:
       - ascend
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------ node-exporter (P11-fix-002)
+  # Host-level CPU / memory / network metrics for the node-detail dashboard.
+  # On Windows Docker Desktop the rootfs bind shows the Linux VM's view,
+  # not the real host — synthetic enough for demo, real on Linux hosts.
+  # The static label `node=worker-site-a-01` lets the dashboard's
+  # `$node` selector resolve under any worker name in set-a-small.
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: ocloud-dev-node-exporter
+    command:
+      - --path.rootfs=/host
+      - --collector.disable-defaults
+      - --collector.cpu
+      - --collector.meminfo
+      - --collector.netdev
+      - --collector.filesystem
+      - --collector.loadavg
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - ocloud-dev
     restart: unless-stopped
 
   # ------------------------------------------------------------------ loki (opt-in)

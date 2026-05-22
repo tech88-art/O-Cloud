@@ -1,4 +1,4 @@
-import { Space, Table } from 'antd';
+import { Progress, Space, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import { SliceBindingBadge } from '@/components/SliceBindingBadge';
@@ -52,6 +52,15 @@ export function WorkloadTable({
   // workload has bound NPU slices yet.
   const anyHasSliceBindings = data.some(
     (w) => (w.sliceBindings?.length ?? 0) > 0,
+  );
+
+  // P11-T-105: same per-column visibility pattern for the 3 Phase 11
+  // indicators. Each column appears only when at least one row has the
+  // data, so pre-Phase 11 / single-cluster / no-DMS demos stay compact.
+  const anyHasO2DMSExposed = data.some((w) => w.o2DMSExposed !== undefined);
+  const anyHasQuotaUsage = data.some((w) => w.quotaUsage !== undefined);
+  const anyHasScaleHistory = data.some(
+    (w) => (w.scaleHistory?.length ?? 0) > 0,
   );
 
   const columns: ColumnsType<Workload> = [
@@ -128,6 +137,89 @@ export function WorkloadTable({
               <SliceBindingBadge key={`${b.nodeName}-${b.device}-${i}`} binding={b} />
             ))}
           </Space>
+        );
+      },
+    });
+  }
+
+  // P11-T-105 indicator columns(per ADR-0017 §2 Decision A 主线 3 +
+  // ADR-0013/0014/0012 §forward notes). Each column hidden until at
+  // least one workload row carries the corresponding field.
+  if (anyHasO2DMSExposed) {
+    columns.push({
+      title: t('workloads.o2DMSExposed'),
+      key: 'o2DMSExposed',
+      width: 110,
+      render: (_: unknown, row: Workload) => {
+        if (row.o2DMSExposed === undefined) return '-';
+        return row.o2DMSExposed ? (
+          <Tag color="blue" data-testid={`workload-o2dms-${workloadRowKey(row)}`}>
+            {t('workloads.o2DMSExposedYes')}
+          </Tag>
+        ) : (
+          <Tag data-testid={`workload-o2dms-${workloadRowKey(row)}`}>
+            {t('workloads.o2DMSExposedNo')}
+          </Tag>
+        );
+      },
+    });
+  }
+  if (anyHasQuotaUsage) {
+    columns.push({
+      title: t('workloads.quotaUsage'),
+      key: 'quotaUsage',
+      width: 180,
+      render: (_: unknown, row: Workload) => {
+        const q = row.quotaUsage;
+        if (!q) return '-';
+        const pct = q.cap > 0 ? Math.round((q.used / q.cap) * 100) : 0;
+        const status = pct >= 90 ? 'exception' : pct >= 70 ? 'normal' : 'active';
+        return (
+          <Tooltip
+            title={t('workloads.quotaUsageTooltip', {
+              used: q.used,
+              cap: q.cap,
+              remaining: q.remaining,
+              algorithm: q.rateAlgorithm ?? 'slidingWindow',
+            })}
+          >
+            <Progress
+              percent={pct}
+              size="small"
+              status={status}
+              data-testid={`workload-quota-${workloadRowKey(row)}`}
+            />
+          </Tooltip>
+        );
+      },
+    });
+  }
+  if (anyHasScaleHistory) {
+    columns.push({
+      title: t('workloads.scaleHistory'),
+      key: 'scaleHistory',
+      width: 130,
+      render: (_: unknown, row: Workload) => {
+        const events = row.scaleHistory ?? [];
+        if (events.length === 0) return '-';
+        // Mini summary: total count + last direction(↑/↓ arrow).
+        const last = events[events.length - 1];
+        const arrow = last.direction === 'up' ? '↑' : '↓';
+        return (
+          <Tooltip
+            title={t('workloads.scaleHistoryTooltip', {
+              count: events.length,
+              lastTime: last.timestamp,
+              lastDir: last.direction,
+            })}
+          >
+            <Tag
+              color={last.direction === 'up' ? 'green' : 'orange'}
+              data-testid={`workload-scalehistory-${workloadRowKey(row)}`}
+            >
+              {arrow} {events.length}
+            </Tag>
+          </Tooltip>
         );
       },
     });

@@ -1,0 +1,26 @@
+apiVersion: v2
+name: bare-metal-provisioning-operator
+description: |
+  O-Cloud IMS-3 bare-metal-provisioning-operator — Phase 10 P10-T-101
+  controller body(13 transitions · 7 ProvisioningStates · Metal3-adapted
+  · 17 unit tests · BMCError short-circuit + recovery · per ADR-0003 v2
+  IMS-3)+ Phase 11 P11-T-006 helm chart packaging + cmd/main.go
+  controller-runtime manager wire + Redfish/IPMI stub BMC clients +
+  Secret 解析 username/password。Phase 12+ real Redfish/IPMI SDK calls.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ocloud
+  - ims
+  - bare-metal
+  - provisioning
+  - redfish
+  - ipmi
+  - operator
+home: https://github.com/tech88-art/O-Cloud
+sources:
+  - https://github.com/tech88-art/O-Cloud/tree/main/operators/bare-metal-provisioning-operator
+maintainers:
+  - name: O-Cloud team
+    url: https://github.com/tech88-art/O-Cloud

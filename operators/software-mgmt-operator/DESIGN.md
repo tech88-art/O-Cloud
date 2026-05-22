@@ -13,10 +13,14 @@
 - **Status**:`AppliedVersion` + 3 counts(Target/Applied/Failed)+ `Conditions[]`(Progressing/Completed/Failed/Degraded)
 - **3 rollout strategies**:RollingUpdate(MaxUnavailable cap)/ Parallel / Sequential
 
-## §3. 生命周期
+## §3. 生命周期(P11-T-005 chart wiring LANDED)
 
+- **启动**:cmd/main.go 走 controller-runtime manager + SoftwareBundleReconciler register + healthz/readyz + `--leader-elect`(chart values.leaderElection.enabled default true)· LeaderElectionID `software-mgmt-operator.softwaremgmt.ocloud.edge.example.com`。
 - **Reconcile 触发**:SoftwareBundle 变化 / Node 变化(NodeSelector match)/ 周期 requeue(steady 30s · progressing 5s)
-- **Phase 11+**:cmd/main.go controller-runtime manager + chart packaging
+- **Reconciler shell**(`internal/controller/reconciler.go`):fetch SoftwareBundle + list Nodes + filter by NodeSelector + 从 annotations `applied/in-progress/failed-nodes` 解析 observed state + 调 `ReconcileOnce` + Status().Update + EventRecorder emit。
+- **退出**:graceful shutdown 走 controller-runtime SIGTERM handler · leader auto-release Lease。
+- **Health probes**:`/healthz` + `/readyz` · chart deployment consume。
+- **Metrics**:controller-runtime metricsserver 默认 :8080 · ServiceMonitor opt-in。
 
 ## §4. 错误处理
 
@@ -50,7 +54,10 @@ bundleObj.Status = out.NextStatus
 ## §7. 参考
 
 - ADR-0003 v2 §IMS-2 software-mgmt-operator
+- ADR-0017 §2 Decision D 3rd chart packaging 优先级(P11-T-005)
 - arch §5.10 software-mgmt-operator
 - StarlingX sw-deployment 模型(reference)
 - CLAUDE.md §14.2
-- `docs/devlog/phase-10-t008.md`
+- `docs/devlog/phase-10-t008.md` controller body 实施 trail
+- `docs/devlog/phase-11-t005.md` chart packaging + cmd wire 实施 trail
+- `deploy/helm-charts/software-mgmt-operator/` 8 file

@@ -1,0 +1,22 @@
+apiVersion: v2
+name: software-mgmt-operator
+description: |
+  O-Cloud IMS-2 software-mgmt-operator — Phase 10 P10-T-008 controller body
+  (3 rollout strategies RollingUpdate/Parallel/Sequential · 15 unit tests
+  · per ADR-0003 v2 IMS-2) + Phase 11 P11-T-005 helm chart packaging +
+  cmd/main.go controller-runtime manager wire + CRD bundle install hook.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ocloud
+  - ims
+  - software-mgmt
+  - rollout
+  - operator
+home: https://github.com/tech88-art/O-Cloud
+sources:
+  - https://github.com/tech88-art/O-Cloud/tree/main/operators/software-mgmt-operator
+maintainers:
+  - name: O-Cloud team
+    url: https://github.com/tech88-art/O-Cloud

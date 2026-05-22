@@ -305,8 +305,16 @@ describe('WorkloadsPage — filter passthrough', () => {
     // First call has no status filter.
     await waitFor(() => {
       // P6-T-103: page always opts in to includeSliceBindings.
+      // P11-T-105: page also opts in to includeO2DMSExposed +
+      // includeQuotaUsage + includeScaleHistory by default(per
+      // pages/Workloads/index.tsx · backend cost is small).
       expect(mockGet).toHaveBeenCalledWith('/api/v1/workloads', {
-        params: { includeSliceBindings: true },
+        params: {
+          includeSliceBindings: true,
+          includeO2DMSExposed: true,
+          includeQuotaUsage: true,
+          includeScaleHistory: true,
+        },
       });
     });
 
@@ -324,7 +332,13 @@ describe('WorkloadsPage — filter passthrough', () => {
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith('/api/v1/workloads', {
-        params: { status: 'running', includeSliceBindings: true },
+        params: {
+          status: 'running',
+          includeSliceBindings: true,
+          includeO2DMSExposed: true,
+          includeQuotaUsage: true,
+          includeScaleHistory: true,
+        },
       });
     });
   });

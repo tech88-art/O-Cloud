@@ -35,11 +35,29 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- if .Values.auth.bearerToken }}
           env:
+            # P11-T-106 · ADR-0017 §2 Decision A Stream 5 part 1 · authn
+            # mode + OIDC + TokenReview wiring. cmd/main.go startup reads
+            # O2DMS_AUTH_MODE → constructs the appropriate authn
+            # Validator(per Phase 10 P10-T-103 substrate).
+            - name: O2DMS_AUTH_MODE
+              value: {{ .Values.auth.mode | quote }}
+            {{- if .Values.auth.bearerToken }}
             - name: O2DMS_BEARER_TOKEN
               value: {{ .Values.auth.bearerToken | quote }}
-          {{- end }}
+            {{- end }}
+            {{- if .Values.auth.oidc.issuerUrl }}
+            - name: O2DMS_OIDC_ISSUER_URL
+              value: {{ .Values.auth.oidc.issuerUrl | quote }}
+            {{- end }}
+            {{- if .Values.auth.oidc.audience }}
+            - name: O2DMS_OIDC_AUDIENCE
+              value: {{ .Values.auth.oidc.audience | quote }}
+            {{- end }}
+            {{- if .Values.auth.tokenReview.serviceAccountName }}
+            - name: O2DMS_TOKENREVIEW_SA_NAME
+              value: {{ .Values.auth.tokenReview.serviceAccountName | quote }}
+            {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

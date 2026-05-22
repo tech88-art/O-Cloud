@@ -86,6 +86,17 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	// P11-T-008 · ADR-0017 §2 Decision D 6th 优先级 + ADR-0010
+	// known-issues #13 5-phase carry closer. Read DEFAULT_PROXY_IMAGE env
+	// (chart `defaults.proxyImage` → templates/deployment.yaml env block)
+	// → set controller.DefaultProxyImage var so EffectiveProxyImage()
+	// returns this value when per-CR Spec.PDPair.ProxyImage is empty.
+	if v := os.Getenv("DEFAULT_PROXY_IMAGE"); v != "" {
+		controller.DefaultProxyImage = v
+		setupLog.Info("DEFAULT_PROXY_IMAGE chart default applied",
+			"value", v, "task", "P11-T-008")
+	}
+
 	var tlsOpts []func(*tls.Config)
 	if !enableHTTP2 {
 		tlsOpts = append(tlsOpts, func(c *tls.Config) {

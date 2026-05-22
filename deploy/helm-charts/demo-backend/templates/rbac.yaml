@@ -1,0 +1,42 @@
+{{- if .Values.leaseElection.enabled -}}
+# RBAC for demo-backend Lease leader-elect (ADR-0015 §2 Decision B).
+# Scoped to the Lease namespace (ocloud-system by default). Read-only
+# from the SA's perspective on most K8s resources — Lease object is the
+# only thing demo-backend mutates at the K8s API level.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "demo-backend.fullname" . }}-lease
+  namespace: {{ .Values.leaseElection.namespace }}
+  labels:
+    {{- include "demo-backend.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "demo-backend.fullname" . }}-lease
+  namespace: {{ .Values.leaseElection.namespace }}
+  labels:
+    {{- include "demo-backend.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "demo-backend.fullname" . }}-lease
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "demo-backend.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

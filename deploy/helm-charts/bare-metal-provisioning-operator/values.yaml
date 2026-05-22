@@ -1,0 +1,109 @@
+# Default values for bare-metal-provisioning-operator chart (Phase 11 P11-T-004).
+# Per ADR-0003 v2 IMS-1 + plan §3 P11-T-004 acceptance.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/tech88-art/o-cloud/bare-metal-provisioning-operator
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Leader-election ID for the controller-runtime manager (per ADR-0017 §2
+# Decision D 1st 优先级 demo-backend pattern · same library).
+leaderElection:
+  enabled: true
+  resourceLockName: bare-metal-provisioning-operator-leader
+
+# Metrics endpoint (controller-runtime metrics serves on :8080 default ·
+# Prometheus ServiceMonitor opt-in)
+metrics:
+  port: 8080
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+# Health probe (controller-runtime health serves on :8081 default)
+health:
+  port: 8081
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# crds.install drives whether the chart applies CRD YAML via pre-install
+# hook. Set to false when CRDs are managed out-of-band (e.g. by GitOps
+# tooling like Argo CD's IgnoreDifferences pattern · per Phase 12+
+# Karmada cross-cluster CRD propagation rather than chart install hook).
+crds:
+  install: true
+
+# bmc holds documentation defaults for the BareMetalNode.Spec.BMC field.
+# Each managed bare-metal node still needs its own BareMetalNode CR + its
+# own Secret. These chart values are for *operator-level* defaults
+# (logging / fallback timeouts · Phase 12+) and BMC client-stub behavior.
+#
+# Spec example (operators stamp this on each BareMetalNode CR):
+#   spec:
+#     bmc:
+#       address: redfish+https://192.0.2.10/redfish/v1/Systems/1
+#       credentialsRef:
+#         name: bmc-node-01-creds
+#         namespace: ocloud-system  # default
+#
+# Secret example (operators apply once per node):
+#   apiVersion: v1
+#   kind: Secret
+#   metadata:
+#     name: bmc-node-01-creds
+#     namespace: ocloud-system
+#   type: Opaque
+#   data:
+#     username: <base64 user>
+#     password: <base64 pass>
+#
+# Phase 12+ Vault / external-secrets path per ADR-0018 §4 (c) replaces
+# inline Secret with dynamic credential injection.
+bmc:
+  # supportedSchemes documents the BMC address prefixes the controller
+  # accepts (informational only · enforcement lives in
+  # internal/controller/reconciler.go buildBMC).
+  supportedSchemes:
+    - "redfish://"
+    - "redfish+https://"
+    - "ipmi://"
+  # defaultSecretNamespace matches CRD kubebuilder default. The chart
+  # ensures Secret RBAC covers this namespace (per templates/rbac.yaml).
+  defaultSecretNamespace: ocloud-system

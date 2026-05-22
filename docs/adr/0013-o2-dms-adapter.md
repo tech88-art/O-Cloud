@@ -202,6 +202,7 @@ Phase 8 (`phase-8-complete` @ e24f365 + P8-fix-001 series · CI gate dev HEAD �
 > 🆕 **Phase 10 polish**:authn/z 完整实现 — OIDC + K8s SA + TokenReview + RBAC enforcement(per Open question (c))· production-grade NB API gateway 替代 Phase 9 静态 bearer。
 
 > 🆕 **Phase 10 polish**:Karmada multi-cluster federation — O2 DMS Adapter 部署在 Karmada control plane · deploymentManager 反映成员 cluster list · ModelService 跨 cluster propagation 通过 PropagationPolicy · cross-ref ADR-0001 §6 + arch §13 Phase 9 安全模型 row 子项 "Karmada RBAC 联动"。
+> 🆕 **Phase 11 T002/T103 子契约**(per ADR-0018 §2 Decision B + Decision D):本 forward note 的 implementation contract 由 ADR-0018 §2 Decision D lifted-informer pattern 承载 — O2 DMS Adapter binary 部署在 host cluster `ocloud-system` namespace · 调 Karmada karmada-aggregated-apiserver path · informer ModelService + NPUSlicePool 跨 member1/member2 aggregation · NB endpoint `GET /o2dms/v1/deploymentManagers` return Karmada CP + member cluster list(由 ClusterResource 同源)· `GET /o2dms/v1/deploymentItems` return aggregated ModelService list 跨 member · 加 `cluster` 字段 per item · 反映各 member cluster 真实部署位置。PropagationPolicy 走 `deploy/karmada/policies/propagation-modelservice.yaml`(T103 落地 per ADR-0018 §2 Decision B)。
 
 > 🆕 **Phase 10 polish**:O2 IMS R1 R004-v07.00.00 upgrade evaluate — 基于 §1 Context citation 强度 [B · ATIS MVP Feb 2025 二手源] + T104 body landing 前 re-WebFetch 直接源结果(Open question (a))· 若 R004 已成 industry baseline + breaking changes manageable → 升级 lock 到 R004 · 否则 stay R003 + Phase 11+ re-eval。
 

@@ -83,6 +83,8 @@ operators/npu-dra-driver/
 
 > 🆕 **2026-05-21 update (P8-T-001 / ADR-0012 · Phase 8 partition path)**:Phase 8 引入 **NPUVerticalScaler CRD**(详 **ADR-0012 §4 CRD schema**)消费本 ADR §4 NPUSliceTemplate ref + AllocateBundle 控制器 wiring(P8-T-008 · 本 ADR §6 Allocator 升级)。Phase 8 W2 BETA-GATED 路径(T101+T102)若 light up Partitionable Devices Beta(K8s 1.36),partition-aware allocator(本 ADR §4 升级路径第 2 行)与 NPUVerticalScaler 协同 — NPUVerticalScaler patch ModelService.spec.template.sliceTemplate → claim_controller 按 label 解析 → AllocateBundle 内部选 partition 或 whole-NPU candidate(per `docs/research/k8s-partitionable-devices-spike.md` §5 sibling preference)。Beta 路径 default = doc-only refresh(ADR-0011 §3 spirit · spike §1 GA timing unconfirmed)。详 **ADR-0012 §"Scaling decision flow"** + ADR-0012 §"7. Forward notes" Phase 10 候选行。
 
+> 🆕 **2026-05-22 update (P11-T-202 · DECISION-GATED · default deferred Phase 12+)**:Phase 11 W3 entry re-evaluation outcome = **deferred Phase 12+**。当前 baseline K8s 1.34.3(Phase 10 P10-T-003 三件套 lock)未升 1.36 · KEP-4815 仍 Beta · plan §4 P11-T-202 "default reject if KEP-4815 still Beta or 1.36 not GA" 命中。partition-aware allocator + ADR §4 升级路径 第 2 行 land 留 Phase 12+ K8s 1.36+ baseline bump cohort(per ADR-0016 §3 Stream 6)。本 ADR §4 升级路径 1 行(NPUSliceTemplate fallback)继续是 Phase 7-11 主路径 · 累计 2 次推迟(Phase 10 P10-T-202 1st defer · 本 P11-T-202 2nd defer)与 K8s baseline bump trigger 联动 · 不与 lab gating 5th carry / Volcano 3rd carry 同一 policy。
+
 ### 5. Phase 5 实施要点(immediate next-phase work)
 
 按 Phase 5 入口顺序列出:

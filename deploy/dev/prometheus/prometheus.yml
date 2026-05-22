@@ -43,3 +43,15 @@ scrape_configs:
         labels:
           service: ascend-npu-exporter-plus
           source: dev-simulator
+
+  # Host node-exporter (P11-fix-002) — backs the node-detail dashboard's
+  # CPU / memory / network panels. Synthetic `node` label so the
+  # dashboard `$node` template resolves under any worker-site-a-XX
+  # value in set-a-small; on a real cluster this is one job per node.
+  - job_name: node-exporter
+    static_configs:
+      - targets:
+          - node-exporter:9100
+        labels:
+          service: node-exporter
+          node: worker-site-a-01

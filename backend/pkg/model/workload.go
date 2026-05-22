@@ -27,6 +27,50 @@ type Workload struct {
 	// `GET /api/v1/workloads/{ns}/{name}` always populates when the
 	// underlying source has data.
 	SliceBindings []SliceBinding `json:"sliceBindings,omitempty"`
+
+	// O2DMSExposed (P11-T-105) is true if the workload was instantiated
+	// via the O2 DMS Adapter NB endpoint. Backend determines this by
+	// checking the owner ModelService for annotation
+	// `dms.o2.ocloud.edge.example.com/exposed: "true"` (the O2 DMS
+	// Adapter stamps it on its created ModelServices). Populated when
+	// the caller passes `?includeO2DMSExposed=true` (list endpoint) or
+	// always on detail endpoint when source provides it.
+	O2DMSExposed *bool `json:"o2DMSExposed,omitempty"`
+
+	// QuotaUsage (P11-T-105) summarises the workload's namespace Quota
+	// consumption. Populated when `?includeQuotaUsage=true`. Joined from
+	// inference-operator Quota CRD + NPUVerticalScaler scaleHistory
+	// ring-buffer when crd source is configured.
+	QuotaUsage *QuotaUsageSummary `json:"quotaUsage,omitempty"`
+
+	// ScaleHistory (P11-T-105) is the rolling 10-entry scale-event log
+	// for the workload's bound NPUVerticalScaler. Populated when
+	// `?includeScaleHistory=true`. Empty when workload has no bound
+	// scaler.
+	ScaleHistory []ScaleEvent `json:"scaleHistory,omitempty"`
+}
+
+// QuotaUsageSummary (P11-T-105 · per ADR-0014 §7 forward note + Phase 11
+// frontend Workload page progress bar surface). cap = Quota.spec.
+// enforcement.maxSliceAllocations · used = Quota.status.usage.current
+// SliceAllocations · remaining = max(0, cap - used).
+type QuotaUsageSummary struct {
+	Cap                 int32  `json:"cap"`
+	Used                int32  `json:"used"`
+	Remaining           int32  `json:"remaining"`
+	ScaleEventsLast5min int32  `json:"scaleEventsLast5min,omitempty"`
+	RateAlgorithm       string `json:"rateAlgorithm,omitempty"` // tokenBucket | slidingWindow
+}
+
+// ScaleEvent (P11-T-105 · per ADR-0012 §5 NPUVerticalScaler.scaleHistory
+// forward note + Phase 11 frontend ECharts timeline surface). One entry
+// of NPUVerticalScaler.status.scaleHistory rolling ring-buffer.
+type ScaleEvent struct {
+	Timestamp    time.Time `json:"timestamp"`
+	Direction    string    `json:"direction"` // up | down
+	FromTemplate string    `json:"fromTemplate,omitempty"`
+	ToTemplate   string    `json:"toTemplate,omitempty"`
+	Reason       string    `json:"reason,omitempty"`
 }
 
 // SliceBinding mirrors components.schemas.SliceBinding (P6-T-102).
@@ -147,6 +191,21 @@ type WorkloadFilter struct {
 	// keeps the list-endpoint response shape unchanged for callers
 	// that don't ask for the data.
 	IncludeSliceBindings bool
+
+	// IncludeO2DMSExposed (P11-T-105) opts in to populating
+	// Workload.O2DMSExposed. Mirror of api-contract.yaml
+	// ?includeO2DMSExposed query param.
+	IncludeO2DMSExposed bool
+
+	// IncludeQuotaUsage (P11-T-105) opts in to populating
+	// Workload.QuotaUsage. Mirror of api-contract.yaml
+	// ?includeQuotaUsage query param.
+	IncludeQuotaUsage bool
+
+	// IncludeScaleHistory (P11-T-105) opts in to populating
+	// Workload.ScaleHistory. Mirror of api-contract.yaml
+	// ?includeScaleHistory query param.
+	IncludeScaleHistory bool
 }
 
 // LogOptions is the Go-side aggregate of GET /workloads/.../logs query params.

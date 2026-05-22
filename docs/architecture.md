@@ -46,6 +46,7 @@
 |  | Phase 8 | 忙闲时垂直伸缩 |
 | **M4 工程化对外** | Phase 9 | O2 DMS 接口 |
 |  | Phase 10 | 真实硬件对接 + 演示打磨 |
+| **M5 真生产化 foundation subset** | Phase 11 | chart packaging spine + Karmada propagation 第一波 + Frontend src/ Workload page extension(per ADR-0017 §2 Decision B foundation 后缀 anti-over-promise · 完整 production hardening 留 Phase 12+/M6 cohort) |
 
 ### 1.4 Phase 0 交付物
 
@@ -188,6 +189,8 @@ flowchart LR
 | 路由 | React Router | 6 | |
 | 国际化 | react-i18next | | 中英双语 |
 
+> **Phase 11 W2 P11-T-105 forward note**(per ADR-0017 §2 Decision A 主线 3 + §4 Open question (b)):Frontend src/ Workload page extension 3 indicators(O2 DMS exposed badge + Quota usage progress bar + scaleHistory ECharts timeline)沿用上表技术栈 · ECharts 5 + AntD 5 + react-query 缓存 · i18n key extraction(en-US + zh-CN 双语)entry meeting confirm。
+
 ### 3.3 K8s 生态
 
 | 能力 | 选型 | 替代方案 | 选定理由 |
@@ -310,7 +313,7 @@ backend/
 │   │   └── mock/                   # Mock 实现（Phase 1）
 │   ├── aggregator/                 # 跨源聚合（拓扑、应用详情）
 │   ├── config/                     # 配置加载
-│   ├── cache/                      # 内存 LRU(Phase 10 起 + K8s Lease 选主 single-active failover per ADR-0015)
+│   ├── cache/                      # 内存 LRU(Phase 10 起 + K8s Lease 选主 single-active failover per ADR-0015)(Phase 11 P11-T-003 LANDED · client-go tools/leaderelection wire + chart deploy/helm-charts/demo-backend/ 9 file 含 namespaced Lease Role/RoleBinding · 详 backend/docs/cache.md §3)
 │   └── model/                      # DTO/VO 定义
 ├── configs/
 │   ├── config.example.yaml         # 数据源映射配置
@@ -375,9 +378,11 @@ operators/pool-operator/
 └── main.go
 ```
 
-### 5.4 推理服务 Operator `inference-operator`（Phase 5）
+### 5.4 推理服务 Operator `inference-operator`（Phase 5 · Phase 11 P11-T-008 chart DEFAULT_PROXY_IMAGE env wire LANDED）
 
 管理 vllm-ascend Deployment 生命周期（含单实例与 PD 双实例两种拓扑），内置 PD Router（基于 vllm-ascend `disaggregated_prefill_v1/proxy_server.py` 改造为 K8s Service + Controller），集成 NUMA / HCCS 亲和调度与自动伸缩，对上提供 `ModelService` 高阶 CRD（替代原 KServe `InferenceService` 抽象）。详见 ADR-0002。
+
+> **Phase 11 P11-T-008 forward note**(per ADR-0017 §2 Decision D 6th · ADR-0010 known-issues #13 5-phase carry closer):chart values.yaml 加 `defaults.proxyImage` field(默认空 · operators `--set defaults.proxyImage=quay.io/vllm-project/vllm-ascend:v0.18.0` 注入)· templates/deployment.yaml env 段 inject DEFAULT_PROXY_IMAGE · cmd/main.go startup hook `os.Getenv("DEFAULT_PROXY_IMAGE")` 设 `controller.DefaultProxyImage` package var · `EffectiveProxyImage(ms)` 消费顺序:per-CR `ms.Spec.PDPair.ProxyImage` → chart 默认 `DefaultProxyImage` → "" (no sidecar)。
 
 ### 5.5 NPU DRA Driver `npu-dra-driver`（Phase 4-7）
 
@@ -425,7 +430,7 @@ operators/o2-dms-adapter/
 
 K8s Profile only (per ADR-0013 §2 Decision A) · HTTP REST per O-RAN ALLIANCE WG6 O2 IMS Interface Specification R003-v04.00 (per ADR-0013 §2 Decision B) · reflects NPUSlicePool / NPUSliceAllocation / ModelService / NPUVerticalScaler 内部资源到 O-RAN 北向 (per ADR-0013 §2 Decision C 6-row mapping table) · 独立 binary · informer-based read 路径 + client.Create/Delete 写路径 (ADR-0013 §2 Decision D) · 详细设计 + NB endpoint catalog + 推翻条件见 **ADR-0013** (`docs/adr/0013-o2-dms-adapter.md`)。
 
-### 5.9 节点生命周期 `node-lifecycle-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body）
+### 5.9 节点生命周期 `node-lifecycle-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body · Phase 11 P11-T-004 chart packaging LANDED）
 
 IMS 7 服务剩 3 项之一(per ADR-0003 v2 + ADR-0001 v3 §6)· StarlingX node lifecycle 状态机 adapted for O-Cloud edge platform context(multi-site Karmada + edge KubeEdge nodes)。
 
@@ -440,7 +445,7 @@ operators/node-lifecycle-operator/
 
 CRD: `lifecycle.ocloud.edge.example.com/v1alpha1.NodeLifecycle`(cluster-scoped)· 8 state enum(Provisioning / Bootstrap / Available / DegradedAvailable / Unavailable / Locked / Unlocked / RebootRequired)· nodeName + desiredState + maintenanceWindow spec · state + conditions + lastTransitionTime status。**Phase 9 scaffold-only · controller body Phase 10**(per CLAUDE.md §14.2 scaffold pattern + ADR-0003 v2)。详 ADR-0003 v2 §"Phase 9 W2 P9-T-105 实际 outcome"。
 
-### 5.10 软件管理 `software-mgmt-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body）
+### 5.10 软件管理 `software-mgmt-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body · Phase 11 P11-T-005 chart packaging LANDED）
 
 IMS 7 服务剩 3 项之二 · StarlingX sw-deployment 适配 · 节点级软件 patches inventory + 升级 workflow。
 
@@ -455,7 +460,7 @@ operators/software-mgmt-operator/
 
 CRD: `softwaremgmt.ocloud.edge.example.com/v1alpha1.SoftwareBundle`(cluster-scoped)· version + patches[] + rolloutPolicy(RollingUpdate/Parallel/Sequential)+ nodeSelector spec · appliedVersion + appliedNodeCount + failedNodeCount status。**Phase 9 scaffold-only**。
 
-### 5.11 裸机配置 `bare-metal-provisioning-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body · 与 Phase 10 真机对接同期）
+### 5.11 裸机配置 `bare-metal-provisioning-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body · Phase 11 P11-T-006 chart + Redfish/IPMI stub LANDED · 真 BMC SDK Phase 12+）
 
 IMS 7 服务剩 3 项之三 · Metal3 / cluster-api BareMetalHost 适配 · BMC discovery + OS provisioning state machine。
 
@@ -785,6 +790,8 @@ Grafana dashboard 在 deploy 目录提前 provisioned，前端只是 iframe 切�
 - 多个成员集群（每个站点 1 套）
 - 演示后端连接 Karmada API + 各成员集群
 
+> **Phase 11 T002 forward note**(per ADR-0018 §2 Decision A topology):Phase 11 第一波 production-grade ship 1 host cluster(Karmada control-plane in `karmada-system` namespace · kindest/node v1.34.3 baseline lockstep)+ **2 member kind cluster minimum**(member1/member2 · 单 Docker daemon 模拟 multi-site)· Karmada upstream chart `karmada-charts/karmada` + 自研 `deploy/karmada/policies/*.yaml` PropagationPolicy selector templates · `karmadactl join` push mode default · cross-cluster informer via Karmada karmada-aggregated-apiserver lifted-informer pattern(O2 DMS Adapter + Quota ClusterQuota informer 各自 aggregation)· 真 多机房 / 跨 region / Karmada HA 留 Phase 12+ per ADR-0017 §4 (a) + ADR-0018 §4 (a)。
+
 ---
 
 ## 10. Phase 1 详细计划
@@ -876,6 +883,7 @@ ocloud-edge-platform/
 | Phase 9 | 多站点 demo backend 缓存重构(LRU 进程内 → Redis/singleton/stateless) | **in flight via ADR-0015 + T006 (2026-05-21 · P10-T-001)** — `docs/adr/0015-demo-backend-cache-strategy.md` Accepted · 路径 = §3.3 singleton with active-active failover(实际语义 active-standby + K8s Lease 选主 · 保留 `backend/pkg/cache/` in-process LRU + 0 new external dependency)· Lease 参数:`coordination.k8s.io/v1.Lease` `demo-backend-leader` in `ocloud-system` namespace · controller-runtime defaults(LeaseDuration 15s / RenewDeadline 10s / RetryPeriod 2s · 重用 inference-operator pattern)· chart `replicaCount: 2` default · degraded read-only mode + `X-Cache-Status: stale` header · 3 个新 Prometheus 指标 prefix `demo_backend_`(holder gauge + renewals counter + cache_hit_ratio)· spike `docs/research/demo-backend-cache-spike.md`(P9-T-107)是决策依据 · 实现落 T006(W1)· Phase 11+ Redis-backed additive rewrite path 保留 · 详 ADR-0015 §1-§5 |
 | Phase 9 | 安全模型(authn/z + multi-tenancy RBAC + NPUSlicePool admission policy) | **in flight via ADR-0014 (2026-05-21 · P9-T-002 + fix-001 group correction)** — multi-tenancy + NPU-aware Quota admission:`Quota` CRD namespace-scope(`inference.ocloud.edge.example.com/v1alpha1` per fix-001)+ 2 ValidatingAdmissionWebhooks(A: `npu.ocloud.edge.example.com` NPUSliceAllocation create · B: `inference.ocloud.edge.example.com` NPUVerticalScaler.spec patch · per ADR-0014 §2 Decision C)· colocated with inference-operator binary(cert-manager 重用 P5-T-101)· Phase 9 namespace-scope only(cluster-scope ClusterQuota Phase 10 polish per §6 Open question (b))· Karmada RBAC 联动 Phase 10 polish per ADR-0013 §6 forward note · authn/z full(OIDC + RBAC fine-grained)Phase 10 polish · 详 ADR-0014 §1 Context + §3 Consequences |
 | Phase 10 | 真实硬件对接 + 演示打磨(arch §1.3 Phase 10 row · M4 工程化对外 closer · 主线 2 真硬件 + 主线 3 完整 multi-pool / multi-tenant 演示) | **landed phase-10-complete (2026-05-21)** — 20 task chain T001-T204 · M4 工程化对外 milestone closer。**3 三件套**:T003 K8s 1.34 baseline bump + T004 scheduler framework migration(9 files NodeInfo/CycleState struct→interface)+ T005 NumaAffinity wrap body(known-issues #12 RESOLVED · 5-phase carry closer)。**3 IMS controller body 全 land**:T007 IMS-1 node-lifecycle + T008 IMS-2 software-mgmt + T101 IMS-3 bare-metal-provisioning(3 pure-Go Reconcile substrates · 共 33 state transitions + 46 unit tests · chart packaging deferred Phase 11+ stream)。**ADR forward note polish**:T103 O2 DMS authn substrate(3 Validator interface · OIDC + K8s SA + TokenReview · 10 tests)+ T104 Quota token-bucket(rate algorithm substrate · 6 tests)+ T106 ProxyImage chart flip(known-issues #13 RESOLVED · 5-phase carry closer)。**真硬件演示打磨**:T201 master-demo.sh 12-step orchestrator · synthetic ring fallback path 80% landed per ADR-0016 §2 Decision C(20% 缺真硬件 stamp · T102 5th carry · path P Phase 11+ entry meeting reconsider)。**3 deferred outcomes**:T102 LAB-CONDITIONAL 5th carry + T108 Volcano 2nd defer + T202 Partitionable Devices defer(全 default policy per ADR-0011 §3 + ADR-0016 §2)。**Phase 11+ chart packaging stream**(per ADR-0016 §3 真生产化 spine)将 4 chart 联动(IMS-1/2/3 + demo-backend)+ cmd/main.go controller-runtime manager + Dockerfile + RBAC + envtest 真集群 verify · 现 Phase 10 pure-Go substrate ready for integration · 详 `docs/checkpoint-phase10.md` §6 Phase 11+ handoff brief |
+| Phase 11 | 真生产化 foundation subset(arch §1.3 后续 M5 milestone foundation · 主线 1 chart packaging spine 闭环 + 主线 2 Karmada propagation 第一波 production-grade + 主线 3 Frontend src/ Workload page extension) | **landed phase-11-complete (2026-05-22)** — 20 task chain T001-T204 · M5 真生产化 foundation subset milestone CLOSER。**2 entry ADRs**:ADR-0017(4 Decisions A-D · 3 Open questions)+ ADR-0018 Karmada deployment topology(4 Decisions A-D · 3 Open questions)。**6 chart packaging spine 闭环**:T003 demo-backend(Lease leader-elect via client-go tools/leaderelection)+ T004/T005/T006 3 IMS chart + cmd/main.go controller-runtime manager wire + reconciler.go shells + SchemeBuilder + zz_generated.deepcopy + CRD YAML bundle(controller-gen 生成)+ Dockerfile + T007 sched-plugin NRT CRD bundle(Approach B vendored)+ numaAffinity default true 恢复(**known-issues #12 完整 close 循环最终步**)+ T008 inference-operator chart DEFAULT_PROXY_IMAGE env wire(**known-issues #13 5-phase carry closer**)。**Karmada propagation 第一波 production-grade**:T002 ADR-0018(host + 2 member kind cluster minimum 单机模拟 multi-site · upstream chart + 自研 PropagationPolicy selector templates · push mode default)+ T102 bootstrap scripts(install/uninstall + values + README)+ T103 4 PropagationPolicy YAML + O2 DMS karmada-aggregated-apiserver lifted-informer helper(5 unit tests)+ T104 ClusterQuota cluster-scope CRD + RecomputeTotal aggregation primitive(3 unit tests + bundled in inference-operator chart)。**Frontend src/ Workload page extension 完整**:T105 3 indicators(O2 DMS exposed badge + Quota progress bar + scaleHistory count tag)+ backend handler 3 query params bridge + i18n en-US + zh-CN 双语 + api-contract.yaml schema fields(QuotaUsageSummary + ScaleEvent)。**O2 DMS authn chart wiring**:T106 OIDC client + TokenReview SA env injection + conditional RBAC tokenreviews verb(per ADR-0017 §2 Decision A Stream 5 part 1 substrate · 完整 IdP deploy 留 Phase 12+)。**Lab gating 5th attempt default-defer 维持**:T101 deferred Phase 12+(ADR-0011 §3 carry tally 5th entry · ADR-0017 §2 Decision C trigger 1 FIRED at W1 entry meeting · trigger 3 M5+ milestone reset 保留 Phase 12+)。**3 deferred outcomes**:T101 LAB 5th carry + T108 Volcano 3rd defer + T202 Partitionable Devices 2nd defer(全 default policy · 3 个 carry tracks 独立 trigger 条件)。**kind smoke phase11/ folder**:T107 14 assertion(11 active + 3 conditional · all PASSED in syntactic verify)+ master-demo-multi-site.sh 7-step orchestrated Karmada demo(Path P real-hw / Path F synthetic ring per LAB_AVAILABLE env)。**docs 大整理**:T203 ship `docs/phase12-candidate-streams.md`(8 Stream carry + 3 active carry tracks + 15 carry-forward items + Spine A/B/C/D candidates + Go v1 schema migration cohort plan · per P10-fix-001 carry · 5 module · 1.5-2 month cohort estimate)。**4 fix commits ship in-phase**:P11-fix-001 dev-stack docker-compose path A(8 cross-module issues)+ P11-fix-002 ascend exporter +5 metric · node-exporter wired · workload dashboards ⚠ marked + P11-fix-003 dashboard template-var queries pointing at non-existent ascend_npu_info + Frontend UX Track-2 sub-track charter ship。详 `docs/checkpoint-phase11.md` §6 Phase 12+ handoff brief。|
 | Phase 5+ | NPU pod 网络考量(CNI + HCCL RDMA / RoCE / IPoIB 兼容) | research doc landed (P5-T-105 · `docs/cni-hccl-research.md`); **selection landed Phase 6 ADR-0010** — Cilium + Multus + SR-IOV 推荐 / Calico + Multus + SR-IOV fallback;scheduler-plugin CNI-portable(不依赖任何 CNI 特有 API) |
 | Phase 6 | scheduler-plugin(HCCS / NUMA / Binpack)+ HCCS 拓扑接口(npu-smi / DCMI 调研) | **landed phase-6-complete (2026-05-20)** — ADR-0010 (P6-T-001 / cfa6260) 设计冻结 · scheduler-plugin scaffold + HCCS Filter+Score + Binpack ScorePlugin + 集成 composition tests (P6-T-002..T008) · NumaAffinity placeholder ⏳ upstream wrap deferred to sched-plugins v0.32.x · pool-operator NPUPool.status.hccsTopology 聚合 (T003) · Helm chart (T101) · inference-operator metrics 3 collectors (T104) · vllm-ascend PD proxy_server schema substrate (T105) · kind smoke 扩展 (T106) · npu-smi 真硬件接口 deferred Phase 7 · 13/15 tasks done · 2 deferred (T102/T103 workloads sliceBindings 待 RFC) |
 

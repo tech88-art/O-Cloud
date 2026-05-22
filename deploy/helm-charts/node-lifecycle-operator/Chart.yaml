@@ -1,0 +1,23 @@
+apiVersion: v2
+name: node-lifecycle-operator
+description: |
+  O-Cloud IMS-1 node-lifecycle-operator — Phase 9 P9-T-105 scaffold +
+  Phase 10 P10-T-007 controller body(pure-Go ReconcileOnce + state.NextState
+  · 12 transitions · 8 states · 14 unit tests · per ADR-0003 v2 IMS-1)+
+  Phase 11 P11-T-004 helm chart packaging + cmd/main.go controller-runtime
+  manager wire + CRD bundle install hook + Lease RBAC + ServiceAccount.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ocloud
+  - ims
+  - node-lifecycle
+  - lifecycle
+  - operator
+home: https://github.com/tech88-art/O-Cloud
+sources:
+  - https://github.com/tech88-art/O-Cloud/tree/main/operators/node-lifecycle-operator
+maintainers:
+  - name: O-Cloud team
+    url: https://github.com/tech88-art/O-Cloud

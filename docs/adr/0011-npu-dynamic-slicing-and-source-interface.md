@@ -141,11 +141,14 @@ func NewSource(sourceType string, cfg Config) (Source, error) {
 | Phase 7 P7-T-101 (2026-05-20) | no signal | deferred Phase 8 | 1st carry |
 | Phase 8 P8-T-105 (2026-05-21) | no signal | deferred Phase 9 | 2nd carry |
 | Phase 9 P9-T-106 (2026-05-21) | no signal | deferred Phase 10 | 3rd carry |
-| Phase 10 P10-T-102 (2026-05-21) | TBD (W2 entry) | TBD(若 5th carry → 触发 ADR-0016 §2 Decision B posture re-eval trigger (1)) | **4th attempt** |
+| Phase 10 P10-T-102 (2026-05-21) | no signal | deferred Phase 11 | 4th carry |
+| Phase 11 P11-T-101 (2026-05-22) | no signal | deferred Phase 12+ | **5th carry** |
 
 > 🆕 **2026-05-21 update (P9-T-106 · 3rd carry · default policy)**:Phase 9 W2 entry chat 用户 "继续" 未明示 lab access available · per default policy "无明确信号 → defer Phase 10" 命中 · T106 走 deferred 路径 · 3-line devlog + 本 §3 carry tally 表更新 + known-issues entry。Phase 10 W1 entry 再评估 if lab access signal materialises mid-Phase 10。**累计 3 次推迟** · synthetic ring fixture(set-b-multi-ring · P7-T-104-v2 hard-fail upgrade · P8-T-104 reseed)仍 cover CI 路径,lab smoke 不阻塞主干交付。
 
 > 🆕 **2026-05-21 update (P10-T-002 · ADR-0016 forward-looking codify)**:Phase 10 P10-T-002 起草 ADR-0016(`docs/adr/0016-lab-onboarding-and-phase-11-outlook.md`)+ codify 4th attempt rationale + 5th carry posture re-eval triggers + T201 真硬件演示打磨 fallback path detail + Phase 11+ 8 candidate streams enumeration。本 §3 policy core *不修改* — ADR-0016 是 Phase 10 节点 *上下文* + Phase 11+ forward · 与本 §3 policy *本体* 分离。**若 T102 5th carry Phase 11+** → ADR-0016 §2 Decision B 3 triggers 任一启动 lab gating policy posture re-evaluation(Phase 11+ entry meeting / ad-hoc signal / M5+ milestone reset)。
+
+> 🆕 **2026-05-22 update (P11-T-101 · 5th carry · default policy + ADR-0017 §2 Decision C codify)**:Phase 11 W1 entry chat 用户 "按计划执行" 未明示 lab access available · per default policy "无明确信号 → defer Phase 12+" 命中 · T101 走 deferred 路径 · 本 §3 carry tally 表加 5th carry entry。**ADR-0016 §2 Decision B trigger 1**(Phase 11+ entry meeting re-eval)已 **FIRED at ADR-0017 §2 Decision C**(P11-T-001 commit `548144d`)· 重评结论 = **default-defer 维持**(policy core 不修改 · 与 4 prior consecutive defer outcome 一致 · synthetic ring fixture 仍 cover CI + demo flow 主干 · 真硬件 stamp 价值是 *verification* 而非 *deliverable substrate*)。**trigger 3** M5+ milestone reset 保留至 Phase 12+ entry meeting 起草时评估(若 5th 仍 defer + Phase 11 W3 T201 fallback path 80% landed → Phase 12+/M6 起草时评估 3 选项 a/b/c per ADR-0017 §2 Decision C)。**累计 5 次推迟** · synthetic ring fixture(set-b-multi-ring · Phase 7+8+9+10+11 cumulative 5 phase)+ Phase 11 W3 T201 真 multi-cluster / multi-site demo 打磨 cover 主干交付。
 
 ---
 

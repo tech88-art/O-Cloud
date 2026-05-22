@@ -22,9 +22,13 @@ import (
 type NPUCollector struct {
 	source sources.Source
 
-	utilization  *prometheus.Desc
-	memoryUsed   *prometheus.Desc
-	hbmBandwidth *prometheus.Desc
+	utilization     *prometheus.Desc
+	memoryUsed      *prometheus.Desc
+	hbmBandwidth    *prometheus.Desc
+	temperature     *prometheus.Desc
+	powerWatts      *prometheus.Desc
+	memoryTotal     *prometheus.Desc
+	vramUsedPercent *prometheus.Desc
 }
 
 // NewNPUCollector constructs an NPUCollector backed by the given Source.
@@ -49,6 +53,32 @@ func NewNPUCollector(source sources.Source) *NPUCollector {
 			[]string{"npu_id", "node"},
 			nil,
 		),
+		// P11-fix-002: 4 new descriptors backing npu-detail / node-detail
+		// dashboard panels that previously rendered No-data.
+		temperature: prometheus.NewDesc(
+			"ascend_npu_temperature_celsius",
+			"On-die temperature of an Ascend NPU device, in degrees Celsius.",
+			[]string{"npu_id", "node"},
+			nil,
+		),
+		powerWatts: prometheus.NewDesc(
+			"ascend_npu_power_watts",
+			"Instantaneous power draw of an Ascend NPU device, in watts.",
+			[]string{"npu_id", "node"},
+			nil,
+		),
+		memoryTotal: prometheus.NewDesc(
+			"ascend_npu_vram_total_bytes",
+			"HBM memory capacity of an Ascend NPU device, in bytes (fixed per model).",
+			[]string{"npu_id", "node", "model"},
+			nil,
+		),
+		vramUsedPercent: prometheus.NewDesc(
+			"ascend_npu_vram_used_percent",
+			"HBM memory occupancy as a percentage in [0, 100]; derived from memory_used/memory_total.",
+			[]string{"npu_id", "node"},
+			nil,
+		),
 	}
 }
 
@@ -57,6 +87,10 @@ func (c *NPUCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.utilization
 	ch <- c.memoryUsed
 	ch <- c.hbmBandwidth
+	ch <- c.temperature
+	ch <- c.powerWatts
+	ch <- c.memoryTotal
+	ch <- c.vramUsedPercent
 }
 
 // Collect implements prometheus.Collector. Records scrape duration into
@@ -81,5 +115,16 @@ func (c *NPUCollector) Collect(ch chan<- prometheus.Metric) {
 			s.ID, s.NodeName)
 		ch <- prometheus.MustNewConstMetric(c.hbmBandwidth, prometheus.GaugeValue, float64(s.HBMBandwidthBytesPerSecond),
 			s.ID, s.NodeName)
+		ch <- prometheus.MustNewConstMetric(c.temperature, prometheus.GaugeValue, s.TemperatureCelsius,
+			s.ID, s.NodeName)
+		ch <- prometheus.MustNewConstMetric(c.powerWatts, prometheus.GaugeValue, s.PowerWatts,
+			s.ID, s.NodeName)
+		ch <- prometheus.MustNewConstMetric(c.memoryTotal, prometheus.GaugeValue, float64(s.MemoryTotalBytes),
+			s.ID, s.NodeName, s.Model)
+		if s.MemoryTotalBytes > 0 {
+			pct := 100.0 * float64(s.MemoryUsedBytes) / float64(s.MemoryTotalBytes)
+			ch <- prometheus.MustNewConstMetric(c.vramUsedPercent, prometheus.GaugeValue, pct,
+				s.ID, s.NodeName)
+		}
 	}
 }

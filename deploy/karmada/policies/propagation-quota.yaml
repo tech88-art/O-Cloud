@@ -1,0 +1,25 @@
+---
+# Propagate inference.ocloud.edge.example.com Quota(namespace-scope) to
+# all member clusters. Per ADR-0014 §7(Forward notes line 1)+
+# ADR-0018 §2 Decision B + Decision D.
+#
+# Phase 11: namespace-scope Quota CR · 分发到 each member · Quota
+# controller(colocated with inference-operator binary on host cluster)
+# 通过 karmada-aggregated-apiserver 聚合 status.usage cross-cluster ·
+# admission webhook decision 依据 aggregated view.
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: quota-all-members
+  namespace: ocloud-system
+spec:
+  resourceSelectors:
+    - apiVersion: inference.ocloud.edge.example.com/v1alpha1
+      kind: Quota
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - member1
+        - member2
+    replicaScheduling:
+      replicaSchedulingType: Duplicated   # 同一 Quota 在每 member 都 enforce

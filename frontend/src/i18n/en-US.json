@@ -54,6 +54,13 @@
     "nodeNames": "Nodes",
     "createdAt": "Created",
     "sliceBindings": "NPU Slice Bindings",
+    "o2DMSExposed": "O2 DMS Exposed",
+    "o2DMSExposedYes": "Yes",
+    "o2DMSExposedNo": "No",
+    "quotaUsage": "Quota Usage",
+    "quotaUsageTooltip": "{{used}}/{{cap}} used · {{remaining}} remaining · algorithm {{algorithm}}",
+    "scaleHistory": "Scale History",
+    "scaleHistoryTooltip": "{{count}} events · last at {{lastTime}} direction {{lastDir}}",
     "empty": "No workloads",
     "errorTitle": "Failed to load workloads"
   },

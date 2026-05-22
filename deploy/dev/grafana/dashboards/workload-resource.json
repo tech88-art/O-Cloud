@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "O-Cloud Edge — workload resource view: pod-level CPU / memory and bound NPU-slice utilization. Series pivoted by `$workload`. Slice binding info comes from `ascend_npu_slice_util_percent{workload=...}` (bound-slice label set by the K8s scheduler at admission). Also includes the RFC-003 affinity-vs-non-affinity slice-utilization overlay.",
+  "description": "⚠ Demo state (P11-fix-002): slice-utilization panels (ascend_npu_slice_util_percent) work once this rebuild lands. Container CPU/memory panels still need cAdvisor (Phase 11+ optional path D). — O-Cloud Edge workload resource view: pod-level CPU / memory and bound NPU-slice utilization. Series pivoted by `$workload`. Slice binding info from `ascend_npu_slice_util_percent{workload=...}` (bound-slice label set by the K8s scheduler at admission). Includes the RFC-003 affinity-vs-non-affinity slice-utilization overlay.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,

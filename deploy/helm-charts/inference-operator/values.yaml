@@ -165,6 +165,21 @@ serviceAccount:
 rbac:
   create: true
 
+# ----------------------------------------------------- Defaults(Phase 11 P11-T-008)
+# `defaults.proxyImage` is the operator-side global default for vLLM PD
+# proxy sidecar image. Per-ModelService override wins(ms.Spec.PDPair.
+# ProxyImage > chart default). Empty value → no DEFAULT_PROXY_IMAGE env
+# injected · controller.DefaultProxyImage stays "" · per-CR field is
+# the only source.
+#
+# Per ADR-0017 §2 Decision D 6th 优先级 + ADR-0010 known-issues #13
+# 5-phase carry closer(P10-T-106 substrate + P11-T-008 env wire).
+# `internal/controller/deployment_builder.go` EffectiveProxyImage()
+# consume order: per-CR PDPair.ProxyImage → DefaultProxyImage(set from
+# DEFAULT_PROXY_IMAGE env at cmd/main.go startup hook) → "" (no sidecar).
+defaults:
+  proxyImage: ""  # operators override: --set defaults.proxyImage=quay.io/vllm-project/vllm-ascend:v0.18.0
+
 # ----------------------------------------------------- Extras
 extraArgs: []
 extraEnv: []

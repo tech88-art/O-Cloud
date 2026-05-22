@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
+	"github.com/example/ocloud-edge/backend/pkg/cache"
 	"github.com/example/ocloud-edge/backend/pkg/datasource"
 	"github.com/example/ocloud-edge/backend/pkg/middleware"
 )
@@ -33,6 +34,15 @@ type Handler struct {
 	// May be nil — router.go's /metrics handler returns 503 in that case.
 	// Production callers in cmd/demo-backend always set this.
 	MetricsRegistry *prometheus.Registry
+
+	// CacheSingleton is the K8s Lease leader-elect coordinator (Phase 11
+	// P11-T-003 · ADR-0015 §3.3 Decision B). May be nil — single-replica
+	// or dev runs skip the Lease loop entirely. When non-nil, the
+	// /healthz handler can surface Singleton.State() in its payload (see
+	// system.go follow-up) and metrics.go can emit the 3 ADR-0015 §3.3
+	// Decision D metrics (demo_backend_lease_holder + lease_renewals +
+	// cache_hit_ratio).
+	CacheSingleton *cache.Singleton
 }
 
 // NewHandler is the canonical constructor. logger may be nil — we substitute

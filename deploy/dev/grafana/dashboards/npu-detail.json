@@ -37,7 +37,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_aicore_util_percent{node=~\"$node\",npu=~\"$npu\"}",
+          "expr": "ascend_npu_utilization_percent{node=~\"$node\",npu_id=~\"$npu\"}",
           "refId": "A",
           "legendFormat": "AICore %"
         }
@@ -64,13 +64,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_vram_used_bytes{node=~\"$node\",npu=~\"$npu\"}",
+          "expr": "ascend_npu_memory_used_bytes{node=~\"$node\",npu_id=~\"$npu\"}",
           "refId": "A",
           "legendFormat": "used"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_vram_total_bytes{node=~\"$node\",npu=~\"$npu\"}",
+          "expr": "ascend_npu_vram_total_bytes{node=~\"$node\",npu_id=~\"$npu\"}",
           "refId": "B",
           "legendFormat": "total"
         }
@@ -103,7 +103,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_temperature_celsius{node=~\"$node\",npu=~\"$npu\"}",
+          "expr": "ascend_npu_temperature_celsius{node=~\"$node\",npu_id=~\"$npu\"}",
           "refId": "A",
           "legendFormat": "°C"
         }
@@ -138,7 +138,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_power_watts{node=~\"$node\",npu=~\"$npu\"}",
+          "expr": "ascend_npu_power_watts{node=~\"$node\",npu_id=~\"$npu\"}",
           "refId": "A",
           "legendFormat": "watts"
         }
@@ -172,7 +172,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_slice_util_percent{node=~\"$node\",npu=~\"$npu\"}",
+          "expr": "ascend_npu_slice_util_percent{node=~\"$node\",npu_id=~\"$npu\"}",
           "refId": "A",
           "legendFormat": "slice {{slice}}"
         }
@@ -200,7 +200,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "ascend_npu_slice_util_percent{node=~\"$node\",npu=~\"$npu\"}",
+          "expr": "ascend_npu_slice_util_percent{node=~\"$node\",npu_id=~\"$npu\"}",
           "refId": "A",
           "legendFormat": "{{slice}}"
         }
@@ -247,7 +247,7 @@
         "label": "Node",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": "label_values(ascend_npu_info, node)",
+        "query": "label_values(ascend_npu_utilization_percent, node)",
         "refresh": 2,
         "includeAll": false,
         "multi": false,
@@ -259,7 +259,7 @@
         "label": "NPU",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "query": "label_values(ascend_npu_info{node=~\"$node\"}, npu)",
+        "query": "label_values(ascend_npu_utilization_percent{node=~\"$node\"}, npu_id)",
         "refresh": 2,
         "includeAll": false,
         "multi": false,

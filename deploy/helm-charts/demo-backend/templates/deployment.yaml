@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "demo-backend.fullname" . }}
+  labels:
+    {{- include "demo-backend.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "demo-backend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "demo-backend.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # Force pod restart when config ConfigMap changes (chart redeploy
+        # without explicit values.yaml change won't trigger this — that's
+        # by design; only config mutation triggers restart).
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "demo-backend.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: demo-backend
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --config=/etc/demo-backend/config.yaml
+          env:
+            # Downward API: feed Pod name as Lease HolderIdentity per ADR-0015
+            # §2 Decision B. backend/pkg/cache.LeaseConfig.HolderIdentity is
+            # set from this env at startup (cmd/demo-backend/main.go).
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            {{- if .Values.leaseElection.enabled }}
+            # Lease-election toggles + tuning (ADR-0015 §3.3 Decision B).
+            # Empty / zero values fall back to backend/pkg/cache defaults.
+            - name: OCEDGE_LEASE_ENABLED
+              value: "true"
+            - name: OCEDGE_LEASE_NAMESPACE
+              value: {{ .Values.leaseElection.namespace | quote }}
+            - name: OCEDGE_LEASE_NAME
+              value: {{ .Values.leaseElection.leaseName | quote }}
+            - name: OCEDGE_LEASE_DURATION_SECONDS
+              value: {{ .Values.leaseElection.leaseDurationSeconds | quote }}
+            - name: OCEDGE_LEASE_RENEW_DEADLINE_SECONDS
+              value: {{ .Values.leaseElection.renewDeadlineSeconds | quote }}
+            - name: OCEDGE_LEASE_RETRY_PERIOD_SECONDS
+              value: {{ .Values.leaseElection.retryPeriodSeconds | quote }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/demo-backend
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "demo-backend.fullname" . }}-config
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

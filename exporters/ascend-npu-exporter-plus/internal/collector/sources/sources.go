@@ -36,6 +36,13 @@ type NPUSample struct {
 	MemoryTotalBytes uint64
 	// HBMBandwidthBytesPerSecond is the realised HBM bandwidth at sample time.
 	HBMBandwidthBytesPerSecond uint64
+	// TemperatureCelsius is the on-die temperature at sample time. Added
+	// in P11-fix-002 to back the npu-detail / node-detail temperature
+	// panels; synthesised by SimulatorSource when seed is missing.
+	TemperatureCelsius float64
+	// PowerWatts is the instantaneous power draw at sample time. Same
+	// provenance as TemperatureCelsius.
+	PowerWatts float64
 	// Healthy reports whether the device passes its self-check.
 	Healthy bool
 }
@@ -56,6 +63,10 @@ type SliceSample struct {
 	AICoreCount int32
 	// MemoryUsedBytes is the realised HBM usage of this slice at sample time.
 	MemoryUsedBytes uint64
+	// AICoreUtilization is the AI Core utilization percentage of this
+	// slice, in [0, 100]. Added in P11-fix-002 to back workload-resource
+	// dashboard panels via the `ascend_npu_slice_util_percent` series.
+	AICoreUtilization float64
 	// AllocatedTo is the Pod owning this slice; nil when the slice is free.
 	AllocatedTo *AllocatedPod
 }

@@ -31,7 +31,11 @@ type simulatorNPU struct {
 	MemoryUsedSeedBytes uint64  `json:"memoryUsedSeedBytes"`
 	MemoryTotalBytes    uint64  `json:"memoryTotalBytes"`
 	HBMBandwidthSeedBPS uint64  `json:"hbmBandwidthSeedBytesPerSecond"`
-	Healthy             bool    `json:"healthy"`
+	// TemperatureSeed defaults to 65°C if zero/missing (P11-fix-002).
+	TemperatureSeed float64 `json:"temperatureSeedCelsius,omitempty"`
+	// PowerSeed defaults to 300W if zero/missing (P11-fix-002).
+	PowerSeed float64 `json:"powerSeedWatts,omitempty"`
+	Healthy   bool    `json:"healthy"`
 }
 
 // simulatorSlice is the on-disk record for one NPU slice instance.
@@ -44,8 +48,10 @@ type simulatorSlice struct {
 	Template            string `json:"template"`
 	AICoreCount         int32  `json:"aiCoreCount"`
 	MemoryUsedSeedBytes uint64 `json:"memoryUsedSeedBytes"`
-	AllocatedNamespace  string `json:"allocatedNamespace,omitempty"`
-	AllocatedPod        string `json:"allocatedPod,omitempty"`
+	// AICoreUtilizationSeed defaults to 50% if zero/missing (P11-fix-002).
+	AICoreUtilizationSeed float64 `json:"aicoreUtilizationSeedPercent,omitempty"`
+	AllocatedNamespace    string  `json:"allocatedNamespace,omitempty"`
+	AllocatedPod          string  `json:"allocatedPod,omitempty"`
 }
 
 // SimulatorSource replays an on-disk JSON snapshot with sine-wave
@@ -109,6 +115,18 @@ func (s *SimulatorSource) ReadNPUs(ctx context.Context) ([]NPUSample, error) {
 			memUsed = n.MemoryTotalBytes
 		}
 		bw := uint64(float64(n.HBMBandwidthSeedBPS) * factor)
+		// P11-fix-002 synthetic temperature + power. Defaults plausibly
+		// for 910B (65°C base · 300W base) when seed missing.
+		tempSeed := n.TemperatureSeed
+		if tempSeed == 0 {
+			tempSeed = 65.0
+		}
+		powerSeed := n.PowerSeed
+		if powerSeed == 0 {
+			powerSeed = 300.0
+		}
+		temperature := clamp(tempSeed*factor, 30, 95)
+		powerW := clamp(powerSeed*factor, 50, 400)
 		out = append(out, NPUSample{
 			ID:                         n.ID,
 			NodeName:                   n.NodeName,
@@ -117,6 +135,8 @@ func (s *SimulatorSource) ReadNPUs(ctx context.Context) ([]NPUSample, error) {
 			MemoryUsedBytes:            memUsed,
 			MemoryTotalBytes:           n.MemoryTotalBytes,
 			HBMBandwidthBytesPerSecond: bw,
+			TemperatureCelsius:         temperature,
+			PowerWatts:                 powerW,
 			Healthy:                    n.Healthy,
 		})
 	}
@@ -151,14 +171,23 @@ func (s *SimulatorSource) ReadSlices(ctx context.Context) ([]SliceSample, error)
 			}
 		}
 
+		// P11-fix-002 synthetic slice utilization (defaults 50% if seed
+		// missing) — backs ascend_npu_slice_util_percent in the
+		// workload-resource dashboard.
+		utilSeed := sl.AICoreUtilizationSeed
+		if utilSeed == 0 {
+			utilSeed = 50.0
+		}
+		sliceUtil := clamp(utilSeed*factor, 0, 100)
 		out = append(out, SliceSample{
-			ID:              sl.ID,
-			NPUID:           sl.NPUID,
-			NodeName:        sl.NodeName,
-			Template:        sl.Template,
-			AICoreCount:     sl.AICoreCount,
-			MemoryUsedBytes: memUsed,
-			AllocatedTo:     allocatedTo,
+			ID:                sl.ID,
+			NPUID:             sl.NPUID,
+			NodeName:          sl.NodeName,
+			Template:          sl.Template,
+			AICoreCount:       sl.AICoreCount,
+			MemoryUsedBytes:   memUsed,
+			AICoreUtilization: sliceUtil,
+			AllocatedTo:       allocatedTo,
 		})
 	}
 	return out, nil
