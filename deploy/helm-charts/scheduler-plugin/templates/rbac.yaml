@@ -80,6 +80,18 @@ rules:
 - apiGroups: ["events.k8s.io"]
   resources: ["events"]
   verbs: ["create", "patch"]
+{{- if .Values.numaAffinity.enabled }}
+# P11-fix-004: NumaAffinity wrap (P10-T-005 wrap + P11-T-007 NRT CRD
+# bundle) requires read access to NodeResourceTopology resources for the
+# upstream `nrt.New` informer at scheduler-plugin startup. Without this
+# RBAC the Pod fails informer construction → never reaches Ready → helm
+# install --wait times out → e2e-kind CI red (CI gate post-tag failure
+# mode surfaced when P11-T-007 flipped default back to true · this fix
+# adds the missing RBAC).
+- apiGroups: ["topology.node.k8s.io"]
+  resources: ["noderesourcetopologies"]
+  verbs: ["get", "list", "watch"]
+{{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
