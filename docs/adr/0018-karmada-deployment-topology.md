@@ -67,8 +67,8 @@ ADR-0017 §2 Decision A 主线 2 = **Karmada propagation 第一波 production-gr
 ### §2.2 Decision B:Karmada chart = upstream Karmada chart + 自研 PropagationPolicy selector templates · namespace `karmada-system`
 
 **Chart 选择**:
-- **upstream Karmada chart**:`github.com/karmada-io/karmada/charts/karmada` · charts/karmada-operator 是 newer pattern(Karmada Operator-managed control plane)· 选 charts/karmada(direct chart · Phase 11 不引入 Operator-managed 模式 · simpler ops surface)
-- **chart version pin**:`karmada-1.13.x`(or whatever is latest stable at T102 W2 entry · T102 起手 `helm repo update` + 锁定具体 version · 入 ADR `docs/devlog/phase-11-t102.md` verification stamp)
+- **upstream Karmada chart**:`github.com/karmada-io/karmada/charts/karmada` · charts/karmada-operator 是 newer pattern(Karmada Operator-managed control plane)· 选 charts/karmada(direct chart · Phase 11 不引入 Operator-managed 模式 · simpler ops surface)· **P11-T-102 LANDED**(`deploy/karmada/install.sh`)· helm repo `karmada-charts` 加 + `helm install karmada` 走 `deploy/karmada/values.yaml` overrides
+- **chart version pin**:`KARMADA_CHART_VERSION` env(install.sh `-f values.yaml` + optional `--version` flag · default empty = upstream latest stable · operators 可 pin via env)· T102 起手 verification stamp 在 P11-T-102 devlog
 - **upstream Karmada chart 自管 control-plane components**:karmada-apiserver + karmada-controller-manager + karmada-scheduler + karmada-webhook + karmada-aggregated-apiserver + etcd(in-cluster mode for Phase 11 · external etcd Phase 12+ HA)
 
 **自研 PropagationPolicy selector templates**(本 repo `deploy/karmada/policies/` · T103 落地):
