@@ -1,0 +1,111 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "software-mgmt-operator.fullname" . }}-manager
+  labels:
+    {{- include "software-mgmt-operator.labels" . | nindent 4 }}
+rules:
+  # SoftwareBundle CRD verbs (ADR-0003 v2 IMS-2)
+  - apiGroups:
+      - softwaremgmt.ocloud.edge.example.com
+    resources:
+      - softwarebundles
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - softwaremgmt.ocloud.edge.example.com
+    resources:
+      - softwarebundles/status
+    verbs:
+      - get
+      - update
+      - patch
+  # Node list/watch for target resolution. SoftwareBundle does NOT mutate
+  # Nodes — per-node rollout agents (Phase 12+ NodeSoftwareBundleStatus
+  # CR) own apply path. Phase 11 minimum-viable reconciler uses annotation
+  # observation; this RBAC stays read-only on nodes.
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  # Events emission (Reconciler EventRecorder)
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "software-mgmt-operator.fullname" . }}-manager
+  labels:
+    {{- include "software-mgmt-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "software-mgmt-operator.fullname" . }}-manager
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "software-mgmt-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- if .Values.leaderElection.enabled }}
+---
+# Leader-election Lease access (controller-runtime convention)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "software-mgmt-operator.fullname" . }}-leader-election
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "software-mgmt-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "software-mgmt-operator.fullname" . }}-leader-election
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "software-mgmt-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "software-mgmt-operator.fullname" . }}-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "software-mgmt-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

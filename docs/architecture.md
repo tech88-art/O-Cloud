@@ -442,7 +442,7 @@ operators/node-lifecycle-operator/
 
 CRD: `lifecycle.ocloud.edge.example.com/v1alpha1.NodeLifecycle`(cluster-scoped)· 8 state enum(Provisioning / Bootstrap / Available / DegradedAvailable / Unavailable / Locked / Unlocked / RebootRequired)· nodeName + desiredState + maintenanceWindow spec · state + conditions + lastTransitionTime status。**Phase 9 scaffold-only · controller body Phase 10**(per CLAUDE.md §14.2 scaffold pattern + ADR-0003 v2)。详 ADR-0003 v2 §"Phase 9 W2 P9-T-105 实际 outcome"。
 
-### 5.10 软件管理 `software-mgmt-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body）
+### 5.10 软件管理 `software-mgmt-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body · Phase 11 P11-T-005 chart packaging LANDED）
 
 IMS 7 服务剩 3 项之二 · StarlingX sw-deployment 适配 · 节点级软件 patches inventory + 升级 workflow。
 
