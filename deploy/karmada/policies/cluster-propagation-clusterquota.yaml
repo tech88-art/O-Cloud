@@ -1,0 +1,27 @@
+---
+# Propagate inference.ocloud.edge.example.com ClusterQuota(cluster-scope)
+# to all member clusters via ClusterPropagationPolicy(cluster-scope CRD
+# 必走 ClusterPropagationPolicy 而非 namespaced PropagationPolicy ·
+# per Karmada doc · per ADR-0018 §2 Decision B).
+#
+# Per ADR-0014 §7 + ADR-0018 §2 Decision D ClusterQuota aggregation:
+# host cluster Quota controller informer status.usage cross-cluster ·
+# 累计 usage = sum across member · admission webhook decision 依据
+# aggregated view.
+#
+# T104 落地 ClusterQuota CRD types + admission webhook ext.
+apiVersion: policy.karmada.io/v1alpha1
+kind: ClusterPropagationPolicy
+metadata:
+  name: clusterquota-all-members
+spec:
+  resourceSelectors:
+    - apiVersion: inference.ocloud.edge.example.com/v1alpha1
+      kind: ClusterQuota
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - member1
+        - member2
+    replicaScheduling:
+      replicaSchedulingType: Duplicated   # 同一 ClusterQuota 全 member 一致

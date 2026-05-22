@@ -1,0 +1,46 @@
+---
+# Propagate inference.ocloud.edge.example.com ModelService CR + linked
+# Deployments/Services to all member clusters by default.
+# Per ADR-0018 §2 Decision B PropagationPolicy templates · T103 落地.
+#
+# Phase 11: per-CRD propagation(选项 a per ADR-0018 §4 (b))· 所有
+# ModelService instance 走同一 placement(clusterAffinity = all members).
+# Phase 12+: per-resource override via ClusterPropagationPolicy + tag
+# selector if per-tenant placement signal materialises.
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: modelservice-all-members
+  namespace: ocloud-system
+spec:
+  resourceSelectors:
+    - apiVersion: inference.ocloud.edge.example.com/v1alpha1
+      kind: ModelService
+    - apiVersion: apps/v1
+      kind: Deployment
+      labelSelector:
+        matchLabels:
+          inference.ocloud.edge.example.com/managed-by: inference-operator
+    - apiVersion: v1
+      kind: Service
+      labelSelector:
+        matchLabels:
+          inference.ocloud.edge.example.com/managed-by: inference-operator
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - member1
+        - member2
+    replicaScheduling:
+      replicaSchedulingType: Divided
+      replicaDivisionPreference: Weighted
+      weightPreference:
+        staticWeightList:
+          - targetCluster:
+              clusterNames:
+                - member1
+            weight: 1
+          - targetCluster:
+              clusterNames:
+                - member2
+            weight: 1

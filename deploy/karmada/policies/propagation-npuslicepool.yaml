@@ -1,0 +1,23 @@
+---
+# Propagate npu.ocloud.edge.example.com NPUSlicePool to all member
+# clusters. Per ADR-0018 §2 Decision B + ADR-0011 §1 NPU dynamic
+# slicing(pool resource lives in each member · O2 DMS adapter aggregates
+# view cross-cluster via karmada-aggregated-apiserver lifted-informer).
+#
+# Phase 11: per-CRD propagation · all NPUSlicePool 走同一 placement.
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: npuslicepool-all-members
+  namespace: ocloud-system
+spec:
+  resourceSelectors:
+    - apiVersion: npu.ocloud.edge.example.com/v1alpha1
+      kind: NPUSlicePool
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - member1
+        - member2
+    replicaScheduling:
+      replicaSchedulingType: Duplicated   # 不分片 · 每 member 各自 NPU 资源
