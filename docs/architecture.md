@@ -457,7 +457,7 @@ operators/software-mgmt-operator/
 
 CRD: `softwaremgmt.ocloud.edge.example.com/v1alpha1.SoftwareBundle`(cluster-scoped)· version + patches[] + rolloutPolicy(RollingUpdate/Parallel/Sequential)+ nodeSelector spec · appliedVersion + appliedNodeCount + failedNodeCount status。**Phase 9 scaffold-only**。
 
-### 5.11 裸机配置 `bare-metal-provisioning-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body · 与 Phase 10 真机对接同期）
+### 5.11 裸机配置 `bare-metal-provisioning-operator`（Phase 9 P9-T-105 scaffold · Phase 10 controller body · Phase 11 P11-T-006 chart + Redfish/IPMI stub LANDED · 真 BMC SDK Phase 12+）
 
 IMS 7 服务剩 3 项之三 · Metal3 / cluster-api BareMetalHost 适配 · BMC discovery + OS provisioning state machine。
 

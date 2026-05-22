@@ -1,0 +1,110 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "bare-metal-provisioning-operator.fullname" . }}-manager
+  labels:
+    {{- include "bare-metal-provisioning-operator.labels" . | nindent 4 }}
+rules:
+  # BareMetalNode CRD verbs (ADR-0003 v2 IMS-1)
+  - apiGroups:
+      - provisioning.ocloud.edge.example.com
+    resources:
+      - baremetalnodes
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - provisioning.ocloud.edge.example.com
+    resources:
+      - baremetalnodes/status
+    verbs:
+      - get
+      - update
+      - patch
+  # Secret read for BMC credentials (per ADR-0003 v2 IMS-3 · referenced
+  # via Spec.BMC.CredentialsRef · default namespace ocloud-system per
+  # CRD kubebuilder default · keys: username + password).
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+  # Events emission (Reconciler EventRecorder)
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "bare-metal-provisioning-operator.fullname" . }}-manager
+  labels:
+    {{- include "bare-metal-provisioning-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "bare-metal-provisioning-operator.fullname" . }}-manager
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "bare-metal-provisioning-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- if .Values.leaderElection.enabled }}
+---
+# Leader-election Lease access (controller-runtime convention)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "bare-metal-provisioning-operator.fullname" . }}-leader-election
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bare-metal-provisioning-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "bare-metal-provisioning-operator.fullname" . }}-leader-election
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bare-metal-provisioning-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "bare-metal-provisioning-operator.fullname" . }}-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "bare-metal-provisioning-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
