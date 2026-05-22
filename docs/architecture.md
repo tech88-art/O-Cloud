@@ -377,9 +377,11 @@ operators/pool-operator/
 └── main.go
 ```
 
-### 5.4 推理服务 Operator `inference-operator`（Phase 5）
+### 5.4 推理服务 Operator `inference-operator`（Phase 5 · Phase 11 P11-T-008 chart DEFAULT_PROXY_IMAGE env wire LANDED）
 
 管理 vllm-ascend Deployment 生命周期（含单实例与 PD 双实例两种拓扑），内置 PD Router（基于 vllm-ascend `disaggregated_prefill_v1/proxy_server.py` 改造为 K8s Service + Controller），集成 NUMA / HCCS 亲和调度与自动伸缩，对上提供 `ModelService` 高阶 CRD（替代原 KServe `InferenceService` 抽象）。详见 ADR-0002。
+
+> **Phase 11 P11-T-008 forward note**(per ADR-0017 §2 Decision D 6th · ADR-0010 known-issues #13 5-phase carry closer):chart values.yaml 加 `defaults.proxyImage` field(默认空 · operators `--set defaults.proxyImage=quay.io/vllm-project/vllm-ascend:v0.18.0` 注入)· templates/deployment.yaml env 段 inject DEFAULT_PROXY_IMAGE · cmd/main.go startup hook `os.Getenv("DEFAULT_PROXY_IMAGE")` 设 `controller.DefaultProxyImage` package var · `EffectiveProxyImage(ms)` 消费顺序:per-CR `ms.Spec.PDPair.ProxyImage` → chart 默认 `DefaultProxyImage` → "" (no sidecar)。
 
 ### 5.5 NPU DRA Driver `npu-dra-driver`（Phase 4-7）
 
