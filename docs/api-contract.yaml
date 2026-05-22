@@ -1050,6 +1050,87 @@ components:
             `?includeSliceBindings=true` is passed; the detail
             endpoint always populates when data is available.
           items: { $ref: '#/components/schemas/SliceBinding' }
+        o2DMSExposed:
+          type: boolean
+          description: |
+            P11-T-105 — true if the workload was instantiated via the
+            O2 DMS Adapter NB endpoint. Backend determines this by
+            checking the owner ModelService for annotation
+            `dms.o2.ocloud.edge.example.com/exposed: "true"`.
+            Populated when `?includeO2DMSExposed=true` (list endpoint)
+            or always on detail endpoint when source provides it.
+        quotaUsage:
+          description: |
+            P11-T-105 — summary of the workload's namespace Quota
+            consumption. Populated when `?includeQuotaUsage=true` (list
+            endpoint) or always on detail endpoint. Joined from
+            inference-operator Quota CRD + NPUVerticalScaler
+            scaleHistory ring-buffer.
+          $ref: '#/components/schemas/QuotaUsageSummary'
+        scaleHistory:
+          type: array
+          description: |
+            P11-T-105 — rolling 10-entry NPUVerticalScaler scale events
+            for the workload's bound scaler (if any). Populated when
+            `?includeScaleHistory=true` (list endpoint) or always on
+            detail endpoint. Empty when workload has no bound scaler.
+          items: { $ref: '#/components/schemas/ScaleEvent' }
+
+    QuotaUsageSummary:
+      type: object
+      description: |
+        P11-T-105 — namespace Quota summary surfaced on the Workload page
+        progress bar. cap is from Quota.spec.enforcement.maxSliceAllocations,
+        used is from Quota.status.usage.currentSliceAllocations, remaining
+        = cap - used (clamped to 0). scaleEventsLast5min is from
+        Quota.status.usage.scaleEventsInWindow (window normalised to 5min
+        for display regardless of underlying ScaleEventRateCap WindowSeconds).
+        rateAlgorithm is "tokenBucket" (per ADR-0014 P10-T-104) or
+        "slidingWindow" (legacy) — frontend renders a small tag accordingly.
+      required: [cap, used, remaining]
+      properties:
+        cap:
+          type: integer
+          format: int32
+          minimum: 0
+        used:
+          type: integer
+          format: int32
+          minimum: 0
+        remaining:
+          type: integer
+          format: int32
+          minimum: 0
+        scaleEventsLast5min:
+          type: integer
+          format: int32
+          minimum: 0
+        rateAlgorithm:
+          type: string
+          enum: [tokenBucket, slidingWindow]
+          default: slidingWindow
+
+    ScaleEvent:
+      type: object
+      description: |
+        P11-T-105 — one NPUVerticalScaler scale event for the timeline
+        chart. Mirrors a single entry of NPUVerticalScaler.status.scaleHistory
+        rolling ring-buffer.
+      required: [timestamp, direction]
+      properties:
+        timestamp: { type: string, format: date-time }
+        direction:
+          type: string
+          enum: [up, down]
+        fromTemplate:
+          type: string
+          description: NPUSliceTemplate name before the scale event.
+        toTemplate:
+          type: string
+          description: NPUSliceTemplate name after the scale event.
+        reason:
+          type: string
+          description: Free-form reason (typically busy/idle threshold hit).
 
     SliceBinding:
       type: object

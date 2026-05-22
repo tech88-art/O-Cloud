@@ -479,6 +479,44 @@ export interface paths {
                      *     underlying source has data.
                      */
                     includeSliceBindings?: boolean;
+                    /**
+                     * @description P10-T-105 opt-in flag (Phase 10 frontend Workload page
+                     *     extension per ADR-0013 §6 forward note). When true, each
+                     *     returned Workload entry includes the boolean
+                     *     `o2DMSExposed` field — true if the workload was
+                     *     instantiated via the O2 DMS Adapter NB endpoint
+                     *     (`/o2ims-infrastructureManagement/v1/deploymentManagers/.../resources`),
+                     *     false for direct K8s API creation. The backend determines
+                     *     this by checking the owner ModelService for the annotation
+                     *     `dms.o2.ocloud.edge.example.com/exposed: "true"` which the
+                     *     O2 DMS Adapter stamps on its created ModelServices.
+                     *     Default false — keeps response shape stable for non-O2 demos.
+                     */
+                    includeO2DMSExposed?: boolean;
+                    /**
+                     * @description P10-T-105 opt-in flag (Phase 10 frontend Workload page
+                     *     extension per ADR-0014 §7 forward note). When true, each
+                     *     returned Workload entry includes the object
+                     *     `quotaUsage{cap, used, remaining, scaleEventsLast5min,
+                     *     rateAlgorithm}` summarising the workload's namespace
+                     *     Quota state (joined from inference-operator Quota CRD +
+                     *     scaleHistory ring-buffer). Default false — keeps response
+                     *     shape stable. The detail endpoint always populates the
+                     *     field when the underlying source has Quota data.
+                     */
+                    includeQuotaUsage?: boolean;
+                    /**
+                     * @description P10-T-105 opt-in flag (Phase 10 frontend Workload page
+                     *     extension per ADR-0012 §5 NPUVerticalScaler.scaleHistory
+                     *     forward note). When true, each returned Workload entry
+                     *     includes the array `scaleHistory[]` containing rolling
+                     *     10-entry scale events (timestamp + direction up/down +
+                     *     slice template change) for the workload's bound
+                     *     NPUVerticalScaler (if any). Default false. The detail
+                     *     endpoint always populates the field when the underlying
+                     *     NPUVerticalScaler has scaleHistory data.
+                     */
+                    includeScaleHistory?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -1192,6 +1230,72 @@ export interface components {
              *     endpoint always populates when data is available.
              */
             sliceBindings?: components["schemas"]["SliceBinding"][];
+            /**
+             * @description P11-T-105 — true if the workload was instantiated via the
+             *     O2 DMS Adapter NB endpoint. Backend determines this by
+             *     checking the owner ModelService for annotation
+             *     `dms.o2.ocloud.edge.example.com/exposed: "true"`.
+             *     Populated when `?includeO2DMSExposed=true` (list endpoint)
+             *     or always on detail endpoint when source provides it.
+             */
+            o2DMSExposed?: boolean;
+            /**
+             * @description P11-T-105 — summary of the workload's namespace Quota
+             *     consumption. Populated when `?includeQuotaUsage=true` (list
+             *     endpoint) or always on detail endpoint. Joined from
+             *     inference-operator Quota CRD + NPUVerticalScaler
+             *     scaleHistory ring-buffer.
+             */
+            quotaUsage?: components["schemas"]["QuotaUsageSummary"];
+            /**
+             * @description P11-T-105 — rolling 10-entry NPUVerticalScaler scale events
+             *     for the workload's bound scaler (if any). Populated when
+             *     `?includeScaleHistory=true` (list endpoint) or always on
+             *     detail endpoint. Empty when workload has no bound scaler.
+             */
+            scaleHistory?: components["schemas"]["ScaleEvent"][];
+        };
+        /**
+         * @description P11-T-105 — namespace Quota summary surfaced on the Workload page
+         *     progress bar. cap is from Quota.spec.enforcement.maxSliceAllocations,
+         *     used is from Quota.status.usage.currentSliceAllocations, remaining
+         *     = cap - used (clamped to 0). scaleEventsLast5min is from
+         *     Quota.status.usage.scaleEventsInWindow (window normalised to 5min
+         *     for display regardless of underlying ScaleEventRateCap WindowSeconds).
+         *     rateAlgorithm is "tokenBucket" (per ADR-0014 P10-T-104) or
+         *     "slidingWindow" (legacy) — frontend renders a small tag accordingly.
+         */
+        QuotaUsageSummary: {
+            /** Format: int32 */
+            cap: number;
+            /** Format: int32 */
+            used: number;
+            /** Format: int32 */
+            remaining: number;
+            /** Format: int32 */
+            scaleEventsLast5min?: number;
+            /**
+             * @default slidingWindow
+             * @enum {string}
+             */
+            rateAlgorithm: "tokenBucket" | "slidingWindow";
+        };
+        /**
+         * @description P11-T-105 — one NPUVerticalScaler scale event for the timeline
+         *     chart. Mirrors a single entry of NPUVerticalScaler.status.scaleHistory
+         *     rolling ring-buffer.
+         */
+        ScaleEvent: {
+            /** Format: date-time */
+            timestamp: string;
+            /** @enum {string} */
+            direction: "up" | "down";
+            /** @description NPUSliceTemplate name before the scale event. */
+            fromTemplate?: string;
+            /** @description NPUSliceTemplate name after the scale event. */
+            toTemplate?: string;
+            /** @description Free-form reason (typically busy/idle threshold hit). */
+            reason?: string;
         };
         /**
          * @description P6-T-102 — one NPU slice allocation observed for a pod of a

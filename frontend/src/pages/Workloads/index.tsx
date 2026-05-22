@@ -58,7 +58,19 @@ export default function WorkloadsPage() {
   // payload is unchanged for non-Phase-6 callers; this page explicitly
   // asks for it. WorkloadTable hides the column when no workload has
   // bindings, so the table stays compact in pre-Phase-6 environments.
-  const workloadsQuery = useWorkloads({ ...filter, includeSliceBindings: true });
+  // P11-T-105: opt in to the 3 Phase 11 indicator fields(o2DMSExposed
+  // badge + quotaUsage progress bar + scaleHistory mini count)by
+  // default. Backend cost is small(annotation check + Quota CR join +
+  // scaleHistory ring-buffer fetch). WorkloadTable hides each column
+  // when no row has the data, keeping the table compact in pre-Phase 11
+  // environments.
+  const workloadsQuery = useWorkloads({
+    ...filter,
+    includeSliceBindings: true,
+    includeO2DMSExposed: true,
+    includeQuotaUsage: true,
+    includeScaleHistory: true,
+  });
 
   const handleRowClick = (workload: Workload) => {
     setSelected({ namespace: workload.namespace, name: workload.name });

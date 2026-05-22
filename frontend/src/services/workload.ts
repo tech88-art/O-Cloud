@@ -39,7 +39,25 @@ export interface WorkloadFilter {
    * detail endpoint always populates when source has data.
    */
   includeSliceBindings?: boolean;
+  /**
+   * P11-T-105 opt-in: when true, list endpoint populates
+   * `Workload.o2DMSExposed`. Per ADR-0013 §6 forward note.
+   */
+  includeO2DMSExposed?: boolean;
+  /**
+   * P11-T-105 opt-in: when true, list endpoint populates
+   * `Workload.quotaUsage`. Per ADR-0014 §7 forward note.
+   */
+  includeQuotaUsage?: boolean;
+  /**
+   * P11-T-105 opt-in: when true, list endpoint populates
+   * `Workload.scaleHistory`. Per ADR-0012 §5 forward note.
+   */
+  includeScaleHistory?: boolean;
 }
+
+export type QuotaUsageSummary = NonNullable<Workload['quotaUsage']>;
+export type ScaleEvent = NonNullable<Workload['scaleHistory']>[number];
 
 /**
  * `useWorkloads(filter)` — list workloads, optionally filtered server-side.
@@ -66,6 +84,15 @@ export function useWorkloads(filter: WorkloadFilter = {}) {
   }
   if (filter.includeSliceBindings) {
     params.includeSliceBindings = true;
+  }
+  if (filter.includeO2DMSExposed) {
+    params.includeO2DMSExposed = true;
+  }
+  if (filter.includeQuotaUsage) {
+    params.includeQuotaUsage = true;
+  }
+  if (filter.includeScaleHistory) {
+    params.includeScaleHistory = true;
   }
   return useQuery({
     queryKey: ['workloads', params],

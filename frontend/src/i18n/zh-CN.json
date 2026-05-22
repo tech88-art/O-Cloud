@@ -54,6 +54,13 @@
     "nodeNames": "节点",
     "createdAt": "创建时间",
     "sliceBindings": "NPU 切片绑定",
+    "o2DMSExposed": "O2 DMS 暴露",
+    "o2DMSExposedYes": "已暴露",
+    "o2DMSExposedNo": "未暴露",
+    "quotaUsage": "配额使用",
+    "quotaUsageTooltip": "已用 {{used}}/{{cap}} · 剩余 {{remaining}} · 算法 {{algorithm}}",
+    "scaleHistory": "伸缩历史",
+    "scaleHistoryTooltip": "共 {{count}} 次 · 最近 {{lastTime}} 方向 {{lastDir}}",
     "empty": "暂无工作负载",
     "errorTitle": "加载工作负载失败"
   },

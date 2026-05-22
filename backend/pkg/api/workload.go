@@ -54,6 +54,9 @@ func (h *Handler) ListWorkloads(c *gin.Context) {
 		Type:                 c.Query("type"),
 		Status:               c.Query("status"),
 		IncludeSliceBindings: parseWorkloadBoolQuery(c, "includeSliceBindings"),
+		IncludeO2DMSExposed:  parseWorkloadBoolQuery(c, "includeO2DMSExposed"),
+		IncludeQuotaUsage:    parseWorkloadBoolQuery(c, "includeQuotaUsage"),
+		IncludeScaleHistory:  parseWorkloadBoolQuery(c, "includeScaleHistory"),
 	}
 
 	out, err := src.ListWorkloads(c.Request.Context(), filter)
