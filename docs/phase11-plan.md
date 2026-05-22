@@ -164,7 +164,7 @@ uncertainty trade-off。
 
 ---
 
-## 2. Task package overview (20 tasks)
+## 2. Task package overview (20 main + 4 Frontend UX sub-track = 24 tasks)
 
 ```
 W1 Foundation (8 tasks · 2 ADRs + 4 new chart packaging + 1 NRT CRD bundle + 1 chart env wire)
@@ -1498,6 +1498,255 @@ monitor 起手 · fix-NNN series 独立 task pattern · 不计入此 estimated).
 
 ---
 
+## 5.5 Track-2 — Frontend UX sub-track (P11-T-F01..F04 · parallel · conditional)
+
+**Background**: Phase 10 demo verify (2026-05-22) surfaced 3 categories
+of POC-vs-design-ideal UX gaps not in Phase 11 main scope (T001-T204):
+
+1. **Topology page (`/overview`)** — ReactFlow + dagre 24-NPU flat
+   layout · 与 `frontend/CLAUDE.md §7` "封装 G6" contract 偏离 · 无
+   compound graph (cluster → worker → NPU 嵌套)· 单集群 28-node 已显
+   散乱 · 大规模 / Karmada multi-site 不可扩
+2. **Deploy page (`/deploy`)** — preset card wraps generic ResourceCard
+   · 无 deploy-专属 visual(NPU dot · 状态机 animate · hover/select
+   动效)
+3. **D6 NUMA+HCCS deep-comparison surface 缺失** — events.json 推
+   payload 但 UI 无专题 visualization · workload-business dashboard
+   No-data(backend 未 emit `workload_*` metric)
+
+**Track-2 decision basis**: per "长期最优 > 短期 expedient" 原则
+(2026-05-22 user feedback) · 不在 ReactFlow 上 hack patch · 切回 G6 +
+配套 UX 升级 + backend metric emission 一次到位。`frontend/CLAUDE.md §7`
+早已 mandate G6 · `@antv/g6:^5.1.1` 已在 deps · `G6POC.tsx` 164-line
+baseline 已存在(早期评估留)。
+
+**Track-2 ownership**: frontend agent (F01-F03) + backend agent (F04) ·
+parallel to W1-W3 main scope · lands when capacity allows during Phase
+11 window · **carry to Phase 12 first slot if not all 4 landed by
+`phase-11-complete` tag**(per `feedback_strict_per_task_verify.md`
+单 task 串行模式 · 不阻塞 main scope close)。
+
+**Track-2 task overview**:
+
+| Task ID | Title | Owner | Est. | Independent? |
+|---|---|---|---|---|
+| P11-T-F01 | TopologyGraph G6 5.x 重写 + compound graph + 7 feature parity | frontend | 5-7d | yes |
+| P11-T-F02 | Deploy preset card 重设计(NPU dot + 动效 + 状态机) | frontend | 2d | yes |
+| P11-T-F03 | D6 NUMA+HCCS 对比专题 panel | frontend (+ backend small) | 2-3d | F04 desirable |
+| P11-T-F04 | Backend `workload_*` histogram + counter emit | backend | 3-4d | yes |
+
+Total estimated effort: **12-16d frontend + 3-4d backend** · 与 W1-W3
+chart packaging spine 工作 parallel · 不抢 main 工期。
+
+---
+
+### P11-T-F01 TopologyGraph G6 5.x 重写 + compound graph 嵌套 + 7 feature parity
+
+Owner: frontend.
+
+**Allowed Paths**:
+- `frontend/src/components/TopologyGraph/TopologyGraph.tsx`(existing
+  delete + rewrite · 当前 ReactFlow + dagre 550 行 全部替换 G6 5.x)
+- `frontend/src/components/TopologyGraph/G6POC.tsx`(existing edit ·
+  promote 部分 baseline 作为 production · or delete after merge)
+- `frontend/src/components/TopologyGraph/ReactFlowPOC.tsx`(delete ·
+  ReactFlow 路径 EOL)
+- `frontend/src/components/TopologyGraph/POCPage.tsx`(delete · POC
+  对比 route 不再需要)
+- `frontend/src/components/TopologyGraph/__tests__/`(rewrite ·
+  layoutWithDagre vitest 全删 · 新增 G6 5.x layout + compound graph
+  parent-child 结构 asserts + 7 feature parity asserts)
+- `frontend/package.json`(existing edit · remove `@xyflow/react` +
+  `dagre` deps · 保留 `@antv/g6` · pnpm-lock regen)
+- `frontend/src/pages/Overview/TopologyView.tsx`(small edit · API
+  contract 保持 · `onNodeClick` / `onNodeDoubleClick` / `expandedNPUs`
+  / `showFabric` / `showWorkloads` props 一致 不变)
+- `frontend/docs/topology-component.md`(new · G6 5.x compound graph
+  rendering rules · collapse/expand state machine · per-edge-type
+  routing · 4 toggle combo visual matrix)
+- `docs/devlog/phase-11-tf01.md`
+
+Acceptance:
+- Compound graph: cluster (outer container) → 3 worker (mid container)
+  → 8 NPU per worker (children at NPU rank) · slice nodes are NPU's
+  children when `expandedNPUs` contains parent NPU id
+- 7 feature parity (each via dedicated Vitest):
+  1. dbl-click NPU 展开 / 收起 slice 子树
+  2. `showFabric` toggle adds fabric switch top-level + inter-group
+     fabric-link edges
+  3. `showWorkloads` toggle adds workload + pod nodes · binds-to +
+     contains + pd-pair edges
+  4. PD pair 跨 worker edge (qwen-8b-pd prefill@worker-a-01 ↔
+     decode@worker-a-02)· 橙色虚线 + arrow + "PD" label · 跨 group
+     边正确 routing 不绕远
+  5. selection sync: tree click → graph highlight · group (worker
+     container) + child (NPU) 双层选中视觉
+  6. 4 toggle combo (off-off / fabric / workload / both) 全 28-125
+     node visual case 渲染正确 · 无 overlap / 无 edge spaghetti
+  7. set-a-small fixture 28 nodes 27 edges first render < 200ms ·
+     both toggle on 125 nodes 108 edges first render < 500ms
+- `frontend/CLAUDE.md §7` "封装 G6" contract violation 移除
+- side-by-side visual diff: G6 render vs `docs/demo-runbook.html`
+  Overview mock · 直观度 ≥ 80% match (qualitative · user screenshot
+  diff acceptance)
+- `pnpm run lint`, `pnpm run typecheck`, `pnpm run test` 全绿
+- `frontend/docs/topology-component.md` 完整 + 4 toggle combo screenshot
+  matrix
+
+Dependencies: `phase-10-complete`. Independent of W1-W3 main scope.
+
+Estimated effort: **5-7d**(G6 5.x compound graph 学习 1d · 7 feature
+parity 重实现 3-4d · test rewrite 1d · 4 toggle combo visual verify +
+docs 0.5-1d).
+
+---
+
+### P11-T-F02 Deploy preset card 重设计(NPU dot visual + hover/select 动效 + 部署状态机视觉化)
+
+Owner: frontend.
+
+**Allowed Paths**:
+- `frontend/src/pages/Deploy/PresetGrid.tsx`(existing edit · 改成调用
+  新 DeployPresetCard 而非 ResourceCard generic)
+- `frontend/src/pages/Deploy/DeployPresetCard.tsx`(new · deploy 专属
+  card component · NPU dot 8 个可视化 + alloc 高亮 + hover scale +
+  selected pulse + deploy success 1.5s green flash)
+- `frontend/src/pages/Deploy/styles.module.css`(existing edit · 加
+  hover / select / success animation CSS tokens · cubic-bezier 200ms)
+- `frontend/src/pages/Deploy/index.tsx`(small edit · wire
+  DeployPresetCard + deploy 成功 callback trigger flash animation)
+- `frontend/src/pages/Deploy/__tests__/DeployPresetCard.test.tsx`(new
+  · 3-4 test: NPU dot 高亮数量 = preset.npuCount · hover state class ·
+  selected state class · success animation triggered on deploy 201)
+- `docs/devlog/phase-11-tf02.md`
+
+Acceptance:
+- 4 preset card (pi-3b / qwen-8b-pd / deepseek-20b / qwen-14b) 每个含:
+  - 模型名 + 模型规模 + runtime (mindie / vllm) tag
+  - **8 NPU dot 可视化**:8 个 8px×8px 圆角方块 · 前 `preset.npuCount`
+    个亮主色 · 其余灰
+  - vRAM / CPU 数字 + 单位
+- Interaction:
+  - hover: `transform: scale(1.03) + box-shadow elevate` · 200ms cubic-bezier
+  - selected (click): border-color primary + `animate: pulse-glow 600ms once`
+  - deploy 201 success: card brief `flash: success 1.5s` (green tint
+    overlay 然后 fade)
+- side-by-side visual: 4 card 视觉 ≥ 90% match `docs/demo-runbook.html`
+  Deploy mock
+- `pnpm run lint`, `pnpm run typecheck`, `pnpm run test` 全绿
+
+Dependencies: `phase-10-complete`. 完全独立.
+
+Estimated effort: **2d**.
+
+---
+
+### P11-T-F03 D6 NUMA+HCCS 对比专题 panel(Workloads 内 Drawer + backend D6 aggregator endpoint)
+
+Owner: frontend (+ small backend bridge).
+
+**Allowed Paths**:
+- `frontend/src/pages/Workloads/D6ComparisonPanel.tsx`(new · Drawer
+  组件 · 三组对比柱状图 ECharts · TTFT / ITL / TPS · animated grow on
+  open)
+- `frontend/src/pages/Workloads/index.tsx`(small edit · 顶栏 add
+  button "D6 NUMA+HCCS 对比" trigger Drawer 弹出 D6ComparisonPanel)
+- `frontend/src/services/d6.ts`(new · react-query hook fetch D6 metric
+  · `/api/v1/d6/comparison` · cache 30s · prefers F04-emitted prom data)
+- `frontend/src/pages/Workloads/__tests__/D6ComparisonPanel.test.tsx`(new)
+- `backend/internal/handlers/d6.go`(new · D6 GET endpoint · 聚合
+  events.json `d6-affinity-*` + `d6-non-affinity-*` stage payloads ·
+  returns `{affinity:{ttft,itl,tps}, crossNuma:{ttft,itl,tps},
+  delta:{ttftPct, itlPct, tpsPct}}`)
+- `backend/internal/handlers/d6_test.go`(new)
+- `backend/internal/routing/api.go`(small edit · register
+  `/api/v1/d6/comparison`)
+- `docs/api-contract.yaml`(small edit · 加 `/api/v1/d6/comparison`
+  schema · RFC if breaking)
+- `frontend/docs/d6-comparison.md`(new · panel rendering rules +
+  ECharts config + i18n posture)
+- `docs/devlog/phase-11-tf03.md`
+
+Acceptance:
+- D6 panel 触发后 surface 4 数字 highlight + 3 双柱图:
+  - TTFT: affinity ≈ 50ms · cross-numa ≈ 89ms · `+78%` red badge
+  - ITL: affinity ≈ 14ms · cross-numa ≈ 25ms · `+79%` red badge
+  - TPS: affinity ≈ 1050 tok/s · cross-numa ≈ 630 tok/s · `-40%` red
+    badge
+- ECharts 双柱图 animated bar grow 600ms cubic-bezier on panel open
+- 3 行讲解 talking points 渲染 panel 底部(spec D6 source · 同模型 ·
+  同节点 · 同 NPU 代际 · 只差 NUMA · HCCS group 共址 matters)
+- backend `GET /api/v1/d6/comparison` returns aggregated D6 payload ·
+  unit tests 覆盖 happy + missing-data fallback (events.json absent
+  或 D6 events 未 fire 时 return `{error: "not-yet-available"}`)
+- prefer F04-emitted prom `workload_ttft_ms_bucket{affinity=...}` if
+  F04 lands · fallback events.json static payload
+- `pnpm run lint`, `pnpm run typecheck`, `pnpm run test`, `go test ./...` 全绿
+
+Dependencies: F04 desirable (provides real prom backing) · 否则
+events.json fallback (still demo-grade). Independent of W1-W3.
+
+Estimated effort: **2-3d**.
+
+---
+
+### P11-T-F04 Backend emit `workload_*` histogram + counter(unblock workload-business / workload-resource dashboards)
+
+Owner: backend.
+
+**Allowed Paths**:
+- `backend/internal/metrics/workload.go`(new · register 3 counter
+  families:`workload_requests_total{workload,status}` ·
+  `workload_input_tokens_total{workload}` ·
+  `workload_output_tokens_total{workload}` · 3 histogram families:
+  `workload_ttft_ms_bucket` · `workload_itl_ms_bucket` ·
+  `workload_e2e_ms_bucket` · labels `{workload, affinity, le}`)
+- `backend/internal/datasource/mock/workload_emitter.go`(new · mock
+  goroutine emit synthetic workload metric per workload in fixture ·
+  10-15s tick · 不同 workload type 不同分布:inference workload TTFT
+  base 50/89ms per affinity label · benchmark TPS 高 · training emit
+  少)
+- `backend/internal/datasource/mock/workload_emitter_test.go`(new)
+- `backend/cmd/demo-backend/main.go`(small edit · wire workload_emitter
+  goroutine + graceful shutdown)
+- `backend/configs/config.dev.yaml`(small edit · 加
+  `metrics.workload.emitter.enabled: true` + `tickInterval: 10s`)
+- `deploy/dev/grafana/dashboards/workload-business.json`(existing
+  edit · 描述前缀 "⚠ Demo state (P11-fix-002)" 删除 · panels 有数据)
+- `deploy/dev/grafana/dashboards/workload-resource.json`(existing
+  edit · description 调整 · `ascend_npu_slice_util_percent` panel 仍
+  由 P11-fix-002 提供 · `container_*` panel 保留 ⚠ cAdvisor 依赖 marker)
+- `docs/devlog/phase-11-tf04.md`
+
+Acceptance:
+- 6 metric families exposed at backend `/metrics`:
+  - `workload_requests_total{workload,status}` · counter
+  - `workload_input_tokens_total{workload}` · counter
+  - `workload_output_tokens_total{workload}` · counter
+  - `workload_ttft_ms_bucket{workload,affinity,le}` · histogram
+  - `workload_itl_ms_bucket{workload,affinity,le}` · histogram
+  - `workload_e2e_ms_bucket{workload,affinity,le}` · histogram
+- prom scrape ingest > 12 workload series per non-histogram family ·
+  histograms emit > 60 series per family (12 workload × 5+ le bucket)
+- workload-business dashboard 全 panel render real time series ·
+  TTFT p50/p90/p99 different per workload · affinity vs non delta
+  visible
+- D6 affinity vs cross-numa metric emit match events.json payload
+  numerical ranges (TTFT 50 / 89 ms · TPS 1050 / 630 tok/s · ±10%
+  tolerance)
+- backend test: histogram emit unit test + emitter goroutine lifecycle
+  test (start + tick + graceful shutdown)
+- workload-business dashboard description "⚠ Demo state (P11-fix-002)"
+  前缀 删除 · workload-resource dashboard 仅 `container_*` 部分仍标注
+  cAdvisor 依赖
+- `go test ./internal/metrics/... ./internal/datasource/mock/...` 全绿
+
+Dependencies: `phase-10-complete`. Independent of W1-W3.
+
+Estimated effort: **3-4d**.
+
+---
+
 ## 6. Phase 11 DoD
 
 Phase 11 is considered complete (`phase-11-complete` tag lands · per
@@ -1596,6 +1845,27 @@ master-demo-multi-site live-run.
       P10-fix 模式 · 直接 push dev) · dev HEAD 全绿 → Phase 11 真完成
       → M5 真生产化 foundation milestone complete
 
+### Track-2 Frontend UX sub-track (conditional · carry to Phase 12 if not all 4 land by tag)
+
+- [ ] **F01 TopologyGraph G6 5.x 重写** landed · 7 feature parity verified
+      · compound graph 嵌套 visible · `frontend/CLAUDE.md §7` "封装 G6"
+      contract 兑现 · ReactFlow + dagre deps 移除 · `pnpm-lock.yaml` regen
+- [ ] **F02 Deploy preset card 重设计** landed · 4 card visual + 3
+      interaction states (hover / select / success-flash) match
+      `docs/demo-runbook.html` Deploy mock ≥ 90%
+- [ ] **F03 D6 NUMA+HCCS 对比专题 panel** landed · TTFT/ITL/TPS 三组
+      双柱图 + 3 delta badge · backend `/api/v1/d6/comparison`
+      endpoint tested · prom-backed if F04 lands else events.json fallback
+- [ ] **F04 Backend `workload_*` emit** landed · 6 metric families
+      (3 counter + 3 histogram) at `/metrics` · workload-business
+      dashboard 全 panel real series · workload-resource
+      `ascend_npu_slice_util_percent` panel 有数据(`container_*` 仍 ⚠
+      cAdvisor 依赖 · 描述保留 partial marker)
+- [ ] **(if any of F01-F04 不 land by `phase-11-complete` tag)** carry
+      to Phase 12 first slot · 不阻塞 main scope DoD · 在
+      `docs/checkpoint-phase11.md` §F-Track 区域 记录 each task
+      land / defer 状态 + carry rationale
+
 ### Out of scope (carried forward to Phase 12+)
 
 - [ ] **Live migration of HCCL ranks / per-Pod RDMA bandwidth quota** —
@@ -1623,6 +1893,12 @@ master-demo-multi-site live-run.
       (>2 member cluster · 跨真物理机房 / 跨 region)— Phase 11 ships
       Karmada control + 2 member kind cluster minimum(单机模拟 multi-
       site)· 真 多机房 Phase 12+
+- [ ] **Frontend UX Track-2 任一 task carry**(if F01-F04 not all
+      landed by `phase-11-complete` tag)— Track-2 sub-track is
+      explicitly conditional(post Phase 10 demo verify 2026-05-22 ·
+      "长期最优 > 短期 expedient" 决策原则)· carry to Phase 12 first
+      slot · 不阻塞 main scope close · per `feedback_strict_per_task_
+      verify.md` 单 task 串行 + 严格 verify 模式 · 不为赶进度短期 hack
 
 ---
 
