@@ -53,6 +53,7 @@
 | Demo-backend replicaCount 3+ HA default | ADR-0017 §4 (c) | M | 与 Karmada control HA 同 production hardening cohort |
 | Frontend WorkloadDetailDrawer ECharts scaleHistory timeline | phase-11-t105.md | L | T201 / Phase 12+ richer surface · 当 scaleHistory entries > 5 时更有价值 |
 | Frontend Vitest tests for 3 indicator columns | phase-11-t105.md | M | 留 mock source data fixture 完整后 · 与 Source impl 同期 |
+| **Frontend UX Track-2 F01-F04**(G6 5.x rewrite + Deploy preset card + D6 NUMA+HCCS panel + workload_* histogram emit) | phase-11-tF-carry.md + phase-11-frontend-ux-track-charter.md + phase11-plan §5.5 | H if capacity | 12-16d frontend + 3-4d backend · per charter carry posture · 优先入 Phase 12 first slot if agent 容量充分 · spec 已在 phase11-plan §5.5 ship · 不需重写 spec |
 | Event-driven Quota status.usage sync | ADR-0014 §7 line 5 | L | 替代 60s tick · informer event → quota controller 增量更新 |
 | Webhook cert split | ADR-0014 §7 line 6 | L | per Quota A / Quota B / PD Router / NPUVerticalScaler 独立 cert · cert reuse 出 incident 时触发 |
 | HCCL live migration kernel/driver support | ADR-0016 §3 Stream 2 | L | depends on Huawei vendor roadmap |
