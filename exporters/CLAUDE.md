@@ -71,7 +71,7 @@ exporters/
     │   ├── collector/                 P3-T-007+ NPU/slice/workload(尚未存在)
     │   │   └── sources/               P4+ DCMI / npu-smi 真硬件来源(尚未存在)
     │   └── testdata/                  P3-T-007+ simulator JSON(尚未存在)
-    ├── Dockerfile                     multi-stage distroless, linux/amd64 only
+    ├── Dockerfile                     multi-stage distroless · multi-arch(amd64+arm64 · ADR-0020)
     ├── Makefile
     ├── go.mod / go.sum
     └── README.md
@@ -79,7 +79,13 @@ exporters/
 
 ### 3.3 平台
 
-- **目标二进制**:linux/amd64(对应昇腾 910B 节点)
+- **目标二进制**:**linux/arm64 + linux/amd64 multi-arch**(per ADR-0020 · 翻转此前
+  amd64-only)。arm64 = 部署 target(昇腾 910B 节点跑在 aarch64 鲲鹏 Kunpeng 920
+  host + openEuler · exporter 必须 arm64)· amd64 保留本机 dev/CI/render-verify。
+  镜像走 buildx `--platform linux/amd64,linux/arm64`(Dockerfile `GOARCH=${TARGETARCH}`
+  注入)。**注**:`make build` / `make docker-build` 默认仍产 host arch(本机 dev)·
+  multi-arch 双架构镜像走 buildx · Makefile buildx target 留 Track A 后续(P12-T-101
+  仅 Dockerfile multi-arch · Makefile 不在 T101 Allowed Paths)
 - **本机开发**:`make build-local` 不强制目标平台,产 host-OS 二进制供
   functional smoke
 
@@ -163,7 +169,7 @@ make clean           # remove bin/ + cover.out
 | 把 NPU 指标硬编码到 `exporter_*` 前缀 | 用 `ascend_*` 前缀(本模块 §3.4) |
 | 把指标采集进程做成有状态(写本地 DB / 文件) | 重启即重建,所有状态来自上游(DCMI / simulator JSON) |
 | 引入 client-go / controller-runtime 等重型依赖 | exporter 只读硬件 / 模拟器,不需 K8s client |
-| 跨平台二进制混合发布(ARM + amd64) | 仅 linux/amd64,与目标硬件匹配 |
+| ~~仅发布 linux/amd64~~(ADR-0020 已翻转) | **multi-arch buildx**(`--platform linux/amd64,linux/arm64`)· arm64 = 部署 target(鲲鹏节点)· amd64 = 本机 dev/CI · 见 §3.3 |
 
 ---
 

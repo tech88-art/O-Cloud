@@ -1,9 +1,10 @@
 # Phase 4 T103 scaffold Dockerfile. Real chart build lands Phase 5 alongside
 # the controller body.
 #
-# Multi-stage golang + distroless static runtime, linux/amd64 only per
-# arch §1.2. Identical pattern to operators/npu-dra-driver/Dockerfile +
-# operators/pool-operator/Dockerfile.
+# Multi-stage golang + distroless static runtime. multi-arch (ADR-0020 ·
+# P12-T-101): aarch64 鲲鹏 + 昇腾 910B 部署 target(翻转此前 amd64-only) ·
+# buildx --platform linux/amd64,linux/arm64. Identical pattern to
+# operators/npu-dra-driver/Dockerfile + operators/pool-operator/Dockerfile.
 
 FROM golang:1.25 AS builder
 ARG TARGETOS

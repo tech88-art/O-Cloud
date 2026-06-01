@@ -1,5 +1,7 @@
 # P11-T-006 chart build Dockerfile · ADR-0017 §2 Decision D 4th
 # Multi-stage golang + distroless static (same pattern as IMS-1 / IMS-2).
+# multi-arch (ADR-0020 · P12-T-101): buildx --platform linux/amd64,linux/arm64 ·
+# aarch64 鲲鹏 + 昇腾 910B 部署 target · TARGETARCH 由 buildx 注入.
 
 FROM golang:1.26 AS builder
 ARG TARGETOS

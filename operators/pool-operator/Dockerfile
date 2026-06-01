@@ -1,4 +1,7 @@
-# Build the manager binary
+# Build the manager binary.
+# multi-arch (ADR-0020 · P12-T-101): buildx --platform linux/amd64,linux/arm64 ·
+# aarch64 鲲鹏 + 昇腾 910B 部署 target · GOARCH=${TARGETARCH} 由 buildx 注入
+# (空=host arch · 见下方 BUILDPLATFORM 注释).
 FROM golang:1.25 AS builder
 ARG TARGETOS
 ARG TARGETARCH

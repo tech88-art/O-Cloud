@@ -1,5 +1,7 @@
 # P11-T-004 chart build Dockerfile · ADR-0017 §2 Decision D 2nd 优先级
-# Multi-stage golang + distroless static · linux/amd64 only per arch §1.2
+# Multi-stage golang + distroless static · multi-arch (ADR-0020 · P12-T-101):
+# aarch64 鲲鹏 + 昇腾 910B 部署 target(翻转此前 amd64-only) · buildx
+# --platform linux/amd64,linux/arm64 · TARGETARCH 由 buildx 注入
 # (same pattern as inference-operator / npu-dra-driver / pool-operator).
 
 FROM golang:1.26 AS builder

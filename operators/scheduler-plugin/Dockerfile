@@ -1,6 +1,7 @@
 # Phase 6 T002 multi-stage image build. Mirrors operators/npu-dra-driver/
 # Dockerfile + pool-operator/Dockerfile patterns: golang builder + distroless
-# static runtime, linux/amd64 only (arch §1.2: no arm64 / 鲲鹏 support).
+# static runtime. multi-arch (ADR-0020 · P12-T-101): aarch64 鲲鹏 + 昇腾 910B
+# 部署 target(翻转此前 amd64-only) · buildx --platform linux/amd64,linux/arm64.
 #
 # Built by `make docker-build IMG=...`. The helm chart at
 # deploy/helm-charts/scheduler-plugin/ (P6-T-101) references this image by
@@ -23,7 +24,7 @@ RUN go mod download
 
 COPY . .
 
-# Build for linux/amd64 only (arch §1.2: no arm64 / 鲲鹏 support).
+# GOARCH=${TARGETARCH} → buildx 跨平台(per ADR-0020 multi-arch · 空=host arch).
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
     go build -a -o kube-scheduler cmd/main.go
 

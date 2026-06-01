@@ -20,6 +20,14 @@ ARG VERSION=0.1.0
 ARG COMMIT=""
 ARG BUILDTIME=""
 
+# multi-arch (ADR-0020 · P12-T-101): aarch64 鲲鹏 + 昇腾 910B 部署 target.
+#   docker buildx build --platform linux/amd64,linux/arm64 -t demo-backend .
+#   TARGETARCH 由 buildx 注入(default docker build → 空 → host arch).
+#   CGO_ENABLED=0 静态跨编译 · golang-alpine + distroless/static 均 multi-arch base.
+#   arm64 = 部署 target · amd64 保留本机 dev/CI/render-verify(make dev-up 不破).
+ARG TARGETOS
+ARG TARGETARCH
+
 WORKDIR /src
 
 # Resolve modules first so the layer can be cached when only sources change.
@@ -29,7 +37,9 @@ RUN go mod download
 COPY . .
 
 # CGO disabled → static binary that runs on distroless/static.
-RUN CGO_ENABLED=0 GOOS=linux go build \
+# GOARCH=${TARGETARCH} → buildx cross-compiles per target platform (empty under
+# plain `docker build` → host arch, so make dev-up amd64 build is unchanged).
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build \
     -ldflags "-s -w \
       -X github.com/example/ocloud-edge/backend/pkg/api.BuildCommit=${COMMIT} \
       -X github.com/example/ocloud-edge/backend/pkg/api.BuildTimestamp=${BUILDTIME}" \

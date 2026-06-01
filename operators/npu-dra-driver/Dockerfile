@@ -1,7 +1,9 @@
 # Phase 4 T101 multi-stage image build. Mirrors
 # operators/pool-operator/Dockerfile + exporters/ascend-npu-exporter-plus
-# patterns: golang builder + distroless static runtime, linux/amd64 only
-# (arch §1.2: no arm64 / 鲲鹏 support).
+# patterns: golang builder + distroless static runtime.
+# multi-arch (ADR-0020 · P12-T-101): aarch64 鲲鹏 + 昇腾 910B 部署 target
+# (翻转此前 amd64-only / 鲲鹏-unsupported · 见 docs/adr/0020) ·
+# docker buildx build --platform linux/amd64,linux/arm64 · TARGETARCH 由 buildx 注入.
 #
 # Built by `make docker-build IMG=...`. The helm chart at
 # deploy/helm-charts/npu-dra-driver/ references this image by repo+tag.
@@ -17,7 +19,7 @@ RUN go mod download
 
 COPY . .
 
-# Build for linux/amd64 only (arch §1.2: no arm64 / 鲲鹏 support).
+# GOARCH=${TARGETARCH} → buildx 跨平台(per ADR-0020 multi-arch · 空=host arch).
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
     go build -a -o manager cmd/main.go
 
