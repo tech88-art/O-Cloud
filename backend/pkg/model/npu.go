@@ -2,18 +2,29 @@ package model
 
 // NPU mirrors components.schemas.NPU.
 type NPU struct {
-	ID          string     `json:"id"`
-	NodeName    string     `json:"nodeName,omitempty"`
-	Model       string     `json:"model"`
-	Index       int        `json:"index,omitempty"`
-	VRAMMiB     int        `json:"vramMiB,omitempty"`
-	AICoreTotal int        `json:"aiCoreTotal,omitempty"`
-	NumaNode    int        `json:"numaNode,omitempty"`
-	HCCSGroup   string     `json:"hccsGroup,omitempty"`
-	Status      string     `json:"status"`              // healthy | degraded | faulty | offline
-	SliceMode   string     `json:"sliceMode,omitempty"` // whole | fixed-template | dynamic
-	Slices      []NPUSlice `json:"slices,omitempty"`
-	Usage       *NPUUsage  `json:"usage,omitempty"`
+	ID          string `json:"id"`
+	NodeName    string `json:"nodeName,omitempty"`
+	Model       string `json:"model"`
+	Index       int    `json:"index,omitempty"`
+	VRAMMiB     int    `json:"vramMiB,omitempty"`
+	AICoreTotal int    `json:"aiCoreTotal,omitempty"`
+	NumaNode    int    `json:"numaNode,omitempty"`
+	HCCSGroup   string `json:"hccsGroup,omitempty"`
+	// PCIeBandwidthGBps is the host↔NPU PCIe link bandwidth in GB/s
+	// (gigabytes/second). ADR-0021 Track B 拓扑全保真. Pointer so absent in a
+	// fixture round-trips as nil (the topology aggregator only stamps the
+	// `pcieBandwidthGBps` node attribute when non-nil → byte-equivalent for
+	// pre-ADR-0021 fixtures). PCIe Gen4 x16 ≈ 32 · Gen5 x16 ≈ 64.
+	PCIeBandwidthGBps *float64 `json:"pcieBandwidthGBps,omitempty"`
+	// HCCSBandwidthGBps is the per-NPU HCCS link bandwidth in GB/s. ADR-0021:
+	// the topology aggregator emits `hccs` edges between same-node same-
+	// hccsGroup NPUs, stamping this value as the edge's bandwidthGBps. Pointer
+	// for the same absent→nil round-trip reason. 910B HCCS ≈ 56 GB/s.
+	HCCSBandwidthGBps *float64   `json:"hccsBandwidthGBps,omitempty"`
+	Status            string     `json:"status"`              // healthy | degraded | faulty | offline
+	SliceMode         string     `json:"sliceMode,omitempty"` // whole | fixed-template | dynamic
+	Slices            []NPUSlice `json:"slices,omitempty"`
+	Usage             *NPUUsage  `json:"usage,omitempty"`
 }
 
 // NPUSlice mirrors components.schemas.NPUSlice.

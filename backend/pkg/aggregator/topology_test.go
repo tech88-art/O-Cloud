@@ -374,9 +374,11 @@ func TestBuildTopology_Fabric_DepthSlice_FabricCoexistsWithNPUTree(t *testing.T)
 
 	topo := BuildTopology(in)
 
-	// T102 base (8 nodes / 7 edges) + 1 switch + 2 fabric-link = 9 / 9.
+	// T102 base (8 nodes / 7 edges) + 1 switch + 2 fabric-link = 9 nodes / 9
+	// edges, PLUS the ADR-0021 hccs ring edge between node-1's two same-group
+	// NPUs (node-1-npu-0 ↔ node-1-npu-1, hccsGroup hccs-0) → 10 edges.
 	assert.Len(t, topo.Nodes, 9)
-	assert.Len(t, topo.Edges, 9)
+	assert.Len(t, topo.Edges, 10)
 
 	// Spot-check the tree wiring stayed intact.
 	edges := indexEdges(topo)
@@ -384,6 +386,8 @@ func TestBuildTopology_Fabric_DepthSlice_FabricCoexistsWithNPUTree(t *testing.T)
 	assert.Contains(t, edges, [3]string{"node-1-npu-0", "node-1-npu-0-slice-0", "contains"})
 	// And the new fabric layer.
 	assert.Contains(t, edges, [3]string{"switch-tor-a-01", "node-1", "fabric-link"})
+	// ADR-0021: hccs ride the IncludeFabric toggle (intra-node NPU interconnect).
+	assert.Contains(t, edges, [3]string{"node-1-npu-0", "node-1-npu-1", "hccs"})
 }
 
 func TestBuildTopology_Fabric_OrphanLinkEndpointsDropped(t *testing.T) {
@@ -417,9 +421,11 @@ func TestBuildTopology_Fabric_OrphanLinkEndpointsDropped(t *testing.T) {
 }
 
 func TestBuildTopology_Fabric_EmptySwitchesNoLinks_NoOp(t *testing.T) {
-	// IncludeFabric=true with zero switches AND zero links → graph stays at
-	// the T102 baseline. Guards against accidental shape changes when a
-	// future fixture set drops fabric files (they're optional per ADR-0004).
+	// IncludeFabric=true with zero switches AND zero links → no switch nodes
+	// and no fabric-link/network edges (those need the optional ADR-0004
+	// fixture files). BUT ADR-0021 hccs edges are derived from the NPUs'
+	// hccsGroup, not from switch/link files, so the node-1 hccs-0 pair still
+	// rings up: T102 baseline (8 nodes / 7 edges) + 1 hccs = 8 / 8.
 	in := fixtureInputs()
 	in.IncludeFabric = true
 	// Switches / Links left zero-valued.
@@ -427,7 +433,11 @@ func TestBuildTopology_Fabric_EmptySwitchesNoLinks_NoOp(t *testing.T) {
 	topo := BuildTopology(in)
 
 	assert.Len(t, topo.Nodes, 8)
-	assert.Len(t, topo.Edges, 7)
+	assert.Len(t, topo.Edges, 8)
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{"node-1-npu-0", "node-1-npu-1", "hccs"})
+	// No switch nodes / fabric-link / network edges materialized.
+	assert.NotContains(t, edges, [3]string{"switch-tor-a-01", "node-1", "fabric-link"})
 }
 
 // ---- P1-T-213 workload branch tests ------------------------------------
@@ -712,8 +722,9 @@ func TestBuildTopology_Workloads_FabricCoexists(t *testing.T) {
 
 	// 8 base + 1 switch + 2 workload + 3 pod = 14 nodes total.
 	assert.Len(t, topo.Nodes, 14)
-	// 7 base + 2 fabric-link + 2 binds-to + 1 pd-pair = 12 edges total.
-	assert.Len(t, topo.Edges, 12)
+	// 7 base + 2 fabric-link + 1 hccs (ADR-0021 node-1 ring) + 2 binds-to +
+	// 1 pd-pair = 13 edges total.
+	assert.Len(t, topo.Edges, 13)
 
 	byID := indexNodes(t, topo)
 	require.Contains(t, byID, "switch-tor-a-01")
@@ -752,4 +763,183 @@ func TestBuildTopology_Workloads_DepthNode_PodsPresentBindsToDropped(t *testing.
 		assert.NotEqual(t, "binds-to", e.Type,
 			"binds-to should drop at depth=node (no slice nodes to target)")
 	}
+}
+
+// ---- P12-T-104 ADR-0021 full-fidelity edges ----------------------------
+
+func f64p(f float64) *float64 { return &f }
+
+// pcieBandwidthGBps is stamped onto the npu node only when the fixture
+// supplies it (happy path).
+func TestBuildTopology_PCIeBandwidth_StampedWhenPresent(t *testing.T) {
+	in := fixtureInputs()
+	in.NPUs[0].PCIeBandwidthGBps = f64p(32.0)
+
+	topo := BuildTopology(in)
+
+	byID := indexNodes(t, topo)
+	require.NotNil(t, byID["node-1-npu-0"].Attributes)
+	assert.Equal(t, 32.0, byID["node-1-npu-0"].Attributes["pcieBandwidthGBps"])
+	// A sibling NPU without the field carries no pcie attribute.
+	assert.NotContains(t, byID["node-1-npu-1"].Attributes, "pcieBandwidthGBps")
+}
+
+// Edge case: nil pcie → attribute absent on every NPU (byte-equivalent for
+// pre-ADR-0021 fixtures).
+func TestBuildTopology_PCIeBandwidth_AbsentWhenNil(t *testing.T) {
+	topo := BuildTopology(fixtureInputs()) // no NPU sets PCIeBandwidthGBps
+	byID := indexNodes(t, topo)
+	for _, id := range []string{"node-1-npu-0", "node-1-npu-1", "node-2-npu-0"} {
+		assert.NotContains(t, byID[id].Attributes, "pcieBandwidthGBps", "npu %s", id)
+	}
+}
+
+// network edge: a link whose BOTH ends are nodes classifies as `network`
+// (not fabric-link), carrying bandwidthGBps/medium/utilization (happy path).
+func TestBuildTopology_NetworkEdge_NodeToNode(t *testing.T) {
+	in := fixtureInputs()
+	in.IncludeFabric = true
+	in.Links = []NetworkLink{
+		{ID: "net-1", From: "node-1", To: "node-2", BandwidthGBps: 50.0, Medium: "roce", Utilization: 12.5},
+	}
+
+	topo := BuildTopology(in)
+
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{"node-1", "node-2", "network"})
+	assert.NotContains(t, edges, [3]string{"node-1", "node-2", "fabric-link"})
+
+	var net *model.TopologyEdge
+	for i := range topo.Edges {
+		if topo.Edges[i].Type == "network" {
+			net = &topo.Edges[i]
+		}
+	}
+	require.NotNil(t, net)
+	assert.Equal(t, 50.0, net.Attributes["bandwidthGBps"])
+	assert.Equal(t, "roce", net.Attributes["medium"])
+	assert.Equal(t, 12.5, net.Attributes["utilization"])
+}
+
+// Edge case: a node↔switch link stays fabric-link (only both-ends-nodes →
+// network); the classification doesn't reroute fabric links.
+func TestBuildTopology_NetworkEdge_NodeToSwitchStaysFabricLink(t *testing.T) {
+	switches, links := fabricFixture() // links are switch↔node
+	in := fixtureInputs()
+	in.IncludeFabric = true
+	in.Switches = switches
+	in.Links = links
+
+	topo := BuildTopology(in)
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{"switch-tor-a-01", "node-1", "fabric-link"})
+	assert.NotContains(t, edges, [3]string{"switch-tor-a-01", "node-1", "network"})
+}
+
+// hccs ring: 3 NPUs in one node+group form a closed ring (3 edges) with
+// bandwidthGBps stamped from the source NPU (happy path).
+func TestBuildTopology_HCCS_RingWithinGroup(t *testing.T) {
+	bw := f64p(56.0)
+	in := fixtureInputs()
+	in.Depth = DepthNPU
+	in.IncludeFabric = true
+	in.Nodes = []model.NodeDetail{{Node: model.Node{Name: "node-x", ClusterID: "cluster-a", Status: "Ready"}}}
+	in.NPUs = []*model.NPU{
+		{ID: "x-0", NodeName: "node-x", Index: 0, HCCSGroup: "g0", Status: "healthy", HCCSBandwidthGBps: bw},
+		{ID: "x-1", NodeName: "node-x", Index: 1, HCCSGroup: "g0", Status: "healthy", HCCSBandwidthGBps: bw},
+		{ID: "x-2", NodeName: "node-x", Index: 2, HCCSGroup: "g0", Status: "healthy", HCCSBandwidthGBps: bw},
+	}
+
+	topo := BuildTopology(in)
+
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{"x-0", "x-1", "hccs"})
+	assert.Contains(t, edges, [3]string{"x-1", "x-2", "hccs"})
+	assert.Contains(t, edges, [3]string{"x-2", "x-0", "hccs"}) // ring closes
+
+	n := 0
+	var sample *model.TopologyEdge
+	for i := range topo.Edges {
+		if topo.Edges[i].Type == "hccs" {
+			n++
+			sample = &topo.Edges[i]
+		}
+	}
+	assert.Equal(t, 3, n, "closed ring of 3 NPUs → 3 hccs edges")
+	require.NotNil(t, sample)
+	assert.Equal(t, 56.0, sample.Attributes["bandwidthGBps"])
+	assert.Equal(t, "g0", sample.Attributes["hccsGroup"])
+}
+
+// Edge case: hccs is gated on IncludeFabric, and a lone NPU in a group has no
+// peer (no edge).
+func TestBuildTopology_HCCS_GatedAndLoneSkipped(t *testing.T) {
+	// (a) IncludeFabric=false → no hccs even though the fixture has a pair.
+	noFab := BuildTopology(fixtureInputs())
+	for _, e := range noFab.Edges {
+		assert.NotEqual(t, "hccs", e.Type, "hccs must not emit when IncludeFabric=false")
+	}
+
+	// (b) IncludeFabric=true → only node-1's pair rings up; node-2's lone NPU
+	// (alone in hccs-0 on node-2) has no same-node peer → no edge.
+	in := fixtureInputs()
+	in.IncludeFabric = true
+	topo := BuildTopology(in)
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{"node-1-npu-0", "node-1-npu-1", "hccs"})
+	count := 0
+	for _, e := range topo.Edges {
+		if e.Type == "hccs" {
+			count++
+		}
+	}
+	assert.Equal(t, 1, count, "only node-1's pair rings up; node-2's lone NPU has no peer")
+}
+
+// runs-on: a binding-less pod with a resolvable nodeName connects to its node
+// (happy path).
+func TestBuildTopology_RunsOn_BindinglessPodToNode(t *testing.T) {
+	in := fixtureInputs()
+	in.IncludeWorkloads = true
+	in.Workloads = []WorkloadInput{
+		{
+			Name: "batch-job", Namespace: "training", Kind: "Job", Type: "training",
+			Pods: []WorkloadPod{
+				{Name: "batch-job-abc", Namespace: "training", NodeName: "node-2", Status: "Running"},
+			},
+		},
+	}
+
+	topo := BuildTopology(in)
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{"pod/training/batch-job-abc", "node-2", "runs-on"})
+}
+
+// Edge case: runs-on is skipped for (a) pods that carry slice bindings and
+// (b) binding-less pods whose nodeName is empty or doesn't resolve.
+func TestBuildTopology_RunsOn_SkippedWhenBoundOrNoNode(t *testing.T) {
+	in := fixtureInputs()
+	in.IncludeWorkloads = true
+	in.Workloads = []WorkloadInput{
+		{
+			Name: "mix", Namespace: "ns", Kind: "Deployment",
+			Pods: []WorkloadPod{
+				// (a) has a binding to an emitted slice → binds-to, NOT runs-on.
+				{Name: "bound", Namespace: "ns", NodeName: "node-1",
+					Bindings: []PodBinding{{SliceID: "node-1-npu-0-slice-0", Role: "primary"}}},
+				// (b) binding-less but nodeName empty → no runs-on.
+				{Name: "nonode", Namespace: "ns", Status: "Pending"},
+				// (c) binding-less but nodeName unknown → no runs-on (orphan guard).
+				{Name: "ghostnode", Namespace: "ns", NodeName: "node-404"},
+			},
+		},
+	}
+
+	topo := BuildTopology(in)
+	for _, e := range topo.Edges {
+		assert.NotEqualf(t, "runs-on", e.Type,
+			"no runs-on expected: bound→binds-to, others lack resolvable node (got %v)", e)
+	}
+	// Sanity: the bound pod did get its binds-to edge.
+	assert.Contains(t, indexEdges(topo), [3]string{"pod/ns/bound", "node-1-npu-0-slice-0", "binds-to"})
 }

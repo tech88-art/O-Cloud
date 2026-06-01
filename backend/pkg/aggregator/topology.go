@@ -8,11 +8,15 @@
 //
 // Wire shape: see docs/api-contract.yaml components.schemas.{Topology,
 // TopologyNode, TopologyEdge}. TopologyNode.Type ∈ {cluster, node, npu, slice,
-// switch, workload, pod}. TopologyEdge.Type ∈ {contains, fabric-link,
-// binds-to, pd-pair}. The contract today still enumerates only the original
-// values; the new ones (workload / pod / binds-to / pd-pair) are documented
-// in ADR-0004 + ADR-0005 and added without OpenAPI enum constraint per the
-// RFC-003 batch — frontend renders any unknown value as a generic node.
+// switch, workload, pod}. TopologyEdge.Type ∈ {contains, fabric-link, network,
+// hccs, binds-to, pd-pair, runs-on}. ADR-0006 promoted the runtime wire enum
+// into the contract; ADR-0021 (P12-T-104) adds the full-fidelity hardware
+// edges: `network` (node↔node inter-node link · classified from a NetworkLink
+// whose both ends are nodes) + `hccs` (npu↔npu intra-node · same node +
+// hccsGroup, ring per appendHCCS) + `runs-on` (non-NPU pod↔node), plus the
+// `pcieBandwidthGBps` npu node attribute. network + hccs ride the IncludeFabric
+// toggle; runs-on rides IncludeWorkloads; pcie is stamped only when present —
+// so the both-flags-false graph stays byte-equivalent to the T102 build.
 //
 // P1-T-211 extends the input bundle with Switches/Links + IncludeFabric flag.
 // P1-T-213 extends it again with Workloads + IncludeWorkloads (ADR-0005).
@@ -43,8 +47,11 @@ const (
 
 	edgeTypeContains   = "contains"
 	edgeTypeFabricLink = "fabric-link" // ADR-0004 fabric: a node↔switch (or switch↔switch) link
+	edgeTypeNetwork    = "network"     // ADR-0021: node↔node inter-node 互通 link (both endpoints are nodes)
+	edgeTypeHCCS       = "hccs"        // ADR-0021: npu↔npu intra-node HCCS link (same node + hccsGroup)
 	edgeTypeBindsTo    = "binds-to"    // ADR-0005 workload fusion: pod ↔ slice binding
 	edgeTypePDPair     = "pd-pair"     // ADR-0005 workload fusion: prefill ↔ decode pod relation
+	edgeTypeRunsOn     = "runs-on"     // ADR-0021: 非 NPU workload/pod ↔ node compute placement (no slice binding)
 )
 
 // Topology depth values. Matches the `depth` query param enum in
@@ -104,9 +111,10 @@ type NetworkLink struct {
 	ID            string  `json:"id"`
 	From          string  `json:"from"`
 	To            string  `json:"to"`
-	BandwidthGbps int     `json:"bandwidthGbps"`
-	Medium        string  `json:"medium,omitempty"`      // copper | fiber | dac | optical
-	Utilization   float64 `json:"utilization,omitempty"` // 0-100
+	BandwidthGbps int     `json:"bandwidthGbps"`           // ADR-0004 legacy unit (Gbps · gigabits) · fabric-link 沿用
+	BandwidthGBps float64 `json:"bandwidthGBps,omitempty"` // ADR-0021 unit (GB/s · gigabytes) · network/hccs/fabric hover · 与 NPU.pcieBandwidthGBps 同尺度
+	Medium        string  `json:"medium,omitempty"`        // copper | fiber | dac | optical | eth | roce | ib
+	Utilization   float64 `json:"utilization,omitempty"`   // 0-100
 	RTTUs         float64 `json:"rttUs,omitempty"`
 }
 
@@ -307,7 +315,8 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 		// At depth=node no slices were emitted, so the empty sliceIDs map
 		// drops all binds-to edges — workload + pod nodes still surface so
 		// the Overview can render "show workloads" cleanly without slices.
-		appendWorkloads(out, in, map[string]struct{}{})
+		// No appendHCCS at depth=node — no NPUs are emitted to connect.
+		appendWorkloads(out, in, nodeIDs, map[string]struct{}{})
 		return out
 	}
 
@@ -322,19 +331,25 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 		if _, ok := nodeIDs[npu.NodeName]; !ok {
 			continue
 		}
+		npuAttrs := map[string]interface{}{
+			"model":       npu.Model,
+			"index":       npu.Index,
+			"vramMiB":     npu.VRAMMiB,
+			"aiCoreTotal": npu.AICoreTotal,
+			"hccsGroup":   npu.HCCSGroup,
+			"sliceMode":   npu.SliceMode,
+		}
+		// ADR-0021: host↔NPU PCIe bandwidth (GB/s). Only stamped when the
+		// fixture supplies it, so pre-ADR-0021 fixtures stay byte-equivalent.
+		if npu.PCIeBandwidthGBps != nil {
+			npuAttrs["pcieBandwidthGBps"] = *npu.PCIeBandwidthGBps
+		}
 		out.Nodes = append(out.Nodes, model.TopologyNode{
-			ID:     npu.ID,
-			Type:   nodeTypeNPU,
-			Label:  npuLabel(npu),
-			Status: npu.Status,
-			Attributes: map[string]interface{}{
-				"model":       npu.Model,
-				"index":       npu.Index,
-				"vramMiB":     npu.VRAMMiB,
-				"aiCoreTotal": npu.AICoreTotal,
-				"hccsGroup":   npu.HCCSGroup,
-				"sliceMode":   npu.SliceMode,
-			},
+			ID:         npu.ID,
+			Type:       nodeTypeNPU,
+			Label:      npuLabel(npu),
+			Status:     npu.Status,
+			Attributes: npuAttrs,
 		})
 		out.Edges = append(out.Edges, model.TopologyEdge{
 			Source: npu.NodeName,
@@ -346,9 +361,10 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 
 	if depth == DepthNPU {
 		appendFabric(out, in, nodeIDs)
+		appendHCCS(out, in, npuIDs)
 		// At depth=npu no slices were emitted; the empty sliceIDs map drops
 		// all binds-to edges, but workload + pod nodes still render.
-		appendWorkloads(out, in, map[string]struct{}{})
+		appendWorkloads(out, in, nodeIDs, map[string]struct{}{})
 		return out
 	}
 
@@ -393,6 +409,7 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 	// depth-trimmed graphs keep switches grouped at the tail. The order is
 	// wire-stable but the frontend renderer is order-insensitive.
 	appendFabric(out, in, nodeIDs)
+	appendHCCS(out, in, npuIDs)
 
 	// 6) workloads (ADR-0005) — appended last. Workload branch is depth-
 	// agnostic: even at depth=node we still emit workload + pod nodes, since
@@ -400,7 +417,7 @@ func BuildTopology(in TopologyInputs) *model.Topology {
 	// when the target slice isn't in scope at that depth (e.g. depth=node
 	// emits no slices, so all binds-to fall away — consistent with how the
 	// rest of the depth filter works).
-	appendWorkloads(out, in, sliceIDs)
+	appendWorkloads(out, in, nodeIDs, sliceIDs)
 	return out
 }
 
@@ -457,17 +474,45 @@ func appendFabric(out *model.Topology, in TopologyInputs, nodeIDs map[string]str
 		if !endpointInScope(lk.To, nodeIDs, switchIDs) {
 			continue
 		}
+		// ADR-0021: classify by endpoint. A link whose BOTH ends are nodes is
+		// an inter-node `network` link; any switch endpoint keeps it an ADR-0004
+		// `fabric-link` (node↔switch / switch↔switch). Bandwidth attr differs by
+		// unit convention (ADR-0021 §4 b): network → bandwidthGBps (GB/s) ·
+		// fabric → bandwidthGbps (Gbps legacy) + bandwidthGBps when supplied.
+		_, fromIsNode := nodeIDs[lk.From]
+		_, toIsNode := nodeIDs[lk.To]
+		if fromIsNode && toIsNode {
+			netAttrs := map[string]interface{}{
+				"id":          lk.ID,
+				"medium":      lk.Medium,
+				"utilization": lk.Utilization,
+			}
+			if lk.BandwidthGBps != 0 {
+				netAttrs["bandwidthGBps"] = lk.BandwidthGBps
+			}
+			out.Edges = append(out.Edges, model.TopologyEdge{
+				Source:     lk.From,
+				Target:     lk.To,
+				Type:       edgeTypeNetwork,
+				Attributes: netAttrs,
+			})
+			continue
+		}
+		fabricAttrs := map[string]interface{}{
+			"id":            lk.ID,
+			"bandwidthGbps": lk.BandwidthGbps,
+			"medium":        lk.Medium,
+			"utilization":   lk.Utilization,
+			"rttUs":         lk.RTTUs,
+		}
+		if lk.BandwidthGBps != 0 {
+			fabricAttrs["bandwidthGBps"] = lk.BandwidthGBps
+		}
 		out.Edges = append(out.Edges, model.TopologyEdge{
-			Source: lk.From,
-			Target: lk.To,
-			Type:   edgeTypeFabricLink,
-			Attributes: map[string]interface{}{
-				"id":            lk.ID,
-				"bandwidthGbps": lk.BandwidthGbps,
-				"medium":        lk.Medium,
-				"utilization":   lk.Utilization,
-				"rttUs":         lk.RTTUs,
-			},
+			Source:     lk.From,
+			Target:     lk.To,
+			Type:       edgeTypeFabricLink,
+			Attributes: fabricAttrs,
 		})
 	}
 }
@@ -480,6 +525,80 @@ func endpointInScope(id string, nodeIDs, switchIDs map[string]struct{}) bool {
 	}
 	_, ok := switchIDs[id]
 	return ok
+}
+
+// appendHCCS emits `type=hccs` edges between NPUs that share the same node AND
+// the same hccsGroup (ADR-0021 — intra-node NPU interconnect). No-op when
+// IncludeFabric is false: HCCS rides the same hardware-topology toggle as the
+// fabric/network edges, so the IncludeFabric=false graph stays byte-equivalent
+// to the pre-ADR-0021 build. Only NPUs already emitted at depth≥npu (present
+// in npuIDs) participate; called only from the npu / slice depth branches.
+//
+// Topology: NPUs in a group are sorted by Index and wired into a ring
+// (npu0↔npu1↔…↔npuN-1↔npu0). A 2-NPU group is a single edge; ≥3 forms a closed
+// ring (matches ADR-0010's 910B ring-of-rings adjacency). The edge's
+// bandwidthGBps comes from the source NPU's HCCSBandwidthGBps (symmetric within
+// a group), omitted when the fixture doesn't supply it.
+func appendHCCS(out *model.Topology, in TopologyInputs, npuIDs map[string]struct{}) {
+	if !in.IncludeFabric {
+		return
+	}
+
+	type groupKey struct{ node, group string }
+	groups := make(map[groupKey][]*model.NPU)
+	order := make([]groupKey, 0)
+	for _, npu := range in.NPUs {
+		if npu == nil || npu.HCCSGroup == "" {
+			continue
+		}
+		if _, ok := npuIDs[npu.ID]; !ok {
+			continue
+		}
+		k := groupKey{npu.NodeName, npu.HCCSGroup}
+		if _, seen := groups[k]; !seen {
+			order = append(order, k)
+		}
+		groups[k] = append(groups[k], npu)
+	}
+
+	for _, k := range order {
+		members := groups[k]
+		if len(members) < 2 {
+			continue // a lone NPU in a group has no intra-group HCCS peer
+		}
+		sortNPUsByIndex(members)
+		n := len(members)
+		limit := n // closed ring → n edges
+		if n == 2 {
+			limit = 1 // a single pair → one edge (0↔1); avoid the dup 1↔0
+		}
+		for i := 0; i < limit; i++ {
+			a := members[i]
+			b := members[(i+1)%n]
+			attrs := map[string]interface{}{
+				"hccsGroup": k.group,
+			}
+			if a.HCCSBandwidthGBps != nil {
+				attrs["bandwidthGBps"] = *a.HCCSBandwidthGBps
+			}
+			out.Edges = append(out.Edges, model.TopologyEdge{
+				Source:     a.ID,
+				Target:     b.ID,
+				Type:       edgeTypeHCCS,
+				Attributes: attrs,
+			})
+		}
+	}
+}
+
+// sortNPUsByIndex sorts in place by NPU.Index ascending (stable insertion sort
+// — N is tiny per hccsGroup so this stays dependency-free and deterministic).
+func sortNPUsByIndex(npus []*model.NPU) {
+	for i := 1; i < len(npus); i++ {
+		for j := i; j > 0 && npus[j-1].Index > npus[j].Index; j-- {
+			npus[j-1], npus[j] = npus[j], npus[j-1]
+		}
+	}
 }
 
 // appendWorkloads emits workload + pod nodes and binds-to + pd-pair edges
@@ -509,7 +628,7 @@ func endpointInScope(id string, nodeIDs, switchIDs map[string]struct{}) bool {
 // The id schemes intentionally include the namespace+kind prefix so a
 // workload and a pod with colliding short names can never produce the same
 // topology node id.
-func appendWorkloads(out *model.Topology, in TopologyInputs, sliceIDs map[string]struct{}) {
+func appendWorkloads(out *model.Topology, in TopologyInputs, nodeIDs, sliceIDs map[string]struct{}) {
 	if !in.IncludeWorkloads {
 		return
 	}
@@ -582,6 +701,24 @@ func appendWorkloads(out *model.Topology, in TopologyInputs, sliceIDs map[string
 						"indexInPod": b.IndexInPod,
 					},
 				})
+			}
+
+			// ADR-0021: runs-on — a non-NPU pod (no slice bindings) connects to
+			// the node it runs on. Only when the pod declares zero bindings AND
+			// its nodeName resolves to an in-scope node (mirrors the binds-to
+			// orphan guard). NPU pods carry binds-to instead, so the two edge
+			// kinds never both fire for one pod.
+			if len(pod.Bindings) == 0 && pod.NodeName != "" {
+				if _, ok := nodeIDs[pod.NodeName]; ok {
+					out.Edges = append(out.Edges, model.TopologyEdge{
+						Source: pid,
+						Target: pod.NodeName,
+						Type:   edgeTypeRunsOn,
+						Attributes: map[string]interface{}{
+							"workload": wid,
+						},
+					})
+				}
 			}
 		}
 
