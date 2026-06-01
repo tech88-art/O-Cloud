@@ -1,8 +1,10 @@
 # Single-node O-Cloud Edge deployment
 
 Pragmatic single-host deployment of the demo stack — backend + frontend +
-Grafana + Prometheus + (optional) Loki. Targets a fresh Ubuntu 22.04 LTS
-box, gets to a running demo in under 30 minutes (P1-T-304 AC).
+Grafana + Prometheus + (optional) Loki. **真实目标平台 = openEuler 22.03 LTS
+(aarch64 鲲鹏 Kunpeng 920 + 昇腾 910B · 华为 Atlas 800 原生 · ADR-0020)**;
+Ubuntu 22.04 (amd64) 保留为 dev/CI 平台。Gets to a running demo in under 30
+minutes (P1-T-304 AC). OS family auto-detected: openEuler → dnf · Ubuntu → apt。
 
 For development workflow with hot reload, see `../dev/README.md` instead.
 This directory is for the "one-shot install on a demo machine" use case.
@@ -17,7 +19,7 @@ From the repo root:
 
 That's it. The script:
 
-1. Validates the host (Ubuntu 22.04, amd64).
+1. Validates the host (openEuler 22.03 aarch64 鲲鹏 [target] / Ubuntu 22.04 amd64 [dev] · OS + arch 自动检测 per ADR-0020).
 2. Installs Docker Engine + Compose plugin (if absent).
 3. Installs Go 1.22+ and Node 20+ via official tarballs / NodeSource.
 4. Builds the backend binary and the frontend production bundle.
@@ -93,12 +95,15 @@ If you need any of the above today, deploy via the Helm chart in
 
 ## Tested matrix
 
-| OS                  | arch  | Docker     | Status   |
-|---------------------|-------|------------|----------|
-| Ubuntu 22.04 LTS    | amd64 | 27.x       | OK       |
-| Ubuntu 24.04 LTS    | amd64 | 27.x       | OK       |
-| Debian 12           | amd64 | 27.x       | Best-effort (the installer warns) |
-| Ubuntu on ARM       | arm64 | 27.x       | Demo-only — NPU features skipped  |
+ADR-0020: **arm64 鲲鹏 + openEuler = 真实目标平台**(Atlas 800)· amd64/Ubuntu = dev/CI 渲染验证。
+
+| OS                      | arch          | pkg | Docker | Status   |
+|-------------------------|---------------|-----|--------|----------|
+| **openEuler 22.03 LTS** | **arm64 鲲鹏** | dnf | 27.x   | **Target** — 真硬件运行验证 lab-gated Phase 13+ (ADR-0020 §4 a) |
+| Ubuntu 22.04 LTS        | amd64         | apt | 27.x   | OK (dev/CI · 渲染验证) |
+| Ubuntu 24.04 LTS        | amd64         | apt | 27.x   | OK (dev) |
+| Debian 12               | amd64         | apt | 27.x   | Best-effort (installer warns) |
+| Ubuntu on ARM           | arm64         | apt | 27.x   | dev (arm64 · 非鲲鹏 · 真 NPU 特性 lab-gated) |
 
 Other distros / WSL are unsupported in Phase 1; use the dev compose
 stack directly.

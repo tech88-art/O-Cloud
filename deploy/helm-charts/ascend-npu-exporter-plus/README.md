@@ -78,7 +78,10 @@ binary's source implementation needs to ship. No chart shape change.
 
 - TLS for `/metrics` — Phase 9 production hardening.
 - HostNetwork mode — single-port ClusterIP is sufficient for KPS scrape.
-- Multi-arch images — exporter-plus is amd64-only per ADR-0001 §7.
+- ~~Multi-arch images — exporter-plus is amd64-only per ADR-0001 §7.~~ →
+  **已翻转**:multi-arch (amd64+arm64) per **ADR-0020** (P12-T-101 · exporter 跑在
+  aarch64 鲲鹏 NPU 节点 · Dockerfile buildx `--platform linux/amd64,linux/arm64`)·
+  chart soft nodeAffinity `kubernetes.io/arch=arm64` (P12-T-103)。
 
 ## References
 

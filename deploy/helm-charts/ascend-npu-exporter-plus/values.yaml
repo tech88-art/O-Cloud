@@ -42,6 +42,21 @@ tolerations:
     operator: Exists
     effect: NoSchedule
 
+# ADR-0020 (P12-T-103): 部署 target = aarch64 鲲鹏 + 昇腾 910B. Soft node affinity
+# 偏好 arm64(preferred · 非 required)→ 生产全 arm64 NPU 节点必匹配;amd64 dev/CI/
+# kind 集群 daemonset 仍调度(不破 render-verify / kind smoke · DaemonSet 在所有
+# 匹配节点跑 · soft 不排除).
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: kubernetes.io/arch
+              operator: In
+              values:
+                - arm64
+
 # Pod-level securityContext. The exporter-plus image runs as `nonroot`
 # from distroless; no extra capabilities are needed unless DCMI mode
 # requires /dev/davinci* access (Phase 4+).

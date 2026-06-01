@@ -8,7 +8,7 @@
 > - `[ref 2026-05-19]` — URL 与版本号结构性参考(canonical 项目 URL / 公开 release schedule),写文档时本地核对 · **未** automated URL fetch
 > - `[verified YYYY-MM-DD]` — Phase 7 真机验证后由 operator 补,标 npu-smi / cann install validator / mindie-turbo health-check 实际输出
 >
-> **相关 ADR**:ADR-0001 v3(双轨路径)· ADR-0002(no-KServe)· `docs/architecture.md` §3.4(NPU/AI 运行时)
+> **相关 ADR**:ADR-0001 v3(双轨路径)· ADR-0002(no-KServe)· **ADR-0020(aarch64 鲲鹏 + openEuler 真实目标平台 · 翻转 ADR-0001 §13 amd64-only · 见 §1.1 aarch64 包矩阵)**· `docs/architecture.md` §3.4(NPU/AI 运行时)
 >
 > **日期**:2026-05-19 · **Task**:P4-T-002 · **状态**:Phase 4 入口落地
 
@@ -19,6 +19,7 @@
 | host kernel | Ascend driver | CANN | MindIE Turbo | vllm-ascend | kubelet | verdict | 来源 |
 |---|---|---|---|---|---|---|---|
 | **5.10**(LTS · Ubuntu 22.04 / openEuler 22.03) | **24.1.RC3** | **8.1.RC1** | **2.0.RC1** | **0.11.0** | **1.30** | ✅ **pass**(Phase 4 推荐基线 · Phase 7 入口) | Ascend community release notes [ref 2026-05-19] · vllm-ascend v0.11.0 release `github.com/vllm-project/vllm-ascend` [ref 2026-05-19] · CANN 8.1 release `hiascend.com/document` [ref 2026-05-19] |
+| **5.10**(LTS · **openEuler 22.03 LTS SP · aarch64 鲲鹏 Kunpeng 920**)| **24.1.RC3**(aarch64 包 `*_aarch64.run`)| **8.1.RC1**(aarch64 包)| **2.0.RC1** | **0.11.0** | **1.34** | ✅ **pass**(**Phase 12 ADR-0020 真实目标平台基线** · 华为 Atlas 800 原生 Kunpeng host + 昇腾 910B + openEuler)| Ascend aarch64 release `*-aarch64.run` `hiascend.com/document` [ref 2026-06-01] · ADR-0020 · 见 §1.1 |
 | **5.4**(EOL 风险 · CentOS 7.9 / Ubuntu 20.04) | **23.0.0** | **7.0** | — | — | **1.28** | ⚠️ **warn**(最低支持下限 · frontend 可渲染但 device-discovery TBD;无 PD 分离;无 vllm-ascend) | Ascend 23.0 legacy release notes [ref 2026-05-19] |
 | **6.x mainline**(Ubuntu 24.04 / Fedora 40) | 24.0 | 8.0 | — | — | 1.31+ | ❌ **fail**(Ascend driver **lacks 6.x KMD 支持** as of 2026-05;npu-smi 加载内核模块失败) | Ascend community 兼容矩阵 + 用户社区 issue [ref 2026-05-19] |
 | **5.15**(Ubuntu 22.04 GA · openEuler 24.03) | 24.1.RC2 | 8.0.0 | 1.0 | 0.10.x | 1.29 | ⚠️ **warn**(可运行但**非 Phase 4 推荐**;CANN 8.0 与 vllm-ascend disaggregated_prefill_v1 兼容性需验)| Ascend 24.1.RC2 release notes [ref 2026-05-19] |
@@ -28,6 +29,23 @@
 - ✅ **pass** — Phase 4 推荐基线,Phase 7 真机入口预期通过
 - ⚠️ **warn** — 可装可跑但**非推荐组合**;某些场景受限(无 PD 分离 / 仅 DRA spike 路径 / vllm-ascend 兼容性待验)
 - ❌ **fail** — **不要使用**;已知 driver/kernel/CANN 不兼容
+
+### 1.1 aarch64 鲲鹏 + openEuler 包矩阵(Phase 12 ADR-0020 真实目标平台)
+
+ADR-0020(2026-06-01)把目标平台从 amd64-only 翻转为 **aarch64 鲲鹏(Kunpeng 920)+ openEuler**(华为 Atlas 800 原生配置)。CANN / Ascend driver 包**按 host CPU 架构分发**,aarch64 host 用 **aarch64 变体包**(非 x86_64):
+
+| 组件 | x86_64 包(原 amd64) | **aarch64 包(鲲鹏 · Phase 12 target)** |
+|---|---|---|
+| Ascend driver | `Ascend-hdk-<ver>-npu-driver_<ver>_linux-x86_64.run` | `..._linux-aarch64.run` |
+| CANN toolkit | `Ascend-cann-toolkit_<ver>_linux-x86_64.run` | `..._linux-aarch64.run` |
+| CANN kernels | `Ascend-cann-kernels-910b_<ver>_linux-x86_64.run` | `..._linux-aarch64.run` |
+| vllm-ascend 镜像 | `vllm-ascend:<tag>`(multi-arch manifest · 见 P12-T-101) | 同 manifest · 拉 arm64 layer |
+
+**关键点**:
+- **版本兼容性 arch-agnostic**:§1 矩阵的 driver×CANN×vllm-ascend 版本组合对 x86_64 / aarch64 **相同**(只是二进制包不同)· 故 §1 矩阵 verdict 对两架构通用 · aarch64 行只是 host 平台标注
+- **节点 OS**:openEuler 22.03 LTS SP / 24.03 LTS(华为主导 · Atlas 系列原生适配 · 见 install.sh openEuler 包管理 dnf 路径)
+- **真硬件验证**:真鲲鹏 920 + 昇腾 910B 集群 CANN aarch64 包安装 + `npu-smi info` 验证 = **lab-gated · Phase 13+**(ADR-0020 §4 (a) · Track A carry)· Phase 12 仅交叉编译 + helm template arch 亲和校验(不接触真 aarch64 CANN 二进制)
+- **镜像**:容器镜像 multi-arch buildx(P12-T-101 · arm64 layer)· 容器内不含 CANN(CANN 在 host · 容器通过 `/dev/davinci*` + driver mount 访问 · 见 §4.3)
 
 ---
 
@@ -55,7 +73,7 @@ Phase 4 全部交付物运行在**合成 NPU 数据集**上,**不接触真实 As
 | P4-T-004 ResourceSlice + ResourceClaim 类型 | upstream `resource.k8s.io/v1beta1` 类型定义 | 无 |
 | P4-T-005 simulator-first ResourceSlice publisher | `configs/mock-data/set-a-small/npus.json`(合成 2 节点 × 8 NPU)| **无** · 读 JSON 发布 ResourceSlice |
 | P4-T-006 ResourceClaim 控制器骨架 | envtest fixture + kind cluster | **无** · 仅记录 + emit `AllocationDeferred=Phase4Skeleton` |
-| P4-T-101 Dockerfile + Helm chart | golang multi-stage build | **无** · linux/amd64 镜像但不含 CANN |
+| P4-T-101 Dockerfile + Helm chart | golang multi-stage build | **无** · 镜像不含 CANN(P12-T-101 起 multi-arch amd64+arm64 · CANN 在 host 非容器)|
 | P4-T-104 kind smoke E2E 扩展 | GitHub Actions ubuntu-latest | **无** · ResourceSlice 可见性断言 |
 | P4-T-105 ADR-0009 npu-dra-driver design | — | 无 |
 

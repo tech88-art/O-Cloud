@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # install.sh — single-node O-Cloud Edge Cloud demo installer (P1-T-304).
 #
-# Brings a clean Ubuntu 22.04 LTS box from "fresh shell" to "demo running
-# at http://<host>:3000" in under 30 minutes. The script is idempotent —
-# rerunning it does the right thing (re-pulls, rebuilds, restarts).
+# Brings a clean openEuler 22.03 LTS box (aarch64 鲲鹏 · 真实目标平台 per
+# ADR-0020) — or an Ubuntu 22.04 LTS box (dev/CI) — from "fresh shell" to
+# "demo running at http://<host>:3000" in under 30 minutes. The script is
+# idempotent — rerunning it does the right thing (re-pulls, rebuilds, restarts).
+# OS family auto-detected: openEuler/RHEL → dnf · Ubuntu/Debian → apt-get.
 #
 # What it does, in order:
 #
@@ -48,7 +50,8 @@
 #   OCEDGE_REPO_DIR   : repo location (default: $PWD)
 #   OCEDGE_COMPOSE    : compose file to use (default: deploy/dev/docker-compose.yaml)
 #
-# Designed for bash 4+; tested against Ubuntu 22.04. Aborts on the first
+# Designed for bash 4+; targets openEuler 22.03 (aarch64 鲲鹏 · ADR-0020),
+# dev-tested on Ubuntu 22.04. Aborts on the first
 # error (set -e). Sudo is used surgically — never `sudo -s` blanket
 # escalation.
 
@@ -114,26 +117,57 @@ sanity_check() {
         err "install.sh targets Linux only (got $(uname -s)). For Windows/macOS, use docker-compose directly."
     fi
 
+    # ADR-0020 (P12-T-103): 真实目标平台 = openEuler (aarch64 鲲鹏 Kunpeng 920 +
+    # 昇腾 910B · Atlas 800 原生). Ubuntu/Debian 保留为 dev/CI 平台(本机渲染验证).
+    local os_id="unknown"
     if [[ -r /etc/os-release ]]; then
         # shellcheck disable=SC1091
         . /etc/os-release
-        if [[ "${ID:-}" != "ubuntu" ]]; then
-            warn "tested only on Ubuntu 22.04; you're on '${ID:-unknown}'. Proceeding optimistically."
-        elif ! version_ge "${VERSION_ID:-0}" "22.04"; then
-            warn "tested on Ubuntu 22.04+; you're on ${VERSION_ID:-unknown}. Proceeding optimistically."
-        fi
+        os_id="${ID:-unknown}"
+        case "${ID:-}" in
+            openEuler)
+                version_ge "${VERSION_ID:-0}" "22.03" ||
+                    warn "tested on openEuler 22.03 LTS SP+; you're on ${VERSION_ID:-unknown}. Proceeding optimistically."
+                ;;
+            ubuntu | debian)
+                warn "on ${ID} (dev/CI platform); 真实目标平台是 openEuler aarch64 鲲鹏 (ADR-0020). 真 NPU 特性 lab-gated Phase 13+."
+                ;;
+            *)
+                warn "tested on openEuler 22.03+ (target) / Ubuntu 22.04+ (dev); you're on '${ID:-unknown}'. Proceeding optimistically."
+                ;;
+        esac
     else
         warn "no /etc/os-release — can't identify distro. Proceeding optimistically."
     fi
 
-    local arch
-    arch="$(uname -m)"
-    case "$arch" in
-        x86_64 | amd64) ;;
+    # Package manager family — openEuler/RHEL → dnf · Ubuntu/Debian → apt-get.
+    if command -v dnf >/dev/null 2>&1; then
+        PKG_MGR="dnf"; OS_FAMILY="rhel"
+    elif command -v apt-get >/dev/null 2>&1; then
+        PKG_MGR="apt-get"; OS_FAMILY="debian"
+    else
+        err "no supported package manager (dnf for openEuler / apt-get for Ubuntu) found"
+    fi
+    readonly PKG_MGR OS_FAMILY
+    log "os=$os_id family=$OS_FAMILY pkg=$PKG_MGR"
+
+    # Arch detection (ADR-0020: arm64 鲲鹏 = 部署 target · amd64 = dev/CI · 不再 amd64-only).
+    HOST_ARCH="$(uname -m)"
+    case "$HOST_ARCH" in
+        aarch64 | arm64)
+            GOARCH_DETECTED="arm64"
+            log "arch $HOST_ARCH → arm64 (ADR-0020 真实目标平台 · aarch64 鲲鹏 Kunpeng 920 + 昇腾 910B)"
+            ;;
+        x86_64 | amd64)
+            GOARCH_DETECTED="amd64"
+            warn "arch $HOST_ARCH → amd64 (dev/CI platform; 真实目标平台是 aarch64 鲲鹏 per ADR-0020 · 真 NPU 验证 lab-gated Phase 13+)"
+            ;;
         *)
-            warn "target hardware is Ascend 910B which is amd64-only; running on $arch is dev-only and will skip NPU-specific features."
+            GOARCH_DETECTED="amd64"
+            warn "unknown arch $HOST_ARCH; defaulting GOARCH=amd64. 真实目标平台 = aarch64 鲲鹏 (ADR-0020)."
             ;;
     esac
+    readonly HOST_ARCH GOARCH_DETECTED
 
     if [[ ! -d "$REPO_DIR" ]]; then
         err "repo directory $REPO_DIR not found — set OCEDGE_REPO_DIR or run from inside the repo"
@@ -153,24 +187,32 @@ install_docker() {
         return
     fi
 
-    log "installing Docker Engine + Compose plugin"
-    $SUDO apt-get update -qq
-    $SUDO apt-get install -y -qq ca-certificates curl gnupg
-
-    # Docker's official apt repo. Mirrors docker.com/engine/install/ubuntu.
-    $SUDO install -m 0755 -d /etc/apt/keyrings
-    if [[ ! -f /etc/apt/keyrings/docker.gpg ]]; then
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-        $SUDO chmod a+r /etc/apt/keyrings/docker.gpg
+    log "installing Docker Engine + Compose plugin (family: $OS_FAMILY)"
+    if [[ "$OS_FAMILY" == "rhel" ]]; then
+        # openEuler / RHEL family (ADR-0020 target). openEuler ships docker +
+        # docker-compose-plugin (or moby-engine) in its native repos; no
+        # docker.com apt repo. Production may pin a vendor repo + cosign.
+        $SUDO "$PKG_MGR" install -y ca-certificates curl
+        $SUDO "$PKG_MGR" install -y docker docker-compose-plugin 2>/dev/null ||
+            $SUDO "$PKG_MGR" install -y moby-engine moby-compose 2>/dev/null ||
+            warn "could not auto-install docker via $PKG_MGR; install manually (openEuler: 'dnf install docker')"
+        $SUDO systemctl enable --now docker 2>/dev/null || true
+    else
+        # Debian / Ubuntu (dev/CI). Docker's official apt repo.
+        $SUDO apt-get update -qq
+        $SUDO apt-get install -y -qq ca-certificates curl gnupg
+        $SUDO install -m 0755 -d /etc/apt/keyrings
+        if [[ ! -f /etc/apt/keyrings/docker.gpg ]]; then
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+            $SUDO chmod a+r /etc/apt/keyrings/docker.gpg
+        fi
+        local codename
+        codename="$(. /etc/os-release && echo "${VERSION_CODENAME:-jammy}")"
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $codename stable" |
+            $SUDO tee /etc/apt/sources.list.d/docker.list >/dev/null
+        $SUDO apt-get update -qq
+        $SUDO apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     fi
-
-    local codename
-    codename="$(. /etc/os-release && echo "${VERSION_CODENAME:-jammy}")"
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $codename stable" |
-        $SUDO tee /etc/apt/sources.list.d/docker.list >/dev/null
-
-    $SUDO apt-get update -qq
-    $SUDO apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
     # Allow the current user to run docker without sudo. Takes effect on
     # next login; the install run still uses sudo for compose.
@@ -191,8 +233,8 @@ install_go() {
         warn "go $v installed but minimum is $MIN_GO_VERSION; installing newer"
     fi
 
-    log "installing Go from the official tarball (apt has older versions)"
-    local goarch="amd64"
+    log "installing Go from the official tarball (distro pkg has older versions)"
+    local goarch="${GOARCH_DETECTED:-amd64}"  # arm64 鲲鹏 / amd64 dev (ADR-0020 · arch 检测)
     local govers="1.22.5"
     local tar="go${govers}.linux-${goarch}.tar.gz"
     local tmpd
@@ -223,9 +265,15 @@ install_node() {
         warn "node $v installed but minimum is $MIN_NODE_VERSION; replacing"
     fi
 
-    log "installing Node.js via NodeSource (apt repo with current LTS)"
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | $SUDO -E bash -
-    $SUDO apt-get install -y -qq nodejs
+    if [[ "$OS_FAMILY" == "rhel" ]]; then
+        log "installing Node.js via NodeSource (rpm repo with current LTS · openEuler)"
+        curl -fsSL https://rpm.nodesource.com/setup_lts.x | $SUDO -E bash -
+        $SUDO "$PKG_MGR" install -y nodejs
+    else
+        log "installing Node.js via NodeSource (apt repo with current LTS)"
+        curl -fsSL https://deb.nodesource.com/setup_lts.x | $SUDO -E bash -
+        $SUDO apt-get install -y -qq nodejs
+    fi
     install_pnpm
 }
 

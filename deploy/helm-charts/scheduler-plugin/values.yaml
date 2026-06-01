@@ -43,7 +43,19 @@ replicaCount: 1
 # the chart works on kind / dev clusters where all nodes are equivalent.
 nodeSelector: {}
 tolerations: []
-affinity: {}
+# ADR-0020 (P12-T-103): 部署 target = aarch64 鲲鹏 + 昇腾 910B. Soft node affinity
+# 偏好 arm64(preferred · 非 required)→ 生产全 arm64 节点必匹配;amd64 dev/CI/kind
+# 仍可调度(不破 render-verify / kind smoke).
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: kubernetes.io/arch
+              operator: In
+              values:
+                - arm64
 
 # Pod-level securityContext. Distroless image runs as nonroot uid 65532.
 podSecurityContext:
