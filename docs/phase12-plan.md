@@ -75,7 +75,7 @@ Phase 12 交付 3 track · 16 task。Track A 反转平台 target · Track B 扩�
 
 | Track / 主题 | Phase 11 现状 | Phase 12 delivery |
 |---|---|---|
-| **A · 平台真实化 aarch64 + openEuler**(反转 ADR-0001 §13) | amd64-only 硬约束(ADR-0001 §13)· Dockerfile 无 GOARCH(默认 host amd64)· CI 全 ubuntu-22.04 `make build` · mock `arch: amd64` · install.sh Ubuntu 22.04 | ADR-0019 entry + ADR-0020 平台 target supersede · 9 Dockerfile buildx `--platform linux/arm64` + GOARCH · CI arm64 交叉编译矩阵 · CANN matrix aarch64 行 · helm `nodeAffinity kubernetes.io/arch=arm64` · install.sh/single-node openEuler · root+project CLAUDE.md §2/§5 改写 |
+| **A · 平台真实化 aarch64 + openEuler**(反转 ADR-0001 §13) | amd64-only 硬约束(ADR-0001 §13)· Dockerfile 无 GOARCH(默认 host amd64)· CI 全 ubuntu-22.04 `make build` · mock `arch: amd64` · install.sh Ubuntu 22.04 | ADR-0019 entry + ADR-0020 平台 target supersede · 9 Dockerfile **multi-arch** buildx `linux/amd64,linux/arm64`(arm64=部署 target · amd64 保留本机 dev/CI · 不破 `make dev-up` 渲染验证)+ GOARCH · CI arm64 交叉编译(追加 · 不替换 amd64)· CANN matrix aarch64 行 · helm `nodeAffinity kubernetes.io/arch=arm64` · install.sh/single-node openEuler · root+project CLAUDE.md §2/§5 改写 |
 | **B · 拓扑数据全保真**(api-contract RFC) | aggregator 仅 emit `contains/fabric-link/binds-to/pd-pair` · `hccs`/`network` 枚举存在但不 emit · 无 PCIE · 非 NPU workload 无 node 边 · NetworkLink 已带 BandwidthGbps/Medium/Util/RTT(仅 fabric-link 用) | ADR-0021 + api-contract 扩:NPU `pcieBandwidthGBps` · `network`(node↔node)边 · `hccs`(npu↔npu)边 · workload→node 边 · edge `bandwidthGBps/utilization/medium` 属性 · aggregator emit 上述 · mock set-a/b/c + schema.json 补值 · 前端 gen:types |
 | **C · 前端 one-page workspace**(吸收 4 页) | 5 路由(overview/workloads/deploy/metrics/logs)· AntSider 5 项菜单 · Overview 固定 grid `240px 1fr 320px` · DetailPanel 仅 cluster/node/npu/slice · Metrics/Logs 独立页 · Deploy 独立页 · ReactFlow 渲 contains/fabric/binds/pd 边 | ADR-0022 + frontend DESIGN · 删 nav 菜单 + 路由收敛 · AntD `Splitter` 可隐藏可拖拽左树+右栏 · 拓扑绿色 network 连线 + edge hover tooltip(自定义 ReactFlow edge)+ PCIE/HCCS 渲染 + workload→node 连线 + focus/isolate 过滤 · 右栏吸收 workload/pod + 指标 section(硬件/业务 grafana toggle)+ 日志 section(负载/容器 toggle)· 顶栏 preset bar(hover 详情)· 退役 4 页 + i18n + Vitest + Playwright |
 
@@ -350,11 +350,12 @@ Owner: deploy + backend + operators + exporters(cross-module · 仅 Dockerfile).
 - build stage 加 `ARG TARGETARCH` + `GOARCH=${TARGETARCH}`(buildx 注入)·
   CGO_ENABLED=0 已是静态跨编译 · 无需换 base(golang-alpine / distroless
   multi-arch)
-- 注 `# multi-arch: docker buildx build --platform linux/arm64 (per ADR-0020)`
+- 注 `# multi-arch: docker buildx build --platform linux/amd64,linux/arm64 (per ADR-0020 · arm64=部署 target · amd64 保留本机 dev/CI/dev-up · 不破渲染验证)`
 
 Acceptance:
-- 每个 Dockerfile `docker buildx build --platform linux/arm64 -t test .` 本地通
-  (或 CI cross-compile 校验 · 见 T102)
+- 每个 Dockerfile `docker buildx build --platform linux/amd64,linux/arm64 -t test .`
+  本地通(双架构)· 默认 `docker build`(host amd64)+ `make dev-up` 本机栈照常
+  (本机渲染验证不依赖 arm64)· 或 CI cross-compile 校验(见 T102)
 - `GOARCH=arm64 GOOS=linux go build ./...` 各 Go 模块通(交叉编译无 CGO 依赖)
 - 横向扫(P4):`grep -rl "GOARCH=amd64\|--platform linux/amd64" .` 余项全部带
   双架构 or arm64 注释
@@ -663,6 +664,9 @@ Acceptance:
 - e2e 主流程 spec 覆盖 one-page workspace(无 5-page 路由跳转)
 - `npx playwright test`(或 syntactic + CI gate)· 主流程通
 - kind smoke(若适用)arm64 nodeAffinity 渲染校验
+- 渲染基线:Preview/Chrome MCP 截 one-page workspace 关键态(资源选中 / 负载
+  选中 / focus 过滤 / preset hover)存 `docs/screenshots/phase12/` · Phase 12
+  render-verify 留痕 + demo-runbook 更新输入
 
 Dependencies: T101 + T103 + T202 + T203 + T204 + T205。
 
@@ -726,7 +730,59 @@ dependency · ADR-0019 §2 Decision C codify):
 
 ---
 
-## 8. Verification + post-tag CI gate expectations
+## 8. 本地运行 & 刷新验证(render verify · 与 CPU 架构解耦)
+
+> 用户要求(2026-06-01):虽按真实平台(aarch64)开发 · **同样要能本机验证渲染
+> 效果**。Phase 11 closer 只跑 typecheck(`pnpm test` 都未跑)· 无 render-verify
+> 步骤 → 渲染从未真正过目(P3 "dry-run/typecheck ≠ functional")。Phase 12 起
+> 把"刷新验证"作为 Track C 每 task 的 acceptance 一等公民。
+
+**关键原则 · 渲染验证不依赖 aarch64**:Track A 的 aarch64/openEuler 是 ① mock
+数据展示门面 + ② 生产部署产物 target —— **二者都不影响本机渲染验证**。前端浏览器
+渲染 + 后端 mock 数据都与开发机 CPU 架构无关;开发机(amd64 Windows/Mac/Linux)
+照常跑 dev stack 看效果。Dockerfile 做 **multi-arch(amd64+arm64)** 而非 arm64-
+only · 所以 `make dev-up` 本机 amd64 镜像照常构建运行。
+
+**路径 A · 双进程(最快 · 看 UI/拓扑/资源树/右栏/日志/顶栏 · 无 Grafana 指标)**:
+```
+# 终端 1 — mock 后端(:8080)
+cd backend && make build && ./bin/demo-backend.exe -c configs/config.dev.yaml
+# 终端 2 — 前端 dev(:3000 · Vite HMR 改 .tsx 即时热刷)
+cd frontend && pnpm install && pnpm dev
+# 浏览器开 http://localhost:3000
+```
+- 后端 `enableCORS: true`(config.dev.yaml)+ 前端 runtime.ts 默认
+  apiBaseURL=`:8080` → 跨域直连 · 无需 vite proxy
+- 损失:右栏指标 section 的 Grafana iframe 空白(无 Grafana)· 其余全可验
+- **刷新**:改 `.tsx`→Vite HMR 即时;改 mock 数据(`configs/mock-data`)→重启
+  后端;改契约(`api-contract.yaml`)→`pnpm gen:types` 再起前端
+
+**路径 B · 完整栈(含 Grafana 指标 iframe · docker-compose)**:
+```
+make dev-up      # backend + frontend + prometheus + grafana + node-exporter
+# 前端 :3000 · 后端 :8080 · Grafana :3001(admin/admin)· Prometheus :9090
+make dev-logs    # 跟日志   |   make dev-down    # 停
+```
+- 验证 §spec 3.2 指标 section(资源→硬件 node/npu dashboard · 负载→业务
+  workload dashboard)**必走路径 B**(Grafana :3001)
+- multi-arch Dockerfile 在 amd64 开发机构建 amd64 layer · 无 emulation
+
+**Agent 端自动刷新验证(Preview / Chrome MCP)**:执行 session 中 main agent 用
+Preview MCP(`preview_start` 指向 `cd frontend && pnpm dev` · `preview_screenshot`)
+或 Chrome MCP 截图回贴 —— 即"刷新验证"自动化。**每个 Track C task(T201-T205)
+acceptance 必含 ≥1 张 render-verify 截图**(对应该 task 的可见效果:T201 三栏可
+拖拽/隐藏 · T202 绿色互通连线 + edge hover 带宽 + focus 过滤 · T203 右栏 workload
+信息 + 指标/日志 section toggle · T204 顶栏 preset hover · T205 退役后单页仍完整
+渲染)· 截图存 `docs/screenshots/phase12/` 留痕。
+
+**真 aarch64 运行验证(区别于上述渲染验证 · lab-gated)**:真鲲鹏 920 + 昇腾
+910B 集群 `helm install` + Pod Ready + 真 NPU 拓扑 —— 留 Phase 13+(Track A
+carry · §7)。Phase 12 的 arm64 仅 = 交叉编译通过 + buildx 双架构镜像 + helm
+template arch 亲和渲染校验(**不**含真硬件运行)。
+
+---
+
+## 9. CI gate + post-tag expectations
 
 详 per-task devlog `Verification` 段。本 plan 落地后(执行 session):
 1. 每 task 严格 verify(per memory `feedback_strict_per_task_verify.md`)·
