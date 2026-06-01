@@ -767,13 +767,27 @@ make dev-logs    # 跟日志   |   make dev-down    # 停
   workload dashboard)**必走路径 B**(Grafana :3001)
 - multi-arch Dockerfile 在 amd64 开发机构建 amd64 layer · 无 emulation
 
-**Agent 端自动刷新验证(Preview / Chrome MCP)**:执行 session 中 main agent 用
-Preview MCP(`preview_start` 指向 `cd frontend && pnpm dev` · `preview_screenshot`)
-或 Chrome MCP 截图回贴 —— 即"刷新验证"自动化。**每个 Track C task(T201-T205)
-acceptance 必含 ≥1 张 render-verify 截图**(对应该 task 的可见效果:T201 三栏可
-拖拽/隐藏 · T202 绿色互通连线 + edge hover 带宽 + focus 过滤 · T203 右栏 workload
-信息 + 指标/日志 section toggle · T204 顶栏 preset hover · T205 退役后单页仍完整
-渲染)· 截图存 `docs/screenshots/phase12/` 留痕。
+**Agent 端自动刷新验证 — 截图机制(2026-06-01 实测教训)**:
+- **结构验证用 `preview_snapshot`**(无障碍树 · 不依赖渲染稳定态 · 任何模式任何
+  页都可靠)—— 验文案/元素/层级首选。
+- **像素截图用 Playwright**(`tests/e2e/` 已装 playwright-core · 自控
+  `waitForSelector` + `page.screenshot()` · 不等 network-idle)—— **这是前后对比
+  像素图的可靠机制**。
+- **Preview MCP `preview_screenshot` 在本 app 不稳定**:dev 模式 Vite HMR WS +
+  Overview 拓扑 WS 让页面常驻活跃连接 → network-idle 永不达 → 截图超时(实测
+  5 次 1 成 · 即使生产 preview 的 WS-free 页也时好时坏)。**不**作为 render-verify
+  主路径;偶发可用但不可依赖。
+- **每个 Track C task(T201-T205)acceptance 必含 ≥1 张 render-verify 截图**(对应
+  可见效果:T201 三栏可拖拽/隐藏 · T202 绿色互通连线 + edge hover 带宽 + focus
+  过滤 · T203 右栏 workload 信息 + 指标/日志 section toggle · T204 顶栏 preset
+  hover · T205 退役后单页仍完整渲染)· 由 Playwright 截 · 存
+  `docs/screenshots/phase12/after-*.png`;**Phase 12 前基线** `before-*.png` 同法
+  在 T001 起手前由 Playwright 一次性截全(见 §8 末)。
+
+**Phase 12 前/后对比基线**:执行 session 起手(T001 前)跑一次 Playwright 基线脚本
+截当前 5 页(overview/workloads/deploy/metrics/logs)+ 关键 DATA 点(bundle 体积 /
+路由数 / 节点树规模)存 `docs/screenshots/phase12/before-*` + checkpoint 对比表;
+Track C 各 task 截 `after-*` → T302 checkpoint 出前后对比。
 
 **真 aarch64 运行验证(区别于上述渲染验证 · lab-gated)**:真鲲鹏 920 + 昇腾
 910B 集群 `helm install` + Pod Ready + 真 NPU 拓扑 —— 留 Phase 13+(Track A
