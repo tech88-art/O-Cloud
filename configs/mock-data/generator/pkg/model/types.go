@@ -86,9 +86,12 @@ type NPU struct {
 	AICoreTotal int       `json:"aiCoreTotal,omitempty"`
 	NumaNode    int       `json:"numaNode"`
 	HCCSGroup   string    `json:"hccsGroup,omitempty"`
-	Status      string    `json:"status"`
-	SliceMode   string    `json:"sliceMode"`
-	Usage       *NPUUsage `json:"usage,omitempty"`
+	// ADR-0021 拓扑全保真: host↔NPU PCIe 带宽 (GB/s) + 同组 npu↔npu HCCS 带宽 (GB/s).
+	PCIeBandwidthGBps float64   `json:"pcieBandwidthGBps,omitempty"`
+	HCCSBandwidthGBps float64   `json:"hccsBandwidthGBps,omitempty"`
+	Status            string    `json:"status"`
+	SliceMode         string    `json:"sliceMode"`
+	Usage             *NPUUsage `json:"usage,omitempty"`
 }
 
 // AllocatedTo matches the inline shape of $defs/Slice.allocatedTo.
@@ -174,9 +177,10 @@ type NetworkLink struct {
 	ID            string  `json:"id"`
 	From          string  `json:"from"`
 	To            string  `json:"to"`
-	BandwidthGbps int     `json:"bandwidthGbps"`
-	Medium        string  `json:"medium,omitempty"`      // copper | fiber | dac | optical
-	Utilization   float64 `json:"utilization,omitempty"` // 0-100
+	BandwidthGbps int     `json:"bandwidthGbps"`           // ADR-0004 legacy unit (Gbps · gigabits)
+	BandwidthGBps float64 `json:"bandwidthGBps,omitempty"` // ADR-0021 unit (GB/s · gigabytes) · network/hccs/fabric hover
+	Medium        string  `json:"medium,omitempty"`        // copper | fiber | dac | optical | eth | roce | ib
+	Utilization   float64 `json:"utilization,omitempty"`   // 0-100
 	RTTUs         float64 `json:"rttUs,omitempty"`
 }
 

@@ -35,6 +35,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-000-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -47,6 +49,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-000-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -59,6 +63,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-000-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -71,6 +77,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-000-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -83,6 +91,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-000-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -95,6 +105,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-000-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -107,6 +119,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-000-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -119,6 +133,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-000-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -131,6 +147,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-001-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -143,6 +161,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-001-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -155,6 +175,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-001-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -167,6 +189,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-001-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -179,6 +203,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-001-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -191,6 +217,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-001-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -203,6 +231,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-001-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -215,6 +245,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-001-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -227,6 +259,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-002-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -239,6 +273,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-002-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -251,6 +287,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-002-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -263,6 +301,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-002-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -275,6 +315,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-002-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -287,6 +329,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-002-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -299,6 +343,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-002-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -311,6 +357,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-002-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -323,6 +371,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-003-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -335,6 +385,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-003-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -347,6 +399,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-003-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -359,6 +413,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-003-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -371,6 +427,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-003-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -383,6 +441,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-003-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -395,6 +455,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-003-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -407,6 +469,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-003-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -419,6 +483,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-004-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -431,6 +497,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-004-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -443,6 +511,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-004-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -455,6 +525,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-004-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -467,6 +539,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-004-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -479,6 +553,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-004-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -491,6 +567,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-004-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -503,6 +581,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-004-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -515,6 +595,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-005-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -527,6 +609,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-005-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -539,6 +623,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-005-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -551,6 +637,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-005-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -563,6 +651,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-005-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -575,6 +665,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-005-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -587,6 +679,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-005-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -599,6 +693,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-005-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -611,6 +707,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-006-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -623,6 +721,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-006-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -635,6 +735,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-006-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -647,6 +749,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-006-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -659,6 +763,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-006-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -671,6 +777,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-006-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -683,6 +791,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-006-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -695,6 +805,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-006-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -707,6 +819,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-007-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -719,6 +833,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-007-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -731,6 +847,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-007-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -743,6 +861,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-007-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -755,6 +875,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-007-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -767,6 +889,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-007-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -779,6 +903,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-007-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -791,6 +917,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-007-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -803,6 +931,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-008-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -815,6 +945,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-008-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -827,6 +959,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-008-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -839,6 +973,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-008-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -851,6 +987,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-008-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -863,6 +1001,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-008-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -875,6 +1015,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-008-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -887,6 +1029,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-008-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -899,6 +1043,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-009-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -911,6 +1057,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-009-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -923,6 +1071,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-009-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -935,6 +1085,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-009-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -947,6 +1099,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-009-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -959,6 +1113,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-009-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -971,6 +1127,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-009-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -983,6 +1141,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-009-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -995,6 +1155,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-010-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1007,6 +1169,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-010-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1019,6 +1183,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-010-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1031,6 +1197,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-010-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1043,6 +1211,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-010-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1055,6 +1225,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-010-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1067,6 +1239,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-010-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1079,6 +1253,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-010-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1091,6 +1267,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-011-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1103,6 +1281,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-011-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1115,6 +1295,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-011-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1127,6 +1309,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-011-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1139,6 +1323,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-011-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1151,6 +1337,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-011-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1163,6 +1351,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-011-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1175,6 +1365,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-011-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1187,6 +1379,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-012-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1199,6 +1393,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-012-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1211,6 +1407,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-012-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1223,6 +1421,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-012-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1235,6 +1435,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-012-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1247,6 +1449,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-012-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1259,6 +1463,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-012-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1271,6 +1477,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-012-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1283,6 +1491,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-013-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1295,6 +1505,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-013-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1307,6 +1519,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-013-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1319,6 +1533,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-013-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1331,6 +1547,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-013-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1343,6 +1561,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-013-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1355,6 +1575,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-013-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1367,6 +1589,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-013-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1379,6 +1603,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-014-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1391,6 +1617,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-014-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1403,6 +1631,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-014-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1415,6 +1645,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-014-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1427,6 +1659,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-014-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1439,6 +1673,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-014-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1451,6 +1687,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-014-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1463,6 +1701,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-014-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1475,6 +1715,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-015-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1487,6 +1729,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-015-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1499,6 +1743,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-015-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1511,6 +1757,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-015-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1523,6 +1771,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-015-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1535,6 +1785,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-015-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1547,6 +1799,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-015-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1559,6 +1813,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-015-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1571,6 +1827,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-016-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1583,6 +1841,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-016-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1595,6 +1855,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-016-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1607,6 +1869,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-016-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1619,6 +1883,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-016-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1631,6 +1897,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-016-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1643,6 +1911,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-016-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1655,6 +1925,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-016-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1667,6 +1939,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-017-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1679,6 +1953,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-017-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1691,6 +1967,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-017-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1703,6 +1981,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-017-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1715,6 +1995,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-017-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1727,6 +2009,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-017-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1739,6 +2023,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-017-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1751,6 +2037,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-017-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1763,6 +2051,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-018-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1775,6 +2065,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-018-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1787,6 +2079,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-018-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1799,6 +2093,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-018-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1811,6 +2107,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-018-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1823,6 +2121,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-018-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1835,6 +2135,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-018-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1847,6 +2149,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-018-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1859,6 +2163,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-019-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1871,6 +2177,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-019-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1883,6 +2191,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-019-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1895,6 +2205,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-019-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1907,6 +2219,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-019-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1919,6 +2233,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-019-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1931,6 +2247,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-019-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1943,6 +2261,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-019-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1955,6 +2275,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-020-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1967,6 +2289,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-020-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1979,6 +2303,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-020-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -1991,6 +2317,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-020-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2003,6 +2331,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-020-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2015,6 +2345,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-020-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2027,6 +2359,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-020-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2039,6 +2373,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-020-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2051,6 +2387,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-021-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2063,6 +2401,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-021-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2075,6 +2415,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-021-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2087,6 +2429,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-021-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2099,6 +2443,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-021-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2111,6 +2457,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-021-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2123,6 +2471,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-021-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2135,6 +2485,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-021-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2147,6 +2499,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-022-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2159,6 +2513,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-022-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2171,6 +2527,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-022-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2183,6 +2541,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-022-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2195,6 +2555,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-022-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2207,6 +2569,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-022-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2219,6 +2583,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-022-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2231,6 +2597,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-022-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2243,6 +2611,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-023-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2255,6 +2625,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-023-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2267,6 +2639,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-023-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2279,6 +2653,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-023-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2291,6 +2667,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-023-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2303,6 +2681,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-023-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2315,6 +2695,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-023-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2327,6 +2709,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-023-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2339,6 +2723,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-024-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2351,6 +2737,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-024-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2363,6 +2751,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-024-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2375,6 +2765,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-024-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2387,6 +2779,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-024-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2399,6 +2793,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-024-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2411,6 +2807,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-024-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2423,6 +2821,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-024-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2435,6 +2835,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-025-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2447,6 +2849,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-025-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2459,6 +2863,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-025-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2471,6 +2877,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-025-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2483,6 +2891,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-025-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2495,6 +2905,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-025-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2507,6 +2919,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-025-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2519,6 +2933,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-025-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2531,6 +2947,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-026-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2543,6 +2961,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-026-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2555,6 +2975,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-026-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2567,6 +2989,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-026-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2579,6 +3003,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-026-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2591,6 +3017,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-026-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2603,6 +3031,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-026-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2615,6 +3045,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-026-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2627,6 +3059,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-027-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2639,6 +3073,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-027-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2651,6 +3087,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-027-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2663,6 +3101,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-027-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2675,6 +3115,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-027-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2687,6 +3129,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-027-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2699,6 +3143,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-027-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2711,6 +3157,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-027-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2723,6 +3171,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-028-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2735,6 +3185,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-028-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2747,6 +3199,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-028-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2759,6 +3213,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-028-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2771,6 +3227,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-028-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2783,6 +3241,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-028-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2795,6 +3255,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-028-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2807,6 +3269,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-028-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2819,6 +3283,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-029-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2831,6 +3297,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-029-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2843,6 +3311,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-029-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2855,6 +3325,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-029-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2867,6 +3339,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-029-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2879,6 +3353,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-029-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2891,6 +3367,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-029-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2903,6 +3381,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-029-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2915,6 +3395,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-030-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2927,6 +3409,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-030-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2939,6 +3423,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-030-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2951,6 +3437,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-030-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2963,6 +3451,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-030-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2975,6 +3465,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-030-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2987,6 +3479,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-030-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -2999,6 +3493,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-030-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3011,6 +3507,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-031-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3023,6 +3521,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-031-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3035,6 +3535,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-031-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3047,6 +3549,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-031-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3059,6 +3563,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-031-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3071,6 +3577,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-031-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3083,6 +3591,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-031-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3095,6 +3605,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-031-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3107,6 +3619,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-032-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3119,6 +3633,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-032-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3131,6 +3647,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-032-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3143,6 +3661,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-032-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3155,6 +3675,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-032-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3167,6 +3689,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-032-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3179,6 +3703,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-032-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3191,6 +3717,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-032-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3203,6 +3731,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-033-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3215,6 +3745,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-033-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3227,6 +3759,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-033-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3239,6 +3773,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-033-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3251,6 +3787,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-033-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3263,6 +3801,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-033-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3275,6 +3815,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-033-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3287,6 +3829,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-033-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3299,6 +3843,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-034-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3311,6 +3857,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-034-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3323,6 +3871,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-034-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3335,6 +3885,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-034-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3347,6 +3899,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-034-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3359,6 +3913,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-034-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3371,6 +3927,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-034-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3383,6 +3941,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-034-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3395,6 +3955,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-035-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3407,6 +3969,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-035-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3419,6 +3983,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-035-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3431,6 +3997,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-035-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3443,6 +4011,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-035-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3455,6 +4025,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-035-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3467,6 +4039,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-035-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3479,6 +4053,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-035-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3491,6 +4067,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-036-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3503,6 +4081,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-036-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3515,6 +4095,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-036-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3527,6 +4109,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-036-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3539,6 +4123,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-036-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3551,6 +4137,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-036-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3563,6 +4151,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-036-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3575,6 +4165,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-036-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3587,6 +4179,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-037-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3599,6 +4193,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-037-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3611,6 +4207,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-037-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3623,6 +4221,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-037-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3635,6 +4235,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-037-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3647,6 +4249,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-037-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3659,6 +4263,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-037-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3671,6 +4277,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-037-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3683,6 +4291,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-038-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3695,6 +4305,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-038-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3707,6 +4319,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-038-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3719,6 +4333,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-038-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3731,6 +4347,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-038-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3743,6 +4361,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-038-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3755,6 +4375,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-038-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3767,6 +4389,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-038-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3779,6 +4403,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-039-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3791,6 +4417,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-039-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3803,6 +4431,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-039-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3815,6 +4445,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-039-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3827,6 +4459,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-039-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3839,6 +4473,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-039-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3851,6 +4487,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-039-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3863,6 +4501,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-039-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3875,6 +4515,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-040-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3887,6 +4529,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-040-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3899,6 +4543,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-040-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3911,6 +4557,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-040-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3923,6 +4571,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-040-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3935,6 +4585,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-040-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3947,6 +4599,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-040-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3959,6 +4613,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-040-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3971,6 +4627,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-041-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3983,6 +4641,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-041-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -3995,6 +4655,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-041-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4007,6 +4669,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-041-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4019,6 +4683,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-041-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4031,6 +4697,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-041-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4043,6 +4711,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-041-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4055,6 +4725,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-041-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4067,6 +4739,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-042-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4079,6 +4753,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-042-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4091,6 +4767,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-042-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4103,6 +4781,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-042-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4115,6 +4795,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-042-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4127,6 +4809,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-042-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4139,6 +4823,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-042-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4151,6 +4837,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-042-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4163,6 +4851,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-043-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4175,6 +4865,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-043-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4187,6 +4879,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-043-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4199,6 +4893,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-043-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4211,6 +4907,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-043-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4223,6 +4921,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-043-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4235,6 +4935,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-043-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4247,6 +4949,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-043-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4259,6 +4963,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-044-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4271,6 +4977,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-044-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4283,6 +4991,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-044-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4295,6 +5005,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-044-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4307,6 +5019,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-044-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4319,6 +5033,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-044-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4331,6 +5047,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-044-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4343,6 +5061,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-044-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4355,6 +5075,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-045-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4367,6 +5089,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-045-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4379,6 +5103,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-045-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4391,6 +5117,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-045-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4403,6 +5131,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-045-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4415,6 +5145,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-045-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4427,6 +5159,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-045-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4439,6 +5173,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-045-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4451,6 +5187,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-046-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4463,6 +5201,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-046-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4475,6 +5215,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-046-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4487,6 +5229,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-046-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4499,6 +5243,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-046-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4511,6 +5257,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-046-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4523,6 +5271,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-046-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4535,6 +5285,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-046-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4547,6 +5299,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-047-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4559,6 +5313,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-047-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4571,6 +5327,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-047-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4583,6 +5341,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-047-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4595,6 +5355,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-047-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4607,6 +5369,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-047-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4619,6 +5383,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-047-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4631,6 +5397,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-047-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4643,6 +5411,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-048-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4655,6 +5425,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-048-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4667,6 +5439,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-048-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4679,6 +5453,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-048-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4691,6 +5467,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-048-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4703,6 +5481,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-048-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4715,6 +5495,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-048-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4727,6 +5509,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-048-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4739,6 +5523,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-049-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4751,6 +5537,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-049-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4763,6 +5551,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-049-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4775,6 +5565,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-049-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4787,6 +5579,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-049-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4799,6 +5593,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-049-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4811,6 +5607,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-049-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4823,6 +5621,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-049-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4835,6 +5635,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-050-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4847,6 +5649,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-050-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4859,6 +5663,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-050-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4871,6 +5677,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-050-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4883,6 +5691,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-050-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4895,6 +5705,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-050-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4907,6 +5719,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-050-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4919,6 +5733,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-050-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4931,6 +5747,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-051-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4943,6 +5761,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-051-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4955,6 +5775,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-051-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4967,6 +5789,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-051-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4979,6 +5803,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-051-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -4991,6 +5817,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-051-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5003,6 +5831,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-051-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5015,6 +5845,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-051-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5027,6 +5859,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-052-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5039,6 +5873,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-052-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5051,6 +5887,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-052-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5063,6 +5901,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-052-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5075,6 +5915,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-052-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5087,6 +5929,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-052-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5099,6 +5943,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-052-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5111,6 +5957,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-052-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5123,6 +5971,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-053-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5135,6 +5985,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-053-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5147,6 +5999,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-053-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5159,6 +6013,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-053-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5171,6 +6027,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-053-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5183,6 +6041,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-053-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5195,6 +6055,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-053-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5207,6 +6069,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-053-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5219,6 +6083,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-054-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5231,6 +6097,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-054-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5243,6 +6111,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-054-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5255,6 +6125,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-054-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5267,6 +6139,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-054-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5279,6 +6153,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-054-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5291,6 +6167,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-054-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5303,6 +6181,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-054-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5315,6 +6195,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-055-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5327,6 +6209,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-055-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5339,6 +6223,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-055-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5351,6 +6237,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-055-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5363,6 +6251,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-055-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5375,6 +6265,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-055-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5387,6 +6279,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-055-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5399,6 +6293,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-055-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5411,6 +6307,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-056-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5423,6 +6321,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-056-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5435,6 +6335,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-056-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5447,6 +6349,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-056-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5459,6 +6363,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-056-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5471,6 +6377,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-056-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5483,6 +6391,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-056-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5495,6 +6405,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-056-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5507,6 +6419,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-057-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5519,6 +6433,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-057-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5531,6 +6447,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-057-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5543,6 +6461,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-057-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5555,6 +6475,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-057-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5567,6 +6489,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-057-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5579,6 +6503,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-057-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5591,6 +6517,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-057-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5603,6 +6531,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-058-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5615,6 +6545,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-058-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5627,6 +6559,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-058-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5639,6 +6573,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-058-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5651,6 +6587,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-058-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5663,6 +6601,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-058-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5675,6 +6615,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-058-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5687,6 +6629,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-058-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5699,6 +6643,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-059-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5711,6 +6657,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-059-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5723,6 +6671,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-059-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5735,6 +6685,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-059-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5747,6 +6699,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-059-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5759,6 +6713,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-059-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5771,6 +6727,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-059-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5783,6 +6741,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-059-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5795,6 +6755,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-060-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5807,6 +6769,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-060-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5819,6 +6783,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-060-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5831,6 +6797,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-060-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5843,6 +6811,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-060-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5855,6 +6825,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-060-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5867,6 +6839,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-060-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5879,6 +6853,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-060-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5891,6 +6867,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-061-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5903,6 +6881,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-061-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5915,6 +6895,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-061-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5927,6 +6909,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-061-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5939,6 +6923,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-061-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5951,6 +6937,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-061-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5963,6 +6951,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-061-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5975,6 +6965,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-061-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5987,6 +6979,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-062-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -5999,6 +6993,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-062-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6011,6 +7007,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-062-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6023,6 +7021,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-062-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6035,6 +7035,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-062-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6047,6 +7049,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-062-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6059,6 +7063,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-062-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6071,6 +7077,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-062-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6083,6 +7091,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-063-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6095,6 +7105,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-063-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6107,6 +7119,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-063-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6119,6 +7133,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-063-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6131,6 +7147,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-063-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6143,6 +7161,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-063-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6155,6 +7175,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-063-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6167,6 +7189,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-063-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6179,6 +7203,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-064-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6191,6 +7217,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-064-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6203,6 +7231,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-064-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6215,6 +7245,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-064-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6227,6 +7259,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-064-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6239,6 +7273,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-064-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6251,6 +7287,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-064-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6263,6 +7301,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-064-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6275,6 +7315,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-065-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6287,6 +7329,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-065-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6299,6 +7343,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-065-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6311,6 +7357,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-065-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6323,6 +7371,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-065-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6335,6 +7385,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-065-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6347,6 +7399,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-065-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6359,6 +7413,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-065-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6371,6 +7427,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-066-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6383,6 +7441,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-066-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6395,6 +7455,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-066-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6407,6 +7469,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-066-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6419,6 +7483,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-066-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6431,6 +7497,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-066-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6443,6 +7511,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-066-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6455,6 +7525,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-066-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6467,6 +7539,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-067-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6479,6 +7553,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-067-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6491,6 +7567,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-067-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6503,6 +7581,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-067-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6515,6 +7595,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-067-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6527,6 +7609,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-067-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6539,6 +7623,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-067-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6551,6 +7637,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-067-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6563,6 +7651,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-068-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6575,6 +7665,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-068-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6587,6 +7679,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-068-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6599,6 +7693,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-068-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6611,6 +7707,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-068-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6623,6 +7721,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-068-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6635,6 +7735,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-068-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6647,6 +7749,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-068-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6659,6 +7763,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-069-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6671,6 +7777,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-069-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6683,6 +7791,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-069-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6695,6 +7805,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-069-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6707,6 +7819,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-069-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6719,6 +7833,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-069-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6731,6 +7847,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-069-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6743,6 +7861,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-069-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6755,6 +7875,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-070-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6767,6 +7889,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-070-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6779,6 +7903,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-070-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6791,6 +7917,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-070-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6803,6 +7931,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-070-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6815,6 +7945,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-070-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6827,6 +7959,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-070-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6839,6 +7973,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-070-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6851,6 +7987,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-071-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6863,6 +8001,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-071-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6875,6 +8015,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-071-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6887,6 +8029,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-071-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6899,6 +8043,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-071-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6911,6 +8057,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-071-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6923,6 +8071,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-071-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6935,6 +8085,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-071-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6947,6 +8099,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-072-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6959,6 +8113,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-072-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6971,6 +8127,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-072-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6983,6 +8141,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-072-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -6995,6 +8155,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-072-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7007,6 +8169,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-072-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7019,6 +8183,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-072-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7031,6 +8197,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-072-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7043,6 +8211,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-073-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7055,6 +8225,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-073-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7067,6 +8239,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-073-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7079,6 +8253,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-073-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7091,6 +8267,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-073-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7103,6 +8281,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-073-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7115,6 +8295,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-073-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7127,6 +8309,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-073-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7139,6 +8323,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-074-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7151,6 +8337,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-074-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7163,6 +8351,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-074-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7175,6 +8365,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-074-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7187,6 +8379,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-074-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7199,6 +8393,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-074-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7211,6 +8407,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-074-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7223,6 +8421,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-074-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7235,6 +8435,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-075-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7247,6 +8449,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-075-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7259,6 +8463,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-075-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7271,6 +8477,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-075-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7283,6 +8491,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-075-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7295,6 +8505,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-075-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7307,6 +8519,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-075-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7319,6 +8533,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-075-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7331,6 +8547,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-076-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7343,6 +8561,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-076-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7355,6 +8575,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-076-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7367,6 +8589,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-076-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7379,6 +8603,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-076-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7391,6 +8617,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-076-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7403,6 +8631,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-076-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7415,6 +8645,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-076-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7427,6 +8659,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-077-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7439,6 +8673,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-077-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7451,6 +8687,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-077-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7463,6 +8701,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-077-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7475,6 +8715,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-077-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7487,6 +8729,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-077-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7499,6 +8743,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-077-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7511,6 +8757,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-077-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7523,6 +8771,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-078-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7535,6 +8785,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-078-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7547,6 +8799,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-078-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7559,6 +8813,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-078-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7571,6 +8827,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-078-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7583,6 +8841,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-078-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7595,6 +8855,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-078-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7607,6 +8869,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-078-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7619,6 +8883,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-079-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7631,6 +8897,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-079-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7643,6 +8911,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-079-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7655,6 +8925,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-079-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7667,6 +8939,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-079-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7679,6 +8953,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-079-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7691,6 +8967,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-079-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7703,6 +8981,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-079-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7715,6 +8995,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-080-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7727,6 +9009,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-080-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7739,6 +9023,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-080-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7751,6 +9037,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-080-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7763,6 +9051,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-080-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7775,6 +9065,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-080-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7787,6 +9079,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-080-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7799,6 +9093,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-080-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7811,6 +9107,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-081-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7823,6 +9121,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-081-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7835,6 +9135,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-081-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7847,6 +9149,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-081-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7859,6 +9163,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-081-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7871,6 +9177,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-081-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7883,6 +9191,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-081-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7895,6 +9205,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-081-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7907,6 +9219,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-082-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7919,6 +9233,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-082-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7931,6 +9247,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-082-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7943,6 +9261,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-082-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7955,6 +9275,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-082-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7967,6 +9289,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-082-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7979,6 +9303,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-082-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -7991,6 +9317,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-082-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8003,6 +9331,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-083-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8015,6 +9345,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-083-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8027,6 +9359,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-083-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8039,6 +9373,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-083-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8051,6 +9387,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-083-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8063,6 +9401,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-083-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8075,6 +9415,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-083-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8087,6 +9429,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-083-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8099,6 +9443,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-084-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8111,6 +9457,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-084-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8123,6 +9471,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-084-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8135,6 +9485,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-084-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8147,6 +9499,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-084-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8159,6 +9513,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-084-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8171,6 +9527,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-084-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8183,6 +9541,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-084-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8195,6 +9555,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-085-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8207,6 +9569,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-085-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8219,6 +9583,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-085-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8231,6 +9597,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-085-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8243,6 +9611,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-085-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8255,6 +9625,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-085-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8267,6 +9639,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-085-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8279,6 +9653,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-085-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8291,6 +9667,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-086-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8303,6 +9681,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-086-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8315,6 +9695,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-086-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8327,6 +9709,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-086-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8339,6 +9723,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-086-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8351,6 +9737,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-086-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8363,6 +9751,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-086-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8375,6 +9765,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-086-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8387,6 +9779,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-087-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8399,6 +9793,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-087-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8411,6 +9807,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-087-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8423,6 +9821,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-087-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8435,6 +9835,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-087-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8447,6 +9849,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-087-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8459,6 +9863,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-087-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8471,6 +9877,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-087-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8483,6 +9891,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-088-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8495,6 +9905,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-088-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8507,6 +9919,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-088-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8519,6 +9933,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-088-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8531,6 +9947,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-088-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8543,6 +9961,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-088-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8555,6 +9975,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-088-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8567,6 +9989,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-088-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8579,6 +10003,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-089-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8591,6 +10017,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-089-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8603,6 +10031,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-089-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8615,6 +10045,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-089-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8627,6 +10059,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-089-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8639,6 +10073,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-089-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8651,6 +10087,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-089-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8663,6 +10101,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-089-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8675,6 +10115,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-090-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8687,6 +10129,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-090-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8699,6 +10143,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-090-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8711,6 +10157,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-090-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8723,6 +10171,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-090-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8735,6 +10185,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-090-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8747,6 +10199,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-090-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8759,6 +10213,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-090-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8771,6 +10227,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-091-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8783,6 +10241,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-091-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8795,6 +10255,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-091-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8807,6 +10269,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-091-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8819,6 +10283,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-091-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8831,6 +10297,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-091-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8843,6 +10311,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-091-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8855,6 +10325,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-091-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8867,6 +10339,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-092-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8879,6 +10353,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-092-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8891,6 +10367,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-092-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8903,6 +10381,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-092-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8915,6 +10395,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-092-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8927,6 +10409,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-092-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8939,6 +10423,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-092-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8951,6 +10437,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-092-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8963,6 +10451,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-093-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8975,6 +10465,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-093-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8987,6 +10479,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-093-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -8999,6 +10493,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-093-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9011,6 +10507,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-093-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9023,6 +10521,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-093-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9035,6 +10535,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-093-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9047,6 +10549,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-093-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9059,6 +10563,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-094-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9071,6 +10577,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-094-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9083,6 +10591,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-094-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9095,6 +10605,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-094-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9107,6 +10619,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-094-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9119,6 +10633,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-094-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9131,6 +10647,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-094-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9143,6 +10661,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-094-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9155,6 +10675,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-095-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9167,6 +10689,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-095-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9179,6 +10703,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-095-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9191,6 +10717,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-095-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9203,6 +10731,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-095-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9215,6 +10745,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-095-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9227,6 +10759,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-095-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9239,6 +10773,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-095-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9251,6 +10787,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-096-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9263,6 +10801,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-096-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9275,6 +10815,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-096-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9287,6 +10829,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-096-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9299,6 +10843,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-096-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9311,6 +10857,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-096-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9323,6 +10871,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-096-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9335,6 +10885,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-096-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9347,6 +10899,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-097-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9359,6 +10913,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-097-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9371,6 +10927,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-097-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9383,6 +10941,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-097-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9395,6 +10955,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-097-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9407,6 +10969,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-097-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9419,6 +10983,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-097-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9431,6 +10997,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-097-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9443,6 +11011,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-098-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9455,6 +11025,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-098-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9467,6 +11039,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-098-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9479,6 +11053,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-098-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9491,6 +11067,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-098-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9503,6 +11081,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-098-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9515,6 +11095,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-098-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9527,6 +11109,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-098-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9539,6 +11123,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-099-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9551,6 +11137,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-099-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9563,6 +11151,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-099-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9575,6 +11165,8 @@
       "aiCoreTotal": 32,
       "numaNode": 0,
       "hccsGroup": "worker-stress-099-hccs-0",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9587,6 +11179,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-099-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9599,6 +11193,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-099-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9611,6 +11207,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-099-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     },
@@ -9623,6 +11221,8 @@
       "aiCoreTotal": 32,
       "numaNode": 1,
       "hccsGroup": "worker-stress-099-hccs-1",
+      "pcieBandwidthGBps": 32.0,
+      "hccsBandwidthGBps": 56.0,
       "status": "healthy",
       "sliceMode": "whole"
     }

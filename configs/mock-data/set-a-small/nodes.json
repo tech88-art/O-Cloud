@@ -38,9 +38,9 @@
       "memory": {
         "raw": "768Gi"
       },
-      "arch": "amd64",
-      "kernelVersion": "5.15.0-105-generic",
-      "os": "Ubuntu 22.04.4 LTS",
+      "arch": "arm64",
+      "kernelVersion": "5.10.0-153.12.0.92.oe2203sp3.aarch64",
+      "os": "openEuler 22.03 LTS SP3",
       "kubeletVersion": "v1.31.0",
       "npuCount": 8,
       "numa": [
@@ -215,9 +215,9 @@
       "memory": {
         "raw": "768Gi"
       },
-      "arch": "amd64",
-      "kernelVersion": "5.15.0-105-generic",
-      "os": "Ubuntu 22.04.4 LTS",
+      "arch": "arm64",
+      "kernelVersion": "5.10.0-153.12.0.92.oe2203sp3.aarch64",
+      "os": "openEuler 22.03 LTS SP3",
       "kubeletVersion": "v1.31.0",
       "npuCount": 8,
       "numa": [
@@ -392,9 +392,9 @@
       "memory": {
         "raw": "768Gi"
       },
-      "arch": "amd64",
-      "kernelVersion": "5.15.0-105-generic",
-      "os": "Ubuntu 22.04.4 LTS",
+      "arch": "arm64",
+      "kernelVersion": "5.10.0-153.12.0.92.oe2203sp3.aarch64",
+      "os": "openEuler 22.03 LTS SP3",
       "kubeletVersion": "v1.31.0",
       "npuCount": 8,
       "numa": [

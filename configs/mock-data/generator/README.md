@@ -94,8 +94,9 @@ both the directory-layout AC and the schema contract without touching
 Conforms to `configs/CLAUDE.md` §3.3 and §3.4:
 
 - **1 cluster** `cluster-prod-a-01` (role `edge-single`, status `healthy`).
-- **3 worker nodes** `worker-site-a-01..03`, `arch=amd64`, 96 CPU / 768 Gi
-  memory each, 2 NUMA domains per node.
+- **3 worker nodes** `worker-site-a-01..03`, `arch=arm64` (aarch64 鲲鹏 ·
+  os `openEuler 22.03 LTS SP3` · per ADR-0020), 96 CPU / 768 Gi memory each,
+  2 NUMA domains per node.
 - **24 NPUs** (Ascend910B, 64 GiB VRAM, 32 AI cores). Each node has:
   - **HCCS grouping** — 2 full-mesh groups of 4 cards (`<node>-hccs-0/-1`).
   - **NUMA layout** — NPU 0..3 on NUMA 0, NPU 4..7 on NUMA 1.

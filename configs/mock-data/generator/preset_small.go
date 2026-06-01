@@ -72,9 +72,9 @@ func buildSetASmall() *model.Dataset {
 			Status:         "Ready",
 			CPU:            model.Quantity{Raw: "96"},
 			Memory:         model.Quantity{Raw: "768Gi"},
-			Arch:           "amd64",
-			KernelVersion:  "5.15.0-105-generic",
-			OS:             "Ubuntu 22.04.4 LTS",
+			Arch:           "arm64",
+			KernelVersion:  "5.10.0-153.12.0.92.oe2203sp3.aarch64",
+			OS:             "openEuler 22.03 LTS SP3",
 			KubeletVersion: "v1.31.0",
 			NPUCount:       builder.NPUsPerNode,
 			NUMA:           numa,
@@ -155,9 +155,13 @@ func buildSetASmall() *model.Dataset {
 				AICoreTotal: builder.NPUAICoreTotal,
 				NumaNode:    l.NumaNode,
 				HCCSGroup:   l.HCCSGroup,
-				Status:      status,
-				SliceMode:   sliceMode,
-				Usage:       usage,
+				// ADR-0021: PCIe Gen4 x16 ≈ 32 GB/s · 910B HCCS ≈ 56 GB/s (fixed
+				// hardware specs · no RNG draw → seeded sequence unchanged).
+				PCIeBandwidthGBps: 32.0,
+				HCCSBandwidthGBps: 56.0,
+				Status:            status,
+				SliceMode:         sliceMode,
+				Usage:             usage,
 			})
 		}
 	}
@@ -611,6 +615,26 @@ func buildFabricForSmall(nodeNames []string) ([]model.NetworkSwitch, []model.Net
 			Utilization:   12.0 + float64(i)*3.5,
 			RTTUs:         0.8 + float64(i)*0.1,
 		})
+	}
+	// ADR-0021: node↔node inter-node `network` links (RoCE · GB/s). Both
+	// endpoints are node ids, so the aggregator classifies them as `network`
+	// (green) edges. Simple ring over the nodes; bandwidthGBps ≈ 25 GB/s
+	// (~200 Gbps RoCE NIC). No RNG draw → seeded sequence unchanged.
+	if n := len(nodeNames); n > 1 {
+		for i := 0; i < n; i++ {
+			from := nodeNames[i]
+			to := nodeNames[(i+1)%n]
+			links = append(links, model.NetworkLink{
+				ID:            fmt.Sprintf("net-%s-%s", from, to),
+				From:          from,
+				To:            to,
+				BandwidthGbps: 200,
+				BandwidthGBps: 25.0,
+				Medium:        "roce",
+				Utilization:   18.0 + float64(i)*2.0,
+				RTTUs:         1.2 + float64(i)*0.1,
+			})
+		}
 	}
 	return switches, links
 }

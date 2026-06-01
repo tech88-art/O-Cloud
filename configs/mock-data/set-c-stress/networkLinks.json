@@ -972,6 +972,1006 @@
       "medium": "dac",
       "utilization": 15,
       "rttUs": 0.8
+    },
+    {
+      "id": "net-worker-stress-000-worker-stress-001",
+      "from": "worker-stress-000",
+      "to": "worker-stress-001",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 18.0,
+      "rttUs": 1.2
+    },
+    {
+      "id": "net-worker-stress-001-worker-stress-002",
+      "from": "worker-stress-001",
+      "to": "worker-stress-002",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 20.0,
+      "rttUs": 1.3
+    },
+    {
+      "id": "net-worker-stress-002-worker-stress-003",
+      "from": "worker-stress-002",
+      "to": "worker-stress-003",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 22.0,
+      "rttUs": 1.4
+    },
+    {
+      "id": "net-worker-stress-003-worker-stress-004",
+      "from": "worker-stress-003",
+      "to": "worker-stress-004",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 24.0,
+      "rttUs": 1.5
+    },
+    {
+      "id": "net-worker-stress-004-worker-stress-005",
+      "from": "worker-stress-004",
+      "to": "worker-stress-005",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 26.0,
+      "rttUs": 1.6
+    },
+    {
+      "id": "net-worker-stress-005-worker-stress-006",
+      "from": "worker-stress-005",
+      "to": "worker-stress-006",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 28.0,
+      "rttUs": 1.7
+    },
+    {
+      "id": "net-worker-stress-006-worker-stress-007",
+      "from": "worker-stress-006",
+      "to": "worker-stress-007",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 30.0,
+      "rttUs": 1.8
+    },
+    {
+      "id": "net-worker-stress-007-worker-stress-008",
+      "from": "worker-stress-007",
+      "to": "worker-stress-008",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 32.0,
+      "rttUs": 1.9
+    },
+    {
+      "id": "net-worker-stress-008-worker-stress-009",
+      "from": "worker-stress-008",
+      "to": "worker-stress-009",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 34.0,
+      "rttUs": 2.0
+    },
+    {
+      "id": "net-worker-stress-009-worker-stress-010",
+      "from": "worker-stress-009",
+      "to": "worker-stress-010",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 36.0,
+      "rttUs": 2.1
+    },
+    {
+      "id": "net-worker-stress-010-worker-stress-011",
+      "from": "worker-stress-010",
+      "to": "worker-stress-011",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 18.0,
+      "rttUs": 1.2
+    },
+    {
+      "id": "net-worker-stress-011-worker-stress-012",
+      "from": "worker-stress-011",
+      "to": "worker-stress-012",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 20.0,
+      "rttUs": 1.3
+    },
+    {
+      "id": "net-worker-stress-012-worker-stress-013",
+      "from": "worker-stress-012",
+      "to": "worker-stress-013",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 22.0,
+      "rttUs": 1.4
+    },
+    {
+      "id": "net-worker-stress-013-worker-stress-014",
+      "from": "worker-stress-013",
+      "to": "worker-stress-014",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 24.0,
+      "rttUs": 1.5
+    },
+    {
+      "id": "net-worker-stress-014-worker-stress-015",
+      "from": "worker-stress-014",
+      "to": "worker-stress-015",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 26.0,
+      "rttUs": 1.6
+    },
+    {
+      "id": "net-worker-stress-015-worker-stress-016",
+      "from": "worker-stress-015",
+      "to": "worker-stress-016",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 28.0,
+      "rttUs": 1.7
+    },
+    {
+      "id": "net-worker-stress-016-worker-stress-017",
+      "from": "worker-stress-016",
+      "to": "worker-stress-017",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 30.0,
+      "rttUs": 1.8
+    },
+    {
+      "id": "net-worker-stress-017-worker-stress-018",
+      "from": "worker-stress-017",
+      "to": "worker-stress-018",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 32.0,
+      "rttUs": 1.9
+    },
+    {
+      "id": "net-worker-stress-018-worker-stress-019",
+      "from": "worker-stress-018",
+      "to": "worker-stress-019",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 34.0,
+      "rttUs": 2.0
+    },
+    {
+      "id": "net-worker-stress-019-worker-stress-020",
+      "from": "worker-stress-019",
+      "to": "worker-stress-020",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 36.0,
+      "rttUs": 2.1
+    },
+    {
+      "id": "net-worker-stress-020-worker-stress-021",
+      "from": "worker-stress-020",
+      "to": "worker-stress-021",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 18.0,
+      "rttUs": 1.2
+    },
+    {
+      "id": "net-worker-stress-021-worker-stress-022",
+      "from": "worker-stress-021",
+      "to": "worker-stress-022",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 20.0,
+      "rttUs": 1.3
+    },
+    {
+      "id": "net-worker-stress-022-worker-stress-023",
+      "from": "worker-stress-022",
+      "to": "worker-stress-023",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 22.0,
+      "rttUs": 1.4
+    },
+    {
+      "id": "net-worker-stress-023-worker-stress-024",
+      "from": "worker-stress-023",
+      "to": "worker-stress-024",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 24.0,
+      "rttUs": 1.5
+    },
+    {
+      "id": "net-worker-stress-024-worker-stress-025",
+      "from": "worker-stress-024",
+      "to": "worker-stress-025",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 26.0,
+      "rttUs": 1.6
+    },
+    {
+      "id": "net-worker-stress-025-worker-stress-026",
+      "from": "worker-stress-025",
+      "to": "worker-stress-026",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 28.0,
+      "rttUs": 1.7
+    },
+    {
+      "id": "net-worker-stress-026-worker-stress-027",
+      "from": "worker-stress-026",
+      "to": "worker-stress-027",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 30.0,
+      "rttUs": 1.8
+    },
+    {
+      "id": "net-worker-stress-027-worker-stress-028",
+      "from": "worker-stress-027",
+      "to": "worker-stress-028",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 32.0,
+      "rttUs": 1.9
+    },
+    {
+      "id": "net-worker-stress-028-worker-stress-029",
+      "from": "worker-stress-028",
+      "to": "worker-stress-029",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 34.0,
+      "rttUs": 2.0
+    },
+    {
+      "id": "net-worker-stress-029-worker-stress-030",
+      "from": "worker-stress-029",
+      "to": "worker-stress-030",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 36.0,
+      "rttUs": 2.1
+    },
+    {
+      "id": "net-worker-stress-030-worker-stress-031",
+      "from": "worker-stress-030",
+      "to": "worker-stress-031",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 18.0,
+      "rttUs": 1.2
+    },
+    {
+      "id": "net-worker-stress-031-worker-stress-032",
+      "from": "worker-stress-031",
+      "to": "worker-stress-032",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 20.0,
+      "rttUs": 1.3
+    },
+    {
+      "id": "net-worker-stress-032-worker-stress-033",
+      "from": "worker-stress-032",
+      "to": "worker-stress-033",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 22.0,
+      "rttUs": 1.4
+    },
+    {
+      "id": "net-worker-stress-033-worker-stress-034",
+      "from": "worker-stress-033",
+      "to": "worker-stress-034",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 24.0,
+      "rttUs": 1.5
+    },
+    {
+      "id": "net-worker-stress-034-worker-stress-035",
+      "from": "worker-stress-034",
+      "to": "worker-stress-035",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 26.0,
+      "rttUs": 1.6
+    },
+    {
+      "id": "net-worker-stress-035-worker-stress-036",
+      "from": "worker-stress-035",
+      "to": "worker-stress-036",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 28.0,
+      "rttUs": 1.7
+    },
+    {
+      "id": "net-worker-stress-036-worker-stress-037",
+      "from": "worker-stress-036",
+      "to": "worker-stress-037",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 30.0,
+      "rttUs": 1.8
+    },
+    {
+      "id": "net-worker-stress-037-worker-stress-038",
+      "from": "worker-stress-037",
+      "to": "worker-stress-038",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 32.0,
+      "rttUs": 1.9
+    },
+    {
+      "id": "net-worker-stress-038-worker-stress-039",
+      "from": "worker-stress-038",
+      "to": "worker-stress-039",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 34.0,
+      "rttUs": 2.0
+    },
+    {
+      "id": "net-worker-stress-039-worker-stress-040",
+      "from": "worker-stress-039",
+      "to": "worker-stress-040",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 36.0,
+      "rttUs": 2.1
+    },
+    {
+      "id": "net-worker-stress-040-worker-stress-041",
+      "from": "worker-stress-040",
+      "to": "worker-stress-041",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 18.0,
+      "rttUs": 1.2
+    },
+    {
+      "id": "net-worker-stress-041-worker-stress-042",
+      "from": "worker-stress-041",
+      "to": "worker-stress-042",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 20.0,
+      "rttUs": 1.3
+    },
+    {
+      "id": "net-worker-stress-042-worker-stress-043",
+      "from": "worker-stress-042",
+      "to": "worker-stress-043",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 22.0,
+      "rttUs": 1.4
+    },
+    {
+      "id": "net-worker-stress-043-worker-stress-044",
+      "from": "worker-stress-043",
+      "to": "worker-stress-044",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 24.0,
+      "rttUs": 1.5
+    },
+    {
+      "id": "net-worker-stress-044-worker-stress-045",
+      "from": "worker-stress-044",
+      "to": "worker-stress-045",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 26.0,
+      "rttUs": 1.6
+    },
+    {
+      "id": "net-worker-stress-045-worker-stress-046",
+      "from": "worker-stress-045",
+      "to": "worker-stress-046",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 28.0,
+      "rttUs": 1.7
+    },
+    {
+      "id": "net-worker-stress-046-worker-stress-047",
+      "from": "worker-stress-046",
+      "to": "worker-stress-047",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 30.0,
+      "rttUs": 1.8
+    },
+    {
+      "id": "net-worker-stress-047-worker-stress-048",
+      "from": "worker-stress-047",
+      "to": "worker-stress-048",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 32.0,
+      "rttUs": 1.9
+    },
+    {
+      "id": "net-worker-stress-048-worker-stress-049",
+      "from": "worker-stress-048",
+      "to": "worker-stress-049",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 34.0,
+      "rttUs": 2.0
+    },
+    {
+      "id": "net-worker-stress-049-worker-stress-050",
+      "from": "worker-stress-049",
+      "to": "worker-stress-050",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 36.0,
+      "rttUs": 2.1
+    },
+    {
+      "id": "net-worker-stress-050-worker-stress-051",
+      "from": "worker-stress-050",
+      "to": "worker-stress-051",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 18.0,
+      "rttUs": 1.2
+    },
+    {
+      "id": "net-worker-stress-051-worker-stress-052",
+      "from": "worker-stress-051",
+      "to": "worker-stress-052",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 20.0,
+      "rttUs": 1.3
+    },
+    {
+      "id": "net-worker-stress-052-worker-stress-053",
+      "from": "worker-stress-052",
+      "to": "worker-stress-053",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 22.0,
+      "rttUs": 1.4
+    },
+    {
+      "id": "net-worker-stress-053-worker-stress-054",
+      "from": "worker-stress-053",
+      "to": "worker-stress-054",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 24.0,
+      "rttUs": 1.5
+    },
+    {
+      "id": "net-worker-stress-054-worker-stress-055",
+      "from": "worker-stress-054",
+      "to": "worker-stress-055",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 26.0,
+      "rttUs": 1.6
+    },
+    {
+      "id": "net-worker-stress-055-worker-stress-056",
+      "from": "worker-stress-055",
+      "to": "worker-stress-056",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 28.0,
+      "rttUs": 1.7
+    },
+    {
+      "id": "net-worker-stress-056-worker-stress-057",
+      "from": "worker-stress-056",
+      "to": "worker-stress-057",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 30.0,
+      "rttUs": 1.8
+    },
+    {
+      "id": "net-worker-stress-057-worker-stress-058",
+      "from": "worker-stress-057",
+      "to": "worker-stress-058",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 32.0,
+      "rttUs": 1.9
+    },
+    {
+      "id": "net-worker-stress-058-worker-stress-059",
+      "from": "worker-stress-058",
+      "to": "worker-stress-059",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 34.0,
+      "rttUs": 2.0
+    },
+    {
+      "id": "net-worker-stress-059-worker-stress-060",
+      "from": "worker-stress-059",
+      "to": "worker-stress-060",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 36.0,
+      "rttUs": 2.1
+    },
+    {
+      "id": "net-worker-stress-060-worker-stress-061",
+      "from": "worker-stress-060",
+      "to": "worker-stress-061",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 18.0,
+      "rttUs": 1.2
+    },
+    {
+      "id": "net-worker-stress-061-worker-stress-062",
+      "from": "worker-stress-061",
+      "to": "worker-stress-062",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 20.0,
+      "rttUs": 1.3
+    },
+    {
+      "id": "net-worker-stress-062-worker-stress-063",
+      "from": "worker-stress-062",
+      "to": "worker-stress-063",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 22.0,
+      "rttUs": 1.4
+    },
+    {
+      "id": "net-worker-stress-063-worker-stress-064",
+      "from": "worker-stress-063",
+      "to": "worker-stress-064",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 24.0,
+      "rttUs": 1.5
+    },
+    {
+      "id": "net-worker-stress-064-worker-stress-065",
+      "from": "worker-stress-064",
+      "to": "worker-stress-065",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 26.0,
+      "rttUs": 1.6
+    },
+    {
+      "id": "net-worker-stress-065-worker-stress-066",
+      "from": "worker-stress-065",
+      "to": "worker-stress-066",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 28.0,
+      "rttUs": 1.7
+    },
+    {
+      "id": "net-worker-stress-066-worker-stress-067",
+      "from": "worker-stress-066",
+      "to": "worker-stress-067",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 30.0,
+      "rttUs": 1.8
+    },
+    {
+      "id": "net-worker-stress-067-worker-stress-068",
+      "from": "worker-stress-067",
+      "to": "worker-stress-068",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 32.0,
+      "rttUs": 1.9
+    },
+    {
+      "id": "net-worker-stress-068-worker-stress-069",
+      "from": "worker-stress-068",
+      "to": "worker-stress-069",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 34.0,
+      "rttUs": 2.0
+    },
+    {
+      "id": "net-worker-stress-069-worker-stress-070",
+      "from": "worker-stress-069",
+      "to": "worker-stress-070",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 36.0,
+      "rttUs": 2.1
+    },
+    {
+      "id": "net-worker-stress-070-worker-stress-071",
+      "from": "worker-stress-070",
+      "to": "worker-stress-071",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 18.0,
+      "rttUs": 1.2
+    },
+    {
+      "id": "net-worker-stress-071-worker-stress-072",
+      "from": "worker-stress-071",
+      "to": "worker-stress-072",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 20.0,
+      "rttUs": 1.3
+    },
+    {
+      "id": "net-worker-stress-072-worker-stress-073",
+      "from": "worker-stress-072",
+      "to": "worker-stress-073",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 22.0,
+      "rttUs": 1.4
+    },
+    {
+      "id": "net-worker-stress-073-worker-stress-074",
+      "from": "worker-stress-073",
+      "to": "worker-stress-074",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 24.0,
+      "rttUs": 1.5
+    },
+    {
+      "id": "net-worker-stress-074-worker-stress-075",
+      "from": "worker-stress-074",
+      "to": "worker-stress-075",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 26.0,
+      "rttUs": 1.6
+    },
+    {
+      "id": "net-worker-stress-075-worker-stress-076",
+      "from": "worker-stress-075",
+      "to": "worker-stress-076",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 28.0,
+      "rttUs": 1.7
+    },
+    {
+      "id": "net-worker-stress-076-worker-stress-077",
+      "from": "worker-stress-076",
+      "to": "worker-stress-077",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 30.0,
+      "rttUs": 1.8
+    },
+    {
+      "id": "net-worker-stress-077-worker-stress-078",
+      "from": "worker-stress-077",
+      "to": "worker-stress-078",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 32.0,
+      "rttUs": 1.9
+    },
+    {
+      "id": "net-worker-stress-078-worker-stress-079",
+      "from": "worker-stress-078",
+      "to": "worker-stress-079",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 34.0,
+      "rttUs": 2.0
+    },
+    {
+      "id": "net-worker-stress-079-worker-stress-080",
+      "from": "worker-stress-079",
+      "to": "worker-stress-080",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 36.0,
+      "rttUs": 2.1
+    },
+    {
+      "id": "net-worker-stress-080-worker-stress-081",
+      "from": "worker-stress-080",
+      "to": "worker-stress-081",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 18.0,
+      "rttUs": 1.2
+    },
+    {
+      "id": "net-worker-stress-081-worker-stress-082",
+      "from": "worker-stress-081",
+      "to": "worker-stress-082",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 20.0,
+      "rttUs": 1.3
+    },
+    {
+      "id": "net-worker-stress-082-worker-stress-083",
+      "from": "worker-stress-082",
+      "to": "worker-stress-083",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 22.0,
+      "rttUs": 1.4
+    },
+    {
+      "id": "net-worker-stress-083-worker-stress-084",
+      "from": "worker-stress-083",
+      "to": "worker-stress-084",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 24.0,
+      "rttUs": 1.5
+    },
+    {
+      "id": "net-worker-stress-084-worker-stress-085",
+      "from": "worker-stress-084",
+      "to": "worker-stress-085",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 26.0,
+      "rttUs": 1.6
+    },
+    {
+      "id": "net-worker-stress-085-worker-stress-086",
+      "from": "worker-stress-085",
+      "to": "worker-stress-086",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 28.0,
+      "rttUs": 1.7
+    },
+    {
+      "id": "net-worker-stress-086-worker-stress-087",
+      "from": "worker-stress-086",
+      "to": "worker-stress-087",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 30.0,
+      "rttUs": 1.8
+    },
+    {
+      "id": "net-worker-stress-087-worker-stress-088",
+      "from": "worker-stress-087",
+      "to": "worker-stress-088",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 32.0,
+      "rttUs": 1.9
+    },
+    {
+      "id": "net-worker-stress-088-worker-stress-089",
+      "from": "worker-stress-088",
+      "to": "worker-stress-089",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 34.0,
+      "rttUs": 2.0
+    },
+    {
+      "id": "net-worker-stress-089-worker-stress-090",
+      "from": "worker-stress-089",
+      "to": "worker-stress-090",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 36.0,
+      "rttUs": 2.1
+    },
+    {
+      "id": "net-worker-stress-090-worker-stress-091",
+      "from": "worker-stress-090",
+      "to": "worker-stress-091",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 18.0,
+      "rttUs": 1.2
+    },
+    {
+      "id": "net-worker-stress-091-worker-stress-092",
+      "from": "worker-stress-091",
+      "to": "worker-stress-092",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 20.0,
+      "rttUs": 1.3
+    },
+    {
+      "id": "net-worker-stress-092-worker-stress-093",
+      "from": "worker-stress-092",
+      "to": "worker-stress-093",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 22.0,
+      "rttUs": 1.4
+    },
+    {
+      "id": "net-worker-stress-093-worker-stress-094",
+      "from": "worker-stress-093",
+      "to": "worker-stress-094",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 24.0,
+      "rttUs": 1.5
+    },
+    {
+      "id": "net-worker-stress-094-worker-stress-095",
+      "from": "worker-stress-094",
+      "to": "worker-stress-095",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 26.0,
+      "rttUs": 1.6
+    },
+    {
+      "id": "net-worker-stress-095-worker-stress-096",
+      "from": "worker-stress-095",
+      "to": "worker-stress-096",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 28.0,
+      "rttUs": 1.7
+    },
+    {
+      "id": "net-worker-stress-096-worker-stress-097",
+      "from": "worker-stress-096",
+      "to": "worker-stress-097",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 30.0,
+      "rttUs": 1.8
+    },
+    {
+      "id": "net-worker-stress-097-worker-stress-098",
+      "from": "worker-stress-097",
+      "to": "worker-stress-098",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 32.0,
+      "rttUs": 1.9
+    },
+    {
+      "id": "net-worker-stress-098-worker-stress-099",
+      "from": "worker-stress-098",
+      "to": "worker-stress-099",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 34.0,
+      "rttUs": 2.0
+    },
+    {
+      "id": "net-worker-stress-099-worker-stress-000",
+      "from": "worker-stress-099",
+      "to": "worker-stress-000",
+      "bandwidthGbps": 200,
+      "bandwidthGBps": 25.0,
+      "medium": "roce",
+      "utilization": 36.0,
+      "rttUs": 2.1
     }
   ]
 }

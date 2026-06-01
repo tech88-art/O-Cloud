@@ -249,9 +249,9 @@
         "arch": {
           "type": "string",
           "enum": [
-            "amd64"
+            "arm64"
           ],
-          "description": "本项目仅支持 x86_64 / amd64，不支持 ARM / 鲲鹏"
+          "description": "真实目标平台 = aarch64 鲲鹏 (Kunpeng 920) · per ADR-0020 翻转 ADR-0001 §13 单架构简化 · 部署节点 arm64 · 镜像 multi-arch (本机 dev/CI 仍可 x86)"
         },
         "kernelVersion": {
           "type": "string"
@@ -414,6 +414,16 @@
         "hccsGroup": {
           "type": "string",
           "description": "HCCS 拓扑组 id，同组 NPU 间高速互联"
+        },
+        "pcieBandwidthGBps": {
+          "type": "number",
+          "minimum": 0,
+          "description": "(ADR-0021) host↔NPU PCIe 链路带宽 (GB/s · gigabytes) · Gen4 x16 ≈ 32 · Gen5 x16 ≈ 64"
+        },
+        "hccsBandwidthGBps": {
+          "type": "number",
+          "minimum": 0,
+          "description": "(ADR-0021) 同组 npu↔npu HCCS 链路带宽 (GB/s) · 910B ≈ 56 · 供拓扑 hccs 边 hover"
         },
         "status": {
           "type": "string",
@@ -1294,7 +1304,13 @@
           "description": "node id OR switch id"
         },
         "bandwidthGbps": {
-          "type": "integer"
+          "type": "integer",
+          "description": "ADR-0004 legacy unit (Gbps · gigabits)"
+        },
+        "bandwidthGBps": {
+          "type": "number",
+          "minimum": 0,
+          "description": "(ADR-0021) GB/s · gigabytes · network/hccs/fabric 边 hover 同尺度 (与 NPU.pcieBandwidthGBps 同单位)"
         },
         "medium": {
           "type": "string",
@@ -1302,7 +1318,10 @@
             "copper",
             "fiber",
             "dac",
-            "optical"
+            "optical",
+            "eth",
+            "roce",
+            "ib"
           ]
         },
         "utilization": {

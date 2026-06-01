@@ -93,9 +93,9 @@ func buildSetCStress() (*model.Dataset, error) {
 			Status:         "Ready",
 			CPU:            model.Quantity{Raw: "96"},
 			Memory:         model.Quantity{Raw: "768Gi"},
-			Arch:           "amd64",
-			KernelVersion:  "5.15.0-105-generic",
-			OS:             "Ubuntu 22.04.4 LTS",
+			Arch:           "arm64",
+			KernelVersion:  "5.10.0-153.12.0.92.oe2203sp3.aarch64",
+			OS:             "openEuler 22.03 LTS SP3",
 			KubeletVersion: "v1.31.0",
 			NPUCount:       builder.NPUsPerNode,
 			NUMA:           numa,
@@ -127,8 +127,11 @@ func buildSetCStress() (*model.Dataset, error) {
 				AICoreTotal: builder.NPUAICoreTotal,
 				NumaNode:    l.NumaNode,
 				HCCSGroup:   l.HCCSGroup,
-				Status:      "healthy",
-				SliceMode:   "whole",
+				// ADR-0021: fixed hardware bandwidths (PCIe Gen4 ≈ 32 · HCCS ≈ 56 GB/s).
+				PCIeBandwidthGBps: 32.0,
+				HCCSBandwidthGBps: 56.0,
+				Status:            "healthy",
+				SliceMode:         "whole",
 				// Skip Usage to keep the file small — 800 NPUs × 6 usage
 				// fields would balloon npus.json into the megabytes for
 				// no visual benefit at this scale.
@@ -431,6 +434,35 @@ func buildStressFabric(nodeNames []string) ([]model.NetworkSwitch, []model.Netwo
 			Utilization:   15.0,
 			RTTUs:         0.8,
 		})
+	}
+	// ADR-0021: node↔node inter-node `network` links (RoCE · GB/s) — both
+	// endpoints are node ids, so the aggregator classifies them as `network`
+	// (green) edges. Ring the nodes WITHIN each leaf group (intra-rack
+	// interconnect) so the stress set exercises network-edge rendering at scale
+	// without an N² mesh. bandwidthGBps ≈ 12.5 GB/s (~100 Gbps).
+	for start := 0; start < len(nodeNames); start += 25 {
+		end := start + 25
+		if end > len(nodeNames) {
+			end = len(nodeNames)
+		}
+		group := nodeNames[start:end]
+		if len(group) < 2 {
+			continue
+		}
+		for j := range group {
+			from := group[j]
+			to := group[(j+1)%len(group)]
+			links = append(links, model.NetworkLink{
+				ID:            fmt.Sprintf("net-%s-%s", from, to),
+				From:          from,
+				To:            to,
+				BandwidthGbps: 100,
+				BandwidthGBps: 12.5,
+				Medium:        "roce",
+				Utilization:   20.0,
+				RTTUs:         1.5,
+			})
+		}
 	}
 	return switches, links
 }
