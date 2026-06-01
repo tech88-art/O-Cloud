@@ -91,7 +91,12 @@
     "includeFabric": "Include Fabric",
     "fabricToggleHint": "Show inter-node switches and fabric links (ADR-0004, off by default)",
     "includeWorkloads": "Include Workloads",
-    "workloadsToggleHint": "Show workload/pod nodes and pd-pair / binds-to edges (ADR-0005, off by default)"
+    "workloadsToggleHint": "Show workload/pod nodes and pd-pair / binds-to edges (ADR-0005, off by default)",
+    "section": {
+      "metricsHardware": "Hardware metrics",
+      "metricsBusiness": "Business metrics",
+      "logs": "Logs"
+    }
   },
   "topology": {
     "edge": {
@@ -127,7 +132,19 @@
       "nodepool": "Node pool",
       "npu": "NPU",
       "slice": "Slice",
-      "network": "Network"
+      "network": "Network",
+      "workload": "Workload",
+      "pod": "Pod"
+    },
+    "workload": {
+      "namespace": "Namespace",
+      "parent": "Workload",
+      "node": "Node",
+      "type": "Type",
+      "kind": "Kind",
+      "replicas": "Replicas (ready/desired)",
+      "nodes": "Nodes",
+      "pods": "Pods"
     },
     "cluster": {
       "role": "Role",
@@ -155,6 +172,7 @@
       "vram": "VRAM",
       "aiCore": "AI Cores",
       "hccs": "HCCS group",
+      "pcie": "PCIe bandwidth",
       "sliceMode": "Slice mode",
       "slicesHeader": "Slices:",
       "noSlices": "No slices"

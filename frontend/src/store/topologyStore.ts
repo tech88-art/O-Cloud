@@ -63,10 +63,23 @@ export interface TopologyState {
    * doesn't collide with dbl-click slice expansion. See ADR-0022 §4(b).
    */
   focusedNodeId: string | null;
+  /**
+   * Right-panel section visibility (P12-T-203 / ADR-0022 §2.3). The metrics
+   * (Grafana iframe) + logs sections live inside the DetailPanel with their
+   * own show/hide toggles so they don't crowd the info area. Default open so
+   * a selection immediately surfaces its dashboard; the operator can collapse.
+   */
+  metricsSectionOpen: boolean;
+  logsSectionOpen: boolean;
+  /** Container filter for the logs section (null = all containers). */
+  selectedContainer: string | null;
   setSelectedCluster: (id: string | null) => void;
   setSelectedNode: (id: string | null) => void;
   /** Set (or clear, with null) the focus/isolate anchor. */
   setFocusedNode: (id: string | null) => void;
+  setMetricsSectionOpen: (v: boolean) => void;
+  setLogsSectionOpen: (v: boolean) => void;
+  setSelectedContainer: (c: string | null) => void;
   /** Toggle whether the given NPU's slice subtree is expanded. */
   toggleExpandedNPU: (npuId: string) => void;
   /** Replace the expanded-NPU set wholesale (e.g. collapse-all). */
@@ -87,9 +100,15 @@ export const useTopologyStore = create<TopologyState>((set) => ({
   showFabric: false,
   showWorkloads: false,
   focusedNodeId: null,
+  metricsSectionOpen: true,
+  logsSectionOpen: true,
+  selectedContainer: null,
   setSelectedCluster: (id) => set({ selectedClusterId: id }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
   setFocusedNode: (id) => set({ focusedNodeId: id }),
+  setMetricsSectionOpen: (v) => set({ metricsSectionOpen: v }),
+  setLogsSectionOpen: (v) => set({ logsSectionOpen: v }),
+  setSelectedContainer: (c) => set({ selectedContainer: c }),
   toggleExpandedNPU: (npuId) =>
     set((state) => {
       // Always allocate a new Set so React-style equality checks see the

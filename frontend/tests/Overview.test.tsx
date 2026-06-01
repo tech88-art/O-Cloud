@@ -569,6 +569,10 @@ beforeEach(async () => {
       // P12-T-202 / ADR-0022 §4(b): reset focus so a leaked anchor doesn't
       // filter the graph in an unrelated case.
       focusedNodeId: null,
+      // P12-T-203: reset right-panel section state between cases.
+      metricsSectionOpen: true,
+      logsSectionOpen: true,
+      selectedContainer: null,
     });
   });
 });
@@ -1177,6 +1181,103 @@ describe('DetailPanel — selection branches', () => {
         String(url).startsWith('/api/v1/nodes/'),
       ),
     ).toBeUndefined();
+  });
+});
+
+describe('DetailPanel — metrics + logs sections (P12-T-203 / ADR-0022)', () => {
+  const WORKLOAD_ID = 'workload/ai-inference/qwen-8b';
+
+  function workloadDetailFixture() {
+    return {
+      name: 'qwen-8b',
+      namespace: 'ai-inference',
+      type: 'inference',
+      kind: 'Deployment',
+      status: 'running',
+      replicas: { desired: 2, ready: 2 },
+      nodeNames: ['node-1'],
+      pods: [{ name: 'qwen-8b-prefill-0', containers: [{ name: 'vllm' }] }],
+    };
+  }
+
+  it('workload selection → workload info + business metrics + logs section', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') return Promise.resolve({ data: makeClusters() });
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithWorkloads() });
+      }
+      if (url === '/api/v1/workloads/ai-inference/qwen-8b') {
+        return Promise.resolve({ data: workloadDetailFixture() });
+      }
+      if (url === '/api/v1/workloads/ai-inference/qwen-8b/logs') {
+        return Promise.resolve({ data: { lines: [] } });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    act(() => {
+      useTopologyStore.setState({
+        selectedClusterId: CLUSTER_ID,
+        selectedNodeId: WORKLOAD_ID,
+      });
+    });
+
+    renderDetailPanel();
+
+    // Workload info card + both sections (workload → metrics + logs).
+    expect(await screen.findByTestId('detail-panel-workload')).toBeInTheDocument();
+    expect(screen.getByTestId('metrics-section')).toBeInTheDocument();
+    expect(await screen.findByTestId('logs-section')).toBeInTheDocument();
+  });
+
+  it('NPU selection → hardware metrics + PCIe, no logs section', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') return Promise.resolve({ data: makeClusters() });
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithInterconnect() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    act(() => {
+      useTopologyStore.setState({
+        selectedClusterId: CLUSTER_ID,
+        selectedNodeId: 'npu-1-0',
+      });
+    });
+
+    renderDetailPanel();
+
+    expect(await screen.findByTestId('detail-panel-npu')).toBeInTheDocument();
+    // PCIe surfaced in the NPU card (zh-CN default label).
+    expect(screen.getByText('PCIe 带宽')).toBeInTheDocument();
+    // Resource → hardware metrics, but NO logs section.
+    expect(screen.getByTestId('metrics-section')).toBeInTheDocument();
+    expect(screen.queryByTestId('logs-section')).not.toBeInTheDocument();
+  });
+
+  it('metrics section toggle (off) collapses the Grafana body', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') return Promise.resolve({ data: makeClusters() });
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithInterconnect() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+
+    act(() => {
+      useTopologyStore.setState({
+        selectedClusterId: CLUSTER_ID,
+        selectedNodeId: 'npu-1-0',
+        metricsSectionOpen: false,
+      });
+    });
+
+    renderDetailPanel();
+
+    expect(await screen.findByTestId('metrics-section')).toBeInTheDocument();
+    // Collapsed → no body (no Grafana iframe mounted).
+    expect(screen.queryByTestId('metrics-section-body')).not.toBeInTheDocument();
   });
 });
 

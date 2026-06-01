@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Skeleton, Space, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '@/components/EmptyState';
@@ -7,7 +8,11 @@ import { ResourceCard } from '@/components/ResourceCard';
 import { StatusTag } from '@/components/StatusTag';
 import { useClusters, useClusterTopology, type TopologyNode } from '@/services/cluster';
 import { useNode, useNodeNPUs } from '@/services/node';
+import { useWorkloadDetail } from '@/services/workload';
 import { useTopologyStore } from '@/store/topologyStore';
+import { MetricsSection } from './MetricsSection';
+import { LogsSection } from './LogsSection';
+import { parseWorkloadRef, logsWorkloadRef } from './workloadRef';
 
 const { Text } = Typography;
 
@@ -34,12 +39,24 @@ export function DetailPanel() {
   const { t } = useTranslation();
   const selectedClusterId = useTopologyStore((s) => s.selectedClusterId);
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
+  // P12-T-203: the panel must resolve the SAME node set the graph shows, so it
+  // reads the fabric/workloads flags and passes them to useClusterTopology —
+  // otherwise selecting a workload/pod node (only present when showWorkloads
+  // is on) finds nothing here and the panel renders a "stale selection" state.
+  // Matching args means react-query de-dupes this into the graph's cache entry.
+  const showFabric = useTopologyStore((s) => s.showFabric);
+  const showWorkloads = useTopologyStore((s) => s.showWorkloads);
 
   // Cluster list — same hook as the page shell uses; cached so this is
   // free unless the panel mounts before the page.
   const clustersQuery = useClusters();
-  // Topology — same key/depth as the page shell, so this hits the cache.
-  const topologyQuery = useClusterTopology(selectedClusterId);
+  // Topology — same key/depth/flags as the page shell, so this hits the cache.
+  const topologyQuery = useClusterTopology(
+    selectedClusterId,
+    'slice',
+    showFabric,
+    showWorkloads,
+  );
 
   // Locate the selected node within the loaded topology. We need this to
   // dispatch on `.type` even before we know whether to issue a node-detail
@@ -77,9 +94,10 @@ export function DetailPanel() {
     );
   }
 
+  let infoContent: ReactNode;
   switch (selectedTopoNode.type) {
     case 'cluster':
-      return (
+      infoContent = (
         <ClusterDetail
           cluster={
             clustersQuery.data?.find((c) => c.id === selectedTopoNode.id) ??
@@ -91,16 +109,24 @@ export function DetailPanel() {
           topoNode={selectedTopoNode}
         />
       );
+      break;
     case 'node':
     case 'nodepool':
-      return <NodeDetailView name={selectedTopoNode.label} topoNode={selectedTopoNode} />;
+      infoContent = <NodeDetailView name={selectedTopoNode.label} topoNode={selectedTopoNode} />;
+      break;
     case 'npu':
-      return <NpuDetailView topoNode={selectedTopoNode} />;
+      infoContent = <NpuDetailView topoNode={selectedTopoNode} />;
+      break;
     case 'slice':
-      return <SliceDetailView topoNode={selectedTopoNode} />;
+      infoContent = <SliceDetailView topoNode={selectedTopoNode} />;
+      break;
+    case 'workload':
+    case 'pod':
+      infoContent = <WorkloadDetailView topoNode={selectedTopoNode} />;
+      break;
     case 'network':
     default:
-      return (
+      infoContent = (
         <ResourceCard
           title={selectedTopoNode.label}
           description={t(`detailPanel.type.${selectedTopoNode.type}`)}
@@ -111,6 +137,20 @@ export function DetailPanel() {
         </ResourceCard>
       );
   }
+
+  // Logs section only for workload/pod — resources carry no business logs
+  // (ADR-0022 §2.3). The metrics section dispatches its own dashboard by type.
+  const logsRef = logsWorkloadRef(selectedTopoNode);
+
+  return (
+    <Space direction="vertical" size={12} style={{ width: '100%' }} data-testid="detail-panel">
+      {infoContent}
+      <MetricsSection node={selectedTopoNode} clusterId={selectedClusterId} />
+      {logsRef && (
+        <LogsSection namespace={logsRef.namespace} workloadName={logsRef.name} />
+      )}
+    </Space>
+  );
 }
 
 interface ClusterDetailProps {
@@ -356,6 +396,7 @@ function NpuDetailView({ topoNode }: NpuDetailViewProps) {
   const vramMiB = numberOrUndefined(attrs.vramMiB ?? attrs.vram);
   const aiCoreTotal = numberOrUndefined(attrs.aiCoreTotal);
   const hccsGroup = stringOrUndefined(attrs.hccsGroup);
+  const pcieBandwidthGBps = numberOrUndefined(attrs.pcieBandwidthGBps);
   const model = stringOrUndefined(attrs.model);
   const sliceMode = stringOrUndefined(attrs.sliceMode);
   const slices = Array.isArray(attrs.slices)
@@ -388,6 +429,13 @@ function NpuDetailView({ topoNode }: NpuDetailViewProps) {
         )}
         {hccsGroup && (
           <MetricChip label={t('detailPanel.npu.hccs')} value={hccsGroup} />
+        )}
+        {typeof pcieBandwidthGBps === 'number' && (
+          <MetricChip
+            label={t('detailPanel.npu.pcie')}
+            value={pcieBandwidthGBps}
+            unit="GB/s"
+          />
         )}
         {sliceMode && (
           <MetricChip
@@ -455,6 +503,105 @@ function SliceDetailView({ topoNode }: SliceDetailViewProps) {
             label={t('detailPanel.slice.allocatedTo')}
             value={`${allocatedTo.namespace}/${allocatedTo.podName}`}
           />
+        )}
+      </Space>
+    </ResourceCard>
+  );
+}
+
+interface WorkloadDetailViewProps {
+  topoNode: TopologyNode;
+}
+
+/**
+ * Workload / pod info (P12-T-203). A workload node fetches `useWorkloadDetail`
+ * (status / type / kind / replicas / nodeNames / pods); a pod node renders
+ * directly from topology attributes (a pod name isn't a workload endpoint, so
+ * the detail query stays disabled). The metrics + logs sections are appended
+ * by the parent DetailPanel.
+ */
+function WorkloadDetailView({ topoNode }: WorkloadDetailViewProps) {
+  const { t } = useTranslation();
+  const isPod = topoNode.type === 'pod';
+  const ref = parseWorkloadRef(topoNode);
+  // Disabled for pods (name=null) — pods render from attributes below.
+  const detailQuery = useWorkloadDetail(
+    ref?.namespace ?? null,
+    isPod ? null : ref?.name ?? null,
+  );
+  const attrs = (topoNode.attributes ?? {}) as Record<string, unknown>;
+
+  if (isPod) {
+    const parentWorkload = stringOrUndefined(attrs.workload);
+    const nodeName = stringOrUndefined(attrs.nodeName);
+    return (
+      <ResourceCard
+        title={topoNode.label}
+        description={t('detailPanel.type.pod')}
+        status={topoNode.status}
+        testId="detail-panel-pod"
+      >
+        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+          {ref?.namespace && (
+            <MetricChip label={t('detailPanel.workload.namespace')} value={ref.namespace} />
+          )}
+          {parentWorkload && (
+            <MetricChip label={t('detailPanel.workload.parent')} value={parentWorkload} />
+          )}
+          {nodeName && (
+            <MetricChip label={t('detailPanel.workload.node')} value={nodeName} />
+          )}
+        </Space>
+      </ResourceCard>
+    );
+  }
+
+  if (detailQuery.isLoading) {
+    return (
+      <div data-testid="detail-panel-workload-loading">
+        <Skeleton active paragraph={{ rows: 5 }} />
+      </div>
+    );
+  }
+  if (detailQuery.error) {
+    return (
+      <ErrorState
+        error={detailQuery.error as Error}
+        title={t('detailPanel.errorTitle')}
+        retryLabel={t('common.retry')}
+        onRetry={() => void detailQuery.refetch()}
+      />
+    );
+  }
+
+  const d = detailQuery.data;
+  const replicas = d?.replicas;
+  const replicasText =
+    replicas && (typeof replicas.ready === 'number' || typeof replicas.desired === 'number')
+      ? `${replicas.ready ?? '-'}/${replicas.desired ?? '-'}`
+      : undefined;
+
+  return (
+    <ResourceCard
+      title={ref ? `${ref.namespace}/${ref.name}` : topoNode.label}
+      description={t('detailPanel.type.workload')}
+      status={d?.status ?? topoNode.status}
+      testId="detail-panel-workload"
+    >
+      <Space direction="vertical" size={8} style={{ width: '100%' }}>
+        {d?.type && <MetricChip label={t('detailPanel.workload.type')} value={d.type} />}
+        {d?.kind && <MetricChip label={t('detailPanel.workload.kind')} value={d.kind} />}
+        {replicasText && (
+          <MetricChip label={t('detailPanel.workload.replicas')} value={replicasText} />
+        )}
+        {d?.nodeNames && d.nodeNames.length > 0 && (
+          <MetricChip
+            label={t('detailPanel.workload.nodes')}
+            value={d.nodeNames.join(', ')}
+          />
+        )}
+        {d?.pods && d.pods.length > 0 && (
+          <MetricChip label={t('detailPanel.workload.pods')} value={d.pods.length} />
         )}
       </Space>
     </ResourceCard>

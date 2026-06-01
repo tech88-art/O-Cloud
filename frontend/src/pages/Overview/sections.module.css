@@ -1,0 +1,32 @@
+/**
+ * Right-panel collapsible sections (P12-T-203): metrics (Grafana iframe) +
+ * logs. Shared shell — a bordered card with a header row (title + show/hide
+ * toggle) and a body that renders only when expanded.
+ *
+ * Per frontend/CLAUDE.md §6 — CSS Modules; AntD widget sizing stays inline
+ * (matches the folded-in Metrics/Logs pages).
+ */
+.section {
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+
+.sectionBody {
+  padding: 0 12px 12px;
+}
+
+.logsToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}

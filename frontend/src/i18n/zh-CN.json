@@ -91,7 +91,12 @@
     "includeFabric": "显示网络 Fabric",
     "fabricToggleHint": "包含交换机与节点间链路（ADR-0004，默认关闭）",
     "includeWorkloads": "显示工作负载",
-    "workloadsToggleHint": "包含 Workload/Pod 节点与 PD 对/绑定边（ADR-0005，默认关闭）"
+    "workloadsToggleHint": "包含 Workload/Pod 节点与 PD 对/绑定边（ADR-0005，默认关闭）",
+    "section": {
+      "metricsHardware": "硬件指标",
+      "metricsBusiness": "业务指标",
+      "logs": "日志"
+    }
   },
   "topology": {
     "edge": {
@@ -127,7 +132,19 @@
       "nodepool": "节点池",
       "npu": "NPU",
       "slice": "切片",
-      "network": "网络"
+      "network": "网络",
+      "workload": "工作负载",
+      "pod": "Pod"
+    },
+    "workload": {
+      "namespace": "命名空间",
+      "parent": "所属工作负载",
+      "node": "节点",
+      "type": "类型",
+      "kind": "Kind",
+      "replicas": "副本(就绪/期望)",
+      "nodes": "节点",
+      "pods": "Pod 数"
     },
     "cluster": {
       "role": "角色",
@@ -155,6 +172,7 @@
       "vram": "显存",
       "aiCore": "AI 核心",
       "hccs": "HCCS 组",
+      "pcie": "PCIe 带宽",
       "sliceMode": "切片模式",
       "slicesHeader": "切片：",
       "noSlices": "暂无切片"
