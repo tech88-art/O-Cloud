@@ -1,93 +1,23 @@
 {
   "app": {
     "title": "O-Cloud Edge Cloud Platform",
-    "subtitle": "Demo Frontend",
     "version": "Version"
   },
   "page": {
-    "overview": {
-      "title": "Overview",
-      "placeholder": "Overview page — coming W2"
-    },
-    "workloads": {
-      "title": "Workloads",
-      "placeholder": "Workloads page — coming W2"
-    },
-    "deploy": {
-      "title": "Deploy",
-      "placeholder": "Deploy page — coming W2"
-    },
-    "metrics": {
-      "title": "Metrics",
-      "placeholder": "Metrics page — coming W2"
-    },
     "logs": {
-      "title": "Logs",
-      "placeholder": "Logs page — coming W2",
-      "workload": "Workload",
-      "workloadPlaceholder": "Select a workload",
-      "container": "Container",
       "containerAll": "All containers",
-      "tail": "Tail",
       "live": "Live stream",
-      "selectWorkload": "Pick a workload to view its logs",
       "empty": "No log lines",
-      "errorTitle": "Failed to load logs",
-      "wsWarning": "Live stream lost connection, auto-reconnecting"
+      "errorTitle": "Failed to load logs"
     }
-  },
-  "workloads": {
-    "title": "Workloads",
-    "filter": "Filter",
-    "status": "Status",
-    "namespace": "Namespace",
-    "type": "Type",
-    "name": "Name",
-    "ready": "Ready/Desired",
-    "nodeNames": "Nodes",
-    "createdAt": "Created",
-    "sliceBindings": "NPU Slice Bindings",
-    "o2DMSExposed": "O2 DMS Exposed",
-    "o2DMSExposedYes": "Yes",
-    "o2DMSExposedNo": "No",
-    "quotaUsage": "Quota Usage",
-    "quotaUsageTooltip": "{{used}}/{{cap}} used · {{remaining}} remaining · algorithm {{algorithm}}",
-    "scaleHistory": "Scale History",
-    "scaleHistoryTooltip": "{{count}} events · last at {{lastTime}} direction {{lastDir}}",
-    "empty": "No workloads",
-    "errorTitle": "Failed to load workloads"
-  },
-  "workloadDetail": {
-    "titleFallback": "Workload detail",
-    "basics": "Basics",
-    "kind": "Kind",
-    "pods": "Pods",
-    "containers": "Containers",
-    "command": "Command",
-    "args": "Args",
-    "resources": "Resources",
-    "relations": "Relations",
-    "sliceBindings": "NPU Slice Bindings",
-    "noSliceBindings": "No NPU slice bindings",
-    "pdSidePrefill": "Prefill side",
-    "pdSideDecode": "Decode side",
-    "pdSideOther": "Other roles",
-    "viewMetrics": "View metrics →",
-    "empty": "Select a workload to view its detail",
-    "errorTitle": "Failed to load workload detail",
-    "noPods": "No pods",
-    "noContainers": "No containers",
-    "noRelations": "No relations"
   },
   "overview": {
     "tree": {
       "title": "Resource Tree"
     },
-    "loading": "Loading topology",
     "errorTitle": "Failed to load topology",
     "noData": "No topology data",
     "selectCluster": "Select a cluster",
-    "detailPanePending": "Select a node to view details (enabled in T108b)",
     "includeFabric": "Include Fabric",
     "fabricToggleHint": "Show inter-node switches and fabric links (ADR-0004, off by default)",
     "includeWorkloads": "Include Workloads",
@@ -200,11 +130,9 @@
     }
   },
   "common": {
-    "loading": "Loading",
     "error": "Error",
     "empty": "No data",
-    "retry": "Retry",
-    "language": "Language"
+    "retry": "Retry"
   },
   "presetBar": {
     "title": "Preset apps",
@@ -212,7 +140,6 @@
   },
   "deploy": {
     "title": "Deploy",
-    "subtitle": "Pick a preset application to launch the wizard",
     "autoMode": "Auto-schedule",
     "autoModeDescription": "Scheduler picks the node and NPU slice",
     "manualMode": "Manual placement",
@@ -243,19 +170,6 @@
   "deployMessages": {
     "successId": "Deploy submitted, id={{id}}",
     "conflict": "Resource conflict — adjust the slice selection",
-    "error": "Deploy failed: {{message}}",
-    "deploying": "Submitting deploy…"
-  },
-  "metrics": {
-    "title": "Metrics",
-    "clusterOverview": "Cluster Overview",
-    "nodeDetail": "Node Detail",
-    "npuDetail": "NPU Detail",
-    "workloadBusiness": "Workload Business",
-    "workloadResource": "Workload Resource",
-    "selectNode": "Select node",
-    "selectNPU": "Select NPU",
-    "selectSlice": "Select slice",
-    "selectWorkload": "Select workload"
+    "error": "Deploy failed: {{message}}"
   }
 }

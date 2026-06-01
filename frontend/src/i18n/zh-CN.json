@@ -1,93 +1,23 @@
 {
   "app": {
     "title": "O-Cloud 边缘云平台",
-    "subtitle": "演示前端",
     "version": "版本"
   },
   "page": {
-    "overview": {
-      "title": "概览",
-      "placeholder": "概览页面 — W2 即将上线"
-    },
-    "workloads": {
-      "title": "工作负载",
-      "placeholder": "工作负载页面 — W2 即将上线"
-    },
-    "deploy": {
-      "title": "应用部署",
-      "placeholder": "应用部署页面 — W2 即将上线"
-    },
-    "metrics": {
-      "title": "性能指标",
-      "placeholder": "性能指标页面 — W2 即将上线"
-    },
     "logs": {
-      "title": "日志",
-      "placeholder": "日志页面 — W2 即将上线",
-      "workload": "工作负载",
-      "workloadPlaceholder": "选择一个工作负载",
-      "container": "容器",
       "containerAll": "全部容器",
-      "tail": "尾部行数",
       "live": "实时流",
-      "selectWorkload": "请选择工作负载以查看日志",
       "empty": "暂无日志",
-      "errorTitle": "加载日志失败",
-      "wsWarning": "实时流连接异常，已自动重连"
+      "errorTitle": "加载日志失败"
     }
-  },
-  "workloads": {
-    "title": "工作负载",
-    "filter": "筛选",
-    "status": "状态",
-    "namespace": "命名空间",
-    "type": "类型",
-    "name": "名称",
-    "ready": "就绪/期望",
-    "nodeNames": "节点",
-    "createdAt": "创建时间",
-    "sliceBindings": "NPU 切片绑定",
-    "o2DMSExposed": "O2 DMS 暴露",
-    "o2DMSExposedYes": "已暴露",
-    "o2DMSExposedNo": "未暴露",
-    "quotaUsage": "配额使用",
-    "quotaUsageTooltip": "已用 {{used}}/{{cap}} · 剩余 {{remaining}} · 算法 {{algorithm}}",
-    "scaleHistory": "伸缩历史",
-    "scaleHistoryTooltip": "共 {{count}} 次 · 最近 {{lastTime}} 方向 {{lastDir}}",
-    "empty": "暂无工作负载",
-    "errorTitle": "加载工作负载失败"
-  },
-  "workloadDetail": {
-    "titleFallback": "工作负载详情",
-    "basics": "基本信息",
-    "kind": "Kind",
-    "pods": "Pods",
-    "containers": "容器",
-    "command": "启动命令",
-    "args": "参数",
-    "resources": "资源",
-    "relations": "关系",
-    "sliceBindings": "NPU 切片绑定",
-    "noSliceBindings": "暂无 NPU 切片绑定",
-    "pdSidePrefill": "Prefill 端",
-    "pdSideDecode": "Decode 端",
-    "pdSideOther": "其他角色",
-    "viewMetrics": "查看指标 →",
-    "empty": "请选中一个工作负载查看详情",
-    "errorTitle": "加载工作负载详情失败",
-    "noPods": "暂无 Pod",
-    "noContainers": "暂无容器",
-    "noRelations": "暂无关系"
   },
   "overview": {
     "tree": {
       "title": "资源树"
     },
-    "loading": "正在加载拓扑",
     "errorTitle": "加载拓扑失败",
     "noData": "暂无拓扑数据",
     "selectCluster": "请选择集群",
-    "detailPanePending": "选中节点查看详情（T108b 后启用）",
     "includeFabric": "显示网络 Fabric",
     "fabricToggleHint": "包含交换机与节点间链路（ADR-0004，默认关闭）",
     "includeWorkloads": "显示工作负载",
@@ -200,11 +130,9 @@
     }
   },
   "common": {
-    "loading": "加载中",
     "error": "出错了",
     "empty": "暂无数据",
-    "retry": "重试",
-    "language": "语言"
+    "retry": "重试"
   },
   "presetBar": {
     "title": "预置应用",
@@ -212,7 +140,6 @@
   },
   "deploy": {
     "title": "应用部署",
-    "subtitle": "选择一个预置应用,启动部署向导",
     "autoMode": "自动调度",
     "autoModeDescription": "由调度器选择节点与 NPU 切片",
     "manualMode": "手动指定",
@@ -243,19 +170,6 @@
   "deployMessages": {
     "successId": "部署已提交,id={{id}}",
     "conflict": "资源冲突,请调整切片选择",
-    "error": "部署失败:{{message}}",
-    "deploying": "正在提交部署..."
-  },
-  "metrics": {
-    "title": "性能指标",
-    "clusterOverview": "集群总览",
-    "nodeDetail": "节点详情",
-    "npuDetail": "NPU 详情",
-    "workloadBusiness": "业务指标",
-    "workloadResource": "资源指标",
-    "selectNode": "选择节点",
-    "selectNPU": "选择 NPU",
-    "selectSlice": "选择切片",
-    "selectWorkload": "选择工作负载"
+    "error": "部署失败:{{message}}"
   }
 }
