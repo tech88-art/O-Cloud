@@ -93,6 +93,24 @@
     "includeWorkloads": "Include Workloads",
     "workloadsToggleHint": "Show workload/pod nodes and pd-pair / binds-to edges (ADR-0005, off by default)"
   },
+  "topology": {
+    "edge": {
+      "bandwidth": "Bandwidth",
+      "medium": "Medium",
+      "utilization": "Utilization",
+      "hccsGroup": "HCCS group",
+      "typeLabel": {
+        "network": "Inter-node network",
+        "hccs": "HCCS interconnect",
+        "fabricLink": "Fabric link",
+        "generic": "Link"
+      }
+    },
+    "focus": {
+      "focusSelected": "Focus selection",
+      "clear": "Clear focus"
+    }
+  },
   "grafanaPanel": {
     "errorTitle": "Grafana panel error",
     "unreachableTitle": "Grafana not reachable",

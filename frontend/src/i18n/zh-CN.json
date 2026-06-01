@@ -93,6 +93,24 @@
     "includeWorkloads": "显示工作负载",
     "workloadsToggleHint": "包含 Workload/Pod 节点与 PD 对/绑定边（ADR-0005，默认关闭）"
   },
+  "topology": {
+    "edge": {
+      "bandwidth": "带宽",
+      "medium": "介质",
+      "utilization": "利用率",
+      "hccsGroup": "HCCS 组",
+      "typeLabel": {
+        "network": "节点间网络",
+        "hccs": "HCCS 互联",
+        "fabricLink": "Fabric 链路",
+        "generic": "链路"
+      }
+    },
+    "focus": {
+      "focusSelected": "聚焦选中",
+      "clear": "退出聚焦"
+    }
+  },
   "grafanaPanel": {
     "errorTitle": "Grafana 面板异常",
     "unreachableTitle": "Grafana 不可达",

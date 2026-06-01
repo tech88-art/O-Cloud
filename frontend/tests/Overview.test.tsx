@@ -44,13 +44,34 @@ vi.mock('@xyflow/react', () => {
     id: string;
     data?: { label?: string };
   };
+  type StubEdge = {
+    id: string;
+    source: string;
+    target: string;
+    type?: string;
+    style?: { stroke?: string };
+    data?: { topoEdgeType?: string; attributes?: Record<string, unknown> };
+  };
   type StubProps = {
     nodes: StubNodeProps[];
+    edges?: StubEdge[];
+    children?: ReactNode;
     onNodeClick?: (e: unknown, n: { id: string }) => void;
     onNodeDoubleClick?: (e: unknown, n: { id: string }) => void;
   };
-  const ReactFlow = ({ nodes, onNodeClick, onNodeDoubleClick }: StubProps) => (
-    <div data-testid="rf-stub" data-node-count={nodes.length}>
+  // P12-T-202: the stub now exposes edges (so edge classification —
+  // network→bandwidth/green, runs-on→default — is assertable) and renders
+  // `children` (so the focus-toolbar Panel + Button mount and the focus
+  // interaction can be driven by user-event). jsdom can't run the real
+  // ReactFlow canvas, but the data model up to the renderer is what we test.
+  const ReactFlow = ({
+    nodes,
+    edges = [],
+    children,
+    onNodeClick,
+    onNodeDoubleClick,
+  }: StubProps) => (
+    <div data-testid="rf-stub" data-node-count={nodes.length} data-edge-count={edges.length}>
       {nodes.map((n) => (
         <button
           key={n.id}
@@ -61,6 +82,16 @@ vi.mock('@xyflow/react', () => {
           {n.data?.label ?? n.id}
         </button>
       ))}
+      {edges.map((e) => (
+        <div
+          key={e.id}
+          data-testid={`rf-edge-${e.source}__${e.target}`}
+          data-edge-type={e.type ?? 'default'}
+          data-topo-edge-type={e.data?.topoEdgeType ?? ''}
+          data-stroke={e.style?.stroke ?? ''}
+        />
+      ))}
+      {children}
     </div>
   );
   return {
@@ -75,6 +106,19 @@ vi.mock('@xyflow/react', () => {
     Background: () => null,
     Controls: () => null,
     MiniMap: () => null,
+    // P12-T-202: <Panel> hosts the focus toolbar; render its children so the
+    // toolbar button is in the test DOM. BaseEdge/EdgeLabelRenderer/
+    // getBezierPath are imported by <BandwidthEdge> (registered in edgeTypes
+    // but never rendered by this stub) — stubbed so the import resolves.
+    Panel: ({ children }: { children?: ReactNode }) => <>{children}</>,
+    BaseEdge: () => null,
+    EdgeLabelRenderer: ({ children }: { children?: ReactNode }) => <>{children}</>,
+    getBezierPath: () => ['', 0, 0],
+    // P12-T-202: TopoNode renders <Handle> so edges can anchor. The stub
+    // renders nodes as buttons (not via nodeTypes), so these never render,
+    // but the imports must resolve.
+    Handle: () => null,
+    Position: { Top: 'top', Right: 'right', Bottom: 'bottom', Left: 'left' },
     // ADR-0005 (P1-T-214): the production TopologyGraph imports
     // `MarkerType` to stamp an arrowhead on pd-pair edges. Mirror the
     // enum shape so the import resolves to defined values in jsdom.
@@ -366,6 +410,61 @@ function makeTopologyWithSlice(): Topology {
   };
 }
 
+/**
+ * Topology fixture exercising the ADR-0021 bandwidth + placement edges
+ * (P12-T-202): a `network` edge (node↔node), an `hccs` edge (npu↔npu) and a
+ * `runs-on` edge (non-NPU workload→node), plus a `pcieBandwidthGBps` NPU
+ * attribute. Used to assert edge classification + the focus filter.
+ */
+function makeTopologyWithInterconnect(): Topology {
+  return {
+    nodes: [
+      { id: CLUSTER_ID, type: 'cluster', label: CLUSTER_ID, status: 'healthy' },
+      { id: 'node-1', type: 'node', label: 'node-1', status: 'healthy' },
+      { id: 'node-2', type: 'node', label: 'node-2', status: 'healthy' },
+      {
+        id: 'npu-1-0',
+        type: 'npu',
+        label: 'npu-1-0',
+        status: 'healthy',
+        attributes: { pcieBandwidthGBps: 32, hccsGroup: 'hccs-0' },
+      },
+      {
+        id: 'npu-1-1',
+        type: 'npu',
+        label: 'npu-1-1',
+        status: 'healthy',
+        attributes: { pcieBandwidthGBps: 32, hccsGroup: 'hccs-0' },
+      },
+      { id: 'workload/ns/web', type: 'workload', label: 'web', status: 'running' },
+    ],
+    edges: [
+      { source: CLUSTER_ID, target: 'node-1', type: 'contains' },
+      { source: CLUSTER_ID, target: 'node-2', type: 'contains' },
+      { source: 'node-1', target: 'npu-1-0', type: 'contains' },
+      { source: 'node-1', target: 'npu-1-1', type: 'contains' },
+      {
+        source: 'node-1',
+        target: 'node-2',
+        type: 'network',
+        attributes: { bandwidthGBps: 25, medium: 'roce', utilization: 40 },
+      },
+      {
+        source: 'npu-1-0',
+        target: 'npu-1-1',
+        type: 'hccs',
+        attributes: { bandwidthGBps: 56, hccsGroup: 'hccs-0' },
+      },
+      {
+        source: 'workload/ns/web',
+        target: 'node-2',
+        type: 'runs-on',
+        attributes: { workload: 'web' },
+      },
+    ],
+  };
+}
+
 function nodeDetailFixture(): NodeDetail {
   return {
     name: 'node-1',
@@ -467,6 +566,9 @@ beforeEach(async () => {
       showFabric: false,
       // P1-T-214 / ADR-0005: same reset story for the workloads toggle.
       showWorkloads: false,
+      // P12-T-202 / ADR-0022 §4(b): reset focus so a leaked anchor doesn't
+      // filter the graph in an unrelated case.
+      focusedNodeId: null,
     });
   });
 });
@@ -852,6 +954,89 @@ describe('OverviewPage — workloads toggle (P1-T-214 / ADR-0005)', () => {
     expect(screen.getByTestId('rf-node-cluster-prod-a-01')).toBeInTheDocument();
     expect(screen.getByTestId('rf-node-node-1')).toBeInTheDocument();
     expect(screen.getByTestId('rf-node-npu-1-0')).toBeInTheDocument();
+  });
+});
+
+describe('OverviewPage — topology edges + focus (P12-T-202 / ADR-0021/0022)', () => {
+  function mockInterconnect() {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/api/v1/clusters') {
+        return Promise.resolve({ data: makeClusters() });
+      }
+      if (url.startsWith('/api/v1/clusters/') && url.endsWith('/topology')) {
+        return Promise.resolve({ data: makeTopologyWithInterconnect() });
+      }
+      return Promise.reject(new Error(`unexpected URL: ${url}`));
+    });
+  }
+
+  it('classifies network/hccs as bandwidth edges (network green) and runs-on as a structural edge', async () => {
+    mockInterconnect();
+    act(() => {
+      useTopologyStore.setState({ showFabric: true, showWorkloads: true });
+    });
+
+    renderOverview();
+    await screen.findByTestId('rf-stub');
+
+    // network: custom 'bandwidth' edge type + AntD green-6 stroke.
+    const net = await screen.findByTestId('rf-edge-node-1__node-2');
+    expect(net).toHaveAttribute('data-edge-type', 'bandwidth');
+    expect(net).toHaveAttribute('data-topo-edge-type', 'network');
+    expect(net).toHaveAttribute('data-stroke', '#52c41a');
+
+    // hccs: also a 'bandwidth' edge (hover tooltip), purple stroke.
+    const hccs = screen.getByTestId('rf-edge-npu-1-0__npu-1-1');
+    expect(hccs).toHaveAttribute('data-edge-type', 'bandwidth');
+    expect(hccs).toHaveAttribute('data-topo-edge-type', 'hccs');
+
+    // runs-on: structural (default edge), distinct from binds-to.
+    const runsOn = screen.getByTestId('rf-edge-workload/ns/web__node-2');
+    expect(runsOn).toHaveAttribute('data-edge-type', 'default');
+    expect(runsOn).toHaveAttribute('data-topo-edge-type', 'runs-on');
+  });
+
+  it('focus filter hides nodes outside the focused subtree', async () => {
+    mockInterconnect();
+    // Pre-focus node-1: only node-1 + its NPUs survive; cluster + node-2 drop.
+    act(() => {
+      useTopologyStore.setState({ showFabric: true, focusedNodeId: 'node-1' });
+    });
+
+    renderOverview();
+    await screen.findByTestId('rf-stub');
+
+    expect(screen.getByTestId('rf-node-node-1')).toBeInTheDocument();
+    expect(screen.getByTestId('rf-node-npu-1-0')).toBeInTheDocument();
+    expect(screen.getByTestId('rf-node-npu-1-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('rf-node-cluster-prod-a-01')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rf-node-node-2')).not.toBeInTheDocument();
+  });
+
+  it('focus toolbar: focus button anchors on the selection, clear button resets', async () => {
+    mockInterconnect();
+    const user = userEvent.setup();
+    renderOverview();
+    await screen.findByTestId('rf-stub');
+
+    // No selection → focus button disabled.
+    expect(screen.getByTestId('topology-focus-selected')).toBeDisabled();
+
+    // Select node-1 via the graph, then focus it.
+    await user.click(screen.getByTestId('rf-node-node-1'));
+    await waitFor(() => {
+      expect(useTopologyStore.getState().selectedNodeId).toBe('node-1');
+    });
+    await user.click(screen.getByTestId('topology-focus-selected'));
+    await waitFor(() => {
+      expect(useTopologyStore.getState().focusedNodeId).toBe('node-1');
+    });
+
+    // Toolbar flips to "clear focus"; clicking it resets the anchor.
+    await user.click(await screen.findByTestId('topology-clear-focus'));
+    await waitFor(() => {
+      expect(useTopologyStore.getState().focusedNodeId).toBeNull();
+    });
   });
 });
 

@@ -33,6 +33,11 @@ export function TopologyView({ clusterId }: TopologyViewProps) {
   const setSelectedNode = useTopologyStore((s) => s.setSelectedNode);
   const expandedNPUs = useTopologyStore((s) => s.expandedNPUs);
   const toggleExpandedNPU = useTopologyStore((s) => s.toggleExpandedNPU);
+  // P12-T-202 / ADR-0022 §4(b): focus/isolate anchor + setter. The graph's
+  // focus toolbar button writes this; TopologyGraph filters the graph to the
+  // anchor's subtree + placed workloads.
+  const focusedNodeId = useTopologyStore((s) => s.focusedNodeId);
+  const setFocusedNode = useTopologyStore((s) => s.setFocusedNode);
   // ADR-0004 / ADR-0005 / RFC-003. Reads the same flags the OverviewPage
   // header writes so react-query de-dupes the tree's and the graph's
   // topology fetches into one network request rather than diverging on
@@ -92,6 +97,8 @@ export function TopologyView({ clusterId }: TopologyViewProps) {
       topology={data}
       selectedNodeId={selectedNodeId}
       expandedNPUs={expandedNPUs}
+      focusedNodeId={focusedNodeId}
+      onFocusNode={setFocusedNode}
       onNodeClick={(id) => setSelectedNode(id)}
       onNodeDoubleClick={(id) => {
         // Dbl-click an NPU → toggle its slice subtree. Other node types

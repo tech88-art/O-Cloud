@@ -54,8 +54,19 @@ export interface TopologyState {
    * T108a/T108b/T212. See ADR-0005.
    */
   showWorkloads: boolean;
+  /**
+   * focus/isolate anchor (P12-T-202 / ADR-0022 §4(b)). When set, the
+   * topology graph shows only this resource, its `contains` descendants,
+   * and the workloads/pods placed on them — everything else is hidden.
+   * null = no filter (full graph). Set via the explicit "focus" toolbar
+   * button (anchored on the current selection), NOT a gesture, so it
+   * doesn't collide with dbl-click slice expansion. See ADR-0022 §4(b).
+   */
+  focusedNodeId: string | null;
   setSelectedCluster: (id: string | null) => void;
   setSelectedNode: (id: string | null) => void;
+  /** Set (or clear, with null) the focus/isolate anchor. */
+  setFocusedNode: (id: string | null) => void;
   /** Toggle whether the given NPU's slice subtree is expanded. */
   toggleExpandedNPU: (npuId: string) => void;
   /** Replace the expanded-NPU set wholesale (e.g. collapse-all). */
@@ -75,8 +86,10 @@ export const useTopologyStore = create<TopologyState>((set) => ({
   lastEventAt: null,
   showFabric: false,
   showWorkloads: false,
+  focusedNodeId: null,
   setSelectedCluster: (id) => set({ selectedClusterId: id }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
+  setFocusedNode: (id) => set({ focusedNodeId: id }),
   toggleExpandedNPU: (npuId) =>
     set((state) => {
       // Always allocate a new Set so React-style equality checks see the

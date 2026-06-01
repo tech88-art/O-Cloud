@@ -2,8 +2,11 @@ import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Background,
   Controls,
+  Handle,
   MarkerType,
   MiniMap,
+  Panel,
+  Position,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
@@ -14,7 +17,11 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
+import { Button } from 'antd';
+import { AimOutlined, CloseOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { StatusTag, type StatusTone } from '@/components/StatusTag';
+import { BandwidthEdge } from './BandwidthEdge';
 import type { Topology, TopologyEdge, TopologyNode } from '@/services/cluster';
 
 /**
@@ -34,6 +41,21 @@ const NODE_TYPE_POD = 'pod' as const;
 const EDGE_TYPE_FABRIC_LINK = 'fabric-link' as const;
 const EDGE_TYPE_BINDS_TO = 'binds-to' as const;
 const EDGE_TYPE_PD_PAIR = 'pd-pair' as const;
+const EDGE_TYPE_CONTAINS = 'contains' as const;
+const EDGE_TYPE_NETWORK = 'network' as const;
+const EDGE_TYPE_HCCS = 'hccs' as const;
+const EDGE_TYPE_RUNS_ON = 'runs-on' as const;
+
+/**
+ * Edge types that carry bandwidth attributes (ADR-0021) and therefore
+ * render via the custom `<BandwidthEdge>` (hover tooltip). Everything else
+ * uses ReactFlow's default edge with the style from `edgeRenderingFor`.
+ */
+const BANDWIDTH_EDGE_TYPES: ReadonlySet<string> = new Set([
+  EDGE_TYPE_NETWORK,
+  EDGE_TYPE_HCCS,
+  EDGE_TYPE_FABRIC_LINK,
+]);
 
 /** Topology-node `type`, sourced directly from the auto-gen contract. */
 type TopologyNodeType = TopologyNode['type'];
@@ -200,6 +222,8 @@ interface TopoNodeData {
   topoType: TopologyNodeType;
   status?: TopologyNode['status'];
   selected: boolean;
+  /** ADR-0021 host↔NPU PCIe GB/s — shown in the node hover title for NPUs. */
+  pcieBandwidthGBps?: number | null;
   [key: string]: unknown;
 }
 
@@ -240,6 +264,12 @@ function TopoNode({ data }: NodeProps<TopoFlowNode>) {
   // keep the standard 6px/10px padding + 12px font.
   const innerPadding = isPod ? '4px 8px' : '6px 10px';
   const labelFontSize = isPod ? 11 : 12;
+  // ADR-0021: NPU nodes append their host↔NPU PCIe bandwidth to the hover
+  // title so it's discoverable in the graph ("节点内 PCIE ... + hover").
+  const titleText =
+    data.pcieBandwidthGBps != null
+      ? `${data.label} · PCIe ${data.pcieBandwidthGBps} GB/s`
+      : data.label;
   return (
     <div
       data-testid={`topo-node-${data.topoType}`}
@@ -258,6 +288,19 @@ function TopoNode({ data }: NodeProps<TopoFlowNode>) {
         fontSize: labelFontSize,
       }}
     >
+      {/*
+       * ReactFlow only draws edges between Handle anchors — a custom node
+       * with no <Handle> renders nodes but ZERO edges (the bug T202 fixes).
+       * One hidden target (top) + source (bottom) handle is enough to anchor
+       * every edge; we don't support interactive connections (isConnectable
+       * false). dagre lays the tree out top→bottom so this matches the flow.
+       */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        isConnectable={false}
+        style={{ opacity: 0, width: 1, height: 1, minWidth: 0, minHeight: 0, border: 0 }}
+      />
       <div
         style={{
           height: 4,
@@ -283,7 +326,7 @@ function TopoNode({ data }: NodeProps<TopoFlowNode>) {
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}
-          title={data.label}
+          title={titleText}
         >
           {isSwitch
             ? `⚡ ${data.label}`
@@ -298,11 +341,18 @@ function TopoNode({ data }: NodeProps<TopoFlowNode>) {
           />
         ) : null}
       </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        isConnectable={false}
+        style={{ opacity: 0, width: 1, height: 1, minWidth: 0, minHeight: 0, border: 0 }}
+      />
     </div>
   );
 }
 
 const NODE_TYPES = { topo: memo(TopoNode) };
+const EDGE_TYPES = { bandwidth: BandwidthEdge };
 
 /**
  * Filter a topology so that slice nodes only appear under NPUs that are
@@ -356,12 +406,82 @@ function filterTopologyForExpandedNPUs(
 }
 
 /**
+ * Focus/isolate filter (P12-T-202 / ADR-0022 §4(b) · algorithm per
+ * one-page-workspace DESIGN §6.1). Given a focus anchor, keep only:
+ *   - the anchor itself
+ *   - its `contains` descendants (BFS down the resource tree)
+ *   - workloads/pods placed on any kept node (one hop via binds-to /
+ *     runs-on / allocated) plus their pd-pair partners
+ * then drop edges that touch a hidden node. A null anchor — or one that no
+ * longer exists (stale selection) — returns the topology unchanged so the
+ * graph never blanks out.
+ *
+ * Pure: same input → same output; the input topology is untouched.
+ */
+function filterTopologyForFocus(
+  topology: Topology,
+  focusedNodeId: string | null,
+): Topology {
+  if (!focusedNodeId) return topology;
+  if (!topology.nodes.some((n) => n.id === focusedNodeId)) return topology;
+
+  // 1. contains-descendants BFS from the anchor.
+  const childrenOf = new Map<string, string[]>();
+  for (const e of topology.edges) {
+    if (e.type !== EDGE_TYPE_CONTAINS) continue;
+    const list = childrenOf.get(e.source);
+    if (list) list.push(e.target);
+    else childrenOf.set(e.source, [e.target]);
+  }
+  const visible = new Set<string>([focusedNodeId]);
+  const queue = [focusedNodeId];
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    for (const child of childrenOf.get(cur) ?? []) {
+      if (!visible.has(child)) {
+        visible.add(child);
+        queue.push(child);
+      }
+    }
+  }
+
+  // 2. One hop: pull in workloads/pods bound to / placed on a visible node.
+  for (const e of topology.edges) {
+    if (
+      e.type === EDGE_TYPE_BINDS_TO ||
+      e.type === EDGE_TYPE_RUNS_ON ||
+      e.type === 'allocated'
+    ) {
+      if (visible.has(e.source)) visible.add(e.target);
+      if (visible.has(e.target)) visible.add(e.source);
+    }
+  }
+  // 3. pd-pair partners of any now-visible pod.
+  for (const e of topology.edges) {
+    if (e.type !== EDGE_TYPE_PD_PAIR) continue;
+    if (visible.has(e.source)) visible.add(e.target);
+    if (visible.has(e.target)) visible.add(e.source);
+  }
+
+  return {
+    ...topology,
+    nodes: topology.nodes.filter((n) => visible.has(n.id)),
+    edges: topology.edges.filter(
+      (e) => visible.has(e.source) && visible.has(e.target),
+    ),
+  };
+}
+
+/**
  * Lay out a topology with dagre. Returns ReactFlow-ready nodes + edges.
  * Pure: same input → same output, no DOM access.
  *
  * Edge styling table (kept here so the visual contract is greppable):
  *   - contains      → grey 1px solid       (default infrastructure tree)
- *   - fabric-link   → blue 1.5px solid     (ADR-0004 platform fabric)
+ *   - network       → green 2px solid      (ADR-0021 node↔node · BandwidthEdge hover)
+ *   - hccs          → purple 1.5px dashed  (ADR-0021 npu↔npu HCCS · BandwidthEdge hover)
+ *   - fabric-link   → blue 1.5px solid     (ADR-0004 node↔switch · BandwidthEdge hover)
+ *   - runs-on       → grey 1px dashed      (ADR-0021 non-NPU workload→node placement)
  *   - binds-to      → cyan 1px solid       (ADR-0005 pod→slice resource bind)
  *   - pd-pair       → orange dashed + arrow + "PD" label (ADR-0005 P↔D)
  */
@@ -406,18 +526,31 @@ function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
         topoType: n.type,
         status: n.status,
         selected: n.id === selectedNodeId,
+        // ADR-0021: surface the NPU host↔NPU PCIe bandwidth so the node's
+        // hover title can show it ("节点内 PCIE ... + hover"). Other node
+        // types carry null.
+        pcieBandwidthGBps:
+          n.type === 'npu' && typeof n.attributes?.pcieBandwidthGBps === 'number'
+            ? n.attributes.pcieBandwidthGBps
+            : null,
       },
     };
   });
 
   const flowEdges: Edge[] = topology.edges.map((e, i) => {
+    const isBandwidth = BANDWIDTH_EDGE_TYPES.has(e.type);
     return {
       // Contract edges have no id; synthesise a stable one from endpoints.
       id: `${e.source}->${e.target}-${e.type}-${i}`,
       source: e.source,
       target: e.target,
+      // network / hccs / fabric-link render via the custom <BandwidthEdge>
+      // (hover tooltip); everything else uses ReactFlow's default edge.
+      ...(isBandwidth ? { type: 'bandwidth' } : {}),
       ...edgeRenderingFor(e.type),
-      data: { topoEdgeType: e.type },
+      // Pass the contract edge type + attributes through so BandwidthEdge can
+      // render the hover tooltip (bandwidthGBps / medium / utilization).
+      data: { topoEdgeType: e.type, attributes: e.attributes },
     };
   });
 
@@ -441,11 +574,28 @@ function edgeRenderingFor(
   edgeType: TopologyEdgeType,
 ): Pick<Edge, 'style' | 'label' | 'labelStyle' | 'markerEnd'> {
   switch (edgeType) {
+    case EDGE_TYPE_NETWORK:
+      // ADR-0021 node↔node inter-node link. AntD green-6, 2px solid — the
+      // user's "绿色互通连线". Thicker than the tree so the cross-node
+      // fabric reads as the primary inter-node story. Hover (BandwidthEdge)
+      // surfaces bandwidthGBps / medium / utilization.
+      return { style: { stroke: '#52c41a', strokeWidth: 2 } };
+    case EDGE_TYPE_HCCS:
+      // ADR-0021 npu↔npu intra-node HCCS ring. AntD purple-6 dashed — a
+      // distinct "high-speed interconnect" colour, set apart from the cyan
+      // binds-to and green network. Hover surfaces bandwidthGBps / hccsGroup.
+      return { style: { stroke: '#722ed1', strokeWidth: 1.5, strokeDasharray: '5 4' } };
     case EDGE_TYPE_FABRIC_LINK:
       // Fabric links render in a blue-grey solid line (1.5px) so they read
       // as "platform-level" wiring distinct from the in-cluster contains
       // edges. Solid — fabric is not a "weak" relation.
       return { style: { stroke: '#69b1ff', strokeWidth: 1.5 } };
+    case EDGE_TYPE_RUNS_ON:
+      // ADR-0021 non-NPU workload/pod → node placement. Muted grey dashed
+      // so it reads as a "loose placement" relation, visually distinct from
+      // the cyan binds-to (pod→slice resource bind) — a workload with no
+      // NPU lands on a node via runs-on, an NPU workload binds to a slice.
+      return { style: { stroke: '#8c8c8c', strokeWidth: 1, strokeDasharray: '4 4' } };
     case EDGE_TYPE_BINDS_TO:
       // Pod → slice resource binding. Cyan matches the NPU/slice accent
       // family so the eye reads "this pod is consuming an NPU resource".
@@ -467,7 +617,7 @@ function edgeRenderingFor(
         markerEnd: { type: MarkerType.ArrowClosed, color: '#fa8c16' },
       };
     default:
-      // contains / hccs / network / allocated and anything unknown.
+      // contains / allocated and anything unknown → neutral grey tree edge.
       return { style: { stroke: '#bfbfbf', strokeWidth: 1 } };
   }
 }
@@ -482,8 +632,15 @@ export interface TopologyGraphProps {
    * empty set (collapsed).
    */
   expandedNPUs?: ReadonlySet<string>;
+  /**
+   * focus/isolate anchor (P12-T-202 / ADR-0022 §4(b)). When set, only this
+   * resource + its descendants + placed workloads render. null = full graph.
+   */
+  focusedNodeId?: string | null;
   onNodeClick?: (id: string) => void;
   onNodeDoubleClick?: (id: string) => void;
+  /** Set/clear the focus anchor (toolbar button). */
+  onFocusNode?: (id: string | null) => void;
 }
 
 // Module-level frozen empty set so the default never creates a new
@@ -494,12 +651,21 @@ function TopologyGraphInner({
   topology,
   selectedNodeId = null,
   expandedNPUs = EMPTY_EXPANDED,
+  focusedNodeId = null,
   onNodeClick,
   onNodeDoubleClick,
+  onFocusNode,
 }: TopologyGraphProps) {
+  const { t } = useTranslation();
+  // Focus first (restrict to the anchor's subtree), then drop unexpanded
+  // slices — composing the two filters keeps each one simple + pure.
+  const focusedTopology = useMemo(
+    () => filterTopologyForFocus(topology, focusedNodeId),
+    [topology, focusedNodeId],
+  );
   const visibleTopology = useMemo(
-    () => filterTopologyForExpandedNPUs(topology, new Set(expandedNPUs)),
-    [topology, expandedNPUs],
+    () => filterTopologyForExpandedNPUs(focusedTopology, new Set(expandedNPUs)),
+    [focusedTopology, expandedNPUs],
   );
 
   const { nodes, edges } = useMemo(
@@ -563,6 +729,7 @@ function TopologyGraphInner({
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
         onNodeClick={handleNodeClick}
         onNodeDoubleClick={handleNodeDoubleClick}
         fitView
@@ -571,6 +738,36 @@ function TopologyGraphInner({
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
+        {/*
+         * Focus toolbar (ADR-0022 §4(b) option b): explicit button anchored
+         * on the current selection — no gesture, so it never collides with
+         * dbl-click slice expansion. Shows "focus selected" when a node is
+         * selected, flips to "clear focus" while a focus is active.
+         */}
+        <Panel position="top-right">
+          {focusedNodeId ? (
+            <Button
+              size="small"
+              icon={<CloseOutlined />}
+              onClick={() => onFocusNode?.(null)}
+              data-testid="topology-clear-focus"
+            >
+              {t('topology.focus.clear')}
+            </Button>
+          ) : (
+            <Button
+              size="small"
+              icon={<AimOutlined />}
+              disabled={!selectedNodeId}
+              onClick={() => {
+                if (selectedNodeId) onFocusNode?.(selectedNodeId);
+              }}
+              data-testid="topology-focus-selected"
+            >
+              {t('topology.focus.focusSelected')}
+            </Button>
+          )}
+        </Panel>
         <Background />
         <Controls showInteractive={false} />
         <MiniMap pannable zoomable />
