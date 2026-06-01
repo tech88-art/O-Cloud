@@ -36,6 +36,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       operators: ${{ steps.filter.outputs.operators }}
+      exporters: ${{ steps.filter.outputs.exporters }}
       configs: ${{ steps.filter.outputs.configs }}
       deploy: ${{ steps.filter.outputs.deploy }}
       contract: ${{ steps.filter.outputs.contract }}
@@ -52,6 +53,8 @@ jobs:
               - 'frontend/**'
             operators:
               - 'operators/**'
+            exporters:
+              - 'exporters/**'
             configs:
               - 'configs/**'
             deploy:
@@ -323,6 +326,48 @@ jobs:
             | grep -E "^kind: " | sort | uniq -c
 
   # =========================================
+  # arm64 cross-compile (Phase 12 P12-T-101/T102 · ADR-0020 aarch64 鲲鹏 multi-arch target)
+  # =========================================
+  cross-compile-arm64:
+    # ADR-0020: 部署 target = aarch64 鲲鹏 + 昇腾 910B + openEuler. CI 追加 arm64
+    # 交叉编译校验(不替换 amd64 — amd64 仍由 backend/operators/ims-scaffold/
+    # o2-dms-adapter job 验). buildx 双架构镜像 push 留 Track A 真 CI/CD pipeline
+    # (Phase 13+ · 与真 aarch64 集群验证同期 · per plan T102 + ADR-0020 §4 (a)).
+    name: Cross-compile arm64 (${{ matrix.module }})
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.operators == 'true' || needs.detect-changes.outputs.exporters == 'true' || needs.detect-changes.outputs.deploy == 'true'
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - backend
+          - exporters/ascend-npu-exporter-plus
+          - operators/pool-operator
+          - operators/npu-dra-driver
+          - operators/inference-operator
+          - operators/o2-dms-adapter
+          - operators/node-lifecycle-operator
+          - operators/software-mgmt-operator
+          - operators/bare-metal-provisioning-operator
+          - operators/scheduler-plugin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+      - name: GOARCH=arm64 cross-compile (matches Dockerfile GOARCH=${TARGETARCH})
+        working-directory: ${{ matrix.module }}
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: arm64
+        run: |
+          go build ./...
+          echo "arm64 cross-compile OK: ${{ matrix.module }}"
+
+  # =========================================
   # E2E (W2 起启用 — 由 P1-T-110 实现)
   # =========================================
   e2e:
@@ -353,6 +398,7 @@ jobs:
       - operators
       - ims-scaffold
       - o2-dms-adapter
+      - cross-compile-arm64
     runs-on: ubuntu-22.04
     steps:
       - name: Check status
