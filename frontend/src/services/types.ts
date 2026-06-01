@@ -1014,7 +1014,7 @@ export interface components {
             /**
              * @description type 相关的字段：
              *     - node: cpu, memory, arch, os, numaCount
-             *     - npu: model, vram, aiCoreTotal, hccsGroup
+             *     - npu: model, vram, aiCoreTotal, hccsGroup, pcieBandwidthGBps (ADR-0021 · host↔NPU PCIe GB/s)
              *     - slice: parentNPU, aiCore, vramMB, allocatedTo
              *     - switch: type (tor/leaf/spine), portsTotal, portsUsed, bandwidthGbps
              *     - workload: namespace, kind, type, nodeNames, replicas
@@ -1028,7 +1028,17 @@ export interface components {
             source: string;
             target: string;
             /** @enum {string} */
-            type: "contains" | "hccs" | "network" | "allocated" | "fabric-link" | "binds-to" | "pd-pair";
+            type: "contains" | "hccs" | "network" | "allocated" | "fabric-link" | "binds-to" | "pd-pair" | "runs-on";
+            /**
+             * @description type 相关的边属性（ADR-0021 Track B 拓扑全保真 · 供前端 hover tooltip）。
+             *     带宽统一 GB/s（gigabytes/second · `bandwidthGBps`），与 NPU.pcieBandwidthGBps 同尺度，
+             *     便于 PCIe / HCCS / network 在 hover 中同轴比较。注：legacy `switch` 节点属性
+             *     `bandwidthGbps`（ADR-0004 · Gbps/gigabits）保留原单位，未在 Phase 12 统一（见 ADR-0021 §4）。
+             *     - network (node↔node 互通): bandwidthGBps, medium (eth/roce/ib), utilization (0-100)
+             *     - hccs (npu↔npu intra-node · 同 hccsGroup): bandwidthGBps, utilization (0-100, 可选)
+             *     - fabric-link (ADR-0004 node↔switch): bandwidthGBps, medium, utilization (源 NetworkLink)
+             *     - binds-to / pd-pair / runs-on / contains / allocated: 拓扑结构边 · 无带宽属性
+             */
             attributes?: {
                 [key: string]: unknown;
             };
@@ -1092,6 +1102,11 @@ export interface components {
             numaNode?: number;
             /** @example hccs-0 */
             hccsGroup?: string;
+            /**
+             * Format: float
+             * @example 32
+             */
+            pcieBandwidthGBps?: number | null;
             /** @enum {string} */
             status: "healthy" | "degraded" | "faulty" | "offline";
             /** @enum {string} */

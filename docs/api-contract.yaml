@@ -737,7 +737,7 @@ components:
           description: |
             type 相关的字段：
             - node: cpu, memory, arch, os, numaCount
-            - npu: model, vram, aiCoreTotal, hccsGroup
+            - npu: model, vram, aiCoreTotal, hccsGroup, pcieBandwidthGBps (ADR-0021 · host↔NPU PCIe GB/s)
             - slice: parentNPU, aiCore, vramMB, allocatedTo
             - switch: type (tor/leaf/spine), portsTotal, portsUsed, bandwidthGbps
             - workload: namespace, kind, type, nodeNames, replicas
@@ -758,14 +758,24 @@ components:
           # generated union at the renderer boundary.
           enum:
             - contains
-            - hccs
-            - network
+            - hccs         # ADR-0021: npu↔npu intra-node HCCS link (同 hccsGroup); attributes.bandwidthGBps
+            - network      # ADR-0021: node↔node inter-node 互通; attributes.bandwidthGBps/medium/utilization
             - allocated
-            - fabric-link  # ADR-0004 node↔switch (or switch↔switch)
-            - binds-to     # ADR-0005 pod ↔ slice resource binding
+            - fabric-link  # ADR-0004 node↔switch (or switch↔switch); ADR-0021 attributes.bandwidthGBps/medium/utilization
+            - binds-to     # ADR-0005 pod ↔ slice resource binding (NPU workload)
             - pd-pair      # ADR-0005 prefill ↔ decode pod pair
+            - runs-on      # ADR-0021: 非 NPU workload/pod ↔ node compute placement (无 slice binding)
         attributes:
           type: object
+          description: |
+            type 相关的边属性（ADR-0021 Track B 拓扑全保真 · 供前端 hover tooltip）。
+            带宽统一 GB/s（gigabytes/second · `bandwidthGBps`），与 NPU.pcieBandwidthGBps 同尺度，
+            便于 PCIe / HCCS / network 在 hover 中同轴比较。注：legacy `switch` 节点属性
+            `bandwidthGbps`（ADR-0004 · Gbps/gigabits）保留原单位，未在 Phase 12 统一（见 ADR-0021 §4）。
+            - network (node↔node 互通): bandwidthGBps, medium (eth/roce/ib), utilization (0-100)
+            - hccs (npu↔npu intra-node · 同 hccsGroup): bandwidthGBps, utilization (0-100, 可选)
+            - fabric-link (ADR-0004 node↔switch): bandwidthGBps, medium, utilization (源 NetworkLink)
+            - binds-to / pd-pair / runs-on / contains / allocated: 拓扑结构边 · 无带宽属性
           additionalProperties: true
 
     # ========= 节点 =========
@@ -861,6 +871,13 @@ components:
         aiCoreTotal: { type: integer }
         numaNode: { type: integer }
         hccsGroup: { type: string, example: "hccs-0" }
+        pcieBandwidthGBps:
+          # ADR-0021 Track B 拓扑全保真：host↔NPU PCIe 链路带宽（GB/s · gigabytes/second）。
+          # PCIe Gen4 x16 ≈ 32 GB/s · Gen5 x16 ≈ 64 GB/s。供前端拓扑 contains 边 / NPU 节点 hover。
+          type: number
+          format: float
+          nullable: true
+          example: 32.0
         status:
           type: string
           enum: [healthy, degraded, faulty, offline]
