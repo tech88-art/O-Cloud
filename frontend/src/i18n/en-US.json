@@ -206,6 +206,10 @@
     "retry": "Retry",
     "language": "Language"
   },
+  "presetBar": {
+    "title": "Preset apps",
+    "empty": "No preset apps"
+  },
   "deploy": {
     "title": "Deploy",
     "subtitle": "Pick a preset application to launch the wizard",

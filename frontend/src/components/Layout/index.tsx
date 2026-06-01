@@ -7,6 +7,7 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router-dom';
+import { PresetBar } from '@/components/PresetBar';
 import { useAppStore } from '@/store';
 import { SUPPORTED_LOCALES, persistLocale, type Locale } from '@/i18n';
 
@@ -77,7 +78,11 @@ export function AppLayout() {
   };
 
   return (
-    <AntLayout style={{ minHeight: '100vh' }}>
+    // Fixed 100vh + overflow:hidden makes this a proper full-height flex
+    // column: Header + PresetBar take their natural height, Content flex-fills
+    // the rest, and the workspace (Splitter) sizes off that — no magic-number
+    // height calc, and the preset bar's height is accounted for automatically.
+    <AntLayout style={{ height: '100vh', overflow: 'hidden' }}>
       <Header
         style={{
           display: 'flex',
@@ -142,6 +147,7 @@ export function AppLayout() {
           </Button>
         </Dropdown>
       </Header>
+      <PresetBar />
       <Content
         style={{
           display: 'flex',

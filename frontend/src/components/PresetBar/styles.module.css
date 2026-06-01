@@ -1,0 +1,45 @@
+/**
+ * Top preset application bar (P12-T-204 / ADR-0022 §2.1). A thin horizontal
+ * strip below the Header: preset chips with hover detail + click-to-deploy.
+ * flex-shrink:0 so it keeps its height while the workspace below flex-fills.
+ *
+ * Per frontend/CLAUDE.md §6 — CSS Modules.
+ */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 6px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #f0f0f0;
+  overflow-x: auto;
+}
+
+.barLabel {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.barItems {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail {
+  max-width: 260px;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.detailDesc {
+  margin-top: 6px;
+  color: #595959;
+}

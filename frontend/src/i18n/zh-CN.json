@@ -206,6 +206,10 @@
     "retry": "重试",
     "language": "语言"
   },
+  "presetBar": {
+    "title": "预置应用",
+    "empty": "暂无预置应用"
+  },
   "deploy": {
     "title": "应用部署",
     "subtitle": "选择一个预置应用,启动部署向导",

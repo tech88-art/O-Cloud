@@ -13,17 +13,17 @@
  */
 
 /*
- * Fixed viewport-relative height so the Splitter (and its panes) get a
- * DEFINITE height — this is what makes each pane's `overflow: auto` engage.
- * A `height: 100%` chained off the Layout's `min-height: 100vh` does NOT
- * work: min-height lets the column grow, so a tall resource tree (24 NPU +
- * 96 slices) stretches the whole workspace to content height and the
- * ReactFlow canvas balloons (fitView then centres nodes off-screen).
- * Offset = AntD Header (64px) + Content margin (12px top + 12px bottom).
+ * Flex-fill the Layout <Content> (P12-T-204: replaces the earlier fixed
+ * `calc(100vh - 88px)`). The Layout is now a fixed-height (100vh) flex column
+ * with `overflow: hidden` at every level, so `flex: 1 1 auto; min-height: 0`
+ * gives the workspace a DEFINITE height off the remaining space — which is
+ * what makes each pane's `overflow: auto` engage (a tall resource tree no
+ * longer balloons the ReactFlow canvas). Crucially this auto-accounts for the
+ * preset bar's height instead of hard-coding a header+margin offset.
  */
 .workspace {
-  height: calc(100vh - 88px);
-  min-height: 480px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /*
