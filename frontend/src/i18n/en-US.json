@@ -4,13 +4,6 @@
     "subtitle": "Demo Frontend",
     "version": "Version"
   },
-  "menu": {
-    "overview": "Overview",
-    "workloads": "Workloads",
-    "deploy": "Deploy",
-    "metrics": "Metrics",
-    "logs": "Logs"
-  },
   "page": {
     "overview": {
       "title": "Overview",
@@ -162,7 +155,8 @@
     "lastEventAt": "Last event"
   },
   "header": {
-    "toggleSider": "Toggle sider",
+    "toggleLeftPane": "Show/hide resource tree",
+    "toggleRightPane": "Show/hide detail pane",
     "language": "Switch language",
     "languageOption": {
       "zhCN": "简体中文",

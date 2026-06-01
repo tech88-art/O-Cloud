@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Background,
   Controls,
@@ -6,6 +6,7 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  useReactFlow,
   type Edge,
   type Node,
   type NodeMouseHandler,
@@ -87,6 +88,15 @@ const NODE_HEIGHT_NPU = 56;
  *  ranks (`ranksep`). Tuned so a 24-NPU cluster reads cleanly at 1280px. */
 const NODE_SEPARATION = 24;
 const RANK_SEPARATION = 60;
+
+/**
+ * Initial + on-resize `fitView` options. At set-a-small (24 NPUs in one
+ * rank) the natural fit shrinks labels to ~0.3×; `minZoom: 0.55` keeps them
+ * legible (clipping the widest rank — pan or click "fit" to see all);
+ * `padding: 0.05` trims excess whitespace. Single source of truth: consumed
+ * by both the `fitView` prop (initial) and the resize observer (re-fit).
+ */
+const FIT_VIEW_OPTIONS = { minZoom: 0.55, padding: 0.05 } as const;
 
 /**
  * Per-type render dimensions. Pod nodes use the compact size; NPU nodes
@@ -511,8 +521,44 @@ function TopologyGraphInner({
     [onNodeDoubleClick],
   );
 
+  // Re-fit when the container resizes. The Overview workspace (P12-T-201)
+  // hosts this graph inside an AntD <Splitter> whose panels are sized
+  // asynchronously (ResizeObserver, after mount), so ReactFlow's one-shot
+  // `fitView` prop can run against a 0-size viewport and strand every node
+  // off-screen (blank canvas on load). Observing the wrapper and re-fitting
+  // once it has real dimensions fixes that, and also re-centres the graph
+  // when the user drags / collapses a splitter pane.
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const { fitView } = useReactFlow();
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let raf = 0;
+    let lastW = 0;
+    let lastH = 0;
+    const observer = new ResizeObserver((entries) => {
+      const box = entries[0]?.contentRect;
+      if (!box || box.width === 0 || box.height === 0) return;
+      // Ignore sub-pixel jitter so we don't fight the user's manual zoom.
+      if (Math.abs(box.width - lastW) < 2 && Math.abs(box.height - lastH) < 2) {
+        return;
+      }
+      lastW = box.width;
+      lastH = box.height;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        void fitView(FIT_VIEW_OPTIONS);
+      });
+    });
+    observer.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
+  }, [fitView]);
+
   return (
-    <div data-testid="topology-graph" style={{ width: '100%', height: '100%' }}>
+    <div ref={wrapperRef} data-testid="topology-graph" style={{ width: '100%', height: '100%' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -520,13 +566,7 @@ function TopologyGraphInner({
         onNodeClick={handleNodeClick}
         onNodeDoubleClick={handleNodeDoubleClick}
         fitView
-        // Cap the initial fitView zoom — at set-a-small (24 NPUs in one
-        // rank) the natural fit shrinks labels to ~0.3× and they become
-        // unreadable. `minZoom: 0.55` keeps the default zoom legible at
-        // the cost of clipping the edges of the widest rank; the user
-        // can pan, or click "fit view" in the Controls widget to see
-        // everything. `padding: 0.05` trims excess whitespace.
-        fitViewOptions={{ minZoom: 0.55, padding: 0.05 }}
+        fitViewOptions={FIT_VIEW_OPTIONS}
         minZoom={0.2}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}

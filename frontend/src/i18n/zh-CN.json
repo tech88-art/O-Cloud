@@ -4,13 +4,6 @@
     "subtitle": "演示前端",
     "version": "版本"
   },
-  "menu": {
-    "overview": "概览",
-    "workloads": "工作负载",
-    "deploy": "应用部署",
-    "metrics": "性能指标",
-    "logs": "日志"
-  },
   "page": {
     "overview": {
       "title": "概览",
@@ -162,7 +155,8 @@
     "lastEventAt": "最新事件"
   },
   "header": {
-    "toggleSider": "折叠/展开侧边栏",
+    "toggleLeftPane": "显示/隐藏资源树",
+    "toggleRightPane": "显示/隐藏详情栏",
     "language": "切换语言",
     "languageOption": {
       "zhCN": "简体中文",

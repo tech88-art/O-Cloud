@@ -2,12 +2,11 @@ import { Layout as AntLayout, Button, Dropdown, Space, Tag, Tooltip, Typography 
 import type { MenuProps } from 'antd';
 import {
   GlobalOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
+  PicLeftOutlined,
+  PicRightOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router-dom';
-import { Sider } from './Sider';
 import { useAppStore } from '@/store';
 import { SUPPORTED_LOCALES, persistLocale, type Locale } from '@/i18n';
 
@@ -29,10 +28,15 @@ const LOCALE_META: Record<Locale, { flag: string; labelKey: string }> = {
 };
 
 /**
- * AntD Sider + Header + Content shell. The Header carries the app brand
- * (title + version), sider collapse toggle, and a language dropdown
- * (zh-CN/en-US, flag-prefixed, persisted to localStorage). Content hosts
- * the route outlet.
+ * One-page workspace shell (P12-T-201 / ADR-0022). The 5-route AntSider nav
+ * is gone — the app is a single workspace, so the Header no longer drives
+ * navigation. Instead it carries:
+ *   - app brand (title + version)
+ *   - two pane-toggle buttons that show/hide the workspace's left resource
+ *     tree and right detail pane (state in the app store, persisted)
+ *   - a language dropdown (zh-CN/en-US, flag-prefixed, persisted)
+ * Content hosts the route outlet (the workspace). Preset bar (T204) mounts
+ * between Header and Content in a later task.
  *
  * Locale change flow:
  *   user picks item → setLocale(store) → i18n.changeLanguage → persistLocale(storage)
@@ -40,8 +44,10 @@ const LOCALE_META: Record<Locale, { flag: string; labelKey: string }> = {
  */
 export function AppLayout() {
   const { t, i18n } = useTranslation();
-  const collapsed = useAppStore((s) => s.siderCollapsed);
-  const toggleSider = useAppStore((s) => s.toggleSider);
+  const leftPaneHidden = useAppStore((s) => s.leftPaneHidden);
+  const rightPaneHidden = useAppStore((s) => s.rightPaneHidden);
+  const toggleLeftPane = useAppStore((s) => s.toggleLeftPane);
+  const toggleRightPane = useAppStore((s) => s.toggleRightPane);
   const setLocale = useAppStore((s) => s.setLocale);
 
   const currentLocale: Locale = (i18n.language as Locale) in LOCALE_META
@@ -72,61 +78,81 @@ export function AppLayout() {
 
   return (
     <AntLayout style={{ minHeight: '100vh' }}>
-      <Sider />
-      <AntLayout>
-        <Header
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingInline: 16,
-          }}
-        >
-          <Space size="middle">
-            <Tooltip title={t('header.toggleSider')}>
+      <Header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingInline: 16,
+        }}
+      >
+        <Space size="middle">
+          <Space size={4}>
+            <Tooltip title={t('header.toggleLeftPane')}>
               <Button
                 type="text"
-                aria-label={t('header.toggleSider')}
-                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                onClick={toggleSider}
-                style={{ color: '#fff' }}
+                aria-label={t('header.toggleLeftPane')}
+                aria-pressed={!leftPaneHidden}
+                icon={<PicLeftOutlined />}
+                onClick={toggleLeftPane}
+                data-testid="toggle-left-pane"
+                style={{ color: leftPaneHidden ? '#8c8c8c' : '#fff' }}
               />
             </Tooltip>
-            <Space size={8} align="baseline">
-              <Title level={4} style={{ color: '#fff', margin: 0 }}>
-                {t('app.title')}
-              </Title>
-              <Tag color="blue" style={{ marginInlineEnd: 0 }} aria-label={t('app.version')}>
-                v{APP_VERSION}
-              </Tag>
-            </Space>
+            <Tooltip title={t('header.toggleRightPane')}>
+              <Button
+                type="text"
+                aria-label={t('header.toggleRightPane')}
+                aria-pressed={!rightPaneHidden}
+                icon={<PicRightOutlined />}
+                onClick={toggleRightPane}
+                data-testid="toggle-right-pane"
+                style={{ color: rightPaneHidden ? '#8c8c8c' : '#fff' }}
+              />
+            </Tooltip>
           </Space>
-          <Dropdown
-            menu={{
-              items: localeMenuItems,
-              onClick: onLocaleMenuClick,
-              selectedKeys: [currentLocale],
-            }}
-            trigger={['click']}
-            placement="bottomRight"
+          <Space size={8} align="baseline">
+            <Title level={4} style={{ color: '#fff', margin: 0 }}>
+              {t('app.title')}
+            </Title>
+            <Tag color="blue" style={{ marginInlineEnd: 0 }} aria-label={t('app.version')}>
+              v{APP_VERSION}
+            </Tag>
+          </Space>
+        </Space>
+        <Dropdown
+          menu={{
+            items: localeMenuItems,
+            onClick: onLocaleMenuClick,
+            selectedKeys: [currentLocale],
+          }}
+          trigger={['click']}
+          placement="bottomRight"
+        >
+          <Button
+            type="text"
+            aria-label={t('header.language')}
+            icon={<GlobalOutlined />}
+            style={{ color: '#fff' }}
           >
-            <Button
-              type="text"
-              aria-label={t('header.language')}
-              icon={<GlobalOutlined />}
-              style={{ color: '#fff' }}
-            >
-              <Space size={4}>
-                <span aria-hidden="true">{LOCALE_META[currentLocale].flag}</span>
-                <Text style={{ color: '#fff' }}>{t(LOCALE_META[currentLocale].labelKey)}</Text>
-              </Space>
-            </Button>
-          </Dropdown>
-        </Header>
-        <Content style={{ margin: 16, padding: 24, background: '#fff', borderRadius: 4 }}>
-          <Outlet />
-        </Content>
-      </AntLayout>
+            <Space size={4}>
+              <span aria-hidden="true">{LOCALE_META[currentLocale].flag}</span>
+              <Text style={{ color: '#fff' }}>{t(LOCALE_META[currentLocale].labelKey)}</Text>
+            </Space>
+          </Button>
+        </Dropdown>
+      </Header>
+      <Content
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          margin: 12,
+          minHeight: 0,
+          overflow: 'hidden',
+        }}
+      >
+        <Outlet />
+      </Content>
     </AntLayout>
   );
 }

@@ -1,10 +1,11 @@
-import { useEffect, useMemo } from 'react';
-import { Skeleton, Switch, Tooltip, Tree, Typography } from 'antd';
+import { useCallback, useEffect, useMemo } from 'react';
+import { Skeleton, Splitter, Switch, Tooltip, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { useClusters, useClusterTopology, type Topology, type TopologyNode } from '@/services/cluster';
+import { useAppStore } from '@/store';
 import { useTopologyStore } from '@/store/topologyStore';
 import { useTopologyWS } from '@/hooks/useTopologyWS';
 import { DetailPanel } from './DetailPanel';
@@ -14,12 +15,17 @@ import styles from './styles.module.css';
 const { Title, Text } = Typography;
 
 /**
- * Overview page.
+ * Overview workspace — the single-page operator console (P12-T-201 / ADR-0022).
  *
- * Layout: three-column grid (see `styles.module.css`):
- *   - Left:    AntD `<Tree>` driven by the topology DTO.
- *   - Center:  `<TopologyView>` — ReactFlow graph.
- *   - Right:   `<DetailPanel>` — selection-driven detail.
+ * Layout: AntD `<Splitter>` (replaces the old fixed CSS grid):
+ *   - Left:    AntD `<Tree>` driven by the topology DTO — collapsible + resizable.
+ *   - Center:  `<TopologyView>` — ReactFlow graph (the main stage, never collapsed).
+ *   - Right:   `<DetailPanel>` — selection-driven detail — collapsible + resizable.
+ *
+ * Pane visibility (left/right) is toggled from the Header buttons; pane
+ * widths + collapsed state persist to localStorage via the app store
+ * (`useAppStore`). Hidden panes are unmounted (conditional `<Splitter.Panel>`),
+ * which keeps the resize-size mapping unambiguous and frees their subtrees.
  *
  * Selection contract: tree click and graph click both write the same key
  * (`selectedNodeId`) into the Zustand topology store. The center pane
@@ -34,6 +40,11 @@ const { Title, Text } = Typography;
  */
 export default function OverviewPage() {
   const { t } = useTranslation();
+  const leftPaneHidden = useAppStore((s) => s.leftPaneHidden);
+  const rightPaneHidden = useAppStore((s) => s.rightPaneHidden);
+  const leftPaneSize = useAppStore((s) => s.leftPaneSize);
+  const rightPaneSize = useAppStore((s) => s.rightPaneSize);
+  const setPaneSizes = useAppStore((s) => s.setPaneSizes);
   const clustersQuery = useClusters();
   const selectedClusterId = useTopologyStore((s) => s.selectedClusterId);
   const setSelectedCluster = useTopologyStore((s) => s.setSelectedCluster);
@@ -88,56 +99,90 @@ export default function OverviewPage() {
     [topologyQuery.data],
   );
 
+  // Persist pane widths when the user finishes a drag. `sizes` lists only the
+  // currently-mounted panels in order [left?, center, right?], so we walk the
+  // same visibility gates used to render them — a hidden pane keeps its
+  // stored width rather than being clobbered by the center pane's size.
+  const handleResizeEnd = useCallback(
+    (sizes: number[]) => {
+      let i = 0;
+      let nextLeft = leftPaneSize;
+      let nextRight = rightPaneSize;
+      if (!leftPaneHidden) {
+        nextLeft = sizes[i] ?? nextLeft;
+        i += 1;
+      }
+      i += 1; // center pane (flexible, not persisted)
+      if (!rightPaneHidden) {
+        nextRight = sizes[i] ?? nextRight;
+      }
+      setPaneSizes(nextLeft, nextRight);
+    },
+    [leftPaneHidden, rightPaneHidden, leftPaneSize, rightPaneSize, setPaneSizes],
+  );
+
   return (
-    <div className={styles.page} data-testid="overview-page">
-      <aside className={styles.treePane} data-testid="overview-tree-pane">
-        <div className={styles.treePaneHeader}>
-          <Title level={5} style={{ margin: 0 }}>
-            {t('overview.tree.title')}
-          </Title>
-          <WsStatusChip
-            status={ws.status}
-            lastEventAt={lastEventAt}
-            connectingLabel={t('ws.connecting')}
-            openLabel={t('ws.open')}
-            closedLabel={t('ws.closed')}
-            idleLabel={t('ws.idle')}
-            lastEventLabel={t('ws.lastEventAt')}
-          />
-          <FabricToggle
-            showFabric={showFabric}
-            onChange={setShowFabric}
-            label={t('overview.includeFabric')}
-            hint={t('overview.fabricToggleHint')}
-          />
-          <WorkloadsToggle
-            showWorkloads={showWorkloads}
-            onChange={setShowWorkloads}
-            label={t('overview.includeWorkloads')}
-            hint={t('overview.workloadsToggleHint')}
-          />
-        </div>
-        <LeftTree
-          treeData={treeData}
-          selectedNodeId={selectedNodeId}
-          onSelect={(id) => setSelectedNode(id)}
-          isLoading={topologyQuery.isLoading || clustersQuery.isLoading}
-          error={(topologyQuery.error ?? clustersQuery.error) as Error | null}
-          onRetry={() => {
-            void topologyQuery.refetch();
-            void clustersQuery.refetch();
-          }}
-          emptyText={t('overview.noData')}
-          errorTitle={t('overview.errorTitle')}
-          retryLabel={t('common.retry')}
-        />
-      </aside>
-      <main className={styles.centerPane} data-testid="overview-center-pane">
-        <TopologyView clusterId={selectedClusterId} />
-      </main>
-      <aside className={styles.detailPane} data-testid="overview-detail-pane">
-        <DetailPanel />
-      </aside>
+    <div className={styles.workspace} data-testid="overview-page">
+      <Splitter style={{ height: '100%' }} onResizeEnd={handleResizeEnd}>
+        {!leftPaneHidden && (
+          <Splitter.Panel key="left" defaultSize={leftPaneSize} min={200} max="45%">
+            <aside className={styles.treePane} data-testid="overview-tree-pane">
+              <div className={styles.treePaneHeader}>
+                <Title level={5} style={{ margin: 0 }}>
+                  {t('overview.tree.title')}
+                </Title>
+                <WsStatusChip
+                  status={ws.status}
+                  lastEventAt={lastEventAt}
+                  connectingLabel={t('ws.connecting')}
+                  openLabel={t('ws.open')}
+                  closedLabel={t('ws.closed')}
+                  idleLabel={t('ws.idle')}
+                  lastEventLabel={t('ws.lastEventAt')}
+                />
+                <FabricToggle
+                  showFabric={showFabric}
+                  onChange={setShowFabric}
+                  label={t('overview.includeFabric')}
+                  hint={t('overview.fabricToggleHint')}
+                />
+                <WorkloadsToggle
+                  showWorkloads={showWorkloads}
+                  onChange={setShowWorkloads}
+                  label={t('overview.includeWorkloads')}
+                  hint={t('overview.workloadsToggleHint')}
+                />
+              </div>
+              <LeftTree
+                treeData={treeData}
+                selectedNodeId={selectedNodeId}
+                onSelect={(id) => setSelectedNode(id)}
+                isLoading={topologyQuery.isLoading || clustersQuery.isLoading}
+                error={(topologyQuery.error ?? clustersQuery.error) as Error | null}
+                onRetry={() => {
+                  void topologyQuery.refetch();
+                  void clustersQuery.refetch();
+                }}
+                emptyText={t('overview.noData')}
+                errorTitle={t('overview.errorTitle')}
+                retryLabel={t('common.retry')}
+              />
+            </aside>
+          </Splitter.Panel>
+        )}
+        <Splitter.Panel key="center" min={360}>
+          <main className={styles.centerPane} data-testid="overview-center-pane">
+            <TopologyView clusterId={selectedClusterId} />
+          </main>
+        </Splitter.Panel>
+        {!rightPaneHidden && (
+          <Splitter.Panel key="right" defaultSize={rightPaneSize} min={260} max="45%">
+            <aside className={styles.detailPane} data-testid="overview-detail-pane">
+              <DetailPanel />
+            </aside>
+          </Splitter.Panel>
+        )}
+      </Splitter>
     </div>
   );
 }

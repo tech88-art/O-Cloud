@@ -1,33 +1,38 @@
 /**
- * Overview page layout — three-column grid:
+ * Overview workspace layout (P12-T-201 / ADR-0022).
  *
  *   ┌──────────┬─────────────────────┬─────────────┐
  *   │  Tree    │  TopologyView       │  DetailPanel│
- *   │  (240px) │  (flex 1)           │  (320px)    │
+ *   │ (pane)   │  (center · flex)    │  (pane)     │
  *   └──────────┴─────────────────────┴─────────────┘
- *
- * T-108a delivers tree + center. The 320px right slot is reserved for
- * T-108b's DetailPanel (rendered empty / hidden in T-108a).
+ *      ↑ AntD <Splitter>: left & right panes collapsible (Header toggles)
+ *        + resizable (drag bar · widths persisted to the app store).
  *
  * Per frontend/CLAUDE.md §6 — CSS Modules, no inline styles for layout,
  * no CSS-in-JS libraries.
  */
 
-.page {
-  display: grid;
-  grid-template-columns: 240px 1fr 320px;
-  gap: 12px;
-  /*
-   * Fill viewport below the AppLayout header (~64px). Picked over `100vh`
-   * minus a header constant so the layout responds if the header height
-   * changes. AppLayout already constrains the content slot's height; we
-   * just expand to fill it.
-   */
-  height: calc(100vh - 96px);
+/*
+ * Fixed viewport-relative height so the Splitter (and its panes) get a
+ * DEFINITE height — this is what makes each pane's `overflow: auto` engage.
+ * A `height: 100%` chained off the Layout's `min-height: 100vh` does NOT
+ * work: min-height lets the column grow, so a tall resource tree (24 NPU +
+ * 96 slices) stretches the whole workspace to content height and the
+ * ReactFlow canvas balloons (fitView then centres nodes off-screen).
+ * Offset = AntD Header (64px) + Content margin (12px top + 12px bottom).
+ */
+.workspace {
+  height: calc(100vh - 88px);
   min-height: 480px;
 }
 
+/*
+ * Each pane fills its Splitter.Panel cell. The panel itself is the scroll
+ * boundary (overflow on the wrapper) so the topology canvas / long trees
+ * don't push the whole workspace taller than the viewport.
+ */
 .treePane {
+  height: 100%;
   background: #fafafa;
   border: 1px solid #f0f0f0;
   border-radius: 6px;
@@ -43,13 +48,14 @@
 }
 
 .centerPane {
+  height: 100%;
   background: #ffffff;
   border: 1px solid #f0f0f0;
   border-radius: 6px;
   /*
    * The graph needs a defined height — ReactFlow won't compute one for
    * 100%-height children, it just collapses to 0. We use min-height + flex
-   * so the pane fills the grid cell.
+   * so the pane fills the splitter cell.
    */
   position: relative;
   overflow: hidden;
@@ -66,6 +72,7 @@
 }
 
 .detailPane {
+  height: 100%;
   background: #fafafa;
   border: 1px solid #f0f0f0;
   border-radius: 6px;

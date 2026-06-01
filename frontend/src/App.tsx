@@ -8,12 +8,18 @@ import LogsPage from '@/pages/Logs';
 import POCPage from '@/components/TopologyGraph/POCPage';
 
 /**
- * Top-level router. 5 pages per frontend/CLAUDE.md §1. Root path redirects
- * to /overview.
+ * Top-level router.
+ *
+ * P12-T-201 / ADR-0022: the app is now a single-page workspace. `/overview`
+ * is that workspace (the old left-nav menu is gone), and `/` redirects to it.
+ * The standalone `/workloads /deploy /metrics /logs` pages are no longer
+ * reachable from the UI — their logic folds into the workspace's right
+ * pane / preset bar across T203/T204. They stay routed (deep-link safe)
+ * until T205 retires them; the catch-all then redirects any stale link to
+ * the workspace.
  *
  * `/poc/topology` is a dev-time route added by P1-T-009 to evaluate G6
- * vs ReactFlow. It is not linked from the main navigation; remove or
- * fold into Overview once P1-T-108a picks a winner.
+ * vs ReactFlow. ReactFlow won; it's cleaned up in T205.
  */
 export default function App() {
   return (

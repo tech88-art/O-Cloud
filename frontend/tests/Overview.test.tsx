@@ -68,6 +68,10 @@ vi.mock('@xyflow/react', () => {
     ReactFlowProvider: ({ children }: { children: ReactNode }) => (
       <>{children}</>
     ),
+    // P12-T-201: TopologyGraph re-fits on container resize via useReactFlow().
+    // jsdom has no real ReactFlow instance; a no-op fitView is enough for the
+    // component to mount + run its resize effect without throwing.
+    useReactFlow: () => ({ fitView: () => {} }),
     Background: () => null,
     Controls: () => null,
     MiniMap: () => null,
