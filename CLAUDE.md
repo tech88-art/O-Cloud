@@ -49,7 +49,7 @@ memory 是 Claude 视角持久层 · `docs/agent-coordination.md §0a.10-12` 是
 1. **基础设施管理（IMS）**：算力管理 / 池化 / 发现 / 异构 K8s NPU DRA
 2. **服务编排部署**：NPU 动态切分 / AAL / NUMA+HCCS 亲和 / CANN+MindIE / PD 分离推理 / O2 DMS
 
-**目标硬件**：昇腾 910B（amd64 / x86_64，**不支持** ARM / 鲲鹏）
+**目标硬件**：昇腾 910B NPU + **aarch64 鲲鹏（Kunpeng 920）host + openEuler 节点 OS**（华为 Atlas 800 原生配置 · per ADR-0020 翻转 ADR-0001 §13 amd64-only）。镜像 multi-arch buildx（`linux/amd64,linux/arm64`）· arm64 = 部署 target · amd64 保留本机 dev/CI/render-verify。
 
 **关键演示**：
 - 概览拓扑（节点→NPU→切片）
@@ -116,6 +116,7 @@ Ascend Device Plugin / **自研 NPU DRA Driver**（基于 kubernetes-sigs/dra-ex
 Prometheus + Grafana（iframe 嵌入）/ 自研 ascend-npu-exporter-plus / Loki + Promtail
 
 **重大决策**（不可逆，记入 ADR）：
+- **目标平台 aarch64 鲲鹏（Kunpeng 920）+ openEuler**（见 ADR-0020 · Phase 12 翻转 ADR-0001 §13 amd64-only）：真实部署 target = 华为 Atlas 800 原生配置（Kunpeng host + 昇腾 910B + openEuler）· 镜像 multi-arch buildx（`linux/amd64,linux/arm64`）· `GOARCH=${TARGETARCH}` 静态跨编译（CGO 关闭 · 无需换 base）· helm `nodeAffinity kubernetes.io/arch=arm64` · mock `arch: arm64`/`os: openEuler` · **amd64 保留本机 dev/CI/render-verify**（非 arm64-only）· 真硬件运行验证 lab-gated 留 Phase 13+
 - **不引入 MindCluster / MindX DL**（保留自研动态切分与 DRA 空间）
 - **演示后端无状态**（无数据库，仅聚合 + 短期缓存）
 - **混合前端**（自研主壳 + Grafana iframe 指标页）

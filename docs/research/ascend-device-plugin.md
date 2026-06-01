@@ -45,7 +45,7 @@ Ascend Device Plugin(以下简称 ADP)是 Phase 4 整卡分配路径的**可行�
 | **Whole-card allocation**(整卡) | ✅ | `huawei.com/Ascend910B: 1` [A · HAMi README / Huawei Cloud doc] |
 | **Fixed-template 静态切片**(vir01/02/04/08/16) | ✅(需手动) | 运营商先 `npu-smi set` 创建 vNPU,ADP 重启后上报为 `huawei.com/Ascend910B-2c` 等资源 [A · `cce_10_0994.html`] |
 | **Automatic 静态切片** | ✅(CCE add-on 路径) | Huawei Cloud `cce_10_1010.html` 自动虚拟化 [B] |
-| **Dynamic soft-slicing**(运行时切分) | ❌(原生不支持) | 需 HAMi 二次封装,且**仅支持 ARM 平台**(libvnpu.so 拦截)[A · HAMi README] — 本项目 amd64 only,**不可用** |
+| **Dynamic soft-slicing**(运行时切分) | ❌(原生不支持) | 需 HAMi 二次封装,且**仅支持 ARM 平台**(libvnpu.so 拦截)[A · HAMi README] — ~~本项目 amd64 only,**不可用**~~（历史前提 · **amd64-only 已由 ADR-0020 (2026-06-01) 翻转为 aarch64**;但本项目仍用**自研动态切分**(ADR-0011)不引入 HAMi · HAMi 适用性留 Phase 13+ 真硬件评估）|
 | **Health monitoring** | ✅ | NPU-Exporter 配套,要求 driver ≥24.x [A · `cce_10_0239.html`] |
 | **HCCS 拓扑感知** | ✅(Volcano + ADP 协同) | 8×910 分两组,4 卡 HCCS / 4 卡 PCIe;ADP 上报拓扑、Volcano 实际打分 [A · `cce_10_0980.html`] |
 
@@ -70,7 +70,7 @@ Ascend Device Plugin(以下简称 ADP)是 Phase 4 整卡分配路径的**可行�
 4. **HCCS 仅在 die-affinity scheduling 启用时生效**,且仅 K8s 补丁版本 ≥1.30.1 / 1.29.4 等才支持 [A · `cce_10_0980.html`];生产 K8s 集群一定要锁补丁版本。
 5. **NPU error 时容器行为**:ADP 上报 health 状态变 Unhealthy,但 Pod 不会自动重启;需 Operator 层加 liveness probe + 拓扑感知重调度逻辑 [D · 基于 K8s Device Plugin v1 通用机制推导,缺乏 ADP 特定文档]。
 6. **仓库迁移风险**:gitee.com/ascend/ascend-device-plugin → mindxdl → Gitcode,2 次迁移意味着 CI URL、镜像 registry、文档锚点都可能在 Phase 4 启动时再变 [A · 两个 README 都标注转移]。CI/CD 要做 URL 抽象层。
-7. **HAMi 软切片诱惑陷阱**:HAMi 文档显眼,但其 `hami-core` 模式**仅 ARM 平台**,amd64 only 项目用不上 [A · HAMi README]。
+7. **HAMi 软切片诱惑陷阱**:HAMi 文档显眼,但其 `hami-core` 模式**仅 ARM 平台**,~~amd64 only 项目用不上~~ [A · HAMi README]。（历史前提 · **amd64-only 已由 ADR-0020 (2026-06-01) 翻转为 aarch64 鲲鹏**:平台轴不再 block · 但本项目用**自研动态切分**(ADR-0011)不引入 HAMi · HAMi 适用性留 Phase 13+ 真硬件评估）
 
 ## 6. Phase 4 推荐
 

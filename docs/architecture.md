@@ -762,7 +762,8 @@ Grafana dashboard 在 deploy 目录提前 provisioned，前端只是 iframe 切�
 
 ```
 ┌─────────────────────────────────┐
-│ 单台带 Ascend 910B 的物理机     │
+│ 单台 Atlas 800（Kunpeng 920 +   │
+│ Ascend 910B · openEuler）物理机  │
 │ ┌─────────────────────────────┐ │
 │ │ K3s (单节点)                 │ │
 │ │ ├ KubeEdge edgecore         │ │
@@ -778,6 +779,8 @@ Grafana dashboard 在 deploy 目录提前 provisioned，前端只是 iframe 切�
 ```
 
 部署方式：单条 install.sh 脚本 + Helm chart
+
+> **Phase 12 T002 目标平台 forward note**(per ADR-0020 · 翻转 ADR-0001 §13 amd64-only):全部署形态(§9.1-§9.3)真实目标平台 = **aarch64 鲲鹏 Kunpeng 920 host + 昇腾 910B NPU + openEuler 节点 OS**(华为 Atlas 800 原生配置)。镜像 multi-arch buildx(`linux/amd64,linux/arm64` · arm64=部署 target · amd64 保留本机 dev/CI/render-verify)· helm `nodeAffinity kubernetes.io/arch=arm64`(T103)· install.sh openEuler 包管理 dnf(T103)。真鲲鹏 + 昇腾集群运行验证 lab-gated 留 Phase 13+(ADR-0019 §2 Decision C Track A 6th carry)· Phase 12 交付 = 交叉编译 + buildx 双架构 + helm template arch 亲和渲染校验。
 
 ### 9.2 小集群（3-5 节点，标准 K8s）
 
@@ -916,7 +919,7 @@ ocloud-edge-platform/
 ### 14.2 未决问题（Phase 0 评审时讨论）
 
 - [ ] **真机硬件信息**：910B 是 8 卡服务器吗？HCCS 拓扑结构（全互联 vs 环形）？
-- [ ] **是否需要支持 ARM 节点**：边缘场景可能有 KunPeng（鲲鹏）
+- [x] **是否需要支持 ARM 节点** → **是**（ADR-0020 · 2026-06-01 · Phase 12）：真实目标平台翻转为 aarch64 鲲鹏 Kunpeng 920 + openEuler（华为 Atlas 800 原生配置 · 翻转 ADR-0001 §13 amd64-only）· 镜像 multi-arch · helm `kubernetes.io/arch=arm64` 亲和
 - [ ] **演示前端是否需要 RBAC / 多租户**：Phase 1 暂不做
 - [ ] **CICD 环境**：GitHub Actions？自建 Jenkins？
 - [ ] **镜像仓库**：Harbor 自建？还是用云厂商？

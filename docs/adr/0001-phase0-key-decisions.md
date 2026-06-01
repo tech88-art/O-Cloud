@@ -9,7 +9,7 @@
 
 ## 上下文
 
-O-Cloud 边缘云平台样机启动期。基于昇腾 910B（amd64-only），需在 4 周内交付可演示原型，再分阶段补齐池化、动态切分、亲和调度、真实推理。
+O-Cloud 边缘云平台样机启动期。基于昇腾 910B（Phase 0 简化为 amd64-only · **已由 ADR-0020 (2026-06-01) 翻转为真实目标平台 aarch64 鲲鹏 + openEuler**，见 §13），需在 4 周内交付可演示原型，再分阶段补齐池化、动态切分、亲和调度、真实推理。
 
 执行模式为**多个 AI Agent 并行**协作（非人类团队）。
 
@@ -215,11 +215,13 @@ v3 与 v2 区别:v2 把 "Phase 4 主路径"与"Phase 4 後段"混在一段散文
 
 ---
 
-### 13. 不支持 ARM / 鲲鹏
+### 13. 不支持 ARM / 鲲鹏 ~~（amd64-only）~~ — **SUPERSEDED by ADR-0020 (2026-06-01)**
 
-**原因**：用户明确仅支持 amd64 / x86_64 + 昇腾 910B。
+> **⚠ SUPERSEDED**：本节 Phase 0 amd64-only 简化决策已由 **ADR-0020**（2026-06-01 · Phase 12 P12-T-002）**翻转**为真实目标平台 **aarch64 鲲鹏（Kunpeng 920）+ openEuler 节点 OS**（华为 Atlas 800 原生配置）。镜像改 multi-arch buildx（`linux/amd64,linux/arm64`）· mock `arch: arm64` + `os: openEuler` · helm `nodeAffinity kubernetes.io/arch=arm64`。amd64 layer 保留用于本机 dev/CI/render-verify（非 arm64-only）。下方为历史原文（Phase 0 上下文 · 已不再生效）。
 
-**影响**：所有镜像构建仅生成 amd64 layer；mock 数据 `arch: amd64` 硬约束。
+**原因（历史 · Phase 0）**：用户明确仅支持 amd64 / x86_64 + 昇腾 910B。
+
+**影响（历史 · Phase 0 · 已被 ADR-0020 翻转）**：所有镜像构建仅生成 amd64 layer；mock 数据 `arch: amd64` 硬约束。
 
 ---
 
