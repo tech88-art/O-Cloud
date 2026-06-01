@@ -2,11 +2,13 @@
 
 > 基于 O-Cloud 形态的边缘云平台样机，具备**异构算力（昇腾 910B）基础设施管理**与 **AI 推理服务编排部署**两大能力。
 
-**当前阶段**:**Phase 11 in flight — M5 真生产化 foundation subset**(2026-05-22 起 · 20 task chain T001-T204 in progress through T203)。**Spine A 真生产化 foundation subset**:不含完整 P99 SLA / 完整 OIDC IdP / 真多机房 · 留 Phase 12+ per ADR-0017。**6 chart packaging spine 闭环**:T003 demo-backend chart + Lease leader-elect wire(client-go tools/leaderelection · 9 chart file + 5 backend file)+ T004/T005/T006 3 IMS chart + cmd/main.go controller-runtime manager wire + Reconciler shells(SchemeBuilder + zz_generated.deepcopy · go.mod controller-runtime/client-go added)+ T007 sched-plugin NRT CRD bundle(Approach B vendored)+ numaAffinity default true 恢复(**known-issues #12 完整 close 循环最终步**)+ T008 inference-operator chart DEFAULT_PROXY_IMAGE env wire(known-issues #13 5-phase carry closer)。**Karmada propagation 第一波 production-grade**:T002 ADR-0018(host + 2 member kind cluster minimum 单机模拟 multi-site)+ T102 bootstrap scripts(install.sh + uninstall.sh + values.yaml + README)+ T103 4 PropagationPolicy YAML + O2 DMS karmada-aggregated-apiserver helper + T104 ClusterQuota cluster-scope CRD + RecomputeTotal aggregation。**Frontend src/ Workload page 3 indicators**:T105 O2 DMS exposed badge + Quota progress bar + scaleHistory count tag(en-US + zh-CN 双语 per ADR-0017 §4 (b))+ backend handler 3 new query params bridge。**O2 DMS authn chart wiring**:T106 OIDC client + TokenReview SA env injection + conditional RBAC。**Lab gating 5th attempt default-defer 维持**(T101 deferred Phase 12+ · ADR-0011 §3 carry tally 5th entry · ADR-0017 §2 Decision C trigger 1 FIRED at W1 entry meeting · trigger 3 M5+ milestone reset 保留 Phase 12+)。**3 deferred outcomes**:T101 LAB 5th carry + T108 Volcano 3rd defer + T202 Partitionable Devices 2nd defer(全 default policy 无 user signal · 3 个 carry tracks 独立 trigger 条件)。**3 entry ADRs**:ADR-0017 Phase 11 entry decisions(4 Decisions A-D · 3 Open questions)+ ADR-0018 Karmada deployment topology(4 Decisions A-D · 3 Open questions)。**kind smoke phase11/ folder**:14 assertion(11 active + 3 conditional · all PASSED in dev syntactic verify)+ master-demo-multi-site.sh 7-step orchestrated Karmada demo(Path P real-hw / Path F synthetic ring per LAB_AVAILABLE env)。**docs 大整理**:T203 ship `docs/phase12-candidate-streams.md`(8 Stream carry + 3 active carry tracks + Go v1 schema migration cohort plan)。详 `docs/checkpoint-phase11.md` §6 Phase 12+ handoff brief(T204 起草)。
+**当前阶段**:**Phase 12 complete — M6 平台真实化 + 操作台一体化**(2026-06-01 · tag `phase-12-complete` · 16/16 task · 承 Phase 11 M5)。**3 track 全 land**:① **平台真实化** — aarch64 鲲鹏(Kunpeng 920)+ 昇腾 910B + openEuler 真实目标平台(**supersede ADR-0001 §13 amd64-only** · 华为 Atlas 800 原生配置)· 10 Dockerfile multi-arch buildx(`linux/amd64,linux/arm64`)+ CI arm64 cross-compile matrix + helm `nodeAffinity arch=arm64`(soft)+ install.sh openEuler dnf · amd64 保留本机 dev/CI/render-verify · 真鲲鹏运行验证 lab-gated 留 Phase 13+;② **拓扑数据全保真** — NPU PCIE 带宽 + node↔node network 绿边 + npu↔npu HCCS 边 + 非 NPU workload→node runs-on 边 + 带宽 hover tooltip(ADR-0021);③ **前端 one-page workspace** — 5 路由 + AntSider nav 收敛为单页操作台(AntD Splitter 可隐藏可拖拽 + 拓扑全保真渲染 + focus/isolate + 右栏 selection-dispatch 吸收 workloads/deploy/metrics/logs 四页指标/日志 + 顶栏 preset bar)。前端 80 unit + 9 e2e(one-page flow)+ 11 render-verify 截图 · 4 entry ADR(0019-0022)。production-hardening cohort 顺延 Phase 13+。详 `docs/checkpoint-phase12.md`。
+
+**上一阶段**:**Phase 11 complete — M5 真生产化 foundation subset**(2026-05-22 · tag `phase-11-complete`)· 6 chart packaging spine 闭环 + Karmada propagation 第一波 + Frontend Workload 3 indicators + O2 DMS authn wiring · 20/20 · 详 `docs/checkpoint-phase11.md`。
 
 **上一阶段**:Phase 9 complete — M4 工程化对外 milestone · O2 DMS Adapter + Multi-tenant Quota + PromQL ext + IMS 3 scaffold + demo-backend cache spike · 16/16 statuses · tag `phase-9-complete`。Phase 8 complete — Busy-idle 垂直伸缩 + NPUVerticalScaler CRD + 8-step Reconcile · 15/15 · tag `phase-8-complete`。
 **早期阶段**:Phase 1(核心样机 + Mock 数据)44/44 · Phase 2(真实数据源切入)15/15 · Phase 3(pool controllers + ascend-npu-exporter-plus + ADR-0008 PD Router design)15/15 · Phase 4(npu-dra-driver scaffold + ADR-0001 v3 + CANN matrix)15/15 · Phase 5(real claim allocation + NPUSliceAllocation CRD + inference-operator controller body + PD Router mutating webhook + cert-manager wiring)15/15 · Phase 6(HCCS/NUMA-aware scheduler-plugin + pool-operator HCCS topology + inference-operator metrics + vllm-ascend PD proxy_server)15/15 · Phase 7(NPU 动态切分 + Source 接口 + lab gating · ADR-0011)15/15 · 全部完成
-**下一阶段**:**Phase 12+ M6 production hardening cohort**(per ADR-0017 §2 Decision B forward note · 候选 Spine A continuation 真生产化 production-hardening:Karmada HA + 完整 OIDC IdP + ClusterQuota webhook B 完整 + Vault Secret + vLLM PD 分离 production-grade SLA)+ 3 active carry tracks(Track A lab gating 6th carry posture · Track B Volcano 4th carry · Track C Partitionable Devices 3rd carry)+ Go v1 ResourceSlice schema migration cohort(per P10-fix-001 carry · 5 module lockstep)· 详 `docs/phase12-candidate-streams.md` + ADR-0017 §2 Decision B/C + ADR-0016 §3 Stream 1-8。
+**下一阶段**:**Phase 13+ production-hardening cohort**(per ADR-0019 §2 Decision B · 原 M6 production-hardening 顺延 Phase 13+ · 承 ADR-0017 §2 Decision B forward note · 候选 Spine A continuation 真生产化 production-hardening:Karmada HA + 完整 OIDC IdP + ClusterQuota webhook B 完整 + Vault Secret + vLLM PD 分离 production-grade SLA)+ 3 active carry tracks(Track A lab gating 6th carry posture · Track B Volcano 4th carry · Track C Partitionable Devices 3rd carry)+ Go v1 ResourceSlice schema migration cohort(per P10-fix-001 carry · 5 module lockstep)· 详 `docs/phase12-candidate-streams.md` + ADR-0017 §2 Decision B/C + ADR-0016 §3 Stream 1-8。
 
 **上一阶段**:**Phase 10 complete — M4 工程化对外 milestone CLOSER**(2026-05-21 · tag `phase-10-complete`)· 20 task chain T001-T204。3 三件套(K8s 1.34 baseline + framework migration + NumaAffinity wrap)· 3 IMS controller body 全 land · ADR forward note polish(T103 authn substrate + T104 token-bucket rate algorithm + T106 ProxyImage chart flip)· 3 docs ADRs(ADR-0015/0016 + ADR-0017 entry decisions · ADR-0018 Karmada topology)· 3 deferred outcomes(T102 5th carry + T108 2nd defer + T202 defer)· 详 `docs/checkpoint-phase10.md` §6 Phase 11+ handoff brief。
 
@@ -83,8 +85,9 @@ ocloud-phase0/
 ## 3. 关键约束
 
 ### 硬件
-- **昇腾 910B**（amd64 / x86_64）
-- **不支持** ARM / 鲲鹏
+- **昇腾 910B** NPU + **aarch64 鲲鹏（Kunpeng 920）host + openEuler 节点 OS**（华为 Atlas 800 原生配置 · Phase 12 ADR-0020 翻转 ADR-0001 §13 amd64-only）
+- 镜像 multi-arch buildx（`linux/amd64,linux/arm64`）· **arm64 = 部署 target** · amd64 保留本机 dev/CI/render-verify
+- 真鲲鹏 + 昇腾集群运行验证 lab-gated 留 Phase 13+
 
 ### 形态
 - 边缘单节点
@@ -136,7 +139,7 @@ cd frontend && pnpm install && pnpm dev --host 0.0.0.0
 
 ### 4.4 演示流程
 
-跟 [`docs/demo.md`](docs/demo.md) 走完 5 页(Overview → Workloads → Deploy → Metrics → Logs)+ D6 NUMA+HCCS 亲和对比演示。
+跟 [`docs/demo.md`](docs/demo.md) 走 **one-page workspace**(单页操作台:左资源树 → 中拓扑 focus → 右栏资源/负载指标+日志 → 顶栏 preset 部署 · Phase 12 吸收原 5 页)+ D6 NUMA+HCCS 亲和对比演示。
 
 ### 4.5 给 Agent(新加入的 AI 协作者)
 
@@ -188,7 +191,7 @@ cd frontend && pnpm install && pnpm dev --host 0.0.0.0
 
 **架构层**:
 - backend(Go 1.22 + Gin):无状态聚合,Source 接口抽象 mock/k8s/prometheus/crd,REST + WS
-- frontend(React 18 + TS 5 + AntD 5 + ReactFlow + dagre):5 页 + i18n(zh/en)
+- frontend(React 18 + TS 5 + AntD 5 + ReactFlow + dagre):one-page workspace(Phase 12 吸收原 5 页)+ i18n(zh/en)
 - configs:mock-data set-a-small(12 workloads incl. 3 PD variants + D6 affinity demo)
 - deploy:docker-compose dev stack + install.sh single-node
 
@@ -211,6 +214,9 @@ cd frontend && pnpm install && pnpm dev --host 0.0.0.0
 | **M2** 池化与发现 | 4 级 Pool CRD + NPU 自动发现 + DRA driver | Phase 3-4 |
 | **M3** 服务编排 | 预置应用真实部署 + NUMA/HCCS 亲和 + 动态切分 + 垂直伸缩 | Phase 5-8 |
 | **M4** 工程化对外 | O2 DMS 接口 + 真实硬件 + 多站点 Karmada | Phase 9-10 |
+| **M5** 真生产化 foundation | chart packaging spine + Karmada propagation 第一波 + Frontend Workload extension | Phase 11 |
+| **M6** 平台真实化 + 操作台一体化 | aarch64 鲲鹏 + openEuler target + 拓扑全保真 + 前端 one-page workspace | Phase 12 |
+| **M7+** production hardening | Karmada HA + 完整 OIDC IdP + 真 aarch64 集群验证 + vLLM PD SLA | Phase 13+ |
 
 总周期估计 6-9 个月。
 

@@ -4,6 +4,21 @@
 > cohort" + ADR-0016 §3 Stream 1-8 carry-forward。Phase 11 W3 P11-T-203
 > 起草。Phase 12 entry meeting 起草 plan 时 codify primary spine + 优先级。
 
+---
+
+## ⛳ Phase 12 spine 落定 stamp(2026-06-01 · tag `phase-12-complete`)
+
+Phase 12 entry(ADR-0019)**从本 enumeration 选定 spine = 平台真实化 + 拓扑全保真 + 前端 one-page workspace**(M6 naming reset)· 16/16 task landed(详 `docs/checkpoint-phase12.md`):
+
+- **production-hardening cohort 顺延 Phase 13+**:本文档枚举的 Spine A continuation(Karmada HA + 完整 OIDC IdP + ClusterQuota webhook B + Vault Secret + vLLM PD SLA)**未进 Phase 12 spine** · 整体顺延 Phase 13+(ADR-0019 §2 Decision B M6 naming reset · 原 M6 production-hardening → M7+)。
+- **3 active carry tracks 维持 default-defer**(Phase 12 scope 与其无 direct dependency):**Track A lab gating → 6th carry**(Phase 12 平台化 = *构建 target* 反转 ≠ 真硬件验证 · 真 aarch64 鲲鹏运行验证仍 lab-gated)· **Track B Volcano → 4th carry** · **Track C Partitionable Devices → 3rd carry**(KEP-4815 仍 Beta)。
+- **Go v1 ResourceSlice schema migration cohort**:维持 Phase 13+(与 K8s 1.36 baseline bump 同期)。
+- **新增 Phase 13+ carry**:真 aarch64 集群验证 + 真硬件 stamp(Track A closer)· G6 5.x 拓扑重写(Frontend UX Track-2 F01 · ReactFlow set-c-stress 瓶颈 materialise 才触发)· bundle code-split + bandwidth 单位统一(ADR-0021 §4 b)。
+
+下方原始枚举保留为 Phase 13+ entry meeting 的 source-of-truth。
+
+---
+
 ## Source-of-truth recap
 
 | Source | What it carries |

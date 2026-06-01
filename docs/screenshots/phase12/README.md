@@ -37,7 +37,28 @@ app 不可用:Vite HMR WS + Overview 拓扑 WS 让页面常驻活跃连接,netwo
 - **arch**:当前 mock `arch: amd64`;Phase 12 Track A 改 aarch64 鲲鹏 + openEuler 后,
   after-overview/详情面板的节点 arch/os 字段会变。
 
-## after-*.png
+## after-*.png(2026-06-01 · phase-12-complete · one-page workspace)
 
-Track C 各 task(T201-T205)落地后用同脚本 `PHASE=after` 截;T302 checkpoint 出
-before/after 对比表 + DATA 对比(路由数 5→1 · bundle 体积 · 节点交互等)。
+Track C 各 task(T201-T205）+ T301 落地后用 Playwright 截(`PHASE=after node
+tests/e2e/baseline-screenshots.mjs` 截 workspace 关键态;per-task 交互态由各 task
+probe 截)。**5 页 → 1 单页操作台**:
+
+| 文件 | 态 | 对应 before |
+|---|---|---|
+| after-overview.png | 单页工作台默认(preset bar + 资源树 + 拓扑 + 右栏空态) | before-overview.png |
+| after-overview-fabric.png | fabric on(network 绿边 + HCCS 紫虚 + fabric 蓝 + bandwidth hover) | before-overview.png |
+| after-overview-left-collapsed.png | 左树折叠(Splitter 可隐藏 · 拓扑 re-fit) | — |
+| after-edge-bandwidth-tooltip.png | edge hover tooltip(25 GB/s · roce · utilization) | — |
+| after-overview-focus.png | focus/isolate 选中 NPU(右栏 NPU 详情 + 退出聚焦) | — |
+| after-detail-npu-metrics.png | 资源(NPU)→ 硬件指标 section + PCIe · 无日志 | before-metrics.png |
+| after-detail-workload-sections.png | 负载 → 业务指标 + 日志 section(容器选择 + 真实 log) | before-workloads/metrics/logs.png |
+| after-preset-bar.png | 顶栏 preset bar(4 预置应用 chip) | before-deploy.png |
+| after-preset-hover.png | preset hover 详情 popover | before-deploy.png |
+| after-preset-deploy-wizard.png | preset → DeployWizard(auto/manual) | before-deploy.png |
+| after-retire-workspace.png | 退役 4 页后单页完整渲染(deep-link redirect) | — |
+
+**DATA 对比**(T302 checkpoint):路由 5→1 · 前端测试 119→80 unit + 9 e2e(one-page flow)·
+i18n key 0 orphan · bundle 1.45MB(G6 dep 未用 · Phase 13+ code-split)。
+
+> Grafana iframe 在路径 A(无 docker-compose)显 unreachable fallback(指标 section
+> 结构已验 · 完整 iframe 需路径 B)。arch:after-* mock 已是 arm64/openEuler。
