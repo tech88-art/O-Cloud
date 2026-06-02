@@ -125,7 +125,7 @@ export default function OverviewPage() {
     <div className={styles.workspace} data-testid="overview-page">
       <Splitter style={{ height: '100%' }} onResizeEnd={handleResizeEnd}>
         {!leftPaneHidden && (
-          <Splitter.Panel key="left" defaultSize={leftPaneSize} min={200} max="45%">
+          <Splitter.Panel key="left" defaultSize={leftPaneSize} min={200}>
             <aside className={styles.treePane} data-testid="overview-tree-pane">
               <div className={styles.treePaneHeader}>
                 <Title level={5} style={{ margin: 0 }}>
@@ -176,7 +176,7 @@ export default function OverviewPage() {
           </main>
         </Splitter.Panel>
         {!rightPaneHidden && (
-          <Splitter.Panel key="right" defaultSize={rightPaneSize} min={260} max="45%">
+          <Splitter.Panel key="right" defaultSize={rightPaneSize} min={260}>
             <aside className={styles.detailPane} data-testid="overview-detail-pane">
               <DetailPanel />
             </aside>

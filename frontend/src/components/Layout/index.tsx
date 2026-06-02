@@ -1,9 +1,9 @@
 import { Layout as AntLayout, Button, Dropdown, Space, Tag, Tooltip, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import {
+  DoubleLeftOutlined,
+  DoubleRightOutlined,
   GlobalOutlined,
-  PicLeftOutlined,
-  PicRightOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router-dom';
@@ -98,7 +98,9 @@ export function AppLayout() {
                 type="text"
                 aria-label={t('header.toggleLeftPane')}
                 aria-pressed={!leftPaneHidden}
-                icon={<PicLeftOutlined />}
+                // Direction-aware chevron (industry-standard collapse affordance):
+                // pane shown → « (collapse leftward); hidden → » (expand rightward).
+                icon={leftPaneHidden ? <DoubleRightOutlined /> : <DoubleLeftOutlined />}
                 onClick={toggleLeftPane}
                 data-testid="toggle-left-pane"
                 style={{ color: leftPaneHidden ? '#8c8c8c' : '#fff' }}
@@ -109,7 +111,8 @@ export function AppLayout() {
                 type="text"
                 aria-label={t('header.toggleRightPane')}
                 aria-pressed={!rightPaneHidden}
-                icon={<PicRightOutlined />}
+                // Mirror: pane shown → » (collapse rightward); hidden → « (expand leftward).
+                icon={rightPaneHidden ? <DoubleLeftOutlined /> : <DoubleRightOutlined />}
                 onClick={toggleRightPane}
                 data-testid="toggle-right-pane"
                 style={{ color: rightPaneHidden ? '#8c8c8c' : '#fff' }}
