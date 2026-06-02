@@ -8,7 +8,7 @@ import { useAppStore } from '@/store';
 import { SUPPORTED_LOCALES, persistLocale, type Locale } from '@/i18n';
 
 const { Header, Content } = AntLayout;
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 /**
  * Obsidian-style sidebar-toggle icons (lucide `panel-left` / `panel-right`):
@@ -164,17 +164,18 @@ export function AppLayout() {
             trigger={['click']}
             placement="bottomRight"
           >
+            {/*
+             * P12 polish (round 3) #1: icon-only language switcher — the
+             * "🇨🇳 简体中文" face text is dropped (it rendered as a clunky
+             * "CN 简体中文" on Windows). The globe icon alone is the affordance;
+             * the current locale + full labels live in the dropdown menu below.
+             */}
             <Button
               type="text"
               aria-label={t('header.language')}
               icon={<GlobalOutlined />}
               style={{ color: '#fff' }}
-            >
-              <Space size={4}>
-                <span aria-hidden="true">{LOCALE_META[currentLocale].flag}</span>
-                <Text style={{ color: '#fff' }}>{t(LOCALE_META[currentLocale].labelKey)}</Text>
-              </Space>
-            </Button>
+            />
           </Dropdown>
           <Tooltip title={t('header.toggleRightPane')}>
             <Button
