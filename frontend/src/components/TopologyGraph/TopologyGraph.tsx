@@ -30,6 +30,7 @@ import {
   layoutWorkerNpus,
   type HccsRingGeom,
 } from './siteLayout';
+import styles from './TopologyGraph.module.css';
 import type { Topology, TopologyEdge, TopologyNode } from '@/services/cluster';
 
 /**
@@ -1029,8 +1030,23 @@ function TopologyGraphInner({
       edges.map((e) => {
         const topoType = (e.data as { topoEdgeType?: string } | undefined)?.topoEdgeType;
         const isSkeleton = topoType === 'contains';
+        // Skeleton (contains tree) always renders, calm — it's structure, not traffic.
+        if (isSkeleton) return e;
         const incident = e.source === activeEdgeNodeId || e.target === activeEdgeNodeId;
-        return isSkeleton || incident ? e : { ...e, hidden: true };
+        // Non-skeleton edges are contextual: hidden unless incident to the active
+        // (hovered → else selected) node.
+        if (!incident) return { ...e, hidden: true };
+        // Incident → reveal AND emphasise (P12 polish #2 · Datadog-style): a
+        // thicker stroke (inline, preserving the per-type base-width hierarchy) +
+        // a moving dash flow (the `flowEdge` class). Makes the active node's links
+        // read as live connections rather than just "now visible".
+        const baseWidth =
+          typeof e.style?.strokeWidth === 'number' ? e.style.strokeWidth : 1.5;
+        return {
+          ...e,
+          className: styles.flowEdge,
+          style: { ...e.style, strokeWidth: baseWidth + 1.25 },
+        };
       }),
     [edges, activeEdgeNodeId],
   );

@@ -1,0 +1,34 @@
+/*
+ * Active-edge "traffic flow" emphasis (P12 polish · backlog #2 · Datadog-style).
+ *
+ * Applied (as the edge's `className`) to the incident edges of the
+ * hovered/selected node — i.e. the contextual edges `displayEdges` reveals. The
+ * class animates a moving dash along the edge's visible path so the active
+ * node's links read as "live traffic". The thicker stroke is set inline (per
+ * edge type's base width + a delta) in `displayEdges`; the dash flow lives here
+ * because keyframe animation can't be expressed as an inline style (frontend
+ * CLAUDE.md §6: no CSS-in-JS, animations belong in a stylesheet).
+ *
+ * `:global(.react-flow__edge-path)` targets the visible <path> ReactFlow renders
+ * inside the edge wrapper <g> (this `.flowEdge` class lands on that <g>). Edges
+ * that already carry an inline `stroke-dasharray` (hccs/pd-pair/runs-on) keep
+ * it — inline wins — and just gain the flow; solid edges (network/fabric/
+ * binds-to) pick up the 6 4 dash here so the flow is visible on them too.
+ */
+.flowEdge :global(.react-flow__edge-path) {
+  stroke-dasharray: 6 4;
+  animation: topoEdgeFlow 0.7s linear infinite;
+}
+
+@keyframes topoEdgeFlow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+/* Respect users who opt out of motion — keep the (thicker) highlight, drop the flow. */
+@media (prefers-reduced-motion: reduce) {
+  .flowEdge :global(.react-flow__edge-path) {
+    animation: none;
+  }
+}

@@ -49,7 +49,9 @@ vi.mock('@xyflow/react', () => {
     source: string;
     target: string;
     type?: string;
-    style?: { stroke?: string };
+    style?: { stroke?: string; strokeWidth?: number };
+    className?: string;
+    hidden?: boolean;
     data?: { topoEdgeType?: string; attributes?: Record<string, unknown> };
   };
   type StubProps = {
@@ -89,6 +91,9 @@ vi.mock('@xyflow/react', () => {
           data-edge-type={e.type ?? 'default'}
           data-topo-edge-type={e.data?.topoEdgeType ?? ''}
           data-stroke={e.style?.stroke ?? ''}
+          data-stroke-width={e.style?.strokeWidth ?? ''}
+          data-emphasized={e.className ? '1' : '0'}
+          data-hidden={e.hidden ? '1' : '0'}
         />
       ))}
       {children}
@@ -1003,6 +1008,39 @@ describe('OverviewPage — topology edges + focus (P12-T-202 / ADR-0021/0022)', 
     const runsOn = screen.getByTestId('rf-edge-workload/ns/web__node-2');
     expect(runsOn).toHaveAttribute('data-edge-type', 'default');
     expect(runsOn).toHaveAttribute('data-topo-edge-type', 'runs-on');
+  });
+
+  it('emphasises the selected node\'s incident edges (flow class + thicker stroke)', async () => {
+    mockInterconnect();
+    act(() => {
+      useTopologyStore.setState({ showFabric: true });
+    });
+    const user = userEvent.setup();
+    renderOverview();
+    await screen.findByTestId('rf-stub');
+
+    // Nothing active yet → the network link is present but not emphasised.
+    expect(screen.getByTestId('rf-edge-node-1__node-2')).toHaveAttribute(
+      'data-emphasized',
+      '0',
+    );
+
+    // Select node-1 → its incident edges reveal + emphasise (P12 polish #2).
+    await user.click(screen.getByTestId('rf-node-node-1'));
+    await waitFor(() => {
+      const net = screen.getByTestId('rf-edge-node-1__node-2');
+      expect(net).toHaveAttribute('data-emphasized', '1');
+      expect(net).toHaveAttribute('data-hidden', '0');
+    });
+    // network base width is 2 → emphasised stroke is strictly thicker.
+    expect(
+      Number(screen.getByTestId('rf-edge-node-1__node-2').getAttribute('data-stroke-width')),
+    ).toBeGreaterThan(2);
+
+    // An edge NOT incident to node-1 (the npu↔npu hccs) stays hidden + calm.
+    const hccs = screen.getByTestId('rf-edge-npu-1-0__npu-1-1');
+    expect(hccs).toHaveAttribute('data-emphasized', '0');
+    expect(hccs).toHaveAttribute('data-hidden', '1');
   });
 
   it('focus filter hides nodes outside the focused subtree', async () => {
