@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Skeleton, Space, Typography } from 'antd';
+import { Skeleton, Space, Switch, Tooltip, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
@@ -46,6 +46,12 @@ export function DetailPanel() {
   // Matching args means react-query de-dupes this into the graph's cache entry.
   const showFabric = useTopologyStore((s) => s.showFabric);
   const showWorkloads = useTopologyStore((s) => s.showWorkloads);
+  // P12 polish #2: the Fabric/Workloads view toggles moved out of the left-tree
+  // header into this panel (decluttered overview · controls live with the
+  // detail you're inspecting). They write the same store flags, so the graph +
+  // tree + this panel all key their topology query off one source of truth.
+  const setShowFabric = useTopologyStore((s) => s.setShowFabric);
+  const setShowWorkloads = useTopologyStore((s) => s.setShowWorkloads);
 
   // Cluster list — same hook as the page shell uses; cached so this is
   // free unless the panel mounts before the page.
@@ -66,34 +72,81 @@ export function DetailPanel() {
       ? topologyQuery.data.nodes.find((n) => n.id === selectedNodeId)
       : undefined;
 
-  // Empty state — nothing selected yet.
+  // P12 polish #2: the view-option toggles render at the top of the panel in
+  // EVERY state (incl. empty) so they stay reachable while the overview header
+  // itself is decluttered.
+  const viewOptions = (
+    <ViewOptions
+      showFabric={showFabric}
+      onFabricChange={setShowFabric}
+      showWorkloads={showWorkloads}
+      onWorkloadsChange={setShowWorkloads}
+      title={t('detailPanel.viewOptions')}
+      fabricLabel={t('overview.includeFabric')}
+      fabricHint={t('overview.fabricToggleHint')}
+      workloadsLabel={t('overview.includeWorkloads')}
+      workloadsHint={t('overview.workloadsToggleHint')}
+    />
+  );
+
+  let body: ReactNode;
   if (!selectedNodeId) {
-    return (
+    // Empty state — nothing selected yet.
+    body = (
       <div data-testid="detail-panel-empty">
         <EmptyState description={t('detailPanel.selectNode')} />
       </div>
     );
-  }
-
-  // Topology hasn't landed yet — show a skeleton; we can't dispatch on type
-  // until we know what was clicked.
-  if (topologyQuery.isLoading) {
-    return (
+  } else if (topologyQuery.isLoading) {
+    // Topology hasn't landed yet — show a skeleton; we can't dispatch on type
+    // until we know what was clicked.
+    body = (
       <div data-testid="detail-panel-loading">
         <Skeleton active paragraph={{ rows: 4 }} />
       </div>
     );
-  }
-
-  // Selected id is stale (was deleted / topology refetched without it).
-  if (!selectedTopoNode) {
-    return (
+  } else if (!selectedTopoNode) {
+    // Selected id is stale (was deleted / topology refetched without it).
+    body = (
       <div data-testid="detail-panel-stale">
         <EmptyState description={t('detailPanel.staleSelection')} />
       </div>
     );
+  } else {
+    body = <DetailBody node={selectedTopoNode} clusterId={selectedClusterId} clustersQuery={clustersQuery} />;
   }
 
+  return (
+    <Space
+      direction="vertical"
+      size={12}
+      style={{ width: '100%' }}
+      data-testid="detail-panel-root"
+    >
+      {viewOptions}
+      {body}
+    </Space>
+  );
+}
+
+/**
+ * The selection-specific body of the detail panel (dispatch on node type +
+ * append metrics/logs). Split out of `DetailPanel` so the view-option toggles
+ * can wrap every state uniformly (P12 polish #2) without nesting the switch in
+ * an `else`. `clustersQuery` is threaded in so the cluster branch reuses the
+ * already-loaded list rather than issuing a second fetch.
+ */
+function DetailBody({
+  node,
+  clusterId,
+  clustersQuery,
+}: {
+  node: TopologyNode;
+  clusterId: string | null;
+  clustersQuery: ReturnType<typeof useClusters>;
+}) {
+  const { t } = useTranslation();
+  const selectedTopoNode = node;
   let infoContent: ReactNode;
   switch (selectedTopoNode.type) {
     case 'cluster':
@@ -145,7 +198,7 @@ export function DetailPanel() {
   return (
     <Space direction="vertical" size={12} style={{ width: '100%' }} data-testid="detail-panel">
       {infoContent}
-      <MetricsSection node={selectedTopoNode} clusterId={selectedClusterId} />
+      <MetricsSection node={selectedTopoNode} clusterId={clusterId} />
       {logsRef && (
         <LogsSection namespace={logsRef.namespace} workloadName={logsRef.name} />
       )}
@@ -605,6 +658,87 @@ function WorkloadDetailView({ topoNode }: WorkloadDetailViewProps) {
         )}
       </Space>
     </ResourceCard>
+  );
+}
+
+interface ViewOptionsProps {
+  showFabric: boolean;
+  onFabricChange: (v: boolean) => void;
+  showWorkloads: boolean;
+  onWorkloadsChange: (v: boolean) => void;
+  title: string;
+  fabricLabel: string;
+  fabricHint: string;
+  workloadsLabel: string;
+  workloadsHint: string;
+}
+
+/**
+ * View-option toggles (P12 polish #2) — Fabric (inter-node network + HCCS) and
+ * Workloads (workload/pod fusion). Moved here from the left-tree header so the
+ * overview stays clean and the controls sit with the detail you're inspecting.
+ * Both write the Zustand topology store, so the graph / tree / panel share one
+ * topology-query cache key. testids unchanged (`fabric-toggle` /
+ * `fabric-toggle-switch` / `workloads-toggle` / `workloads-toggle-switch`) so
+ * the existing toggle-behaviour tests keep pinning them.
+ */
+function ViewOptions({
+  showFabric,
+  onFabricChange,
+  showWorkloads,
+  onWorkloadsChange,
+  title,
+  fabricLabel,
+  fabricHint,
+  workloadsLabel,
+  workloadsHint,
+}: ViewOptionsProps) {
+  return (
+    <ResourceCard title={title} testId="detail-panel-view-options">
+      <Space direction="vertical" size={8} style={{ width: '100%' }}>
+        <ViewToggle
+          testId="fabric-toggle"
+          checked={showFabric}
+          onChange={onFabricChange}
+          label={fabricLabel}
+          hint={fabricHint}
+        />
+        <ViewToggle
+          testId="workloads-toggle"
+          checked={showWorkloads}
+          onChange={onWorkloadsChange}
+          label={workloadsLabel}
+          hint={workloadsHint}
+        />
+      </Space>
+    </ResourceCard>
+  );
+}
+
+interface ViewToggleProps {
+  testId: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  hint: string;
+}
+
+function ViewToggle({ testId, checked, onChange, label, hint }: ViewToggleProps) {
+  return (
+    <Tooltip title={hint}>
+      <div data-testid={testId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Switch
+          size="small"
+          checked={checked}
+          onChange={onChange}
+          data-testid={`${testId}-switch`}
+          aria-label={label}
+        />
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {label}
+        </Text>
+      </div>
+    </Tooltip>
   );
 }
 

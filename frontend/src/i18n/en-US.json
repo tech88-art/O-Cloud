@@ -58,6 +58,7 @@
     "unreachableDescription": "Cannot reach the Grafana service at {{base}}. Make sure the dev docker-compose stack is up: docker compose -f deploy/dev/docker-compose.yaml up -d grafana"
   },
   "detailPanel": {
+    "viewOptions": "View options",
     "selectNode": "Select a node to view details",
     "staleSelection": "Selection is stale — pick another node",
     "errorTitle": "Failed to load details",

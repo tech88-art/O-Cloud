@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { Skeleton, Splitter, Switch, Tooltip, Tree, Typography } from 'antd';
+import { Skeleton, Splitter, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '@/components/EmptyState';
@@ -51,16 +51,12 @@ export default function OverviewPage() {
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
   const setSelectedNode = useTopologyStore((s) => s.setSelectedNode);
   const lastEventAt = useTopologyStore((s) => s.lastEventAt);
-  // ADR-0004 / RFC-003: the fabric toggle. Reads + writes the Zustand
-  // store so refreshes / WS reconnects keep the user's choice, and so
-  // <TopologyView> sees the same flag via `useClusterTopology` keyed on it.
+  // ADR-0004 / ADR-0005 / RFC-003: fabric + workloads flags. The TOGGLES now
+  // live in the right DetailPanel (P12 polish #2); here we only READ the flags
+  // and pass them to `useClusterTopology` so the left-tree query stays in
+  // lock-step with the graph + panel queries (one shared react-query cache key).
   const showFabric = useTopologyStore((s) => s.showFabric);
-  const setShowFabric = useTopologyStore((s) => s.setShowFabric);
-  // ADR-0005 / RFC-003: workloads toggle. Mirror of the fabric toggle —
-  // same store-based wiring so the left-tree topology query and the
-  // <TopologyView> graph query share one react-query cache entry.
   const showWorkloads = useTopologyStore((s) => s.showWorkloads);
-  const setShowWorkloads = useTopologyStore((s) => s.setShowWorkloads);
 
   // Auto-pick first cluster once the list lands. Idempotent: only runs if
   // nothing is selected yet.
@@ -140,18 +136,13 @@ export default function OverviewPage() {
                   idleLabel={t('ws.idle')}
                   lastEventLabel={t('ws.lastEventAt')}
                 />
-                <FabricToggle
-                  showFabric={showFabric}
-                  onChange={setShowFabric}
-                  label={t('overview.includeFabric')}
-                  hint={t('overview.fabricToggleHint')}
-                />
-                <WorkloadsToggle
-                  showWorkloads={showWorkloads}
-                  onChange={setShowWorkloads}
-                  label={t('overview.includeWorkloads')}
-                  hint={t('overview.workloadsToggleHint')}
-                />
+                {/*
+                 * P12 polish #2: the Fabric / Workloads view toggles moved out of
+                 * this tree header into the right DetailPanel (decluttered core
+                 * overview · controls sit with the detail you inspect). The store
+                 * flags they write are still read here (below) so the tree query
+                 * stays in lock-step with the graph + panel queries.
+                 */}
               </div>
               <LeftTree
                 treeData={treeData}
@@ -376,86 +367,5 @@ function formatTimestamp(iso: string): string {
   }
 }
 
-/**
- * ADR-0004 / RFC-003 fabric toggle. AntD `<Switch>` next to the WS-status
- * chip so the operator can flip "include inter-node fabric in the
- * topology" without leaving the page header. Default OFF — see the
- * Zustand store default — so small-cluster demos don't get drowned by
- * switch nodes the demo doesn't need.
- *
- * `data-testid` is the integration point for the Vitest cases that
- * assert the toggle behaviour (default off, click → API gets
- * `?includeFabric=true`, switch nodes render).
- */
-interface FabricToggleProps {
-  showFabric: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-  hint: string;
-}
-
-function FabricToggle({ showFabric, onChange, label, hint }: FabricToggleProps) {
-  return (
-    <Tooltip title={hint}>
-      <div
-        data-testid="fabric-toggle"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}
-      >
-        <Switch
-          size="small"
-          checked={showFabric}
-          onChange={onChange}
-          data-testid="fabric-toggle-switch"
-          aria-label={label}
-        />
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          {label}
-        </Text>
-      </div>
-    </Tooltip>
-  );
-}
-
-/**
- * ADR-0005 / RFC-003 workloads toggle. Mirror of `<FabricToggle>` — same
- * AntD `<Switch>` + `<Tooltip>` shape, same `data-testid` convention.
- * When ON the topology query gains `?includeWorkloads=true`, causing the
- * backend to emit workload + pod nodes plus binds-to / pd-pair edges
- * (see `services/cluster.ts` and `aggregator/topology.go:485-613`).
- *
- * Default OFF — workload fusion can add 30+ extra nodes on set-a-small;
- * we let the operator opt in to avoid drowning the small-cluster demo.
- */
-interface WorkloadsToggleProps {
-  showWorkloads: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-  hint: string;
-}
-
-function WorkloadsToggle({
-  showWorkloads,
-  onChange,
-  label,
-  hint,
-}: WorkloadsToggleProps) {
-  return (
-    <Tooltip title={hint}>
-      <div
-        data-testid="workloads-toggle"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}
-      >
-        <Switch
-          size="small"
-          checked={showWorkloads}
-          onChange={onChange}
-          data-testid="workloads-toggle-switch"
-          aria-label={label}
-        />
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          {label}
-        </Text>
-      </div>
-    </Tooltip>
-  );
-}
+// P12 polish #2: `FabricToggle` / `WorkloadsToggle` moved to `DetailPanel.tsx`
+// (as `ViewOptions`). The overview header now carries only the title + WS chip.

@@ -58,6 +58,7 @@
     "unreachableDescription": "无法连接到 Grafana 服务（{{base}}）。请确认 docker-compose 已启动且 Grafana 容器运行中：docker compose -f deploy/dev/docker-compose.yaml up -d grafana"
   },
   "detailPanel": {
+    "viewOptions": "视图选项",
     "selectNode": "选中一个节点查看详情",
     "staleSelection": "选中节点已失效，请重新选择",
     "errorTitle": "加载详情失败",
