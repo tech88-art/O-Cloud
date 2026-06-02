@@ -115,6 +115,15 @@ const NODE_HEIGHT_POD = 52;
  *  readable default while leaving room for the accent stripe + tag. */
 const NODE_WIDTH_NPU = 110;
 const NODE_HEIGHT_NPU = 56;
+/**
+ * Compact "status dot + name" row for workload / pod nodes (P12 polish #3).
+ * Replaces the full TopoNode card so the workloads view groups by owning worker
+ * into columns of dots instead of one off-screen flat row. WL_DOT_W keeps a long
+ * pod name (`qwen-8b-pd-prefill-0`) on one line under a CARD_W-wide column;
+ * WL_ROW_H is the vertical stride between stacked rows in a column.
+ */
+const WL_DOT_W = 168;
+const WL_ROW_H = 22;
 
 // Site-view geometry constants (CARD_*, NPU_GRID_*) + the pure `layoutWorkerNpus`
 // helper live in ./siteLayout (imported above) so this component file only
@@ -565,11 +574,81 @@ function NpuDotNode({ data }: NodeProps<Node<NpuDotData>>) {
   );
 }
 
+/**
+ * Status → dot colour for the compact workload/pod rows. Green = running /
+ * terminal-OK; yellow = pending; red = failed/error; grey = unknown. Extends the
+ * runbook's green/red NPU language with pending-yellow.
+ */
+function workloadStatusColor(status: string | undefined): string {
+  const s = (status ?? '').toLowerCase();
+  if (s === 'pending') return '#faad14';
+  if (['failed', 'error', 'faulty', 'down', 'degraded', 'crashloopbackoff'].includes(s)) {
+    return '#ff4d4f';
+  }
+  if (['running', 'succeeded', 'healthy', 'available', 'idle', 'active', 'ready'].includes(s)) {
+    return '#52c41a';
+  }
+  return '#bfbfbf';
+}
+
+interface WlDotData {
+  label: string;
+  topoType: TopologyNodeType;
+  status?: string;
+  selected: boolean;
+  [key: string]: unknown;
+}
+
+/**
+ * Compact workload/pod row (P12 polish #3): a status dot + (truncated) name,
+ * grouped by owning worker into columns by `layoutSiteTopology`. Workloads get a
+ * ⚙ prefix so the aggregate reads apart from its pods. Stays a real ReactFlow
+ * node so click-select (→ DetailPanel) + pd-pair / binds-to / runs-on edges keep
+ * working.
+ */
+function WorkloadDotNode({ data }: NodeProps<Node<WlDotData>>) {
+  const color = workloadStatusColor(data.status);
+  const isWorkload = data.topoType === NODE_TYPE_WORKLOAD;
+  return (
+    <div
+      data-testid={`topo-node-${data.topoType}`}
+      title={`${data.label} · ${data.status ?? ''}`}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        width: WL_DOT_W,
+        height: WL_ROW_H - 4,
+        padding: '0 6px',
+        boxSizing: 'border-box',
+        background: data.selected ? '#e6f4ff' : 'transparent',
+        border: `1px solid ${data.selected ? '#1677ff' : 'transparent'}`,
+        borderRadius: 4,
+        fontSize: 11,
+        color: '#1f1f1f',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+      }}
+    >
+      <Handle type="target" position={Position.Top} isConnectable={false} style={HIDDEN_HANDLE} />
+      <span
+        style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }}
+      />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {isWorkload ? `⚙ ${data.label}` : data.label}
+      </span>
+      <Handle type="source" position={Position.Bottom} isConnectable={false} style={HIDDEN_HANDLE} />
+    </div>
+  );
+}
+
 const NODE_TYPES = {
   topo: memo(TopoNode),
   cluster: memo(ClusterNode),
   worker: memo(WorkerCardNode),
   npudot: memo(NpuDotNode),
+  wldot: memo(WorkloadDotNode),
 };
 const EDGE_TYPES = { bandwidth: BandwidthEdge };
 
@@ -578,6 +657,7 @@ function rendererTypeFor(t: TopologyNodeType): string {
   if (t === 'cluster') return 'cluster';
   if (t === 'node' || t === 'nodepool') return 'worker';
   if (t === 'npu') return 'npudot';
+  if (t === NODE_TYPE_WORKLOAD || t === NODE_TYPE_POD) return 'wldot';
   return 'topo';
 }
 
@@ -778,11 +858,45 @@ function layoutSiteTopology(
   };
   clusters.forEach((c) => pos.set(c.id, { x: -90, y: CLUSTER_Y }));
   rowSpread(switches, SWITCH_Y, 150);
-  const wlY = WORKER_Y + CARD_H + 80;
-  rowSpread(workloads, wlY, 180);
-  rowSpread(pods, wlY + 96, 168);
-  rowSpread(slices, wlY + 192, 150);
-  rowSpread(misc, wlY + 288, 150);
+
+  // Bottom region (P12 polish #3): workloads + pods grouped by OWNING WORKER
+  // into columns, not one flat off-screen row. Each worker's pods stack in a
+  // column x-aligned under its card (the card is the column header); cross-worker
+  // workload aggregates + any unscheduled (no nodeName) pods get columns to the
+  // right. Compact "status dot + name" rows (WorkloadDotNode) keep it dense.
+  const bottomY = WORKER_Y + CARD_H + 64;
+  const colX = (k: number) => startX + k * (CARD_W + CARD_GAP);
+  const podsByWorker = new Map<string, TopologyNode[]>();
+  const orphanPods: TopologyNode[] = [];
+  for (const p of pods) {
+    const wn = typeof p.attributes?.nodeName === 'string' ? p.attributes.nodeName : '';
+    if (wn && pos.has(wn)) {
+      const arr = podsByWorker.get(wn);
+      if (arr) arr.push(p);
+      else podsByWorker.set(wn, [p]);
+    } else {
+      orphanPods.push(p);
+    }
+  }
+  workers.forEach((w, i) => {
+    (podsByWorker.get(w.id) ?? []).forEach((p, j) =>
+      pos.set(p.id, { x: colX(i), y: bottomY + j * WL_ROW_H }),
+    );
+  });
+  let extraCol = workers.length;
+  workloads.forEach((wl, j) =>
+    pos.set(wl.id, { x: colX(extraCol), y: bottomY + j * WL_ROW_H }),
+  );
+  if (orphanPods.length > 0) {
+    extraCol += 1;
+    orphanPods.forEach((p, j) =>
+      pos.set(p.id, { x: colX(extraCol), y: bottomY + j * WL_ROW_H }),
+    );
+  }
+  // Slices (only present when an NPU is drilled/expanded) + standalone network
+  // nodes keep the simple centered-row layout, parked below the bottom columns.
+  rowSpread(slices, bottomY + 340, 150);
+  rowSpread(misc, bottomY + 412, 150);
 
   const dataFor = (n: TopologyNode): Record<string, unknown> => {
     const selected = n.id === selectedNodeId;
