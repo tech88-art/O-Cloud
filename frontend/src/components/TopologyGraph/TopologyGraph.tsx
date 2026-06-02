@@ -124,6 +124,16 @@ const NODE_HEIGHT_NPU = 56;
  */
 const WL_DOT_W = 168;
 const WL_ROW_H = 22;
+/**
+ * Drilled-into-NPU detail view (P12 polish #3): the focused NPU renders as a
+ * labelled CARD (the "910B" parent layer), with its slices in a neat grid
+ * directly below — a clear 2-layer hierarchy, replacing the old lone-dot-with-
+ * slices-flung-off-screen view. SLICE_GRID_COLS caps a row before wrapping.
+ */
+const NPU_CARD_W = 184;
+const NPU_CARD_H = 58;
+const SLICE_GRID_COLS = 4;
+const SLICE_GRID_GAP = 28;
 
 // Site-view geometry constants (CARD_*, NPU_GRID_*) + the pure `layoutWorkerNpus`
 // helper live in ./siteLayout (imported above) so this component file only
@@ -536,6 +546,8 @@ interface NpuDotData {
   status?: string;
   selected: boolean;
   pcieBandwidthGBps?: number | null;
+  /** Drilled-into anchor (P12 polish #3) → render as a labelled card, not a dot. */
+  asAnchor?: boolean;
   [key: string]: unknown;
 }
 
@@ -546,11 +558,58 @@ interface NpuDotData {
  * edges keep working.
  */
 function NpuDotNode({ data }: NodeProps<Node<NpuDotData>>) {
+  const { t } = useTranslation();
   const degraded = NPU_DEGRADED.has(data.status ?? '');
   const title =
     data.pcieBandwidthGBps != null
       ? `${data.label} · ${data.status ?? ''} · PCIe ${data.pcieBandwidthGBps} GB/s`
       : `${data.label} · ${data.status ?? ''}`;
+
+  // Drilled-into anchor (P12 polish #3): a labelled card — the "910B" parent
+  // layer — clearly distinct from the slice cells laid out directly below it.
+  if (data.asAnchor) {
+    return (
+      <div
+        data-testid="topo-node-npu"
+        title={title}
+        style={{
+          width: NPU_CARD_W,
+          height: NPU_CARD_H,
+          background: '#ffffff',
+          border: `1.5px solid ${data.selected ? '#1677ff' : '#13c2c2'}`,
+          borderRadius: 8,
+          boxShadow: data.selected
+            ? '0 0 0 3px rgba(22, 119, 255, 0.25)'
+            : '0 1px 4px rgba(0, 0, 0, 0.08)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxSizing: 'border-box',
+          cursor: 'pointer',
+        }}
+      >
+        <Handle type="target" position={Position.Top} isConnectable={false} style={HIDDEN_HANDLE} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span
+            style={{
+              width: 9,
+              height: 9,
+              borderRadius: '50%',
+              background: degraded ? '#ff4d4f' : '#52c41a',
+              flexShrink: 0,
+            }}
+          />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#1f2937' }}>{data.label}</span>
+        </div>
+        <div style={{ fontSize: 9, color: '#13a8a8', marginTop: 2, letterSpacing: 0.3 }}>
+          {t('detailPanel.type.npu')} · Ascend 910B
+        </div>
+        <Handle type="source" position={Position.Bottom} isConnectable={false} style={HIDDEN_HANDLE} />
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="topo-node-npu"
@@ -803,6 +862,12 @@ function layoutSiteTopology(
 ): { nodes: Node[]; edges: Edge[] } {
   const byId = new Map(topology.nodes.map((n) => [n.id, n] as const));
 
+  // P12 polish #3: are we DRILLED into a single NPU? (focusedNodeId points at an
+  // npu → the topology is that NPU + its slices). Drives the 2-layer detail
+  // layout below + the NPU's card-vs-dot rendering.
+  const npuAnchorId =
+    focusedNodeId && byId.get(focusedNodeId)?.type === 'npu' ? focusedNodeId : null;
+
   // worker → its NPU ids (via contains edges).
   const npusByWorker = new Map<string, string[]>();
   for (const e of topology.edges) {
@@ -898,6 +963,34 @@ function layoutSiteTopology(
   rowSpread(slices, bottomY + 340, 150);
   rowSpread(misc, bottomY + 412, 150);
 
+  // P12 polish #3: DRILLED into an NPU → override the above with a clean 2-layer
+  // detail layout. The NPU card sits centred at top; its slices form a neat grid
+  // directly below (≤SLICE_GRID_COLS per row, wrapping). The short NPU→slice
+  // contains edges then read as an obvious parent→children fan instead of lines
+  // disappearing off-screen.
+  if (npuAnchorId) {
+    const anchorSlices: TopologyNode[] = [];
+    for (const e of topology.edges) {
+      if (e.type === EDGE_TYPE_CONTAINS && e.source === npuAnchorId) {
+        const s = byId.get(e.target);
+        if (s?.type === 'slice') anchorSlices.push(s);
+      }
+    }
+    pos.set(npuAnchorId, { x: -NPU_CARD_W / 2, y: WORKER_Y });
+    const perRow = Math.min(Math.max(anchorSlices.length, 1), SLICE_GRID_COLS);
+    const stepX = NODE_WIDTH + SLICE_GRID_GAP;
+    const stepY = NODE_HEIGHT + 22;
+    const gridW = perRow * NODE_WIDTH + (perRow - 1) * SLICE_GRID_GAP;
+    const gx = -gridW / 2;
+    const gy = WORKER_Y + NPU_CARD_H + 70;
+    anchorSlices.forEach((s, i) => {
+      pos.set(s.id, {
+        x: gx + (i % perRow) * stepX,
+        y: gy + Math.floor(i / perRow) * stepY,
+      });
+    });
+  }
+
   const dataFor = (n: TopologyNode): Record<string, unknown> => {
     const selected = n.id === selectedNodeId;
     if (n.type === 'cluster') {
@@ -927,6 +1020,7 @@ function layoutSiteTopology(
         label: n.label,
         status: n.status,
         selected,
+        asAnchor: n.id === npuAnchorId,
         pcieBandwidthGBps:
           typeof n.attributes?.pcieBandwidthGBps === 'number'
             ? n.attributes.pcieBandwidthGBps
@@ -944,7 +1038,11 @@ function layoutSiteTopology(
 
   const sizeFor = (n: TopologyNode): { width: number; height: number } | undefined => {
     if (n.type === 'node' || n.type === 'nodepool') return { width: CARD_W, height: CARD_H };
-    if (n.type === 'npu') return { width: NPU_CIRCLE, height: NPU_CIRCLE };
+    if (n.type === 'npu') {
+      return n.id === npuAnchorId
+        ? { width: NPU_CARD_W, height: NPU_CARD_H }
+        : { width: NPU_CIRCLE, height: NPU_CIRCLE };
+    }
     return undefined; // cluster pill + TopoNode types size themselves
   };
 
