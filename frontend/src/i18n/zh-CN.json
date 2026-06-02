@@ -50,7 +50,14 @@
     },
     "hccs": {
       "ringTitle": "HCCS 环 · 组内 NPU 高速互联(调度亲和卖点)"
-    }
+    },
+    "slice": {
+      "core": "核",
+      "allocated": "已分配",
+      "free": "空闲"
+    },
+    "workloadsGroup": "工作负载",
+    "unscheduledGroup": "未调度"
   },
   "grafanaPanel": {
     "errorTitle": "Grafana 面板异常",

@@ -133,7 +133,15 @@ const WL_ROW_H = 22;
 const NPU_CARD_W = 184;
 const NPU_CARD_H = 58;
 const SLICE_GRID_COLS = 4;
-const SLICE_GRID_GAP = 28;
+const SLICE_GRID_GAP = 10;
+/**
+ * MIG-style slice cell (P12 polish #2a). Each NPU slice renders as a partition
+ * cell — template + AI-core/VRAM size + allocated/free status + the pod that
+ * holds it — laid out as a contiguous bar under the NPU card so "910B 切成几片 ·
+ * 各多大 · 谁占用" reads at a glance (cf. NVIDIA MIG / nvidia-smi GI/CI table).
+ */
+const SLICE_CELL_W = 156;
+const SLICE_CELL_H = 74;
 
 // Site-view geometry constants (CARD_*, NPU_GRID_*) + the pure `layoutWorkerNpus`
 // helper live in ./siteLayout (imported above) so this component file only
@@ -668,6 +676,15 @@ interface WlDotData {
 function WorkloadDotNode({ data }: NodeProps<Node<WlDotData>>) {
   const color = workloadStatusColor(data.status);
   const isWorkload = data.topoType === NODE_TYPE_WORKLOAD;
+  // PD-disaggregation role chip (P12 polish #2b): surface prefill / decode pods
+  // so the P↔D split (a key selling point) reads without opening details.
+  const role = isWorkload
+    ? null
+    : /prefill/i.test(data.label)
+      ? 'P'
+      : /decode/i.test(data.label)
+        ? 'D'
+        : null;
   return (
     <div
       data-testid={`topo-node-${data.topoType}`}
@@ -694,10 +711,138 @@ function WorkloadDotNode({ data }: NodeProps<Node<WlDotData>>) {
       <span
         style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }}
       />
+      {role && (
+        <span
+          title={role === 'P' ? 'Prefill' : 'Decode'}
+          style={{
+            fontSize: 8,
+            fontWeight: 700,
+            lineHeight: '12px',
+            width: 12,
+            height: 12,
+            textAlign: 'center',
+            borderRadius: 3,
+            flexShrink: 0,
+            background: role === 'P' ? '#1677ff' : '#722ed1',
+            color: '#ffffff',
+          }}
+        >
+          {role}
+        </span>
+      )}
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {isWorkload ? `⚙ ${data.label}` : data.label}
       </span>
       <Handle type="source" position={Position.Bottom} isConnectable={false} style={HIDDEN_HANDLE} />
+    </div>
+  );
+}
+
+interface SliceCellData {
+  label: string;
+  template?: string;
+  aiCore?: number | null;
+  vramMiB?: number | null;
+  status?: string;
+  allocatedPod?: string | null;
+  selected: boolean;
+  [key: string]: unknown;
+}
+
+/**
+ * MIG-style NPU-slice partition cell (P12 polish #2a). Replaces the plain
+ * one-line slice card: shows the slice's template + AI-core/VRAM size, an
+ * allocated/free badge, and the holding pod — so a contiguous row of these
+ * reads as the 910B's partition (how many slices · each how big · who holds it),
+ * mirroring NVIDIA MIG / nvidia-smi GI-CI layouts.
+ */
+function SliceCellNode({ data }: NodeProps<Node<SliceCellData>>) {
+  const { t } = useTranslation();
+  const allocated = (data.status ?? '').toLowerCase() === 'allocated';
+  const m = /slice-\d+$/.exec(data.label);
+  const shortLabel = m ? m[0] : data.label;
+  const gb = typeof data.vramMiB === 'number' ? Math.round(data.vramMiB / 1024) : null;
+  const sizeBits = [
+    data.template,
+    typeof data.aiCore === 'number' ? `${data.aiCore} ${t('topology.slice.core')}` : null,
+    gb != null ? `${gb} GB` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <div
+      data-testid="topo-node-slice"
+      title={`${shortLabel} · ${data.status ?? ''}${data.allocatedPod ? ` · ${data.allocatedPod}` : ''}`}
+      style={{
+        width: SLICE_CELL_W,
+        height: SLICE_CELL_H,
+        boxSizing: 'border-box',
+        padding: '5px 7px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        background: allocated ? '#e6fffb' : '#fafafa',
+        border: `1.5px solid ${data.selected ? '#1677ff' : allocated ? '#13c2c2' : '#d9d9d9'}`,
+        borderRadius: 6,
+        boxShadow: data.selected ? '0 0 0 3px rgba(22, 119, 255, 0.25)' : 'none',
+        cursor: 'pointer',
+      }}
+    >
+      <Handle type="target" position={Position.Top} isConnectable={false} style={HIDDEN_HANDLE} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#08979c' }}>{shortLabel}</span>
+        <span
+          style={{
+            fontSize: 9,
+            lineHeight: '14px',
+            padding: '0 6px',
+            borderRadius: 8,
+            background: allocated ? '#13c2c2' : '#f0f0f0',
+            color: allocated ? '#ffffff' : '#8c8c8c',
+          }}
+        >
+          {allocated ? t('topology.slice.allocated') : t('topology.slice.free')}
+        </span>
+      </div>
+      <div style={{ fontSize: 10, color: '#595959' }}>{sizeBits}</div>
+      <div
+        style={{
+          fontSize: 9,
+          color: allocated ? '#08979c' : '#bfbfbf',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          marginTop: 'auto',
+        }}
+      >
+        {allocated && data.allocatedPod ? `▸ ${data.allocatedPod}` : '—'}
+      </div>
+      <Handle type="source" position={Position.Bottom} isConnectable={false} style={HIDDEN_HANDLE} />
+    </div>
+  );
+}
+
+/**
+ * Column-header caption (P12 polish #2b) for the grouped workloads view — a
+ * small non-interactive label that sits above each bottom column (owning worker
+ * name / "工作负载" / "未调度") so it's obvious what each column of dots is.
+ */
+function CaptionNode({ data }: NodeProps<Node<{ text?: string; i18nKey?: string }>>) {
+  const { t } = useTranslation();
+  const label = data.i18nKey ? t(data.i18nKey) : data.text ?? '';
+  return (
+    <div
+      style={{
+        fontSize: 11,
+        fontWeight: 700,
+        color: '#8c8c8c',
+        whiteSpace: 'nowrap',
+        pointerEvents: 'none',
+        borderBottom: '1px solid #f0f0f0',
+        paddingBottom: 2,
+      }}
+    >
+      {label}
     </div>
   );
 }
@@ -708,6 +853,8 @@ const NODE_TYPES = {
   worker: memo(WorkerCardNode),
   npudot: memo(NpuDotNode),
   wldot: memo(WorkloadDotNode),
+  slicecell: memo(SliceCellNode),
+  caption: memo(CaptionNode),
 };
 const EDGE_TYPES = { bandwidth: BandwidthEdge };
 
@@ -717,6 +864,7 @@ function rendererTypeFor(t: TopologyNodeType): string {
   if (t === 'node' || t === 'nodepool') return 'worker';
   if (t === 'npu') return 'npudot';
   if (t === NODE_TYPE_WORKLOAD || t === NODE_TYPE_POD) return 'wldot';
+  if (t === 'slice') return 'slicecell';
   return 'topo';
 }
 
@@ -943,20 +1091,25 @@ function layoutSiteTopology(
       orphanPods.push(p);
     }
   }
+  // Column-header captions (P12 polish #2b): a label above each populated
+  // bottom column so it's obvious whose pods these are / what the extra columns
+  // hold. Built as synthetic `caption` nodes appended after the topology nodes.
+  const captions: Array<{ id: string; x: number; y: number; text?: string; i18nKey?: string }> = [];
+  const capY = bottomY - 26;
   workers.forEach((w, i) => {
-    (podsByWorker.get(w.id) ?? []).forEach((p, j) =>
-      pos.set(p.id, { x: colX(i), y: bottomY + j * WL_ROW_H }),
-    );
+    const colPods = podsByWorker.get(w.id) ?? [];
+    colPods.forEach((p, j) => pos.set(p.id, { x: colX(i), y: bottomY + j * WL_ROW_H }));
+    if (colPods.length > 0) captions.push({ id: `cap-${w.id}`, x: colX(i), y: capY, text: w.label });
   });
   let extraCol = workers.length;
-  workloads.forEach((wl, j) =>
-    pos.set(wl.id, { x: colX(extraCol), y: bottomY + j * WL_ROW_H }),
-  );
+  if (workloads.length > 0) {
+    workloads.forEach((wl, j) => pos.set(wl.id, { x: colX(extraCol), y: bottomY + j * WL_ROW_H }));
+    captions.push({ id: 'cap-workloads', x: colX(extraCol), y: capY, i18nKey: 'topology.workloadsGroup' });
+  }
   if (orphanPods.length > 0) {
     extraCol += 1;
-    orphanPods.forEach((p, j) =>
-      pos.set(p.id, { x: colX(extraCol), y: bottomY + j * WL_ROW_H }),
-    );
+    orphanPods.forEach((p, j) => pos.set(p.id, { x: colX(extraCol), y: bottomY + j * WL_ROW_H }));
+    captions.push({ id: 'cap-orphan', x: colX(extraCol), y: capY, i18nKey: 'topology.unscheduledGroup' });
   }
   // Slices (only present when an NPU is drilled/expanded) + standalone network
   // nodes keep the simple centered-row layout, parked below the bottom columns.
@@ -978,11 +1131,11 @@ function layoutSiteTopology(
     }
     pos.set(npuAnchorId, { x: -NPU_CARD_W / 2, y: WORKER_Y });
     const perRow = Math.min(Math.max(anchorSlices.length, 1), SLICE_GRID_COLS);
-    const stepX = NODE_WIDTH + SLICE_GRID_GAP;
-    const stepY = NODE_HEIGHT + 22;
-    const gridW = perRow * NODE_WIDTH + (perRow - 1) * SLICE_GRID_GAP;
-    const gx = -gridW / 2;
-    const gy = WORKER_Y + NPU_CARD_H + 70;
+    const stepX = SLICE_CELL_W + SLICE_GRID_GAP;
+    const stepY = SLICE_CELL_H + 14;
+    const barW = perRow * SLICE_CELL_W + (perRow - 1) * SLICE_GRID_GAP;
+    const gx = -barW / 2;
+    const gy = WORKER_Y + NPU_CARD_H + 48;
     anchorSlices.forEach((s, i) => {
       pos.set(s.id, {
         x: gx + (i % perRow) * stepX,
@@ -1027,6 +1180,19 @@ function layoutSiteTopology(
             : null,
       };
     }
+    if (n.type === 'slice') {
+      const a = (n.attributes ?? {}) as Record<string, unknown>;
+      const allocatedTo = a.allocatedTo as { podName?: string } | undefined | null;
+      return {
+        label: n.label,
+        template: typeof a.template === 'string' ? a.template : undefined,
+        aiCore: typeof a.aiCore === 'number' ? a.aiCore : null,
+        vramMiB: typeof a.vramMiB === 'number' ? a.vramMiB : null,
+        status: n.status,
+        allocatedPod: allocatedTo?.podName ?? null,
+        selected,
+      };
+    }
     return {
       label: n.label,
       topoType: n.type,
@@ -1043,6 +1209,7 @@ function layoutSiteTopology(
         ? { width: NPU_CARD_W, height: NPU_CARD_H }
         : { width: NPU_CIRCLE, height: NPU_CIRCLE };
     }
+    if (n.type === 'slice') return { width: SLICE_CELL_W, height: SLICE_CELL_H };
     return undefined; // cluster pill + TopoNode types size themselves
   };
 
@@ -1063,9 +1230,17 @@ function layoutSiteTopology(
   });
 
   const flowEdges: Edge[] = topology.edges
-    // Drop worker→npu contains: the NPU circle sits INSIDE the worker card,
-    // so a connector would be a tiny ugly stub. Containment is now visual.
-    .filter((e) => !(e.type === EDGE_TYPE_CONTAINS && byId.get(e.target)?.type === 'npu'))
+    // Drop worker→npu AND npu→slice contains edges: the NPU circle sits INSIDE
+    // the worker card, and (P12 polish #2a) the drilled-NPU slice cells form a
+    // partition bar directly under the NPU card — in both cases a connector
+    // would be a tiny ugly stub. Containment is conveyed visually instead.
+    .filter(
+      (e) =>
+        !(
+          e.type === EDGE_TYPE_CONTAINS &&
+          (byId.get(e.target)?.type === 'npu' || byId.get(e.target)?.type === 'slice')
+        ),
+    )
     .map((e, i) => {
       const isBandwidth = BANDWIDTH_EDGE_TYPES.has(e.type);
       return {
@@ -1080,7 +1255,19 @@ function layoutSiteTopology(
       };
     });
 
-  return { nodes: flowNodes, edges: flowEdges };
+  // P12 polish #2b: synthetic, non-interactive column-header nodes for the
+  // grouped workloads view (not part of the topology DTO).
+  const captionNodes: Node[] = captions.map((c) => ({
+    id: c.id,
+    type: 'caption',
+    position: { x: c.x, y: c.y },
+    data: c.i18nKey ? { i18nKey: c.i18nKey } : { text: c.text },
+    draggable: false,
+    selectable: false,
+    zIndex: 0,
+  }));
+
+  return { nodes: [...flowNodes, ...captionNodes], edges: flowEdges };
 }
 
 /**

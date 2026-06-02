@@ -50,7 +50,14 @@
     },
     "hccs": {
       "ringTitle": "HCCS ring · intra-group NPU interconnect (scheduling affinity)"
-    }
+    },
+    "slice": {
+      "core": "core",
+      "allocated": "Allocated",
+      "free": "Free"
+    },
+    "workloadsGroup": "Workloads",
+    "unscheduledGroup": "Unscheduled"
   },
   "grafanaPanel": {
     "errorTitle": "Grafana panel error",
