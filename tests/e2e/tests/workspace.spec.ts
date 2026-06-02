@@ -123,14 +123,20 @@ test.describe('One-page workspace — main flow', () => {
     }).toBeGreaterThan(0);
   });
 
-  test('fabric toggle → bandwidth (network/hccs) edges render', async ({ page }) => {
+  test('contextual edges: fabric links appear only for the selected node', async ({ page }) => {
     await page.goto('/overview');
     await expect(page.getByTestId('topology-graph')).toBeVisible({ timeout: 20_000 });
 
     await page.getByTestId('fabric-toggle-switch').click();
+    await page.waitForTimeout(2000);
 
-    // network + hccs + fabric-link edges render via the custom BandwidthEdge
-    // (hover hit-path carries data-testid `bandwidth-edge-hit-*`).
+    // Focus+context declutter: even with fabric data ON, cross-node bandwidth
+    // edges stay hidden until a node is active — idle canvas shows only the
+    // contains skeleton (no hairball).
+    expect(await page.locator('[data-testid^="bandwidth-edge-hit-"]').count()).toBe(0);
+
+    // Selecting a worker reveals just its network / fabric-link edges.
+    await page.locator(`.react-flow__node[data-id="${FIRST_NODE_ID}"]`).dispatchEvent('click');
     await expect.poll(
       async () => await page.locator('[data-testid^="bandwidth-edge-hit-"]').count(),
       { timeout: 15_000 },

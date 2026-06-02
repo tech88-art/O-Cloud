@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
@@ -918,6 +918,27 @@ function TopologyGraphInner({
     [visibleTopology, selectedNodeId],
   );
 
+  // Contextual edges (focus+context · declutter). The `contains` skeleton
+  // (cluster→worker / npu→slice) always renders so the hierarchy is legible,
+  // but the cross-node fabric (network / hccs / fabric-link / runs-on /
+  // binds-to / pd-pair) is hidden UNLESS its endpoint is the active node
+  // (hovered, else selected). With nothing active the canvas shows only the
+  // skeleton — so even Fabric+Workloads ON no longer produces a hairball;
+  // hover/select a node to reveal just its links (industry focus+context
+  // pattern · Weave Scope / Datadog / hairball-busting).
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const activeEdgeNodeId = hoveredId ?? selectedNodeId;
+  const displayEdges = useMemo(
+    () =>
+      edges.map((e) => {
+        const topoType = (e.data as { topoEdgeType?: string } | undefined)?.topoEdgeType;
+        const isSkeleton = topoType === 'contains';
+        const incident = e.source === activeEdgeNodeId || e.target === activeEdgeNodeId;
+        return isSkeleton || incident ? e : { ...e, hidden: true };
+      }),
+    [edges, activeEdgeNodeId],
+  );
+
   const handleNodeClick = useCallback<NodeMouseHandler>(
     (_event, node) => {
       onNodeClick?.(node.id);
@@ -972,11 +993,13 @@ function TopologyGraphInner({
     <div ref={wrapperRef} data-testid="topology-graph" style={{ width: '100%', height: '100%' }}>
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={displayEdges}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         onNodeClick={handleNodeClick}
         onNodeDoubleClick={handleNodeDoubleClick}
+        onNodeMouseEnter={(_, node) => setHoveredId(node.id)}
+        onNodeMouseLeave={() => setHoveredId(null)}
         fitView
         fitViewOptions={FIT_VIEW_OPTIONS}
         minZoom={0.2}
