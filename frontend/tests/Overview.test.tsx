@@ -140,6 +140,12 @@ vi.mock('@/services/api', () => ({
 const { default: OverviewPage } = await import('@/pages/Overview');
 const { DetailPanel } = await import('@/pages/Overview/DetailPanel');
 const { useTopologyWS } = await import('@/hooks/useTopologyWS');
+// P12 polish (HCCS ring): pure layout helper — imported directly from its
+// React-free module so the in-card grouping/geometry can be unit-tested
+// without the (jsdom-stubbed) canvas renderer running.
+const { layoutWorkerNpus } = await import(
+  '@/components/TopologyGraph/siteLayout'
+);
 
 // -------- Mock WebSocket --------
 
@@ -1350,5 +1356,46 @@ describe('useTopologyWS', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('layoutWorkerNpus — in-card HCCS grouping (P12 polish)', () => {
+  it('groups 8 NPUs into their 2 hccsGroups → 2 ring enclosures, one row each', () => {
+    const npus = Array.from({ length: 8 }, (_, i) => ({
+      id: `w-npu-${i}`,
+      hccsGroup: i < 4 ? 'w-hccs-0' : 'w-hccs-1',
+      index: i,
+    }));
+    const { dotRel, rings } = layoutWorkerNpus(npus);
+
+    // All 8 dots positioned.
+    expect(dotRel).toHaveLength(8);
+    // One ring per named group, captioned from the group ordinal, 4 NPUs each.
+    expect(rings).toHaveLength(2);
+    expect(rings.map((r) => r.shortLabel)).toEqual(['HCCS-0', 'HCCS-1']);
+    expect(rings.map((r) => r.npuCount)).toEqual([4, 4]);
+    // Group 0 sits above group 1 in its own row and the boxes don't overlap.
+    expect(rings[0]!.y).toBeLessThan(rings[1]!.y);
+    expect(rings[0]!.y + rings[0]!.h).toBeLessThanOrEqual(rings[1]!.y);
+    // Each ring spans the 4-column width, comfortably inside the card.
+    expect(rings[0]!.w).toBeGreaterThan(100);
+    expect(rings[0]!.w).toBeLessThan(188);
+  });
+
+  it('sorts NPUs within a group by index regardless of input order', () => {
+    const { dotRel } = layoutWorkerNpus([
+      { id: 'b', hccsGroup: 'g0', index: 3 },
+      { id: 'a', hccsGroup: 'g0', index: 1 },
+    ]);
+    const ax = dotRel.find((d) => d.id === 'a')!.x;
+    const bx = dotRel.find((d) => d.id === 'b')!.x;
+    expect(ax).toBeLessThan(bx); // index 1 lands left of index 3
+  });
+
+  it('emits no ring for ungrouped NPUs or a lone group member', () => {
+    // No hccsGroup → positioned, but not a ring.
+    expect(layoutWorkerNpus([{ id: 'x', hccsGroup: '', index: 0 }]).rings).toHaveLength(0);
+    // Named group with a single member → no intra-group peer → no ring.
+    expect(layoutWorkerNpus([{ id: 'y', hccsGroup: 'g0', index: 0 }]).rings).toHaveLength(0);
   });
 });

@@ -47,6 +47,9 @@
     },
     "breadcrumb": {
       "site": "站点"
+    },
+    "hccs": {
+      "ringTitle": "HCCS 环 · 组内 NPU 高速互联(调度亲和卖点)"
     }
   },
   "grafanaPanel": {

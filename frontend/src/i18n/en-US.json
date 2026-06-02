@@ -47,6 +47,9 @@
     },
     "breadcrumb": {
       "site": "Site"
+    },
+    "hccs": {
+      "ringTitle": "HCCS ring · intra-group NPU interconnect (scheduling affinity)"
     }
   },
   "grafanaPanel": {

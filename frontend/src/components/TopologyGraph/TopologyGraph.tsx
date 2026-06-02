@@ -21,6 +21,15 @@ import { AimOutlined, CloseOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { StatusTag, type StatusTone } from '@/components/StatusTag';
 import { BandwidthEdge } from './BandwidthEdge';
+import {
+  CARD_W,
+  CARD_H,
+  CARD_GAP,
+  NPU_CIRCLE,
+  NPU_GRID_COLS,
+  layoutWorkerNpus,
+  type HccsRingGeom,
+} from './siteLayout';
 import type { Topology, TopologyEdge, TopologyNode } from '@/services/cluster';
 
 /**
@@ -106,16 +115,9 @@ const NODE_HEIGHT_POD = 52;
 const NODE_WIDTH_NPU = 110;
 const NODE_HEIGHT_NPU = 56;
 
-/**
- * P12 site-view layout constants (runbook-style cards + circles). Each worker
- * renders as a card containing its NPUs as a 2×N grid of status circles
- * (NUMA-split), workers laid out in a horizontal row under the cluster pill.
- */
-const CARD_W = 188;
-const CARD_H = 196;
-const CARD_GAP = 44;
-const NPU_CIRCLE = 26;
-const NPU_GRID_COLS = 4;
+// Site-view geometry constants (CARD_*, NPU_GRID_*) + the pure `layoutWorkerNpus`
+// helper live in ./siteLayout (imported above) so this component file only
+// exports components (react-refresh) and the layout maths stays unit-testable.
 
 /**
  * Initial + on-resize `fitView` options. The card row is ~640px wide; padding
@@ -410,6 +412,10 @@ interface WorkerCardData {
   npuCount: number;
   numaSplit: boolean;
   selected: boolean;
+  /** In-card HCCS ring enclosures (one per hccsGroup · see `layoutWorkerNpus`). */
+  hccsRings: HccsRingGeom[];
+  /** Draw the HCCS rings? True only when this worker is the drilled-into anchor. */
+  showHccsRing: boolean;
   [key: string]: unknown;
 }
 
@@ -421,6 +427,8 @@ interface WorkerCardData {
  * footprint (so they stay individually selectable + edge-anchorable).
  */
 function WorkerCardNode({ data }: NodeProps<Node<WorkerCardData>>) {
+  const { t } = useTranslation();
+  const showRings = data.showHccsRing && (data.hccsRings?.length ?? 0) > 0;
   return (
     <div
       data-testid="topo-node-node"
@@ -437,6 +445,55 @@ function WorkerCardNode({ data }: NodeProps<Node<WorkerCardData>>) {
       }}
     >
       <Handle type="target" position={Position.Top} isConnectable={false} style={HIDDEN_HANDLE} />
+      {/*
+       * HCCS ring overlay (P12 polish · backlog #1). Drilled into this worker →
+       * draw a dashed purple enclosure around each hccsGroup's NPU dots, with a
+       * fieldset-style "HCCS-n" caption. Pure decoration (pointer-events none)
+       * laid out on the SAME grid constants as the dot nodes, so it stays
+       * aligned at any zoom. Visualises "HCCS group 共址" (runbook D6).
+       */}
+      {showRings && (
+        <svg
+          data-testid="hccs-ring-overlay"
+          width={CARD_W}
+          height={CARD_H}
+          style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none' }}
+        >
+          {data.hccsRings.map((r) => (
+            <g key={r.groupId} data-testid={`hccs-ring-${r.groupId}`}>
+              <rect
+                x={r.x}
+                y={r.y}
+                width={r.w}
+                height={r.h}
+                rx={Math.min(r.w, r.h) / 2}
+                ry={Math.min(r.w, r.h) / 2}
+                fill="rgba(114, 46, 209, 0.06)"
+                stroke="#722ed1"
+                strokeWidth={1.25}
+                strokeDasharray="5 4"
+              >
+                <title>{t('topology.hccs.ringTitle')}</title>
+              </rect>
+              <text
+                x={r.x + 9}
+                y={r.y + 3}
+                fontSize={8}
+                fontWeight={700}
+                fill="#722ed1"
+                style={{
+                  paintOrder: 'stroke',
+                  stroke: '#ffffff',
+                  strokeWidth: 3,
+                  strokeLinejoin: 'round',
+                }}
+              >
+                {r.shortLabel}
+              </text>
+            </g>
+          ))}
+        </svg>
+      )}
       <div style={{ textAlign: 'center', paddingTop: 10 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#1f2937' }}>{data.label}</div>
         <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>
@@ -661,6 +718,7 @@ function filterTopologyForFocus(
 function layoutSiteTopology(
   topology: Topology,
   selectedNodeId: string | null,
+  focusedNodeId: string | null,
 ): { nodes: Node[]; edges: Edge[] } {
   const byId = new Map(topology.nodes.map((n) => [n.id, n] as const));
 
@@ -689,22 +747,26 @@ function layoutSiteTopology(
   const startX = -rowW / 2;
 
   const pos = new Map<string, { x: number; y: number }>();
+  // Per-worker in-card HCCS ring boxes — drawn by WorkerCardNode when drilled.
+  const ringsByWorker = new Map<string, HccsRingGeom[]>();
 
-  // Worker cards in a horizontal row; each card's NPUs in a 2×N grid inside.
+  // Worker cards in a horizontal row; each card's NPUs grouped by hccsGroup into
+  // rows inside it, so the card can enclose each HCCS group (runbook D6 selling
+  // point) when the worker is drilled into.
   workers.forEach((w, i) => {
     const wx = startX + i * (CARD_W + CARD_GAP);
     pos.set(w.id, { x: wx, y: WORKER_Y });
-    const npus = npusByWorker.get(w.id) ?? [];
-    const padX = 26;
-    const gridTop = 50;
-    const rowH = 42;
-    const colStep =
-      NPU_GRID_COLS > 1 ? (CARD_W - 2 * padX - NPU_CIRCLE) / (NPU_GRID_COLS - 1) : 0;
-    npus.forEach((nid, j) => {
-      const row = Math.floor(j / NPU_GRID_COLS);
-      const col = j % NPU_GRID_COLS;
-      pos.set(nid, { x: wx + padX + col * colStep, y: WORKER_Y + gridTop + row * rowH });
+    const descriptors = (npusByWorker.get(w.id) ?? []).map((nid) => {
+      const attrs = byId.get(nid)?.attributes ?? {};
+      return {
+        id: nid,
+        hccsGroup: typeof attrs.hccsGroup === 'string' ? attrs.hccsGroup : '',
+        index: typeof attrs.index === 'number' ? attrs.index : Number.MAX_SAFE_INTEGER,
+      };
     });
+    const { dotRel, rings } = layoutWorkerNpus(descriptors);
+    for (const d of dotRel) pos.set(d.id, { x: wx + d.x, y: WORKER_Y + d.y });
+    ringsByWorker.set(w.id, rings);
   });
 
   // Center a row of nodes around x=0 at a given y.
@@ -737,6 +799,12 @@ function layoutSiteTopology(
         npuCount: npus.length,
         numaSplit: npus.length > NPU_GRID_COLS,
         selected,
+        // In-card HCCS ring enclosures + whether to show them (drilled into
+        // THIS worker → default-show its HCCS groups · contextual edges keep
+        // the cross-node fabric hidden, but the intra-worker HCCS story is the
+        // point of drilling in).
+        hccsRings: ringsByWorker.get(n.id) ?? [],
+        showHccsRing: focusedNodeId != null && n.id === focusedNodeId,
       };
     }
     if (n.type === 'npu') {
@@ -942,8 +1010,8 @@ function TopologyGraphInner({
   }, [topology, focusedNodeId]);
 
   const { nodes, edges } = useMemo(
-    () => layoutSiteTopology(visibleTopology, selectedNodeId),
-    [visibleTopology, selectedNodeId],
+    () => layoutSiteTopology(visibleTopology, selectedNodeId, focusedNodeId),
+    [visibleTopology, selectedNodeId, focusedNodeId],
   );
 
   // Contextual edges (focus+context · declutter). The `contains` skeleton
