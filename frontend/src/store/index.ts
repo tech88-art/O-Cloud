@@ -37,6 +37,13 @@ interface AppState {
 
 const DEFAULT_LEFT_SIZE = 280;
 const DEFAULT_RIGHT_SIZE = 360;
+// P12 polish: cap the persisted pane width so a previously dragged-wide pane
+// never restores full-screen-wide on reload. AntD Splitter `max` only bounds
+// LIVE dragging — it does NOT clamp the `defaultSize` we feed from storage — so
+// a stale large value would otherwise squeeze the center stage to nothing on
+// load. 600px is a generous sidebar width that still leaves the center usable.
+const MAX_PANE_SIZE = 600;
+const clampPaneSize = (v: number) => Math.min(Math.max(v, 160), MAX_PANE_SIZE);
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -50,7 +57,10 @@ export const useAppStore = create<AppState>()(
       leftPaneSize: DEFAULT_LEFT_SIZE,
       rightPaneSize: DEFAULT_RIGHT_SIZE,
       setPaneSizes: (left, right) =>
-        set({ leftPaneSize: Math.round(left), rightPaneSize: Math.round(right) }),
+        set({
+          leftPaneSize: clampPaneSize(Math.round(left)),
+          rightPaneSize: clampPaneSize(Math.round(right)),
+        }),
     }),
     {
       name: 'ocloud-workspace-layout',
@@ -74,8 +84,8 @@ export const useAppStore = create<AppState>()(
           ...current,
           leftPaneHidden: p.leftPaneHidden === true,
           rightPaneHidden: p.rightPaneHidden === true,
-          leftPaneSize: num(p.leftPaneSize, DEFAULT_LEFT_SIZE),
-          rightPaneSize: num(p.rightPaneSize, DEFAULT_RIGHT_SIZE),
+          leftPaneSize: clampPaneSize(num(p.leftPaneSize, DEFAULT_LEFT_SIZE)),
+          rightPaneSize: clampPaneSize(num(p.rightPaneSize, DEFAULT_RIGHT_SIZE)),
         };
       },
     },
