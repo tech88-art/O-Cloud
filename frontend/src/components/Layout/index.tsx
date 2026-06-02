@@ -1,10 +1,6 @@
 import { Layout as AntLayout, Button, Dropdown, Space, Tag, Tooltip, Typography } from 'antd';
 import type { MenuProps } from 'antd';
-import {
-  DoubleLeftOutlined,
-  DoubleRightOutlined,
-  GlobalOutlined,
-} from '@ant-design/icons';
+import { GlobalOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router-dom';
 import { PresetBar } from '@/components/PresetBar';
@@ -13,6 +9,50 @@ import { SUPPORTED_LOCALES, persistLocale, type Locale } from '@/i18n';
 
 const { Header, Content } = AntLayout;
 const { Title, Text } = Typography;
+
+/**
+ * Obsidian-style sidebar-toggle icons (lucide `panel-left` / `panel-right`):
+ * a rounded rect with a divider near the left / right edge. Rendered at the
+ * two ENDS of the header so each toggle sits on the side of the pane it
+ * controls (P12 polish — replaces the two chevrons bunched at top-left).
+ */
+function PanelLeftIcon() {
+  return (
+    <svg
+      width="1em"
+      height="1em"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 3v18" />
+    </svg>
+  );
+}
+
+function PanelRightIcon() {
+  return (
+    <svg
+      width="1em"
+      height="1em"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M15 3v18" />
+    </svg>
+  );
+}
 
 /**
  * Vite injects the package.json version via __APP_VERSION__ only if the
@@ -91,34 +131,19 @@ export function AppLayout() {
           paddingInline: 16,
         }}
       >
+        {/* Left end: left-pane toggle (Obsidian-style, on the side it controls) + brand. */}
         <Space size="middle">
-          <Space size={4}>
-            <Tooltip title={t('header.toggleLeftPane')}>
-              <Button
-                type="text"
-                aria-label={t('header.toggleLeftPane')}
-                aria-pressed={!leftPaneHidden}
-                // Direction-aware chevron (industry-standard collapse affordance):
-                // pane shown → « (collapse leftward); hidden → » (expand rightward).
-                icon={leftPaneHidden ? <DoubleRightOutlined /> : <DoubleLeftOutlined />}
-                onClick={toggleLeftPane}
-                data-testid="toggle-left-pane"
-                style={{ color: leftPaneHidden ? '#8c8c8c' : '#fff' }}
-              />
-            </Tooltip>
-            <Tooltip title={t('header.toggleRightPane')}>
-              <Button
-                type="text"
-                aria-label={t('header.toggleRightPane')}
-                aria-pressed={!rightPaneHidden}
-                // Mirror: pane shown → » (collapse rightward); hidden → « (expand leftward).
-                icon={rightPaneHidden ? <DoubleLeftOutlined /> : <DoubleRightOutlined />}
-                onClick={toggleRightPane}
-                data-testid="toggle-right-pane"
-                style={{ color: rightPaneHidden ? '#8c8c8c' : '#fff' }}
-              />
-            </Tooltip>
-          </Space>
+          <Tooltip title={t('header.toggleLeftPane')}>
+            <Button
+              type="text"
+              aria-label={t('header.toggleLeftPane')}
+              aria-pressed={!leftPaneHidden}
+              icon={<PanelLeftIcon />}
+              onClick={toggleLeftPane}
+              data-testid="toggle-left-pane"
+              style={{ color: leftPaneHidden ? '#8c8c8c' : '#fff' }}
+            />
+          </Tooltip>
           <Space size={8} align="baseline">
             <Title level={4} style={{ color: '#fff', margin: 0 }}>
               {t('app.title')}
@@ -128,27 +153,41 @@ export function AppLayout() {
             </Tag>
           </Space>
         </Space>
-        <Dropdown
-          menu={{
-            items: localeMenuItems,
-            onClick: onLocaleMenuClick,
-            selectedKeys: [currentLocale],
-          }}
-          trigger={['click']}
-          placement="bottomRight"
-        >
-          <Button
-            type="text"
-            aria-label={t('header.language')}
-            icon={<GlobalOutlined />}
-            style={{ color: '#fff' }}
+        {/* Right end: language dropdown + right-pane toggle (far right, on its side). */}
+        <Space size="middle">
+          <Dropdown
+            menu={{
+              items: localeMenuItems,
+              onClick: onLocaleMenuClick,
+              selectedKeys: [currentLocale],
+            }}
+            trigger={['click']}
+            placement="bottomRight"
           >
-            <Space size={4}>
-              <span aria-hidden="true">{LOCALE_META[currentLocale].flag}</span>
-              <Text style={{ color: '#fff' }}>{t(LOCALE_META[currentLocale].labelKey)}</Text>
-            </Space>
-          </Button>
-        </Dropdown>
+            <Button
+              type="text"
+              aria-label={t('header.language')}
+              icon={<GlobalOutlined />}
+              style={{ color: '#fff' }}
+            >
+              <Space size={4}>
+                <span aria-hidden="true">{LOCALE_META[currentLocale].flag}</span>
+                <Text style={{ color: '#fff' }}>{t(LOCALE_META[currentLocale].labelKey)}</Text>
+              </Space>
+            </Button>
+          </Dropdown>
+          <Tooltip title={t('header.toggleRightPane')}>
+            <Button
+              type="text"
+              aria-label={t('header.toggleRightPane')}
+              aria-pressed={!rightPaneHidden}
+              icon={<PanelRightIcon />}
+              onClick={toggleRightPane}
+              data-testid="toggle-right-pane"
+              style={{ color: rightPaneHidden ? '#8c8c8c' : '#fff' }}
+            />
+          </Tooltip>
+        </Space>
       </Header>
       <PresetBar />
       <Content
