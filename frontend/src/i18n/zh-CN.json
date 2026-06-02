@@ -42,8 +42,11 @@
       }
     },
     "focus": {
-      "focusSelected": "聚焦选中",
-      "clear": "退出聚焦"
+      "focusSelected": "下钻选中",
+      "clear": "返回站点"
+    },
+    "breadcrumb": {
+      "site": "站点"
     }
   },
   "grafanaPanel": {

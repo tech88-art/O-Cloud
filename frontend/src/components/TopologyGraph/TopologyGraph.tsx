@@ -16,7 +16,7 @@ import {
   type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Button } from 'antd';
+import { Breadcrumb, Button } from 'antd';
 import { AimOutlined, CloseOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { StatusTag, type StatusTone } from '@/components/StatusTag';
@@ -908,10 +908,38 @@ function TopologyGraphInner({
     () => filterTopologyForFocus(topology, focusedNodeId),
     [topology, focusedNodeId],
   );
-  const visibleTopology = useMemo(
-    () => filterTopologyForExpandedNPUs(focusedTopology, new Set(expandedNPUs)),
-    [focusedTopology, expandedNPUs],
-  );
+  const visibleTopology = useMemo(() => {
+    const expanded = new Set(expandedNPUs);
+    // Drilling into an NPU (P12-fix-003) auto-expands its slices, so the NPU
+    // detail level shows them without a separate gesture.
+    if (focusedNodeId) {
+      const fn = topology.nodes.find((n) => n.id === focusedNodeId);
+      if (fn?.type === 'npu') expanded.add(focusedNodeId);
+    }
+    return filterTopologyForExpandedNPUs(focusedTopology, expanded);
+  }, [focusedTopology, expandedNPUs, focusedNodeId, topology]);
+
+  // Drill breadcrumb (P12-fix-003): the contains-ancestry of the drilled
+  // node (站点 → worker → npu), derived from the FULL topology (parents may be
+  // filtered out of the focused view). Clicking a crumb drills to that level.
+  const breadcrumb = useMemo(() => {
+    if (!focusedNodeId) return [] as { id: string; label: string }[];
+    const byId = new Map(topology.nodes.map((n) => [n.id, n] as const));
+    const parentOf = new Map<string, string>();
+    for (const e of topology.edges) {
+      if (e.type === EDGE_TYPE_CONTAINS) parentOf.set(e.target, e.source);
+    }
+    const chain: { id: string; label: string }[] = [];
+    const seen = new Set<string>();
+    let cur: string | undefined = focusedNodeId;
+    while (cur && !seen.has(cur)) {
+      seen.add(cur);
+      const n = byId.get(cur);
+      if (n) chain.unshift({ id: n.id, label: n.label });
+      cur = parentOf.get(cur);
+    }
+    return chain;
+  }, [topology, focusedNodeId]);
 
   const { nodes, edges } = useMemo(
     () => layoutSiteTopology(visibleTopology, selectedNodeId),
@@ -1007,10 +1035,48 @@ function TopologyGraphInner({
         proOptions={{ hideAttribution: true }}
       >
         {/*
-         * Focus toolbar (ADR-0022 §4(b) option b): explicit button anchored
-         * on the current selection — no gesture, so it never collides with
-         * dbl-click slice expansion. Shows "focus selected" when a node is
-         * selected, flips to "clear focus" while a focus is active.
+         * Drill breadcrumb (P12-fix-003): when drilled in, shows 站点 → worker
+         * → npu. Each crumb drills to that level; 站点 returns to the site
+         * overview. Pairs with dbl-click-to-drill (TopologyView).
+         */}
+        {breadcrumb.length > 0 && (
+          <Panel position="top-left">
+            <div
+              data-testid="topology-breadcrumb"
+              style={{
+                background: '#ffffff',
+                border: '1px solid #f0f0f0',
+                borderRadius: 6,
+                padding: '3px 10px',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+              }}
+            >
+              <Breadcrumb
+                items={[
+                  {
+                    title: (
+                      <a data-testid="breadcrumb-site" onClick={() => onFocusNode?.(null)}>
+                        {t('topology.breadcrumb.site')}
+                      </a>
+                    ),
+                  },
+                  ...breadcrumb.map((crumb, i) => ({
+                    title:
+                      i < breadcrumb.length - 1 ? (
+                        <a onClick={() => onFocusNode?.(crumb.id)}>{crumb.label}</a>
+                      ) : (
+                        <span>{crumb.label}</span>
+                      ),
+                  })),
+                ]}
+              />
+            </div>
+          </Panel>
+        )}
+        {/*
+         * Focus toolbar (ADR-0022 §4(b)): explicit "drill into selection"
+         * button — an alternate trigger to dbl-click. Flips to "exit drill"
+         * while drilled in (the breadcrumb 站点 crumb does the same).
          */}
         <Panel position="top-right">
           {focusedNodeId ? (

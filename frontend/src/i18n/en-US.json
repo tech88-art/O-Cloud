@@ -42,8 +42,11 @@
       }
     },
     "focus": {
-      "focusSelected": "Focus selection",
-      "clear": "Clear focus"
+      "focusSelected": "Drill into selection",
+      "clear": "Back to site"
+    },
+    "breadcrumb": {
+      "site": "Site"
     }
   },
   "grafanaPanel": {

@@ -164,6 +164,32 @@ test.describe('One-page workspace — main flow', () => {
     ).toBeLessThan(nodeCountBefore);
   });
 
+  test('double-click drills into a node + breadcrumb navigates back', async ({ page }) => {
+    await page.goto('/overview');
+    await expect(page.getByTestId('topology-graph')).toBeVisible({ timeout: 20_000 });
+
+    const before = await page.locator('.react-flow__node').count();
+    expect(before).toBeGreaterThan(1);
+
+    // dbl-click a worker → drill in (native dispatch; panner swallows .dblclick()).
+    const worker = page.locator(`.react-flow__node[data-id="${FIRST_NODE_ID}"]`);
+    await worker.dispatchEvent('click');
+    await worker.dispatchEvent('dblclick');
+
+    // Breadcrumb appears with the drill path; graph isolates to the subtree.
+    const crumb = page.getByTestId('topology-breadcrumb');
+    await expect(crumb).toBeVisible({ timeout: 10_000 });
+    await expect(crumb).toContainText(FIRST_NODE_ID);
+    await expect.poll(
+      async () => await page.locator('.react-flow__node').count(),
+      { timeout: 10_000 },
+    ).toBeLessThan(before);
+
+    // Breadcrumb 站点 → back to the full site overview.
+    await page.getByTestId('breadcrumb-site').click();
+    await expect(page.getByTestId('topology-breadcrumb')).toHaveCount(0, { timeout: 10_000 });
+  });
+
   test('preset bar chip opens the deploy wizard', async ({ page }) => {
     await page.goto('/overview');
     await expect(page.getByTestId('preset-bar')).toBeVisible({ timeout: 20_000 });

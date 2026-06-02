@@ -32,7 +32,6 @@ export function TopologyView({ clusterId }: TopologyViewProps) {
   const selectedNodeId = useTopologyStore((s) => s.selectedNodeId);
   const setSelectedNode = useTopologyStore((s) => s.setSelectedNode);
   const expandedNPUs = useTopologyStore((s) => s.expandedNPUs);
-  const toggleExpandedNPU = useTopologyStore((s) => s.toggleExpandedNPU);
   // P12-T-202 / ADR-0022 §4(b): focus/isolate anchor + setter. The graph's
   // focus toolbar button writes this; TopologyGraph filters the graph to the
   // anchor's subtree + placed workloads.
@@ -101,12 +100,13 @@ export function TopologyView({ clusterId }: TopologyViewProps) {
       onFocusNode={setFocusedNode}
       onNodeClick={(id) => setSelectedNode(id)}
       onNodeDoubleClick={(id) => {
-        // Dbl-click an NPU → toggle its slice subtree. Other node types
-        // dbl-click to no-op (the click handler already selected them).
-        const node = data.nodes.find((n) => n.id === id);
-        if (node?.type === 'npu') {
-          toggleExpandedNPU(id);
-        }
+        // Dbl-click = drill into the node (P12-fix-003): set the focus/drill
+        // anchor. The graph filters to that node's subtree + placed workloads
+        // and the breadcrumb shows the path. Drilling into an NPU auto-expands
+        // its slices (handled in TopologyGraph). Also select it so the right
+        // panel follows.
+        setSelectedNode(id);
+        setFocusedNode(id);
       }}
     />
   );

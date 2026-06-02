@@ -714,7 +714,7 @@ describe('OverviewPage — interactions write the topology store', () => {
     });
   });
 
-  it('double-clicking an NPU toggles expandedNPUs and reveals slice children in the graph', async () => {
+  it('double-clicking an NPU drills into it (focus) and reveals its slices', async () => {
     mockGet.mockImplementation((url: string) => {
       if (url === '/api/v1/clusters') {
         return Promise.resolve({ data: makeClusters() });
@@ -730,17 +730,16 @@ describe('OverviewPage — interactions write the topology store', () => {
 
     await screen.findByTestId('rf-stub');
 
-    // Default state: NPU not expanded → no slice nodes rendered in the graph.
+    // Site level: slices collapsed, no drill anchor.
     expect(screen.queryByTestId('rf-node-npu-1-0-slice-0')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('rf-node-npu-1-0-slice-1')).not.toBeInTheDocument();
-    expect(useTopologyStore.getState().expandedNPUs.size).toBe(0);
+    expect(useTopologyStore.getState().focusedNodeId).toBeNull();
 
+    // P12-fix-003: dbl-click drills into the NPU (sets the focus anchor) and
+    // auto-expands its slices so the NPU detail level shows them.
     await user.dblClick(screen.getByTestId('rf-node-npu-1-0'));
 
-    // After dbl-click the store should hold the NPU id and the graph
-    // should now render the two slice buttons.
     await waitFor(() => {
-      expect(useTopologyStore.getState().expandedNPUs.has('npu-1-0')).toBe(true);
+      expect(useTopologyStore.getState().focusedNodeId).toBe('npu-1-0');
     });
     await waitFor(() => {
       expect(screen.getByTestId('rf-node-npu-1-0-slice-0')).toBeInTheDocument();
