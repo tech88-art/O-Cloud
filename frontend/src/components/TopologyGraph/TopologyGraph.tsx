@@ -16,7 +16,6 @@ import {
   type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import dagre from 'dagre';
 import { Button } from 'antd';
 import { AimOutlined, CloseOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -106,19 +105,25 @@ const NODE_HEIGHT_POD = 52;
  *  readable default while leaving room for the accent stripe + tag. */
 const NODE_WIDTH_NPU = 110;
 const NODE_HEIGHT_NPU = 56;
-/** dagre uses these to space nodes within a rank (`nodesep`) and between
- *  ranks (`ranksep`). Tuned so a 24-NPU cluster reads cleanly at 1280px. */
-const NODE_SEPARATION = 24;
-const RANK_SEPARATION = 60;
 
 /**
- * Initial + on-resize `fitView` options. At set-a-small (24 NPUs in one
- * rank) the natural fit shrinks labels to ~0.3×; `minZoom: 0.55` keeps them
- * legible (clipping the widest rank — pan or click "fit" to see all);
- * `padding: 0.05` trims excess whitespace. Single source of truth: consumed
+ * P12 site-view layout constants (runbook-style cards + circles). Each worker
+ * renders as a card containing its NPUs as a 2×N grid of status circles
+ * (NUMA-split), workers laid out in a horizontal row under the cluster pill.
+ */
+const CARD_W = 188;
+const CARD_H = 196;
+const CARD_GAP = 44;
+const NPU_CIRCLE = 26;
+const NPU_GRID_COLS = 4;
+
+/**
+ * Initial + on-resize `fitView` options. The card row is ~640px wide; padding
+ * 0.12 leaves a comfortable margin and `minZoom: 0.5` stops the cards getting
+ * shrunk to illegibility on a narrow pane. Single source of truth: consumed
  * by both the `fitView` prop (initial) and the resize observer (re-fit).
  */
-const FIT_VIEW_OPTIONS = { minZoom: 0.55, padding: 0.05 } as const;
+const FIT_VIEW_OPTIONS = { minZoom: 0.5, padding: 0.12 } as const;
 
 /**
  * Per-type render dimensions. Pod nodes use the compact size; NPU nodes
@@ -351,8 +356,172 @@ function TopoNode({ data }: NodeProps<TopoFlowNode>) {
   );
 }
 
-const NODE_TYPES = { topo: memo(TopoNode) };
+/** Hidden anchor handles (edges need them; we don't support manual connect). */
+const HIDDEN_HANDLE = {
+  opacity: 0,
+  width: 1,
+  height: 1,
+  minWidth: 0,
+  minHeight: 0,
+  border: 0,
+} as const;
+
+const NPU_DEGRADED = new Set(['degraded', 'faulty', 'offline', 'down', 'error']);
+
+interface ClusterNodeData {
+  label: string;
+  site?: string | null;
+  selected: boolean;
+  [key: string]: unknown;
+}
+
+/**
+ * Cluster pill (P12 site view · runbook header). A rounded badge at the top
+ * carrying `cluster · site`, mirroring `demo-runbook.html` Step 1.
+ */
+function ClusterNode({ data }: NodeProps<Node<ClusterNodeData>>) {
+  return (
+    <div
+      data-testid="topo-node-cluster"
+      style={{
+        padding: '5px 16px',
+        background: '#ffffff',
+        border: '1.5px solid #1677ff',
+        borderRadius: 16,
+        fontSize: 12,
+        fontWeight: 600,
+        color: '#1f2937',
+        whiteSpace: 'nowrap',
+        boxShadow: data.selected
+          ? '0 0 0 3px rgba(22, 119, 255, 0.25)'
+          : '0 1px 3px rgba(0, 0, 0, 0.08)',
+      }}
+    >
+      <Handle type="target" position={Position.Top} isConnectable={false} style={HIDDEN_HANDLE} />
+      {data.label}
+      {data.site ? ` · ${data.site}` : ''}
+      <Handle type="source" position={Position.Bottom} isConnectable={false} style={HIDDEN_HANDLE} />
+    </div>
+  );
+}
+
+interface WorkerCardData {
+  label: string;
+  npuCount: number;
+  numaSplit: boolean;
+  selected: boolean;
+  [key: string]: unknown;
+}
+
+/**
+ * Worker node as a runbook-style card (P12 · ADR-0022 视觉北极星 =
+ * demo-runbook.html). Renders the card chrome only — border + title +
+ * "N× Ascend 910B" subtitle + NUMA-0/1 labels; the NPU status circles are
+ * separate `<NpuDotNode>` nodes the layout positions inside this card's
+ * footprint (so they stay individually selectable + edge-anchorable).
+ */
+function WorkerCardNode({ data }: NodeProps<Node<WorkerCardData>>) {
+  return (
+    <div
+      data-testid="topo-node-node"
+      style={{
+        width: CARD_W,
+        height: CARD_H,
+        background: '#ffffff',
+        border: `1.5px solid ${data.selected ? '#1677ff' : '#1677ff'}`,
+        borderRadius: 8,
+        position: 'relative',
+        boxShadow: data.selected
+          ? '0 0 0 3px rgba(22, 119, 255, 0.25)'
+          : '0 1px 4px rgba(0, 0, 0, 0.06)',
+      }}
+    >
+      <Handle type="target" position={Position.Top} isConnectable={false} style={HIDDEN_HANDLE} />
+      <div style={{ textAlign: 'center', paddingTop: 10 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#1f2937' }}>{data.label}</div>
+        <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>
+          {data.npuCount}× Ascend 910B
+        </div>
+      </div>
+      {data.numaSplit && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            width: '100%',
+            textAlign: 'center',
+            fontSize: 9,
+            color: '#9ca3af',
+            lineHeight: 1.5,
+          }}
+        >
+          <div>NUMA-0 (上)</div>
+          <div>NUMA-1 (下)</div>
+        </div>
+      )}
+      <Handle type="source" position={Position.Bottom} isConnectable={false} style={HIDDEN_HANDLE} />
+    </div>
+  );
+}
+
+interface NpuDotData {
+  label: string;
+  status?: string;
+  selected: boolean;
+  pcieBandwidthGBps?: number | null;
+  [key: string]: unknown;
+}
+
+/**
+ * NPU status circle (P12 site view). Green healthy / red degraded, with a
+ * selection ring + hover scale. Hover title carries status + PCIe bandwidth
+ * (ADR-0021). Stays a real ReactFlow node so click-select + hccs/binds-to
+ * edges keep working.
+ */
+function NpuDotNode({ data }: NodeProps<Node<NpuDotData>>) {
+  const degraded = NPU_DEGRADED.has(data.status ?? '');
+  const title =
+    data.pcieBandwidthGBps != null
+      ? `${data.label} · ${data.status ?? ''} · PCIe ${data.pcieBandwidthGBps} GB/s`
+      : `${data.label} · ${data.status ?? ''}`;
+  return (
+    <div
+      data-testid="topo-node-npu"
+      title={title}
+      style={{
+        width: NPU_CIRCLE,
+        height: NPU_CIRCLE,
+        borderRadius: '50%',
+        background: degraded ? '#ff4d4f' : '#52c41a',
+        border: data.selected ? '2px solid #1677ff' : '2px solid #ffffff',
+        boxShadow: data.selected
+          ? '0 0 0 3px rgba(22, 119, 255, 0.30)'
+          : '0 1px 2px rgba(0, 0, 0, 0.18)',
+        cursor: 'pointer',
+        boxSizing: 'border-box',
+      }}
+    >
+      <Handle type="target" position={Position.Top} isConnectable={false} style={HIDDEN_HANDLE} />
+      <Handle type="source" position={Position.Bottom} isConnectable={false} style={HIDDEN_HANDLE} />
+    </div>
+  );
+}
+
+const NODE_TYPES = {
+  topo: memo(TopoNode),
+  cluster: memo(ClusterNode),
+  worker: memo(WorkerCardNode),
+  npudot: memo(NpuDotNode),
+};
 const EDGE_TYPES = { bandwidth: BandwidthEdge };
+
+/** Topology node type → ReactFlow renderer key (P12 site view). */
+function rendererTypeFor(t: TopologyNodeType): string {
+  if (t === 'cluster') return 'cluster';
+  if (t === 'node' || t === 'nodepool') return 'worker';
+  if (t === 'npu') return 'npudot';
+  return 'topo';
+}
 
 /**
  * Filter a topology so that slice nodes only appear under NPUs that are
@@ -473,7 +642,11 @@ function filterTopologyForFocus(
 }
 
 /**
- * Lay out a topology with dagre. Returns ReactFlow-ready nodes + edges.
+ * Structured "site view" layout (P12 · runbook 视觉北极星 = demo-runbook.html
+ * Step 1). Replaces dagre auto-layout with a curated arrangement: cluster pill
+ * at top, worker CARDS in a horizontal row, each card's NPUs as a 2×N grid of
+ * status circles inside it (NUMA-split), and switches / workloads / pods /
+ * slices in rows above/below. Returns ReactFlow-ready nodes + edges.
  * Pure: same input → same output, no DOM access.
  *
  * Edge styling table (kept here so the visual contract is greppable):
@@ -485,80 +658,152 @@ function filterTopologyForFocus(
  *   - binds-to      → cyan 1px solid       (ADR-0005 pod→slice resource bind)
  *   - pd-pair       → orange dashed + arrow + "PD" label (ADR-0005 P↔D)
  */
-function layoutWithDagre(topology: Topology, selectedNodeId: string | null): {
-  nodes: TopoFlowNode[];
-  edges: Edge[];
-} {
-  const g = new dagre.graphlib.Graph();
-  g.setGraph({
-    rankdir: 'TB',
-    nodesep: NODE_SEPARATION,
-    ranksep: RANK_SEPARATION,
-    marginx: 16,
-    marginy: 16,
-  });
-  g.setDefaultEdgeLabel(() => ({}));
+function layoutSiteTopology(
+  topology: Topology,
+  selectedNodeId: string | null,
+): { nodes: Node[]; edges: Edge[] } {
+  const byId = new Map(topology.nodes.map((n) => [n.id, n] as const));
 
-  for (const n of topology.nodes) {
-    // Per-type dimensions — pod nodes are smaller (ADR-0005). The dagre
-    // layout and the `<TopoNode>` renderer must consult the same helper
-    // or the layout misaligns with the rendered card.
-    g.setNode(n.id, dimensionsForNodeType(n.type));
-  }
+  // worker → its NPU ids (via contains edges).
+  const npusByWorker = new Map<string, string[]>();
   for (const e of topology.edges) {
-    g.setEdge(e.source, e.target);
+    if (e.type !== EDGE_TYPE_CONTAINS) continue;
+    if (byId.get(e.target)?.type !== 'npu') continue;
+    const arr = npusByWorker.get(e.source);
+    if (arr) arr.push(e.target);
+    else npusByWorker.set(e.source, [e.target]);
   }
 
-  dagre.layout(g);
+  const workers = topology.nodes.filter((n) => n.type === 'node' || n.type === 'nodepool');
+  const clusters = topology.nodes.filter((n) => n.type === 'cluster');
+  const switches = topology.nodes.filter((n) => n.type === 'switch');
+  const workloads = topology.nodes.filter((n) => n.type === 'workload');
+  const pods = topology.nodes.filter((n) => n.type === 'pod');
+  const slices = topology.nodes.filter((n) => n.type === 'slice');
+  const misc = topology.nodes.filter((n) => n.type === 'network');
 
-  const flowNodes: TopoFlowNode[] = topology.nodes.map((n) => {
-    const pos = g.node(n.id);
-    const dims = dimensionsForNodeType(n.type);
-    return {
-      id: n.id,
-      type: 'topo',
-      // dagre returns the CENTER; ReactFlow expects top-left.
-      position: pos
-        ? { x: pos.x - dims.width / 2, y: pos.y - dims.height / 2 }
-        : { x: 0, y: 0 },
-      data: {
+  const CLUSTER_Y = 0;
+  const SWITCH_Y = 64;
+  const WORKER_Y = 150;
+  const rowW = workers.length * CARD_W + Math.max(0, workers.length - 1) * CARD_GAP;
+  const startX = -rowW / 2;
+
+  const pos = new Map<string, { x: number; y: number }>();
+
+  // Worker cards in a horizontal row; each card's NPUs in a 2×N grid inside.
+  workers.forEach((w, i) => {
+    const wx = startX + i * (CARD_W + CARD_GAP);
+    pos.set(w.id, { x: wx, y: WORKER_Y });
+    const npus = npusByWorker.get(w.id) ?? [];
+    const padX = 26;
+    const gridTop = 50;
+    const rowH = 42;
+    const colStep =
+      NPU_GRID_COLS > 1 ? (CARD_W - 2 * padX - NPU_CIRCLE) / (NPU_GRID_COLS - 1) : 0;
+    npus.forEach((nid, j) => {
+      const row = Math.floor(j / NPU_GRID_COLS);
+      const col = j % NPU_GRID_COLS;
+      pos.set(nid, { x: wx + padX + col * colStep, y: WORKER_Y + gridTop + row * rowH });
+    });
+  });
+
+  // Center a row of nodes around x=0 at a given y.
+  const rowSpread = (items: TopologyNode[], y: number, step: number) => {
+    const w = Math.max(0, items.length - 1) * step;
+    const sx = -w / 2;
+    items.forEach((n, i) => pos.set(n.id, { x: sx + i * step, y }));
+  };
+  clusters.forEach((c) => pos.set(c.id, { x: -90, y: CLUSTER_Y }));
+  rowSpread(switches, SWITCH_Y, 150);
+  const wlY = WORKER_Y + CARD_H + 80;
+  rowSpread(workloads, wlY, 180);
+  rowSpread(pods, wlY + 96, 168);
+  rowSpread(slices, wlY + 192, 150);
+  rowSpread(misc, wlY + 288, 150);
+
+  const dataFor = (n: TopologyNode): Record<string, unknown> => {
+    const selected = n.id === selectedNodeId;
+    if (n.type === 'cluster') {
+      // Aggregator stamps the cluster node with `location` (e.g.
+      // "site-a-shanghai"); fall back to a `site` attr if present.
+      const siteRaw = n.attributes?.location ?? n.attributes?.site;
+      const site = typeof siteRaw === 'string' ? siteRaw : null;
+      return { label: n.label, site, selected };
+    }
+    if (n.type === 'node' || n.type === 'nodepool') {
+      const npus = npusByWorker.get(n.id) ?? [];
+      return {
         label: n.label,
-        topoType: n.type,
+        npuCount: npus.length,
+        numaSplit: npus.length > NPU_GRID_COLS,
+        selected,
+      };
+    }
+    if (n.type === 'npu') {
+      return {
+        label: n.label,
         status: n.status,
-        selected: n.id === selectedNodeId,
-        // ADR-0021: surface the NPU host↔NPU PCIe bandwidth so the node's
-        // hover title can show it ("节点内 PCIE ... + hover"). Other node
-        // types carry null.
+        selected,
         pcieBandwidthGBps:
-          n.type === 'npu' && typeof n.attributes?.pcieBandwidthGBps === 'number'
+          typeof n.attributes?.pcieBandwidthGBps === 'number'
             ? n.attributes.pcieBandwidthGBps
             : null,
-      },
+      };
+    }
+    return {
+      label: n.label,
+      topoType: n.type,
+      status: n.status,
+      selected,
+      pcieBandwidthGBps: null,
     };
+  };
+
+  const sizeFor = (n: TopologyNode): { width: number; height: number } | undefined => {
+    if (n.type === 'node' || n.type === 'nodepool') return { width: CARD_W, height: CARD_H };
+    if (n.type === 'npu') return { width: NPU_CIRCLE, height: NPU_CIRCLE };
+    return undefined; // cluster pill + TopoNode types size themselves
+  };
+
+  const zFor = (t: TopologyNodeType): number =>
+    t === 'npu' ? 3 : t === 'node' || t === 'nodepool' ? 1 : 2;
+
+  const flowNodes: Node[] = topology.nodes.map((n) => {
+    const node: Node = {
+      id: n.id,
+      type: rendererTypeFor(n.type),
+      position: pos.get(n.id) ?? { x: 0, y: 0 },
+      zIndex: zFor(n.type),
+      data: dataFor(n),
+    };
+    const sz = sizeFor(n);
+    if (sz) node.style = sz;
+    return node;
   });
 
-  const flowEdges: Edge[] = topology.edges.map((e, i) => {
-    const isBandwidth = BANDWIDTH_EDGE_TYPES.has(e.type);
-    return {
-      // Contract edges have no id; synthesise a stable one from endpoints.
-      id: `${e.source}->${e.target}-${e.type}-${i}`,
-      source: e.source,
-      target: e.target,
-      // network / hccs / fabric-link render via the custom <BandwidthEdge>
-      // (hover tooltip); everything else uses ReactFlow's default edge.
-      ...(isBandwidth ? { type: 'bandwidth' } : {}),
-      ...edgeRenderingFor(e.type),
-      // Pass the contract edge type + attributes through so BandwidthEdge can
-      // render the hover tooltip (bandwidthGBps / medium / utilization).
-      data: { topoEdgeType: e.type, attributes: e.attributes },
-    };
-  });
+  const flowEdges: Edge[] = topology.edges
+    // Drop worker→npu contains: the NPU circle sits INSIDE the worker card,
+    // so a connector would be a tiny ugly stub. Containment is now visual.
+    .filter((e) => !(e.type === EDGE_TYPE_CONTAINS && byId.get(e.target)?.type === 'npu'))
+    .map((e, i) => {
+      const isBandwidth = BANDWIDTH_EDGE_TYPES.has(e.type);
+      return {
+        // Contract edges have no id; synthesise a stable one from endpoints.
+        id: `${e.source}->${e.target}-${e.type}-${i}`,
+        source: e.source,
+        target: e.target,
+        // network / hccs / fabric-link render via the custom <BandwidthEdge>.
+        ...(isBandwidth ? { type: 'bandwidth' } : {}),
+        ...edgeRenderingFor(e.type),
+        data: { topoEdgeType: e.type, attributes: e.attributes },
+      };
+    });
 
   return { nodes: flowNodes, edges: flowEdges };
 }
 
 /**
- * Per-edge-type ReactFlow styling. Pulled out of `layoutWithDagre` so the
+ * Per-edge-type ReactFlow styling. Pulled out of `layoutSiteTopology` so the
  * styling decisions live next to each other (and so future edge types can
  * be added with one new branch each, not by editing inline ternaries).
  *
@@ -669,7 +914,7 @@ function TopologyGraphInner({
   );
 
   const { nodes, edges } = useMemo(
-    () => layoutWithDagre(visibleTopology, selectedNodeId),
+    () => layoutSiteTopology(visibleTopology, selectedNodeId),
     [visibleTopology, selectedNodeId],
   );
 
