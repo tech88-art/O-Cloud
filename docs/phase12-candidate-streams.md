@@ -6,6 +6,24 @@
 
 ---
 
+## 🏁 Phase 13 收官 stamp(2026-06-03 · tag `phase-13-complete` · M7 final · 项目收官)
+
+Phase 13 entry(ADR-0023)从 Spine A continuation 选定 spine = **real 版完整化 + 真硬件点亮 → 项目收口**·
+16/16 task landed(详 `docs/checkpoint-phase13.md`)。**production-hardening cohort LAND**(软件层):
+
+- **Spine A continuation production-hardening cohort = LANDED(软件层)**:Karmada HA(P13-T-205)+ OIDC IdP/
+  RBAC(P13-T-201/202 · Dex 参考 IdP)+ ClusterQuota webhook B 真强制(P13-T-204)+ Vault Secret(P13-T-203 ·
+  ESO)+ vLLM PD P99 SLA harness(P13-T-206)。真机实测 lab-gated(harness `tests/e2e/real/` 就位)。
+- **4 active carry 显式移出项目核心交付物**(per ADR-0023 §2 Decision F · 信号触发可选扩展 · **不 gating
+  收口 · 不构成 Phase 14**):**Volcano gang-scheduling**(训练 demo signal)· **Partitionable Devices
+  KEP-4815**(GA + K8s 1.36+)· **Go v1 ResourceSlice migration**(lab K8s ≥1.36 · v1beta1 shim 仍 work ·
+  兼容维护 ≠ 功能缺口)· **Frontend G6 5.x 重写**(ReactFlow set-c-stress 渲染瓶颈)。这些是本文档下方枚举的
+  carry 的**终态归类** —— 下方明细保留作触发条件参考,但均**不再是任何后续 phase 的 scope**。
+- **lab-gating 翻转**:ADR-0011 §3 连续 6 phase default-defer → ADR-0024 light-up(Bucket B 真硬件 body land)·
+  Track A "真 aarch64 集群验证 + 真硬件 stamp" 从 carry → 本 phase 软件体 land + harness 就位(实测 lab-gated)。
+
+---
+
 ## ⛳ Phase 12 spine 落定 stamp(2026-06-01 · tag `phase-12-complete`)
 
 Phase 12 entry(ADR-0019)**从本 enumeration 选定 spine = 平台真实化 + 拓扑全保真 + 前端 one-page workspace**(M6 naming reset)· 16/16 task landed(详 `docs/checkpoint-phase12.md`):

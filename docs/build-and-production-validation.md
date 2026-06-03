@@ -4,7 +4,13 @@
 >
 > **依据**(全部来自仓库真实配方,非杜撰):根 `Makefile` · `scripts/install.sh` · `.github/workflows/e2e-kind.yml` · `tests/e2e/kind/install.sh` · 各模块 `Makefile` · ADR-0008/0009/0013/0014/0020 · `docs/checkpoint-phase12.md` §6。
 >
-> **现状边界(务必先读)**:截至 `phase-12-complete`,全栈在 **Mock + 合成 fixture + amd64 kind** 上端到端验证(CI 绿)。**真鲲鹏 920 + 昇腾 910B + openEuler 真机验证 = Phase 13+ · lab-gated**(无真机做不了)。本文凡标 **🔴 真机** 的步骤即此类;**🟢 已验证** = 当前 CI/demo 已覆盖。
+> **现状边界(务必先读 · 更新至 `phase-13-complete`)**:**real(生产)版软件层完整** —— Phase 13
+> 把 real 版所有 stub/mock/ErrNotImplemented 填成真体(Bucket B 真硬件 body T101-105 + Bucket A
+> 生产硬化 T201-206 · §5 清单全 land)。功能正确性由 **demo 版 + CI fixtures** 持续验证(Mock + 合成
+> fixture + amd64 kind · CI 绿)。**真鲲鹏 920 + 昇腾 910B + openEuler 真机「对接」验证 harness 已 land**
+> (`tests/e2e/real/connection-stamps.sh` + `tests/sla` + Release Images arm64 push)· **真机实测
+> lab-gated**(随 lab 接入跑出 🟢 · 见 §4.4)。本文 **🔴 真机** = 软件体已 land · 真机实测 pending lab;
+> **🟢 已验证** = 当前 CI/demo 已覆盖。
 
 ---
 
@@ -261,28 +267,48 @@ cd tests/e2e && pnpm exec playwright test --config=playwright.config.kind.ts   #
 #   🔴 真机:把 baseURL 指向真集群入口,重跑同一 spec
 ```
 
-### 4.4 🔴 真硬件特有验证(Phase 13+ · lab-gated)
+### 4.4 真硬件特有验证(Phase 13 软件体 land · 真机实测 lab-gated)
 
-当前全用 fixture/simulator/fake;真机需补:
+**软件体 Phase 13 全 land**(T101-105);**真机实测 harness 就位**(`tests/e2e/real/connection-stamps.sh`
++ `tests/sla`)· **真机跑出 🟢 + 数据回填本节随 lab 接入**(执行环境无 910B · 未实测)。验证分工:demo 验
+功能 / 真机验「对接」(real Source 读真源 + 输出同形 · plan §8 · ADR-0024 §3)。
 
-1. **真 NPU 发现**:Ascend Device Plugin + npu-dra-driver **real allocator**(非 simulator)→ ResourceSlice 数量/属性 = 真实 910B。
-2. **真切片**:910B 动态切分(vir02/vir04…)真实下发到硬件。
-3. **真拓扑 telemetry 替换 fixture 静态值**:真 **PCIE 带宽** / 真 **HCCS ring**(npu↔npu)/ 真 **node↔node network** / 真 **utilization**(现拓扑这些是 mock 写死)。
-4. **真推理**:CANN + vllm-ascend/MindIE 在真 910B 跑 Qwen 8B PD 分离,P99 延迟达标。
-5. **HCCS 亲和放置**:scheduler-plugin 在真 HCCS 拓扑上验证(kind 仅 best-effort)。
+1. **真 NPU 发现** 🟡 body land(T101 real-Ascend `npu-smi info` · 复用 `npusmi/parse.go`)· 真机 stamp:
+   ResourceSlice 数量/属性 = 真实 910B(`connection-stamps.sh` stamp 1 · 🔴 lab-gated 实测)。
+2. **真切片** 🟡 body land(T101 claim-controller)· 真机 stamp:910B 动态切分真实下发(stamp 2 · 🔴 lab)。
+3. **真拓扑 telemetry 替换 fixture** 🟡 body land(T102 DCMI/npu-smi · simulator off · T103 真 GetTopology)·
+   真机 stamp:真 PCIE / 真 HCCS ring / 真 node↔node network / 真 utilization(stamp 3 · 🔴 lab)。
+4. **真推理** 🟡 body land(T105 CANN + vllm-ascend PD)· 真机 stamp:真 910B 跑 Qwen PD 分离 + `tests/sla`
+   P99 vs default SLO(T206 · stamp 4 · 🔴 lab)。
+5. **HCCS 亲和放置** 🟡 body land(T103 + scheduler-plugin)· 真机 stamp:真 HCCS 拓扑上 PD 共置(stamp 5 · 🔴 lab)。
+
+> 🟡 = 软件体 + captured-fixture/fake test land + harness 就位;🔴 = 真机实测 pending lab。单点 block →
+> 标 lab-driver-gated · 不 gating 收口(plan §8 fallback · checkpoint-phase13 §6 残留)。
 
 ---
 
-## 5. 🔴 生产硬化验收清单(Phase 13+ · 设计在/实现未做)
+## 5. 生产硬化验收清单(Phase 13 软件层 land · ADR-0025)
 
-> 出处 `docs/checkpoint-phase12.md` §6 + ADR forward-note。当前为 demo 占位,**未实现**:
+> 出处 `docs/checkpoint-phase12.md` §6 + ADR-0025 Bucket A。**软件层全部 land(P13-T-201..206)**;
+> 真机实测 / 真多区 DR 仍 lab-gated(各项注明)。
 
-- [ ] **认证授权**:OIDC IdP + K8s ServiceAccount + `TokenReview` + 细粒度 RBAC(替换 O2 DMS 静态 Bearer token · ADR-0013 §6 / 0014)。
-- [ ] **多租户配额强制**:`ClusterQuota` admission webhook B(scale-rate)+ 跨集群 usage 累计 reconcile + fail-open 兜底(ADR-0014 · schema 已落 P11-T104,逻辑未完)。
-- [ ] **Karmada 多站点 HA**:control-plane HA + ModelService/Quota 跨集群 `PropagationPolicy` + cross-cluster RBAC(ADR-0013/0014/0018)。
-- [ ] **Secret 管理**:静态 token/明文 → Vault 注入。
-- [ ] **推理 SLA**:vLLM PD 分离 P99 延迟 SLA 压测达标(ADR-0008 早标 webhook p99 隐患)。
-- [ ] **Go v1 ResourceSlice schema 迁移**(随 K8s 1.36 baseline · 5 模块 lockstep)。
+- [x] **认证授权**:`OIDCValidator`(JWKS+JWT)+ `K8sTokenReviewValidator`(in-cluster 主路径)真体 +
+  o2-dms middleware wire + backend prometheus SA token + Dex 参考 IdP + 各 chart 最小权限 RBAC
+  (**P13-T-201/T-202** · ADR-0025 §2 Decision A · 甲方 IdP swap = §4(a))。
+- [x] **多租户配额强制**:`ClusterQuota` 两 webhook 读 `status.usage.Total` 真强制(cluster cap)+
+  scale-rate + clusterquota_controller PerCluster 分桶/RecomputeTotal + scaler cluster gate + fail-open
+  (**P13-T-204** · ADR-0025 §2 Decision C · envtest/fake-client 验)。
+- [x] **Karmada 多站点 HA**:control-plane 3-replica + 3-node etcd quorum + propagation failover/
+  propagateDeps + cross-cluster RBAC ClusterPropagationPolicy(**P13-T-205** · ADR-0025 §2 Decision D)。
+  真物理 multi-region LB + external etcd DR 留 lab(ADR-0018 §2 · external-etcd swap 文档化)。
+- [x] **Secret 管理**:静态 token/明文 → ESO + Vault(ClusterSecretStore + 4 ExternalSecret · install.sh
+  `--with-secrets` · config.real.yaml secret-free)(**P13-T-203** · ADR-0025 §2 Decision B · Vault swap = §4)。
+- [x] **推理 SLA**:server-side P99 collector(histogram_quantile)+ scaler latency-aware scale-up +
+  `tests/sla` load-test harness + default SLO 文档化(**P13-T-206** · ADR-0025 §2 Decision E · 真 P99 实测
+  lab-gated · SLO 阈值甲方 swap = §4(b))。
+- [ ] **Go v1 ResourceSlice schema 迁移**(随 K8s 1.36 baseline · 5 模块 lockstep)—— **carry · 移出项目
+  核心交付物**(checkpoint-phase13 §7 · v1beta1 shim 仍 work · 兼容维护 ≠ 功能缺口 · lab K8s ≥1.36 触发 ·
+  不 gating 收口 · 不构成 Phase 14)。
 
 ---
 
