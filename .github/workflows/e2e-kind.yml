@@ -4,7 +4,7 @@
 #
 #   e2e-kind            real-cluster smoke. Spins up a kind cluster
 #                       (1 control-plane + 2 workers), patches fake
-#                       Ascend910 capacity onto each worker, installs
+#                       Ascend910B capacity onto each worker, installs
 #                       cert-manager + pool-operator + ascend-npu-
 #                       exporter-plus + demo-backend, seeds the
 #                       NodePool/NPUPool/NPUSlicePool hierarchy + a mock

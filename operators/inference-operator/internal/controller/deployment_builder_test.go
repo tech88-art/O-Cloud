@@ -306,7 +306,7 @@ func envValue(c *corev1.Container, name string) (string, bool) {
 // TestBuildDeployment_RealInferenceShape exercises P13-T-105 (ADR-0024
 // §2 Decision F): the PD-pair Deployments carry a REAL vllm-ascend
 // serving shape — real image, model-weights volume + mount, CANN env,
-// and a huawei.com/Ascend910 device-plugin request+limit — for BOTH
+// and a huawei.com/Ascend910B device-plugin request+limit — for BOTH
 // Prefill and Decode sides. This is the offline-layer functional
 // assertion; the real-machine "Pod Ready on 910B + inference responds"
 // stamp is lab-gated (plan §8 · devlog).
@@ -383,15 +383,15 @@ func TestBuildDeployment_RealInferenceShape(t *testing.T) {
 			t.Fatalf("side %s: VLLM_PD_ROLE = %q, want %q", tc.side, v, tc.side)
 		}
 
-		// (4) huawei.com/Ascend910 device-plugin request+limit present
+		// (4) huawei.com/Ascend910B device-plugin request+limit present
 		// (alongside the DRA slice claim).
-		req, okReq := c.Resources.Requests[ascend910Resource]
-		lim, okLim := c.Resources.Limits[ascend910Resource]
+		req, okReq := c.Resources.Requests[ascend910BResource]
+		lim, okLim := c.Resources.Limits[ascend910BResource]
 		if !okReq || !okLim {
-			t.Fatalf("side %s: huawei.com/Ascend910 request/limit missing (req=%v lim=%v)", tc.side, okReq, okLim)
+			t.Fatalf("side %s: huawei.com/Ascend910B request/limit missing (req=%v lim=%v)", tc.side, okReq, okLim)
 		}
 		if req.Value() != 1 || lim.Value() != 1 {
-			t.Fatalf("side %s: Ascend910 count req=%d lim=%d, want 1/1", tc.side, req.Value(), lim.Value())
+			t.Fatalf("side %s: Ascend910B count req=%d lim=%d, want 1/1", tc.side, req.Value(), lim.Value())
 		}
 		// DRA slice claim must STILL be present (slice-granular HCCS
 		// binding coexists with the whole-device gate).
@@ -438,7 +438,7 @@ func TestModelWeightsVolume_HostPathRootPrefix(t *testing.T) {
 }
 
 // TestNPUDeviceCount_Configurable proves NPU_DEVICE_COUNT_PER_REPLICA
-// flows into the Ascend910 request+limit (real profile may raise it for
+// flows into the Ascend910B request+limit (real profile may raise it for
 // tensor-parallel prefill) without a code branch.
 func TestNPUDeviceCount_Configurable(t *testing.T) {
 	prev := NPUDeviceCountPerReplica
@@ -451,10 +451,10 @@ func TestNPUDeviceCount_Configurable(t *testing.T) {
 	if c == nil {
 		t.Fatal("vllm-ascend container missing")
 	}
-	if got := c.Resources.Requests[ascend910Resource]; got.Value() != 4 {
-		t.Fatalf("Ascend910 request = %d, want 4", got.Value())
+	if got := c.Resources.Requests[ascend910BResource]; got.Value() != 4 {
+		t.Fatalf("Ascend910B request = %d, want 4", got.Value())
 	}
-	if got := c.Resources.Limits[ascend910Resource]; got.Value() != 4 {
-		t.Fatalf("Ascend910 limit = %d, want 4", got.Value())
+	if got := c.Resources.Limits[ascend910BResource]; got.Value() != 4 {
+		t.Fatalf("Ascend910B limit = %d, want 4", got.Value())
 	}
 }

@@ -215,7 +215,7 @@ runs on every PR + dev push. The `e2e-kind` job:
 1. spins up a kind v0.24 cluster (1 control-plane + 2 workers,
    `kindest/node:v1.30.4` for ValidatingAdmissionPolicy GA) via
    `tests/e2e/kind/kind-config.yaml`;
-2. patches fake `huawei.com/Ascend910=8` capacity onto each worker
+2. patches fake `huawei.com/Ascend910B=8` capacity onto each worker
    (`kubectl patch node --subresource=status`) since kind config
    cannot set extended-resource capacity directly;
 3. builds the pool-operator, demo-backend, and
@@ -226,7 +226,7 @@ runs on every PR + dev push. The `e2e-kind` job:
    `mapping.pools=crd` + `mapping.workloads=k8s`);
 5. seeds NodePool + NPUPool + NPUSlicePool (in `ocloud-system` per
    the T005 admission policy) + a mock workload Pod requesting
-   `huawei.com/Ascend910=1`;
+   `huawei.com/Ascend910B=1`;
 6. waits up to 150s for `NPUSlicePool.status.totalSlices > 0`
    (proves Reconcile loops T002-T004 fired);
 7. runs three Playwright API smokes

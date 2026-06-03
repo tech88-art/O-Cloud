@@ -334,9 +334,9 @@ bash tests/e2e/kind/install.sh up
 
 1. `kind create cluster --config tests/e2e/kind/kind-config.yaml`
    (1 control-plane + 2 workers, worker labels `huawei.com/Ascend910B=true`
-   + `Ascend910-Health=Healthy` + `site=site-a`/`role=edge`)
+   + `Ascend910B-Health=Healthy` + `site=site-a`/`role=edge`)
 2. `kubectl patch node --subresource=status` injects fake
-   `huawei.com/Ascend910=8` capacity into each worker (kind can't set
+   `huawei.com/Ascend910B=8` capacity into each worker (kind can't set
    extended resources via config, only labels)
 3. `helm install cert-manager jetstack/cert-manager` (Phase 5 PD Router
    will need it; pre-installing here exercises the dependency path)
@@ -362,7 +362,7 @@ Applies:
 - `NPUPool smoke-npupool` (parents NodePool, model `Ascend910B`)
 - `NPUSlicePool smoke-pool` in `ocloud-system` (strategy
   `FixedTemplate`, single `vir04` template, AICoreCount=4)
-- 1 mock `smoke-workload` Pod requesting `huawei.com/Ascend910=1`
+- 1 mock `smoke-workload` Pod requesting `huawei.com/Ascend910B=1`
   with the `npu.huawei.com/slice-bindings` annotation that Phase 5
   PD Router (ADR-0008) will eventually write
 

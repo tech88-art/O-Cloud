@@ -35,12 +35,12 @@ import (
 )
 
 // Ascend Device Plugin conventions — see docs/research/ascend-device-plugin.md.
-// huawei.com/Ascend910-Health=Healthy is the per-node health label written
+// huawei.com/Ascend910B-Health=Healthy is the per-node health label written
 // by the device plugin's health probe. The extended-resource name
-// huawei.com/Ascend910 is shared with NPUSlicePool and is declared as
+// huawei.com/Ascend910B is shared with NPUSlicePool and is declared as
 // npuCapacityResource in npuslicepool_controller.go.
 const (
-	npuHealthLabel        = "huawei.com/Ascend910-Health"
+	npuHealthLabel        = "huawei.com/Ascend910B-Health"
 	npuHealthLabelHealthy = "Healthy"
 )
 
@@ -82,10 +82,10 @@ type NPUPoolReconciler struct {
 
 // Reconcile aggregates NPU availability for the pool:
 //  1. Resolve spec.selector → Node list.
-//  2. Sum huawei.com/Ascend910 capacity into status.totalNPUs; subset of
-//     nodes that are Ready AND carry huawei.com/Ascend910-Health=Healthy
+//  2. Sum huawei.com/Ascend910B capacity into status.totalNPUs; subset of
+//     nodes that are Ready AND carry huawei.com/Ascend910B-Health=Healthy
 //     contribute to status.healthyNPUs.
-//  3. Sum huawei.com/Ascend910 requests across all non-terminal Pods on
+//  3. Sum huawei.com/Ascend910B requests across all non-terminal Pods on
 //     matched nodes into status.allocatedNPUs.
 //  4. Aggregate HCCS topology by listing ResourceSlices labelled
 //     managed-by=npu-dra-driver, filtering to matched nodes, and grouping
@@ -181,7 +181,7 @@ func (r *NPUPoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			Type:               "Ready",
 			Status:             metav1.ConditionFalse,
 			Reason:             "NoNPUFound",
-			Message:            "Selector matched no nodes with huawei.com/Ascend910 capacity",
+			Message:            "Selector matched no nodes with huawei.com/Ascend910B capacity",
 			LastTransitionTime: metav1.Now(),
 		})
 	} else {
@@ -383,7 +383,7 @@ func readIntAttribute(attrs map[string]interface{}, key string) (int64, bool) {
 }
 
 // isNodeNPUHealthy reports whether n is both kubelet-Ready and carries the
-// Ascend Device Plugin's huawei.com/Ascend910-Health=Healthy label.
+// Ascend Device Plugin's huawei.com/Ascend910B-Health=Healthy label.
 func isNodeNPUHealthy(n *corev1.Node) bool {
 	var ready bool
 	for _, c := range n.Status.Conditions {

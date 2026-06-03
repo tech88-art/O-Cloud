@@ -150,7 +150,7 @@ graph LR
 **Acceptance**:
 - Reconcile reads `spec.npuPoolRef` and the parent NPUPool's owned NPUs
   (via label-selector resolved against the cluster's `Node` list +
-  `huawei.com/Ascend910` capacity)
+  `huawei.com/Ascend910B` capacity)
 - For `Strategy: FixedTemplate`: `status.totalSlices = sum(template_count
   × npu_count)` per template entry
 - For `Strategy: Dynamic`: `status.totalSlices = floor(NPU_aicore /
@@ -184,12 +184,12 @@ graph LR
 
 **Acceptance**:
 - Reconcile reads `spec.selector` and lists nodes matching the label
-  selector; for each node, sums `huawei.com/Ascend910` resource
+  selector; for each node, sums `huawei.com/Ascend910B` resource
   capacity into `status.totalNPUs`
 - `status.healthyNPUs` derived from node `Ready` condition AND
-  Ascend Device Plugin's `huawei.com/Ascend910-Health=Healthy` label
+  Ascend Device Plugin's `huawei.com/Ascend910B-Health=Healthy` label
   (per `docs/research/ascend-device-plugin.md`)
-- `status.allocatedNPUs` derived from sum of `huawei.com/Ascend910`
+- `status.allocatedNPUs` derived from sum of `huawei.com/Ascend910B`
   requests across all Pods scheduled to the matched nodes
 - `status.hccsTopology` populated with a placeholder
   `{Topology: "unknown", Discovered: false}` — real HCCS topology
@@ -470,7 +470,7 @@ graph LR
 **Acceptance**:
 - `helm install ascend-npu-exporter-plus ./deploy/helm-charts/ascend-npu-exporter-plus`
   brings up a DaemonSet on every node carrying the
-  `huawei.com/Ascend910` label
+  `huawei.com/Ascend910B` label
 - ServiceMonitor scraped by kube-prometheus-stack; metrics visible
   after one scrape interval
 - The five Phase 1 dashboards (P1-T-209) display NPU panels with
@@ -497,7 +497,7 @@ graph LR
 
 **Allowed Paths**:
 - `.github/workflows/e2e-kind.yml` (new — closes #8)
-- `tests/e2e/kind/kind-config.yaml` (new — 1 control-plane + 2 worker nodes, fake `huawei.com/Ascend910` extended resource)
+- `tests/e2e/kind/kind-config.yaml` (new — 1 control-plane + 2 worker nodes, fake `huawei.com/Ascend910B` extended resource)
 - `tests/e2e/kind/install.sh` (new — bootstraps kind cluster, installs pool-operator + exporter-plus + demo-backend)
 - `tests/e2e/kind/seed-resources.sh` (new — applies a minimal NPUPool + NPUSlicePool + 1 mock workload)
 - `tests/e2e/playwright.config.kind.ts` (new — separate config so mock-backed Phase 1 suite stays unaffected)

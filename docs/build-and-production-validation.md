@@ -54,7 +54,7 @@
 | kustomize | v5.8+(operators 自动下载) | pool-operator 部署 |
 | kind | v0.31+(仅形态 C) | 本地 K8s smoke |
 
-**🔴 真机额外前提**:openEuler 22.03 LTS(node OS)· **CANN**(昇腾计算架构)· **Ascend Device Plugin + 驱动**(暴露 `huawei.com/Ascend910`)· K8s **1.34+**(DRA `resource.k8s.io/v1` GA;1.31–1.33 用 `v1beta1`)。
+**🔴 真机额外前提**:openEuler 22.03 LTS(node OS)· **CANN**(昇腾计算架构)· **Ascend Device Plugin + 驱动**(暴露 `huawei.com/Ascend910B`)· K8s **1.34+**(DRA `resource.k8s.io/v1` GA;1.31–1.33 用 `v1beta1`)。
 
 ---
 
@@ -129,8 +129,8 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 ### 3.1 集群前提
 
 - K8s **1.34+**,**arm64 节点**(Kunpeng 920),openEuler node OS。
-- **🔴 真机**:Ascend Device Plugin 已装(`kubectl get nodes -o json | jq '.items[].status.allocatable["huawei.com/Ascend910"]'` 非空)。
-  *(形态 C kind 用 `kubectl patch node ... huawei.com/Ascend910=8` 打 **fake** 容量替代 —— 仅 dev/CI。)*
+- **🔴 真机**:Ascend Device Plugin 已装(`kubectl get nodes -o json | jq '.items[].status.allocatable["huawei.com/Ascend910B"]'` 非空)。
+  *(形态 C kind 用 `kubectl patch node ... huawei.com/Ascend910B=8` 打 **fake** 容量替代 —— 仅 dev/CI。)*
 - helm `nodeAffinity kubernetes.io/arch=arm64`(**soft** preferredDuringScheduling · ADR-0020):arm64 优先、不硬性排他。
 
 ### 3.2 部署顺序(依赖序 · 从 e2e-kind 配方提炼)

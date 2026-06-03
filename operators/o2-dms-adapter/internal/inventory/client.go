@@ -190,9 +190,9 @@ func (c *DynamicClient) AggregateInventory(ctx context.Context) (InventorySnapsh
 	return snap, nil
 }
 
-// countNPUs counts the Ascend910 NPUs from node status.allocatable.
+// countNPUs counts the Ascend910B NPUs from node status.allocatable.
 func countNPUs(n corev1.Node) int {
-	if v, ok := n.Status.Allocatable["huawei.com/Ascend910"]; ok {
+	if v, ok := n.Status.Allocatable["huawei.com/Ascend910B"]; ok {
 		return int(v.Value())
 	}
 	return 0

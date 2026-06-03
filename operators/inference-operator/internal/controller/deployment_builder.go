@@ -108,7 +108,7 @@ const claimRefNameInPod = "npu-slice"
 //   * CANN runtime env (ASCEND_RT_VISIBLE_DEVICES + ASCEND_VISIBLE_
 //     DEVICES + the CANN toolkit path) so the昇腾 driver exposes the
 //     allocated 910B device(s) to the container,
-//   * a huawei.com/Ascend910 device-plugin resource request+limit so
+//   * a huawei.com/Ascend910B device-plugin resource request+limit so
 //     the kubelet admits the Pod only onto a node advertising real NPU
 //     capacity.
 //
@@ -122,18 +122,19 @@ const claimRefNameInPod = "npu-slice"
 // (DirectoryOrCreate) + a 1-device request; a real鲲鹏+910B node gets
 // the production root + real device count via the real profile env.
 
-// ascend910Resource is the Ascend Device Plugin extended-resource key
-// requested per PD-pair Pod. Matches `docs/build-and-production-
-// validation.md` §4.4(1) + the kind smoke fake-capacity key
-// (`tests/e2e/kind/install.sh` patches `huawei.com/Ascend910=8`
-// allocatable). The DRA ResourceClaim (claim_builder.go) remains the
-// slice-granular binding; this device-plugin request is the whole-
-// device admission gate the real昇腾 stack expects alongside CANN env.
-//
-// NB: backend `pkg/datasource/k8s/deploy.go` uses the `Ascend910B`
-// variant for its standalone deploy path — that drift is noted as
-// carry-forward in the T105 devlog (out of this task's Allowed Paths).
-const ascend910Resource = corev1.ResourceName("huawei.com/Ascend910")
+// ascend910BResource is the Ascend Device Plugin extended-resource key
+// requested per PD-pair Pod. The Ascend Device Plugin advertises whole
+// 昇腾 910B cards under `huawei.com/Ascend910B` (the bare `Ascend910`
+// suffix is first-gen 910 silicon — see docs/research/ascend-device-
+// plugin.md §3 + the exporter chart's nodeSelector override note). This
+// matches backend `pkg/datasource/k8s/deploy.go` (ascend910BResource),
+// the kind smoke fake-capacity key (`tests/e2e/kind/install.sh` patches
+// `huawei.com/Ascend910B=8` allocatable), and ADR-0024 §4(b). The DRA
+// ResourceClaim (claim_builder.go) remains the slice-granular binding;
+// this device-plugin request is the whole-device admission gate the real
+// 昇腾 stack expects alongside CANN env. P13-fix-002 reconciled the prior
+// `Ascend910` drift across backend + operators + kind onto this key.
+const ascend910BResource = corev1.ResourceName("huawei.com/Ascend910B")
 
 // modelWeightsVolumeName is the Pod volume + volumeMount name carrying
 // the model weights directory.
@@ -160,7 +161,7 @@ var (
 	// so the --model-path flag is stable across profiles.
 	ModelHostPathRoot = os.Getenv("MODEL_HOSTPATH_ROOT")
 
-	// NPUDeviceCountPerReplica is the huawei.com/Ascend910 request+limit
+	// NPUDeviceCountPerReplica is the huawei.com/Ascend910B request+limit
 	// stamped per PD-pair Pod. Default 1. Real profile may raise it via
 	// NPU_DEVICE_COUNT_PER_REPLICA for tensor-parallel prefill.
 	NPUDeviceCountPerReplica = getenvInt("NPU_DEVICE_COUNT_PER_REPLICA", 1)
@@ -469,13 +470,13 @@ func cannEnv(roleVal string) []corev1.EnvVar {
 
 // npuResourceRequirements builds the container ResourceRequirements
 // carrying BOTH the DRA slice claim (slice-granular HCCS binding) and
-// the huawei.com/Ascend910 device-plugin request+limit (whole-device
+// the huawei.com/Ascend910B device-plugin request+limit (whole-device
 // admission gate). NPUDeviceCountPerReplica controls the count.
 func npuResourceRequirements(claimRef string) corev1.ResourceRequirements {
 	qty := *resource.NewQuantity(int64(NPUDeviceCountPerReplica), resource.DecimalSI)
 	return corev1.ResourceRequirements{
-		Limits:   corev1.ResourceList{ascend910Resource: qty},
-		Requests: corev1.ResourceList{ascend910Resource: qty},
+		Limits:   corev1.ResourceList{ascend910BResource: qty},
+		Requests: corev1.ResourceList{ascend910BResource: qty},
 		Claims: []corev1.ResourceClaim{{
 			Name: claimRef,
 		}},

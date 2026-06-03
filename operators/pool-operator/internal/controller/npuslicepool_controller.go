@@ -55,7 +55,7 @@ const (
 
 	// npuCapacityResource is the K8s extended resource exposed by the Ascend
 	// device plugin on each Node.Status.Capacity / Allocatable.
-	npuCapacityResource corev1.ResourceName = "huawei.com/Ascend910"
+	npuCapacityResource corev1.ResourceName = "huawei.com/Ascend910B"
 
 	// npuSlicePoolFinalizer is the finalizer added on creation; removed on
 	// deletion after slice-instance cleanup completes. Phase 3 cleanup is a
@@ -72,7 +72,7 @@ const (
 // Reconcile contract (P3-T-002):
 //   - Reads spec.npuPoolRef -> Get the cluster-scoped NPUPool
 //   - Resolves NPUPool.Spec.Selector against the cluster Node list
-//   - Sums `huawei.com/Ascend910` capacity across matched Nodes to derive
+//   - Sums `huawei.com/Ascend910B` capacity across matched Nodes to derive
 //     the parent NPU count
 //   - Computes status.totalSlices per Spec.Strategy
 //     (FixedTemplate: sum_t(aiCoreTotalAscend910B/template.AICoreCount) * npuCount;
@@ -242,7 +242,7 @@ func (r *NPUSlicePoolReconciler) markNotReady(ctx context.Context, pool *imsv1al
 }
 
 // resolveNPUCount fetches the parent NPUPool, applies its Selector against the
-// cluster Node list, and sums `huawei.com/Ascend910` capacity. Returns a
+// cluster Node list, and sums `huawei.com/Ascend910B` capacity. Returns a
 // reconcileErr (non-nil) for any business-rule failure (missing ref, parent
 // not found, malformed selector, list error).
 func (r *NPUSlicePoolReconciler) resolveNPUCount(ctx context.Context, pool *imsv1alpha1.NPUSlicePool) (int32, *reconcileErr) {

@@ -10,7 +10,7 @@
 #       - container image = spec.model.image (real vllm-ascend)
 #       - a model-weights hostPath volume mounted at spec.model.modelPath
 #       - CANN env (ASCEND_RT_VISIBLE_DEVICES / ASCEND_TOOLKIT_HOME)
-#       - a huawei.com/Ascend910 device-plugin request+limit
+#       - a huawei.com/Ascend910B device-plugin request+limit
 #       - a DRA ResourceClaim (slice-granular HCCS binding)
 #   * the PD Router webhook (pd_router.go) then injects, at Pod admission:
 #       - npu.huawei.com/slice-bindings   (real allocated 910B slices · ADR-0008)

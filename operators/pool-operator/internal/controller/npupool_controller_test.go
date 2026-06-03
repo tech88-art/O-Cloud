@@ -89,8 +89,8 @@ func makeHCCSResourceSlice(ctx context.Context, nodeName string, devs []deviceFi
 }
 
 const (
-	npuResourceName     = "huawei.com/Ascend910"
-	npuHealthLabelKey   = "huawei.com/Ascend910-Health"
+	npuResourceName     = "huawei.com/Ascend910B"
+	npuHealthLabelKey   = "huawei.com/Ascend910B-Health"
 	npuHealthLabelValue = "Healthy"
 )
 

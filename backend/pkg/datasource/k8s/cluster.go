@@ -119,7 +119,7 @@ func (s *Source) resolveClusterIdentity(ctx context.Context) (string, string) {
 	return fallbackClusterID, fallbackClusterID
 }
 
-// countAscendNPUs reads a node's `huawei.com/Ascend910` resource
+// countAscendNPUs reads a node's `huawei.com/Ascend910B` resource
 // capacity. The Ascend Device Plugin advertises NPUs under this
 // resource name; the count is the integer capacity. Zero on absent
 // resource (non-NPU nodes).
@@ -127,7 +127,7 @@ func (s *Source) resolveClusterIdentity(ctx context.Context) (string, string) {
 // This helper lives next to GetCluster because the cluster-level NPU
 // aggregate needs it; ListNPUs in P2-T-002 will use it again per node.
 func countAscendNPUs(node *corev1.Node) int {
-	const ascendResource = "huawei.com/Ascend910"
+	const ascendResource = "huawei.com/Ascend910B"
 	if node == nil || node.Status.Capacity == nil {
 		return 0
 	}

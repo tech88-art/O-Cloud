@@ -119,8 +119,8 @@ graph LR
 - `backend/pkg/datasource/k8s/source.go` (extend Capabilities)
 
 **Acceptance**:
-- `ListNPUs(nodeName)` reads NPU info from node annotations / `huawei.com/Ascend910` resource declarations
-- Mapping: `huawei.com/Ascend910` capacity → NPU count; node labels → model / HCCS group / NUMA layout
+- `ListNPUs(nodeName)` reads NPU info from node annotations / `huawei.com/Ascend910B` resource declarations
+- Mapping: `huawei.com/Ascend910B` capacity → NPU count; node labels → model / HCCS group / NUMA layout
 - Unit tests: fake clientset with realistic Ascend Device Plugin labels (research/ascend-device-plugin.md)
 - `Capabilities().NPUs = true` after this task
 

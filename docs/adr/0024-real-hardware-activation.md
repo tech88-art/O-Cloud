@@ -92,7 +92,7 @@ backend `Deploy()/DeleteDeploy()` 真体(T104):
 
 inference-operator 真推理(T105):
 
-- `deployment_builder.go`:Prefill/Decode Deployment 注真 vllm-ascend/MindIE image + model weights volume mount + CANN env(`ASCEND_RT_VISIBLE_DEVICES` / `huawei.com/Ascend910` resource request)· 替换 mock/placeholder image
+- `deployment_builder.go`:Prefill/Decode Deployment 注真 vllm-ascend/MindIE image + model weights volume mount + CANN env(`ASCEND_RT_VISIBLE_DEVICES` / `huawei.com/Ascend910B` resource request)· 替换 mock/placeholder image
 - `pd_router.go`(mutating webhook):PD Router 注真 PD endpoint(prefill→decode KV cache 传输路径)· slice-binding 注解真 NPU(ADR-0008 契约不变)
 - config/samples:Qwen 8B PD ModelService 真样例
 

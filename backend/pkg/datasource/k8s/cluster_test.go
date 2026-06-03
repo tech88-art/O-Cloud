@@ -36,7 +36,7 @@ func mkNode(name string, npuCount int64, ready bool) *corev1.Node {
 		},
 	}
 	if npuCount > 0 {
-		node.Status.Capacity["huawei.com/Ascend910"] = *resource.NewQuantity(npuCount, resource.DecimalSI)
+		node.Status.Capacity["huawei.com/Ascend910B"] = *resource.NewQuantity(npuCount, resource.DecimalSI)
 	}
 	return node
 }

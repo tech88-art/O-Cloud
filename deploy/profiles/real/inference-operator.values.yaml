@@ -37,7 +37,7 @@ extraEnv:
   # (e.g. /models/qwen-8b);host 实际目录 = /data + modelPath。
   - name: MODEL_HOSTPATH_ROOT
     value: "/data"
-  # 每 PD replica 申请的真 910B 整卡数(huawei.com/Ascend910 request+limit)。
+  # 每 PD replica 申请的真 910B 整卡数(huawei.com/Ascend910B request+limit)。
   - name: NPU_DEVICE_COUNT_PER_REPLICA
     value: "1"
   # CANN toolkit install 路径(Atlas 800 / openEuler 默认)。

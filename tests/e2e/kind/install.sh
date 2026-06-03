@@ -7,7 +7,7 @@
 #                  into the e2e cluster (skipped if the cluster doesn't yet
 #                  exist — call `up` first to create it).
 #   up             kind create cluster + patch worker nodes with fake
-#                  huawei.com/Ascend910 capacity + install cert-manager +
+#                  huawei.com/Ascend910B capacity + install cert-manager +
 #                  pool-operator (via `make deploy IMG=...`) + exporter-plus
 #                  (helm install) + demo-backend (kubectl apply). Rolls the
 #                  deployments to Ready before returning.
@@ -150,16 +150,16 @@ cmd_up() {
   echo "DRA v1beta1 API confirmed; resources:"
   kubectl api-resources --api-group=resource.k8s.io || true
 
-  echo "== patch worker nodes with fake huawei.com/Ascend910=8 capacity =="
+  echo "== patch worker nodes with fake huawei.com/Ascend910B=8 capacity =="
   # kind config 'labels:' covers the label half (used by exporter-plus
   # DaemonSet nodeSelector). Extended-resource capacity has to go through
-  # the status subresource. We escape the '/' in huawei.com/Ascend910 as
+  # the status subresource. We escape the '/' in huawei.com/Ascend910B as
   # ~1 per RFC 6901 because it's a JSON Pointer segment.
   for node in $(kubectl get nodes -l '!node-role.kubernetes.io/control-plane' -o jsonpath='{.items[*].metadata.name}'); do
     kubectl patch node "${node}" --subresource=status --type=json \
-      -p='[{"op":"add","path":"/status/capacity/huawei.com~1Ascend910","value":"8"}]'
+      -p='[{"op":"add","path":"/status/capacity/huawei.com~1Ascend910B","value":"8"}]'
     kubectl patch node "${node}" --subresource=status --type=json \
-      -p='[{"op":"add","path":"/status/allocatable/huawei.com~1Ascend910","value":"8"}]'
+      -p='[{"op":"add","path":"/status/allocatable/huawei.com~1Ascend910B","value":"8"}]'
   done
 
   echo "== create namespaces =="

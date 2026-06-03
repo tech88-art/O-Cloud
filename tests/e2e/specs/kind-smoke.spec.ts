@@ -69,7 +69,7 @@ test.describe('kind smoke (real cluster + reconcile + exporter + aggregator)', (
 
   test('workloads list — seeded smoke-workload Pod surfaces through k8s.Source', async ({ request }) => {
     // The seeded Pod has metadata.name=smoke-workload, requests
-    // huawei.com/Ascend910=1 (so it landed on a worker), and is in
+    // huawei.com/Ascend910B=1 (so it landed on a worker), and is in
     // namespace ocloud-system. k8s.Source materialises that as a
     // model.Workload with .name=smoke-workload .namespace=ocloud-system.
     // We poll for ~20s because Pod scheduling + status propagation

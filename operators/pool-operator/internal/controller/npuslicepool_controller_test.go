@@ -84,7 +84,7 @@ func uniqueName(prefix string) string {
 	return fmt.Sprintf("%s-%d-%d", prefix, time.Now().UnixNano(), nsCounter)
 }
 
-// makeNPUNode creates a Node with `huawei.com/Ascend910` capacity set to
+// makeNPUNode creates a Node with `huawei.com/Ascend910B` capacity set to
 // npuCount and applies the supplied labels. Status is updated via the status
 // subresource so envtest persists the capacity (envtest does not run kubelet
 // and would otherwise drop Status on Create).
@@ -100,7 +100,7 @@ func makeNPUNode(ctx context.Context, k8sClient client.Client, name string, npuC
 	// Re-fetch so the .Status() Update has the correct ResourceVersion.
 	Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name}, node)).To(Succeed())
 	node.Status.Capacity = corev1.ResourceList{
-		corev1.ResourceName("huawei.com/Ascend910"): resource.MustParse(fmt.Sprintf("%d", npuCount)),
+		corev1.ResourceName("huawei.com/Ascend910B"): resource.MustParse(fmt.Sprintf("%d", npuCount)),
 	}
 	Expect(k8sClient.Status().Update(ctx, node)).To(Succeed())
 	return node

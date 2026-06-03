@@ -8,7 +8,7 @@
 #     * the exporter-plus DaemonSet's nodeSelector
 #       (huawei.com/Ascend910B: "true") schedules onto them, and
 #     * the seeded smoke-workload Pod, which requests
-#       huawei.com/Ascend910=1, has a node to land on once
+#       huawei.com/Ascend910B=1, has a node to land on once
 #       tests/e2e/kind/install.sh patches the fake extended-resource
 #       capacity into each worker's status subresource.
 #
@@ -119,7 +119,7 @@ nodes:
             feature-gates: "DynamicResourceAllocation=true"
     labels:
       huawei.com/Ascend910B: "true"
-      huawei.com/Ascend910-Health: "Healthy"
+      huawei.com/Ascend910B-Health: "Healthy"
       site: site-a
       role: edge
   - role: worker
@@ -132,6 +132,6 @@ nodes:
             feature-gates: "DynamicResourceAllocation=true"
     labels:
       huawei.com/Ascend910B: "true"
-      huawei.com/Ascend910-Health: "Healthy"
+      huawei.com/Ascend910B-Health: "Healthy"
       site: site-a
       role: edge
