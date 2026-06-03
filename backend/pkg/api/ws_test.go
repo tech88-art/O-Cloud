@@ -289,16 +289,21 @@ func TestWSTopology_ClientCloseTriggersCleanup(t *testing.T) {
 	require.NoError(t, conn.Close())
 
 	// Active count must drop back to baseline within a reasonable window.
-	// 2s is generous — gorilla wakes from a Read within milliseconds.
+	// gorilla wakes from a Read within milliseconds; the loop breaks early on
+	// success so a healthy run stays fast. The window is 5s (was 2s · P13-fix-001)
+	// to absorb CI-runner scheduling jitter under a loaded matrix — the 2s bound
+	// flaked TestWSTopology_ClientCloseTriggersCleanup on the phase-13-complete
+	// gate while the goroutine cleanup was merely slow, not stuck.
 	clean := false
-	for i := 0; i < 200; i++ {
+	cleanupDeadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(cleanupDeadline) {
 		if activeWSConnections() == baseline {
 			clean = true
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	assert.True(t, clean, "wsActiveConnections did not return to baseline (%d → %d) within 2s",
+	assert.True(t, clean, "wsActiveConnections did not return to baseline (%d → %d) within 5s",
 		baseline, activeWSConnections())
 
 	// Goroutine count check — must also recover. We're lenient here because
