@@ -119,6 +119,22 @@ rules:
       - npupools
       - npuslicepools
     verbs: ["get", "list", "watch"]
+  # resource.k8s.io ResourceSlices — the k8s topology Source (P13-T-103,
+  # backend/pkg/datasource/k8s/topology.go:loadResourceSliceOverlay) lists
+  # ResourceSlices to overlay real HCCS rings (npu.huawei.com/hccs_ring +
+  # numa_node, driver npu.ocloud.edge.example.com) onto the topology graph.
+  # READ-ONLY, least-privilege. NB: this smoke manifest pins
+  # mapping.topology=mock (above), so the read is NOT exercised by the kind
+  # smoke today — the rule keeps this reference ClusterRole at parity with
+  # what the real backend needs (config.real.yaml topology=k8s; the helm
+  # chart's gated clusterRead block grants the same). A forbidden list here
+  # is non-fatal — the source falls back to npu.go's static layout — so the
+  # gap is silent; this closes the P13-T-103 RBAC carry for the T301
+  # real-machine / topology=k8s path. apiGroup string-matched only, so it is
+  # harmless whether or not the cluster serves the resource.k8s.io API.
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["resourceslices"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
