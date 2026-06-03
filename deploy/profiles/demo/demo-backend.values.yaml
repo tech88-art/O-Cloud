@@ -1,0 +1,16 @@
+# Demo edition — demo-backend helm values.
+# 验证(mock)数据版:config.yaml 用 chart 默认(全 mock)· 单实例 · 无监控依赖。
+# 选择:helm upgrade --install demo-backend deploy/helm-charts/demo-backend \
+#         -n ocloud-system -f deploy/profiles/demo/demo-backend.values.yaml
+#
+# 注:完整 demo 验证更常走 docker-compose / `make run`(config.dev.yaml · 磁盘
+# fixtures)。helm demo-backend chart 只挂 config、不挂 mock-data fixtures —— 见
+# deploy/profiles/real/README.md「mock-data 缺口」。
+
+replicaCount: 1            # demo 单实例(关 failover)
+leaseElection:
+  enabled: false
+serviceMonitor:
+  enabled: false          # demo 不强依赖 kube-prometheus-stack
+podLabels:
+  ocloud.edge.example.com/edition: demo

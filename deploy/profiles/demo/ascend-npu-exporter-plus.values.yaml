@@ -1,0 +1,16 @@
+# Demo edition — ascend-npu-exporter-plus helm values.
+# 模拟器(验证数据)版:不需真 NPU 硬件。
+# nodeSelector/tolerations 清空 → demo 集群无 Ascend 标签节点也能调度。
+# (helm 对 map 是合并:必须用 null 才能清掉 chart 默认的 huawei.com/Ascend910B,
+#  空 {} 清不掉。)
+
+simulator:
+  enabled: true
+  # configMap 留空 → 二进制走 DCMI-stub(不报错,但无 sim 数据)。要真正渲染
+  # 验证 dashboards,需先建一个含 key `sim.json` 的 ConfigMap 并填到这里
+  # (参考 tests/e2e/kind/install.sh 的 `ascend-npu-exporter-plus-sim`)。
+  configMap: ""
+nodeSelector: null         # 清掉 Ascend910B 钉死 → demo 任意节点可调度
+tolerations: []            # 清掉 Ascend910B NoSchedule toleration
+serviceMonitor:
+  enabled: false           # demo 不强依赖 KPS Prometheus Operator

@@ -1,0 +1,8 @@
+# Demo edition — inference-operator helm values.
+# 验证版:metrics ingestor 走 degraded 模式(prometheusURL 空 → NoData),
+# 不依赖真 Prometheus。ModelService / PD Router / scheduler 逻辑两版一致。
+
+metrics:
+  prometheusURL: ""        # 空 = degraded(验证版不接真 Prometheus)
+podLabels:
+  ocloud.edge.example.com/edition: demo

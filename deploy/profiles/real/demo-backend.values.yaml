@@ -1,0 +1,61 @@
+# Real edition — demo-backend helm values.
+# 物理数据版:大部分资源接 in-cluster K8s / Pool CRD / Prometheus / ConfigMap。
+# 选择:helm upgrade --install demo-backend deploy/helm-charts/demo-backend \
+#         -n ocloud-system -f deploy/profiles/real/demo-backend.values.yaml
+#
+# ⚠️ Phase-13 边界:mapping.topology / deploy 仍 = mock(GetTopology / Deploy
+#    真体未建)。这两条仍需 mock-data fixtures —— 但 demo-backend chart 只挂
+#    config、不挂 mock-data(见 README「mock-data 缺口」)→ 上真集群前需另挂
+#    mock-data ConfigMap 到 /etc/demo-backend/mock-data,否则 /api/v1/topology 500。
+
+replicaCount: 2            # 真版 HA(leader + standby)
+leaseElection:
+  enabled: true
+serviceMonitor:
+  enabled: true            # 接 kube-prometheus-stack
+podLabels:
+  ocloud.edge.example.com/edition: real
+
+# 物理数据源 mapping(= backend/configs/config.real.yaml,内联给 chart 挂载)。
+config:
+  yaml: |
+    server:
+      port: 8080
+      enableCORS: false
+    logging:
+      level: info
+    datasources:
+      mock:                      # 仅给 topology + deploy(Phase-13)
+        enabled: true
+        path: /etc/demo-backend/mock-data   # 需另挂 mock-data ConfigMap
+      k8s:
+        enabled: true
+        kubeconfig: ""           # in-cluster ServiceAccount
+      crd:
+        enabled: true
+        kubeconfig: ""
+      prometheus:
+        enabled: true
+        url: "http://kube-prometheus-stack-prometheus.monitoring.svc:9090"
+      configmap:
+        enabled: true
+        kubeconfig: ""
+        path: "ocloud-system/ocloud-presets"
+    mapping:
+      clusters: k8s
+      topology: mock           # PHASE-13: ErrCapabilityUnavailable
+      nodes: k8s
+      npus: k8s
+      pools: crd
+      workloads: k8s
+      metrics: prometheus
+      presets: configmap
+      deploy: mock             # PHASE-13: 无真 Deploy() 体
+      logs: k8s
+    cache:
+      defaults:
+        max_entries: 1024
+        ttl: 5m
+      per_resource:
+        topology: { max_entries: 64, ttl: 30s }
+        workloads: { max_entries: 256, ttl: 1m }

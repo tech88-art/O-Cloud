@@ -1,5 +1,11 @@
 # Local development config — every resource served from the mock source.
 # Used by `make run` and by docker-compose dev stack.
+#
+# This is the DEMO / validation profile (全 mock · 演示数据). The REAL
+# (physical-data) profile is backend/configs/config.real.yaml. Two delivery
+# editions differ ONLY by which config file the binary loads (-c flag) —
+# single codebase, runtime data-source abstraction. See
+# docs/build-and-production-validation.md §0.1.
 
 server:
   port: 8080

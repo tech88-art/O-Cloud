@@ -1,0 +1,81 @@
+# O-Cloud demo-backend — REAL (physical-data) profile config.
+#
+# 真机交付版后端配置:大部分逻辑资源接真实数据源(in-cluster K8s API /
+# Pool CRD / Prometheus / ConfigMap),demo 版的 config.dev.yaml 则全 mock。
+# 两版只差这一份配置 —— 数据源抽象(backend/pkg/datasource + mapping.<resource>)
+# 让切换零代码改动(见 config.example.yaml §P1-T-303 DATASET SWAP CONTRACT)。
+#
+# ⚠️ Phase-13 边界(如实 · 不是 bug):
+#   - mapping.topology 仍 = mock —— k8s.Source/crd.Source 的 GetTopology 当前
+#     返回 ErrCapabilityUnavailable(真拓扑聚合是 Phase-13 功能体)。
+#   - mapping.deploy   仍 = mock —— 无真 Deploy() 体(Phase-13)。
+#   其余(clusters/nodes/npus/pools/workloads/metrics/presets/logs)已可接真源。
+#
+# 运行前置(README real profile 同步):
+#   1) Pod 以 in-cluster ServiceAccount 跑(kubeconfig 留空)· RBAC 见
+#      demo-backend chart / tests/e2e/kind/manifests/demo-backend.yaml ClusterRole。
+#   2) Pool CRD 已 apply(operators/pool-operator/config/crd/bases/)→ crd.Source。
+#   3) kube-prometheus-stack 已装,prometheus.url 指向其 in-cluster Service。
+#   4) presets ConfigMap(ocloud-system/ocloud-presets · key=JSON PresetDetail)
+#      已创建,否则 /api/v1/presets 会 500(presets:configmap 依赖它)。
+
+server:
+  port: 8080
+  enableCORS: false        # 生产收紧 CORS(demo 版 dev 便利开着)
+
+logging:
+  level: info
+
+# Grafana 嵌入 URL(/api/v1/grafana/url)。指向真实 Grafana,留空回退 dev。
+grafana:
+  baseUrl: ""
+
+datasources:
+  # mock 仅保留给 topology + deploy(真体待 Phase-13)。
+  mock:
+    enabled: true
+    path: "./configs/mock-data/set-a-small"
+  # in-cluster ServiceAccount(kubeconfig 留空)。serves Clusters/Nodes/NPUs/
+  # Workloads/Logs。
+  k8s:
+    enabled: true
+    kubeconfig: ""
+  # Pool CRD 读取(NPUSlicePool/NPUPool/NodePool/ClusterPool)。serves Pools。
+  crd:
+    enabled: true
+    kubeconfig: ""
+  # 真 Prometheus(kube-prometheus-stack in-cluster Service)。serves Metrics。
+  # URL 必填 —— 留空 prometheus.NewSource 会启动报错。
+  prometheus:
+    enabled: true
+    url: "http://kube-prometheus-stack-prometheus.monitoring.svc:9090"
+  # presets ConfigMap(<ns>/<name>)。serves Presets。
+  configmap:
+    enabled: true
+    kubeconfig: ""
+    path: "ocloud-system/ocloud-presets"
+
+# resource → source 名。topology/deploy 锁 mock(Phase-13);其余接真源。
+mapping:
+  clusters: k8s
+  topology: mock          # PHASE-13: GetTopology = ErrCapabilityUnavailable
+  nodes: k8s
+  npus: k8s
+  pools: crd
+  workloads: k8s
+  metrics: prometheus
+  presets: configmap
+  deploy: mock            # PHASE-13: 无真 Deploy() 体
+  logs: k8s
+
+cache:
+  defaults:
+    max_entries: 1024
+    ttl: 5m
+  per_resource:
+    topology:
+      max_entries: 64
+      ttl: 30s
+    workloads:
+      max_entries: 256
+      ttl: 1m

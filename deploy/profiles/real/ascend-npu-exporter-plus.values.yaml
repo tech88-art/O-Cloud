@@ -1,0 +1,12 @@
+# Real edition — ascend-npu-exporter-plus helm values.
+# 真硬件版:simulator 关 → exporter 走真 DCMI / npu-smi 源。
+#
+# ⚠️ Phase-13:simulator.enabled=false 只翻转二进制 flag;真 DCMI/npu-smi 指标
+#    source body 仍待 Phase-13 落地(无真 910B 节点时该 DaemonSet 不调度)。
+
+simulator:
+  enabled: false           # 关模拟器 → 真 DCMI/npu-smi(Phase-13 源体)
+nodeSelector:
+  huawei.com/Ascend910B: "true"   # 只调度到真 Ascend 节点(device-plugin 打标)
+serviceMonitor:
+  enabled: true            # 接 kube-prometheus-stack

@@ -1,0 +1,8 @@
+# Real edition — inference-operator helm values.
+# 真版:metrics ingestor 接 in-cluster Prometheus(kube-prometheus-stack)。
+# ModelService / PD Router webhook / scheduler 逻辑两版一致(非数据开关)。
+
+metrics:
+  prometheusURL: "http://kube-prometheus-stack-prometheus.monitoring.svc:9090"
+podLabels:
+  ocloud.edge.example.com/edition: real

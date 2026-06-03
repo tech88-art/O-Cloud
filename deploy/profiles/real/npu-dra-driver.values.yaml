@@ -1,0 +1,16 @@
+# Real edition — npu-dra-driver helm values.
+# 真硬件版:发布者切到 real-ascend 源(走 npu-smi / DCMI 读真 NPU 拓扑/切片)。
+#
+# ⚠️ Phase-13(关键 · 如实):publisher.sourceType=real-ascend 今天的 source body
+#    返回 ErrNotImplemented(operators/npu-dra-driver/internal/source/realascend/
+#    realascend.go · W1 stub)。chart 不阻止选择 —— 部署成功,但 reconcile 日志出
+#    non-fatal warning,真 ResourceSlice 发布要等 Phase 13 T101 lab body 点亮。
+#    npu-smi 拓扑解析器(parse.go)已写+测(fake 输出),只差真机接线 + 验证。
+
+publisher:
+  sourceType: "real-ascend"   # PHASE-13 stub:body 返回 ErrNotImplemented
+  realAscendMode: "exec"      # T101 lab body:shell out 到 npu-smi
+mockConfigMap:
+  create: false               # 真版不挂 mock npus.json
+podLabels:
+  ocloud.edge.example.com/edition: real

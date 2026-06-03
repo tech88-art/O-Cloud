@@ -1,0 +1,10 @@
+# Demo edition — npu-dra-driver helm values.
+# 模拟器发布者(验证数据)版:从内置 mock npus.json 发布 ResourceSlice,
+# 不接触真 NPU。这是 Phase 4-6 的既有行为。
+
+publisher:
+  sourceType: "mock-json"  # 读 mock npus.json(验证数据)
+mockConfigMap:
+  create: true             # chart 内嵌 set-a-small/npus.json
+podLabels:
+  ocloud.edge.example.com/edition: demo

@@ -80,6 +80,23 @@ readonly NPU_DRA_RELEASE_NAME="${OCEDGE_NPU_DRA_RELEASE:-npu-dra-driver}"
 readonly NPU_DRA_NAMESPACE="${OCEDGE_NPU_DRA_NAMESPACE:-ocloud-system}"
 readonly NPU_DRA_CHART_PATH="${OCEDGE_NPU_DRA_CHART:-deploy/helm-charts/npu-dra-driver}"
 
+# demo/real delivery profile. `--profile demo|real` selects the deploy value
+# overlays under deploy/profiles/<profile>/ that get threaded into the K8s helm
+# install steps (exporter + npu-dra-driver). Default demo. NOTE: the bundled
+# docker-compose stack is always the DEMO console (mock data); --profile real
+# only affects the K8s helm components (real edition = K8s deploy · see
+# docs/build-and-production-validation.md §0.1). Set initial value here; --profile
+# overrides it in main().
+DEPLOY_PROFILE="${OCEDGE_PROFILE:-demo}"
+
+# Echo a single `--values=<path>` token for a chart's active-profile overlay,
+# or nothing if no overlay exists. Safe under `set -u` (the :+ guard).
+profile_values_arg() {
+    local chart="$1"
+    local pf="$REPO_DIR/deploy/profiles/$DEPLOY_PROFILE/${chart}.values.yaml"
+    [[ -f "$pf" ]] && printf -- '--values=%s' "$pf" || true
+}
+
 log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }
 warn() { printf '[%s] \033[33mWARN\033[0m %s\n' "$(date '+%H:%M:%S')" "$*" >&2; }
 err() {
@@ -411,11 +428,13 @@ install_prometheus_stack() {
     if [[ ! -d "$REPO_DIR/$ASCEND_CHART_PATH" ]]; then
         warn "ascend chart not found at $ASCEND_CHART_PATH — skipping exporter install"
     else
-        log "upgrading/installing $ASCEND_RELEASE_NAME into namespace $ASCEND_NAMESPACE"
+        log "upgrading/installing $ASCEND_RELEASE_NAME into namespace $ASCEND_NAMESPACE (profile: $DEPLOY_PROFILE)"
+        local ascend_pfa; ascend_pfa="$(profile_values_arg ascend-npu-exporter-plus)"
         helm upgrade --install "$ASCEND_RELEASE_NAME" \
             "$REPO_DIR/$ASCEND_CHART_PATH" \
             --namespace "$ASCEND_NAMESPACE" \
             --create-namespace \
+            ${ascend_pfa:+"$ascend_pfa"} \
             --wait --timeout 5m \
             || warn "ascend exporter install failed (likely no Ascend nodes); ServiceMonitor stays unbound until silicon shows up"
     fi
@@ -439,13 +458,18 @@ install_npu_dra_driver() {
         err "npu-dra-driver chart not found at $NPU_DRA_CHART_PATH"
     fi
 
-    log "upgrading/installing $NPU_DRA_RELEASE_NAME into namespace $NPU_DRA_NAMESPACE"
+    log "upgrading/installing $NPU_DRA_RELEASE_NAME into namespace $NPU_DRA_NAMESPACE (profile: $DEPLOY_PROFILE)"
+    local npudra_pfa; npudra_pfa="$(profile_values_arg npu-dra-driver)"
     helm upgrade --install "$NPU_DRA_RELEASE_NAME" \
         "$REPO_DIR/$NPU_DRA_CHART_PATH" \
         --namespace "$NPU_DRA_NAMESPACE" \
         --create-namespace \
+        ${npudra_pfa:+"$npudra_pfa"} \
         --wait --timeout 5m
 
+    if [[ "$DEPLOY_PROFILE" == "real" ]]; then
+        warn "profile=real selects npu-dra-driver sourceType=real-ascend, whose source body returns ErrNotImplemented today (Phase-13 T101 lab body). ResourceSlice publication stays empty until then."
+    fi
     log "npu-dra-driver ready; resourceslices visible via: kubectl get resourceslices"
 }
 
@@ -485,6 +509,10 @@ $SCRIPT_NAME — single-node O-Cloud Edge demo installer
 Options:
   --image-only        skip source build; pull pre-built images via docker compose
   --no-start          build artifacts but don't bring up the compose stack
+  --profile demo|real delivery edition for the K8s helm steps (default demo).
+                      demo = validation/mock data; real = physical-data overlays
+                      from deploy/profiles/real/ (real-Ascend body is a Phase-13
+                      stub). The bundled compose stack is always the demo console.
   --with-prometheus   helm-install kube-prometheus-stack + ascend-npu-exporter-plus
                       into the current kubeconfig context (P2-T-106; composable
                       with the other flags)
@@ -521,6 +549,14 @@ main() {
         case "$1" in
             --image-only) image_only=true ;;
             --no-start) no_start=true ;;
+            --profile)
+                shift
+                [[ $# -gt 0 ]] || err "--profile needs an argument: demo|real"
+                case "$1" in
+                    demo | real) DEPLOY_PROFILE="$1" ;;
+                    *) err "--profile must be demo or real (got '$1')" ;;
+                esac
+                ;;
             --with-prometheus) with_prometheus=true ;;
             --with-dra-driver) with_dra_driver=true ;;
             --all-phase-4)
@@ -542,6 +578,7 @@ main() {
     done
 
     sanity_check
+    log "delivery profile: ${DEPLOY_PROFILE} (compose stack = demo console; --profile applies to the K8s helm steps)"
 
     if [[ "$do_uninstall" == "true" ]]; then
         uninstall
