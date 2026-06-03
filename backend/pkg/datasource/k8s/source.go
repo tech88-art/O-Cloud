@@ -177,13 +177,9 @@ func (s *Source) GetPreset(_ context.Context, _ string) (*model.PresetDetail, er
 	return nil, datasource.ErrCapabilityUnavailable
 }
 
-func (s *Source) Deploy(_ context.Context, _ *model.DeployRequest) (*model.DeployResponse, error) {
-	return nil, datasource.ErrCapabilityUnavailable
-}
-
-func (s *Source) DeleteDeploy(_ context.Context, _ string) error {
-	return datasource.ErrCapabilityUnavailable
-}
+// Deploy / DeleteDeploy live in deploy.go (P13-T-104 — real apply of a
+// Deployment+Service via client-go, replacing the Phase 2 ErrCapabilityUnavailable
+// stub. ADR-0024 §2 Decision E).
 
 func (s *Source) QueryMetric(_ context.Context, _ string, _ map[string]string, _ model.TimeRange) (*model.MetricQueryResponse, error) {
 	return nil, datasource.ErrCapabilityUnavailable

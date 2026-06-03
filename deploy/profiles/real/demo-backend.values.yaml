@@ -4,10 +4,19 @@
 #         -n ocloud-system -f deploy/profiles/real/demo-backend.values.yaml
 #
 # ✅ Phase-13 P13-T-103:mapping.topology 已切 k8s 真源(ResourceSlice
-#    hccs_ring/numa_node 聚合 · ADR-0024 §2 Decision C)→ topology 不再需要
-#    mock-data。⚠️ 仅 mapping.deploy 仍 = mock(真 Deploy() 体待 P13-T-104),
-#    deploy 不消费 mock-data fixtures(preset 走 configmap 真源)→ 真集群部署
-#    已不再依赖 mock-data ConfigMap(原「mock-data 缺口」随 topology 转真源消解)。
+#    hccs_ring/numa_node 聚合 · ADR-0024 §2 Decision C)→ topology 不再需要 mock-data。
+# ✅ Phase-13 P13-T-104:mapping.deploy 已切 k8s 真源(client-go apply / delete
+#    Deployment+Service · ADR-0024 §2 Decision E)→ 全部资源接真源,无 mock 引用,
+#    真集群部署已不再依赖 mock-data ConfigMap。
+#
+# ⚠️ RBAC 前置(carry-forward · deploy-module territory):真 Deploy()/DeleteDeploy()
+#    要求 backend ServiceAccount 对 apps/v1 deployments + core/v1 services 有
+#    create / delete / list / get 权限(label-selector delete 需 list)。base helm
+#    chart 的 RBAC 模板(deploy/helm-charts/demo-backend/templates/rbac.yaml)目前
+#    只授读权限(topology/workloads/...);需由 deploy 模块补 deployments/services
+#    的写权限 verb,否则真 POST /api/v1/deploy 会被 apiserver 403。本 values 文件
+#    不改 base chart RBAC(模块边界)—— 仅在此标注,P13-T-202(RBAC manifest)或真机
+#    E2E(P13-T-301)收口时落地。
 
 replicaCount: 2            # 真版 HA(leader + standby)
 leaseElection:
@@ -26,9 +35,9 @@ config:
     logging:
       level: info
     datasources:
-      mock:                      # 仅给 deploy(真 Deploy() 体待 P13-T-104)
+      mock:                      # 已无 mapping 引用(deploy 也切 k8s · P13-T-104);保留仅作应急回退
         enabled: true
-        path: /etc/demo-backend/mock-data   # deploy 不读 fixtures;topology 已切 k8s
+        path: /etc/demo-backend/mock-data
       k8s:
         enabled: true
         kubeconfig: ""           # in-cluster ServiceAccount
@@ -51,7 +60,7 @@ config:
       workloads: k8s
       metrics: prometheus
       presets: configmap
-      deploy: mock             # PHASE-13: 无真 Deploy() 体(P13-T-104)
+      deploy: k8s              # P13-T-104: 真 Deploy()/DeleteDeploy()(apply Deployment+Service) · ADR-0024 §2 Decision E
       logs: k8s
     cache:
       defaults:

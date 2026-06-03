@@ -10,9 +10,14 @@
 #   hccs_ring + numa_node · real-Ascend DRA publisher P13-T-101 产出)聚合真拓扑,
 #   不再返回 ErrCapabilityUnavailable(ADR-0024 §2 Decision C)。crd 源是等价备选
 #   (读 NPUPool.status.hccsTopology · 已实现+测)→ 改本行为 `topology: crd` 即可。
-# ⚠️ 仍 mock(待后续 Phase-13 task):
-#   - mapping.deploy 仍 = mock —— 无真 Deploy() 体(P13-T-104)。
-#   其余(clusters/nodes/npus/pools/workloads/metrics/presets/logs)已接真源。
+# ✅ Phase-13 P13-T-104:mapping.deploy 已切真源(k8s)—— k8s.Source.Deploy/
+#   DeleteDeploy 现 via client-go apply / delete Deployment+Service(label
+#   app.kubernetes.io/managed-by=demo-backend + deploy.ocloud.io/id=<deployId>),
+#   不再返回 ErrCapabilityUnavailable(ADR-0024 §2 Decision E)。前置:backend
+#   ServiceAccount 需对 deployments + services 有 create/delete/list 权限
+#   (RBAC 见 demo-backend chart ClusterRole / deploy/profiles/real values 备注)。
+#   全部逻辑资源(clusters/nodes/npus/pools/workloads/metrics/presets/deploy/logs)
+#   现已接真源 —— mock 数据源不再被任何 mapping 引用(下方 mock 块可在确认后关闭)。
 #
 # 运行前置(README real profile 同步):
 #   1) Pod 以 in-cluster ServiceAccount 跑(kubeconfig 留空)· RBAC 见
@@ -34,8 +39,8 @@ grafana:
   baseUrl: ""
 
 datasources:
-  # mock 仅保留给 deploy(真 Deploy() 体待 P13-T-104)。topology 已切 k8s 真源,
-  # 不再需要 mock-data fixtures。
+  # mock 现已无 mapping 引用(deploy 也切 k8s 真源 · P13-T-104)。保留 enabled 仅为
+  # 向后兼容 / 应急回退(改某 mapping.<res> 回 mock 即恢复 fixture 路径);真集群不依赖。
   mock:
     enabled: true
     path: "./configs/mock-data/set-a-small"
@@ -59,8 +64,8 @@ datasources:
     kubeconfig: ""
     path: "ocloud-system/ocloud-presets"
 
-# resource → source 名。topology 已切 k8s 真源(P13-T-103);deploy 仍 mock
-# (P13-T-104);其余接真源。
+# resource → source 名。topology(P13-T-103)+ deploy(P13-T-104)均已切 k8s 真源;
+# 全部资源接真源,无 mock 引用。
 mapping:
   clusters: k8s
   topology: k8s           # P13-T-103: 真拓扑(ResourceSlice hccs_ring/numa_node) · 备选 crd
@@ -70,7 +75,7 @@ mapping:
   workloads: k8s
   metrics: prometheus
   presets: configmap
-  deploy: mock            # PHASE-13: 无真 Deploy() 体(P13-T-104)
+  deploy: k8s             # P13-T-104: 真 Deploy()/DeleteDeploy()(apply Deployment+Service) · ADR-0024 §2 Decision E
   logs: k8s
 
 cache:

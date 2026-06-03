@@ -57,6 +57,12 @@ func TestStubMethods_ReturnErrCapabilityUnavailable(t *testing.T) {
 	// ResourceSlice attributes (topology.go). Their behaviour is covered by
 	// topology_test.go; they were removed from this stub list when the real
 	// body landed (ADR-0024 §2 Decision C).
+	//
+	// NOTE (P13-T-104): Deploy / DeleteDeploy are likewise NO LONGER stubs —
+	// they apply / delete a Deployment+Service on the apiserver (deploy.go,
+	// ADR-0024 §2 Decision E). Covered by deploy_test.go; removed from this stub
+	// list when the real body landed. ListPresets / GetPreset stay stubs here
+	// (presets are served by the configmap source, not the k8s source).
 	tests := []struct {
 		name string
 		do   func() error
@@ -72,13 +78,6 @@ func TestStubMethods_ReturnErrCapabilityUnavailable(t *testing.T) {
 		{"GetPreset", func() error {
 			_, err := src.GetPreset(ctx, "id")
 			return err
-		}},
-		{"Deploy", func() error {
-			_, err := src.Deploy(ctx, &model.DeployRequest{})
-			return err
-		}},
-		{"DeleteDeploy", func() error {
-			return src.DeleteDeploy(ctx, "d-1")
 		}},
 		{"QueryMetric", func() error {
 			_, err := src.QueryMetric(ctx, "t", nil, model.TimeRange{})
