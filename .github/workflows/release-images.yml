@@ -1,0 +1,83 @@
+# Release Images — multi-arch (amd64 + arm64) buildx push to GHCR.
+#
+# P13-T-301 · the Track A piece deferred from Phase 12 (ci.yml:334 note
+# "buildx 双架构镜像 push 留 Track A 真 CI/CD pipeline") · ADR-0020 aarch64 鲲鹏
+# multi-arch target. Builds every service Dockerfile for linux/amd64,linux/arm64
+# and pushes to GHCR so a real arm64 (Kunpeng 920) lab cluster can pull arm64
+# images.
+#
+# TRIGGER — deliberately DECOUPLED from the phase CI gate:
+#   - `workflow_dispatch`  : manual run (the usual path for a lab image refresh);
+#   - push tags `v*`       : real release versions (e.g. v0.13.0).
+# It does NOT run on `push: dev` or on `phase-*` tags, so it never blocks /
+# reddens the main CI gate (ci.yml runs on the dev push at the phase tag · per
+# memory feedback_post_tag_ci_gate). Non-PR-blocking by construction.
+name: Release Images
+
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  buildx-push:
+    name: buildx ${{ matrix.image }} (amd64+arm64)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: demo-backend, context: backend }
+          - { image: ascend-npu-exporter-plus, context: exporters/ascend-npu-exporter-plus }
+          - { image: inference-operator, context: operators/inference-operator }
+          - { image: npu-dra-driver, context: operators/npu-dra-driver }
+          - { image: o2-dms-adapter, context: operators/o2-dms-adapter }
+          - { image: pool-operator, context: operators/pool-operator }
+          - { image: scheduler-plugin, context: operators/scheduler-plugin }
+          - { image: bare-metal-provisioning-operator, context: operators/bare-metal-provisioning-operator }
+          - { image: node-lifecycle-operator, context: operators/node-lifecycle-operator }
+          - { image: software-mgmt-operator, context: operators/software-mgmt-operator }
+    steps:
+      - uses: actions/checkout@v4
+
+      # QEMU enables cross-building the arm64 layer on an amd64 runner; buildx
+      # drives the two-platform manifest. The Dockerfiles already honour
+      # GOARCH=${TARGETARCH} (Phase 12 multi-arch · ADR-0020) so the Go binary
+      # cross-compiles per platform with CGO disabled.
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # metadata-action lowercases the image path (GHCR requires lowercase;
+      # the repo owner is mixed-case) + derives tags.
+      - name: Derive image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ matrix.image }}
+          tags: |
+            type=ref,event=tag
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build + push (linux/amd64,linux/arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
