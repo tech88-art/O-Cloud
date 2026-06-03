@@ -18,6 +18,12 @@
 #   (RBAC 见 demo-backend chart ClusterRole / deploy/profiles/real values 备注)。
 #   全部逻辑资源(clusters/nodes/npus/pools/workloads/metrics/presets/deploy/logs)
 #   现已接真源 —— mock 数据源不再被任何 mapping 引用(下方 mock 块可在确认后关闭)。
+# ✅ Phase-13 P13-T-203(Secret 管理 · ADR-0025 §2 Decision B):本配置**不含任何
+#   secret**(刻意设计)—— prometheus.url / grafana.baseUrl 是 Service DNS 非凭据;
+#   backend 以 in-cluster ServiceAccount 投影 token 认证 Prometheus(P13-T-201 ·
+#   非静态 bearer)。故无 inline token 需外置。集群层 secret(Dex client / BMC 凭据)
+#   走 External Secrets Operator + Vault(deploy/secrets/ · install.sh --with-secrets);
+#   未来若本配置需引入 secret,经 env-from-Secret 注入(ESO 物化)· 不内联明文。
 #
 # 运行前置(README real profile 同步):
 #   1) Pod 以 in-cluster ServiceAccount 跑(kubeconfig 留空)· RBAC 见

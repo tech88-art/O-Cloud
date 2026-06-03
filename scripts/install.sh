@@ -468,9 +468,69 @@ install_npu_dra_driver() {
         --wait --timeout 5m
 
     if [[ "$DEPLOY_PROFILE" == "real" ]]; then
-        warn "profile=real selects npu-dra-driver sourceType=real-ascend, whose source body returns ErrNotImplemented today (Phase-13 T101 lab body). ResourceSlice publication stays empty until then."
+        warn "profile=real selects npu-dra-driver sourceType=real-ascend; the source body is the Phase-13 T101 lab body (npu-smi/DCMI). ResourceSlice publication needs real 910B silicon on the node."
     fi
     log "npu-dra-driver ready; resourceslices visible via: kubectl get resourceslices"
+}
+
+# --with-secrets implementation (P13-T-203 · ADR-0025 §2 Decision B). Installs
+# the External Secrets Operator and applies the REFERENCE Vault binding
+# (deploy/secrets/) so the real profile sources secrets from Vault instead of
+# inline YAML. Targets the current kubeconfig context; idempotent. Vault itself
+# is a documented PREREQ (deploy/secrets/README.md) — the store/ExternalSecrets
+# apply cleanly but stay unsynced until a reachable Vault answers.
+ESO_RELEASE_NAME="${OCEDGE_ESO_RELEASE:-external-secrets}"
+ESO_NAMESPACE="${OCEDGE_ESO_NAMESPACE:-external-secrets}"
+ESO_CHART_VERSION="${OCEDGE_ESO_VERSION:-0.10.5}"
+install_external_secrets() {
+    if ! command -v kubectl >/dev/null 2>&1; then
+        err "--with-secrets needs kubectl on PATH (and a working kubeconfig)"
+    fi
+    if ! kubectl cluster-info >/dev/null 2>&1; then
+        err "kubectl cluster-info failed — check kubeconfig before re-running"
+    fi
+    install_helm
+
+    log "adding external-secrets chart repo (idempotent)"
+    helm repo add external-secrets https://charts.external-secrets.io >/dev/null
+    helm repo update external-secrets >/dev/null
+
+    log "upgrading/installing $ESO_RELEASE_NAME (v$ESO_CHART_VERSION) into namespace $ESO_NAMESPACE"
+    helm upgrade --install "$ESO_RELEASE_NAME" \
+        external-secrets/external-secrets \
+        --namespace "$ESO_NAMESPACE" \
+        --create-namespace \
+        --version "$ESO_CHART_VERSION" \
+        --set installCRDs=true \
+        --wait --timeout 5m
+
+    log "applying reference Vault ClusterSecretStore + ExternalSecrets (deploy/secrets/)"
+    kubectl apply -f "$REPO_DIR/deploy/secrets/cluster-secret-store.yaml"
+    kubectl apply -f "$REPO_DIR/deploy/secrets/dex-client-secrets.externalsecret.yaml"
+    # grafana-admin lives in the monitoring ns; apply best-effort (no-op until
+    # kube-prometheus-stack is installed with grafana.admin.existingSecret).
+    kubectl apply -f "$REPO_DIR/deploy/secrets/grafana-admin.externalsecret.yaml" \
+        || warn "grafana-admin ExternalSecret apply skipped (monitoring ns likely absent until --with-prometheus)"
+    # BMC creds only matter when the bare-metal-provisioning-operator is in use;
+    # apply best-effort (harmless if its consumer isn't installed).
+    kubectl apply -f "$REPO_DIR/deploy/secrets/bmc-credentials.externalsecret.yaml" \
+        || warn "bmc ExternalSecret apply skipped/failed (bare-metal operator likely absent)"
+
+    warn "Vault is a PREREQ: the ClusterSecretStore targets vault.vault.svc:8200 with kubernetes auth. Until a reachable Vault answers, SecretStore stays NotReady and dex-client-secrets is NOT materialised — see deploy/secrets/README.md."
+    log "external-secrets ready; check sync via: kubectl get externalsecret -A"
+}
+
+uninstall_external_secrets() {
+    if ! command -v helm >/dev/null 2>&1; then
+        warn "helm not installed; nothing to uninstall"
+        return
+    fi
+    log "uninstalling $ESO_RELEASE_NAME (best-effort)"
+    kubectl delete -f "$REPO_DIR/deploy/secrets/dex-client-secrets.externalsecret.yaml" 2>/dev/null || true
+    kubectl delete -f "$REPO_DIR/deploy/secrets/grafana-admin.externalsecret.yaml" 2>/dev/null || true
+    kubectl delete -f "$REPO_DIR/deploy/secrets/bmc-credentials.externalsecret.yaml" 2>/dev/null || true
+    kubectl delete -f "$REPO_DIR/deploy/secrets/cluster-secret-store.yaml" 2>/dev/null || true
+    helm uninstall "$ESO_RELEASE_NAME" --namespace "$ESO_NAMESPACE" 2>/dev/null || true
 }
 
 uninstall_npu_dra_driver() {
@@ -497,6 +557,7 @@ uninstall() {
     pushd "$REPO_DIR" >/dev/null
     $SUDO docker compose -f "$COMPOSE_FILE" down -v --remove-orphans || true
     popd >/dev/null
+    uninstall_external_secrets
     uninstall_npu_dra_driver
     uninstall_prometheus_stack
     log "uninstall complete. Repository directory left in place; remove manually if desired."
@@ -521,7 +582,12 @@ Options:
                       kubectl + helm + a K8s 1.30+ cluster with DRA v1beta1 enabled.
   --all-phase-4       aggregate flag: --with-prometheus + --with-dra-driver.
                       Phase 4 "single-command stand up everything" knob.
-  --uninstall         tear down the compose stack + any kps/ascend/dra releases
+  --with-secrets      install External Secrets Operator + apply the reference
+                      Vault binding (deploy/secrets/) so the real profile sources
+                      secrets from Vault instead of inline YAML (P13-T-203;
+                      composable). Vault itself is a prereq — see
+                      deploy/secrets/README.md.
+  --uninstall         tear down the compose stack + any kps/ascend/dra/eso releases
   --help / -h         show this message
 
 Env vars:
@@ -544,6 +610,7 @@ main() {
     local do_uninstall=false
     local with_prometheus=false
     local with_dra_driver=false
+    local with_secrets=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -559,6 +626,7 @@ main() {
                 ;;
             --with-prometheus) with_prometheus=true ;;
             --with-dra-driver) with_dra_driver=true ;;
+            --with-secrets) with_secrets=true ;;
             --all-phase-4)
                 # Aggregate convenience flag (P4-T-104). Composes with the
                 # other --with-* flags so callers can still add more.
@@ -610,6 +678,10 @@ main() {
 
     if [[ "$with_dra_driver" == "true" ]]; then
         install_npu_dra_driver
+    fi
+
+    if [[ "$with_secrets" == "true" ]]; then
+        install_external_secrets
     fi
 }
 
