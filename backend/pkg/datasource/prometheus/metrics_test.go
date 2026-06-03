@@ -7,8 +7,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -229,6 +233,161 @@ func TestParsePromResponse_StatusError(t *testing.T) {
 	_, err := parsePromResponse(strings.NewReader(body))
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrUpstream)
+}
+
+// --- P13-T-201: ServiceAccount token source (auto-rotate aware) ---
+
+// authHeaderProbe spins an httptest server that records the Authorization
+// header of every request (thread-safe) and returns an empty matrix.
+type authHeaderProbe struct {
+	*httptest.Server
+	mu   sync.Mutex
+	seen []string
+}
+
+func newAuthHeaderProbe() *authHeaderProbe {
+	p := &authHeaderProbe{}
+	p.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p.mu.Lock()
+		p.seen = append(p.seen, r.Header.Get("Authorization"))
+		p.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"matrix","result":[]}}`))
+	}))
+	return p
+}
+
+func (p *authHeaderProbe) last() string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.seen) == 0 {
+		return ""
+	}
+	return p.seen[len(p.seen)-1]
+}
+
+// SA token is read from the file and sent as a Bearer header — verifying
+// the production path works without a real SA mount (injected temp path).
+func TestServiceAccountToken_ReadAndSent(t *testing.T) {
+	dir := t.TempDir()
+	tokenPath := filepath.Join(dir, "token")
+	require.NoError(t, os.WriteFile(tokenPath, []byte("sa-token-v1\n"), 0o600))
+
+	probe := newAuthHeaderProbe()
+	defer probe.Close()
+
+	src, err := NewSource(Options{URL: probe.URL, ServiceAccountTokenPath: tokenPath})
+	require.NoError(t, err)
+
+	_, err = src.QueryMetric(context.Background(),
+		"node_cpu_util", map[string]string{"node": "x"}, model.TimeRange{})
+	require.NoError(t, err)
+	// Trailing newline must be trimmed.
+	assert.Equal(t, "Bearer sa-token-v1", probe.last())
+}
+
+// The kubelet rotates the projected token file in place; a Source must pick
+// up the new value (it is NOT cached once at startup). Using a controllable
+// clock to cross the TTL boundary deterministically.
+func TestServiceAccountToken_AutoRotate(t *testing.T) {
+	dir := t.TempDir()
+	tokenPath := filepath.Join(dir, "token")
+	require.NoError(t, os.WriteFile(tokenPath, []byte("sa-token-v1"), 0o600))
+
+	probe := newAuthHeaderProbe()
+	defer probe.Close()
+
+	clock := &fakeClock{t: time.Now()}
+	src, err := NewSource(Options{
+		URL:                     probe.URL,
+		ServiceAccountTokenPath: tokenPath,
+		TokenRefreshTTL:         30 * time.Second,
+		nowFunc:                 clock.now,
+	})
+	require.NoError(t, err)
+
+	q := func() {
+		_, e := src.QueryMetric(context.Background(),
+			"node_cpu_util", map[string]string{"node": "x"}, model.TimeRange{})
+		require.NoError(t, e)
+	}
+
+	q()
+	assert.Equal(t, "Bearer sa-token-v1", probe.last())
+
+	// Rotate the file on disk.
+	require.NoError(t, os.WriteFile(tokenPath, []byte("sa-token-v2"), 0o600))
+
+	// Within TTL → still the cached v1 (no disk re-read).
+	clock.advance(10 * time.Second)
+	q()
+	assert.Equal(t, "Bearer sa-token-v1", probe.last(), "within TTL the token should be cached")
+
+	// Past TTL → re-read picks up v2 (auto-rotate aware).
+	clock.advance(30 * time.Second)
+	q()
+	assert.Equal(t, "Bearer sa-token-v2", probe.last(), "past TTL the rotated token must be picked up")
+}
+
+// A refresh failure (file briefly missing mid-rotation) keeps serving the
+// last good token rather than 500-ing.
+func TestServiceAccountToken_RefreshFailureKeepsLastGood(t *testing.T) {
+	dir := t.TempDir()
+	tokenPath := filepath.Join(dir, "token")
+	require.NoError(t, os.WriteFile(tokenPath, []byte("sa-token-v1"), 0o600))
+
+	probe := newAuthHeaderProbe()
+	defer probe.Close()
+
+	clock := &fakeClock{t: time.Now()}
+	src, err := NewSource(Options{
+		URL:                     probe.URL,
+		ServiceAccountTokenPath: tokenPath,
+		TokenRefreshTTL:         1 * time.Second,
+		nowFunc:                 clock.now,
+	})
+	require.NoError(t, err)
+
+	_, err = src.QueryMetric(context.Background(), "node_cpu_util", map[string]string{"node": "x"}, model.TimeRange{})
+	require.NoError(t, err)
+	assert.Equal(t, "Bearer sa-token-v1", probe.last())
+
+	// Remove the file and advance past TTL — read fails but last good wins.
+	require.NoError(t, os.Remove(tokenPath))
+	clock.advance(5 * time.Second)
+	_, err = src.QueryMetric(context.Background(), "node_cpu_util", map[string]string{"node": "x"}, model.TimeRange{})
+	require.NoError(t, err, "missing file mid-rotation must not fail the query")
+	assert.Equal(t, "Bearer sa-token-v1", probe.last())
+}
+
+// When no token is configured and autodetect is disabled, no Authorization
+// header is sent (unsecured dev Prometheus).
+func TestNoToken_NoAuthHeader(t *testing.T) {
+	probe := newAuthHeaderProbe()
+	defer probe.Close()
+	src, err := NewSource(Options{URL: probe.URL, DisableInClusterTokenAutodetect: true})
+	require.NoError(t, err)
+	_, err = src.QueryMetric(context.Background(), "node_cpu_util", map[string]string{"node": "x"}, model.TimeRange{})
+	require.NoError(t, err)
+	assert.Equal(t, "", probe.last())
+}
+
+// fakeClock is a deterministic, monotonic clock for TTL tests.
+type fakeClock struct {
+	mu sync.Mutex
+	t  time.Time
+}
+
+func (c *fakeClock) now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.t
+}
+
+func (c *fakeClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.t = c.t.Add(d)
 }
 
 // Sanity: ensure encoding/json is wired (parse path exercised).

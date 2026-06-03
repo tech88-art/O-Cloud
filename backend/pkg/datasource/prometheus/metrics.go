@@ -126,8 +126,16 @@ func (s *Source) QueryMetric(ctx context.Context, templateID string, vars map[st
 	if err != nil {
 		return nil, fmt.Errorf("prometheus: build request: %w", err)
 	}
-	if s.bearer != "" {
-		req.Header.Set("Authorization", "Bearer "+s.bearer)
+	// Resolve the bearer token per-request: the in-cluster ServiceAccount
+	// token is auto-rotated by the kubelet, so a token cached once at
+	// startup would go stale (P13-T-201 / ADR-0025 §2 Decision A). The
+	// fileTokenSource bounds the disk reads with a short TTL.
+	token, err := s.tokens.Token()
+	if err != nil {
+		return nil, fmt.Errorf("prometheus: load bearer token: %w", err)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	resp, err := s.client.Do(req)
