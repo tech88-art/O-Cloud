@@ -604,11 +604,14 @@ type ClusterPoolStatus struct {
 
 **Phase 9 完整**:multi-tenancy + Karmada RBAC 联动 — Phase 9 ADR-0014(2026-05-21 P9-T-002)落 multi-tenancy + NPU-aware Quota admission(`Quota` CRD namespace-scope + 2 ValidatingAdmissionWebhooks · namespace = tenant boundary 落实)· Karmada RBAC 联动 推 Phase 10 polish per ADR-0013 §6 forward note。
 
+**Phase 13 生产硬化**(ADR-0025 · Bucket A):authz full(o2-dms `K8sTokenReviewValidator` 主路径 + `OIDCValidator` 外部 IdP · Dex 参考 IdP · backend prometheus 静态 Bearer → SA token · 各 chart 最小权限 RBAC)+ cross-cluster RBAC propagation(Karmada HA · ADR-0025 §2 Decision A/D)· 替换 P9-P10 的静态 token placeholder · 详 ADR-0025 §2 Decision A。
+
 ### 6.8 Allocation / Quota 模型(Phase 5 NPUSliceAllocation landed · Phase 9 Quota landed)
 
 - **NPUSliceAllocation**:Phase 5 落地(P5-T-004 / 8173e83 CRD types + 3 round-trip tests · P5-T-005 / c283e94 controller + audit lifecycle)· `npu.ocloud.edge.example.com/v1alpha1, kind: NPUSliceAllocation`(per `operators/npu-dra-driver/api/v1alpha1/types.go` `+groupName=npu.ocloud.edge.example.com`)· namespace-scoped · 表达"谁占用了哪个切片"
 - **Quota**:Phase 9 落地(ADR-0014 / P9-T-002 design · P9-T-005 CRD + samples · P9-T-006 controller + 2 ValidatingAdmissionWebhooks)· `inference.ocloud.edge.example.com/v1alpha1, kind: Quota`(同 inference-operator binary scheme · per P9-T-002-fix-001 group correction 2026-05-21)· namespace-scoped · spec.enforcement.{maxSliceAllocations, maxScaleEventsPerWindow, maxNPUSliceTemplateRefs} · 表达"namespace 配额" — 与 K8s 原生 ResourceQuota orthogonal(NPU-aware vs generic)
 - **TODO 关闭**(2026-05-21):本节 Phase 5 启动前 carry-forward 完整解锁 · cluster-scope `ClusterQuota` + Karmada cross-cluster propagation 走 ADR-0014 §6 Open question (b)+(c)Phase 10 polish
+- **ClusterQuota**:Phase 11 落 schema(P11-T-104 · cluster-scoped · `ClusterQuotaStatus.Usage{Total, PerCluster map[string]QuotaUsage}` + `RecomputeTotal()` 聚合 primitive)· **Phase 13 真强制**(ADR-0025 §2 Decision C · Bucket A):webhook B 读 `ClusterQuota.status.usage.Total.CurrentSliceAllocations >= spec.enforcement.MaxSliceAllocations` 强制 + scale-rate(`maxScaleEventsPerWindow`)+ NPUVerticalScaler 读 cluster cap + quota controller tick populate PerCluster + fail-open 兜底 · 详 ADR-0025 §2 Decision C
 
 ---
 
