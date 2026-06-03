@@ -413,6 +413,65 @@ func TestNPUVerticalScalerReconcile_ClusterCapDefers(t *testing.T) {
 	}
 }
 
+// TestNPUVerticalScalerReconcile_LatencyOverrideScalesUp covers P13-T-206:
+// utilization alone says STAY (mid-band 50%), but P99 latency (5000ms) breaches
+// the SLO (2000ms) → override forces scale-UP to busy. FakeIngestor consumes
+// canned[0]=utilization then canned[1]=P99-latency-in-seconds.
+func TestNPUVerticalScalerReconcile_LatencyOverrideScalesUp(t *testing.T) {
+	now := time.Date(2026, 6, 3, 14, 0, 0, 0, time.UTC)
+	scaler := buildScalerFixture()
+	target := buildTargetFixture(func(m *inferencev1alpha1.ModelService) {
+		m.SetAnnotations(map[string]string{annotationSliceTemplate: "qwen-pd-idle"})
+	})
+	// canned[0]=50 (util in [20,75] → stay); canned[1]=5.0s (P99 5000ms > SLO).
+	r, _ := newScalerReconciler(t, now, []metrics.IngestorResult{{Value: 50}, {Value: 5.0}}, scaler, target)
+	r.LatencySLOMillis = 2000
+
+	if _, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{
+		Name: scaler.Name, Namespace: scaler.Namespace,
+	}}); err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+	var refreshed inferencev1alpha1.ModelService
+	_ = r.Client.Get(context.Background(), types.NamespacedName{Name: target.Name, Namespace: target.Namespace}, &refreshed)
+	if v := refreshed.GetAnnotations()[annotationSliceTemplate]; v != "qwen-pd-busy" {
+		t.Fatalf("annotation %q = %q, want qwen-pd-busy (latency SLO breach forces scale-up)", annotationSliceTemplate, v)
+	}
+	var sr inferencev1alpha1.NPUVerticalScaler
+	_ = r.Client.Get(context.Background(), types.NamespacedName{Name: scaler.Name, Namespace: scaler.Namespace}, &sr)
+	if len(sr.Status.ScaleHistory) != 1 || sr.Status.ScaleHistory[0].ToTemplate != "qwen-pd-busy" {
+		t.Fatalf("expected 1 ScaleEvent to qwen-pd-busy; got %+v", sr.Status.ScaleHistory)
+	}
+}
+
+// TestNPUVerticalScalerReconcile_LatencyUnderSLONoOverride: P99 under SLO →
+// utilization decision (stay) is preserved (no annotation change).
+func TestNPUVerticalScalerReconcile_LatencyUnderSLONoOverride(t *testing.T) {
+	now := time.Date(2026, 6, 3, 14, 0, 0, 0, time.UTC)
+	scaler := buildScalerFixture()
+	target := buildTargetFixture(func(m *inferencev1alpha1.ModelService) {
+		m.SetAnnotations(map[string]string{annotationSliceTemplate: "qwen-pd-idle"})
+	})
+	// canned[0]=50 (stay); canned[1]=0.5s (P99 500ms < SLO 2000ms).
+	r, _ := newScalerReconciler(t, now, []metrics.IngestorResult{{Value: 50}, {Value: 0.5}}, scaler, target)
+	r.LatencySLOMillis = 2000
+
+	res, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{
+		Name: scaler.Name, Namespace: scaler.Namespace,
+	}})
+	if err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+	if res.RequeueAfter != requeueOnNoData {
+		t.Fatalf("RequeueAfter = %v, want %v (stay)", res.RequeueAfter, requeueOnNoData)
+	}
+	var refreshed inferencev1alpha1.ModelService
+	_ = r.Client.Get(context.Background(), types.NamespacedName{Name: target.Name, Namespace: target.Namespace}, &refreshed)
+	if v := refreshed.GetAnnotations()[annotationSliceTemplate]; v != "qwen-pd-idle" {
+		t.Fatalf("annotation %q = %q, want qwen-pd-idle (P99 under SLO → no override)", annotationSliceTemplate, v)
+	}
+}
+
 // TestNPUVerticalScalerReconcile_ClusterCapUnderProceeds: cluster under cap →
 // scale proceeds normally (annotation patched to busy).
 func TestNPUVerticalScalerReconcile_ClusterCapUnderProceeds(t *testing.T) {

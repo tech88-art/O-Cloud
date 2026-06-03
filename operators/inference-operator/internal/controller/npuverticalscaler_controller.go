@@ -78,6 +78,16 @@ type NPUVerticalScalerReconciler struct {
 	// found && cap>0 && used+1 > cap. nil → no cluster-cap enforcement
 	// (backward-compatible with Phase 8 wiring). Fail-open on err.
 	ClusterScaleCap func(ctx context.Context) (used, capacity int32, found bool, err error)
+
+	// LatencySLOMillis, when > 0, enables latency-aware scaling (P13-T-206 ·
+	// ADR-0025 §2 Decision E). Each tick the scaler also queries the
+	// ModelService P99 end-to-end latency (via r.Ingestor · CustomPromQL
+	// histogram_quantile); when P99 > SLO it overrides a stay/idle decision
+	// to busy (scale UP to defend the SLO). 0 → disabled (backward-compatible).
+	// The threshold is a REFERENCE default (metrics.DefaultP99SLOMillis) ·
+	// customer swaps per ADR-0025 §4(b). Fail-open: no latency signal → no
+	// override.
+	LatencySLOMillis float64
 }
 
 // NPUVerticalScaler-specific condition reasons.
@@ -91,6 +101,7 @@ const (
 	reasonTemplateNotFound     = "TemplateNotFound"
 	reasonNoDataThisTick       = "NoDataThisTick"
 	reasonClusterQuotaExceeded = "ClusterQuotaScaleRateExceeded"
+	reasonLatencySLOBreach     = "LatencySLOBreachScaleUp"
 )
 
 // Pod-label / annotation keys consumed by downstream controllers.
@@ -205,6 +216,13 @@ func (r *NPUVerticalScalerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		"target", decision.target,
 		"reason", decision.reason)
 
+	// Step 4.5 (P13-T-206): latency-aware override. When the SLO gate is
+	// enabled and measured P99 exceeds it, force a scale-UP to the busy
+	// template even if utilization alone said stay/idle — latency is the
+	// SLA the customer feels. Never overrides DOWN (a latency breach must
+	// not idle). Fail-open: no latency signal → decision unchanged.
+	decision = r.applyLatencyOverride(ctx, &scaler, currentTemplate, decision)
+
 	// Step 5: If current == decision → no-op.
 	if decision.target == "" || decision.target == currentTemplate {
 		if err := r.writeStatus(ctx, &scaler, &target, currentTemplate,
@@ -310,6 +328,44 @@ func (r *NPUVerticalScalerReconciler) decideTemplate(
 		target: "",
 		reason: fmt.Sprintf("metric %.1f within hysteresis [%d, %d]",
 			value, m.IdleThreshold, m.BusyThreshold),
+	}
+}
+
+// applyLatencyOverride implements the P13-T-206 latency-aware scale-up. When
+// LatencySLOMillis > 0 and the measured ModelService P99 exceeds it, it forces
+// the decision to the busy template (scale UP) — unless it is already busy.
+// It never overrides toward idle (a latency breach must not trigger scale-down)
+// and is fail-open: a disabled gate or no latency signal leaves the
+// utilization decision untouched.
+func (r *NPUVerticalScalerReconciler) applyLatencyOverride(
+	ctx context.Context,
+	scaler *inferencev1alpha1.NPUVerticalScaler,
+	currentTemplate string,
+	decision decideOutcome,
+) decideOutcome {
+	if r.LatencySLOMillis <= 0 {
+		return decision
+	}
+	busy := scaler.Spec.ScaleSlice.BusyTemplateName
+	// Already heading to (or sitting at) busy → nothing to escalate.
+	if decision.target == busy || (decision.target == "" && currentTemplate == busy) {
+		return decision
+	}
+	p99, ok := metrics.QueryP99LatencyMillis(ctx, r.Ingestor,
+		scaler.Spec.Target.Name, scaler.Spec.Metric.WindowSeconds)
+	if !ok {
+		return decision // no latency signal → fail-open, keep utilization decision
+	}
+	if p99 <= r.LatencySLOMillis {
+		return decision
+	}
+	log.FromContext(ctx).V(1).Info("latency SLO breach → override to busy",
+		"p99Millis", p99, "sloMillis", r.LatencySLOMillis,
+		"utilizationTarget", decision.target)
+	return decideOutcome{
+		target: busy,
+		reason: fmt.Sprintf("P99 latency %.0fms > SLO %.0fms → scale up (was: %s)",
+			p99, r.LatencySLOMillis, decision.reason),
 	}
 }
 

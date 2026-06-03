@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"os"
+	"strconv"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -180,6 +181,18 @@ func main() {
 	// shared by the scaler cluster-rate gate + both quota admission webhooks.
 	clusterQuotaCache := webhook.NewClusterQuotaCache(mgr.GetClient(), 0)
 
+	// P13-T-206 (ADR-0025 §2 Decision E): latency-aware scaling SLO. Read
+	// NPUVERTICAL_SCALER_P99_SLO_MS (chart-injected) → scaler scales UP when
+	// measured P99 breaches it. Empty/0/invalid → disabled (utilization-only ·
+	// backward-compatible). Reference default = metrics.DefaultP99SLOMillis;
+	// customer swaps per ADR-0025 §4(b).
+	var p99SLOMillis float64
+	if v := os.Getenv("NPUVERTICAL_SCALER_P99_SLO_MS"); v != "" {
+		if f, perr := strconv.ParseFloat(v, 64); perr == nil && f > 0 {
+			p99SLOMillis = f
+		}
+	}
+
 	nvsr := &controller.NPUVerticalScalerReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
@@ -195,6 +208,8 @@ func main() {
 			return cq.Status.Usage.Total.ScaleEventsInWindow,
 				cq.Spec.Enforcement.MaxScaleEventsPerWindow.Count, true, nil
 		},
+		// P13-T-206 latency-aware scale-up SLO (0 = disabled).
+		LatencySLOMillis: p99SLOMillis,
 	}
 	if err := nvsr.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to register NPUVerticalScalerReconciler")
