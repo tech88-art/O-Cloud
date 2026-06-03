@@ -7,12 +7,21 @@
 # ModelService instance 走同一 placement(clusterAffinity = all members).
 # Phase 12+: per-resource override via ClusterPropagationPolicy + tag
 # selector if per-tenant placement signal materialises.
+#
+# P13-T-205 (ADR-0025 §2 Decision D propagation hardening): adds propagateDeps
+# (carry the ModelService's referenced ConfigMaps/Secrets along with it) +
+# application failover — if a member cluster goes unhealthy, Karmada reschedules
+# the divided replicas onto the surviving member after a toleration window and
+# graciously drains the old placement.
 apiVersion: policy.karmada.io/v1alpha1
 kind: PropagationPolicy
 metadata:
   name: modelservice-all-members
   namespace: ocloud-system
 spec:
+  # Carry dependent resources (referenced ConfigMaps / Secrets) to members
+  # alongside the ModelService — they would otherwise be missing post-failover.
+  propagateDeps: true
   resourceSelectors:
     - apiVersion: inference.ocloud.edge.example.com/v1alpha1
       kind: ModelService
@@ -44,3 +53,13 @@ spec:
               clusterNames:
                 - member2
             weight: 1
+  # Application failover: when a target member cluster is reported unhealthy,
+  # wait tolerationSeconds then reschedule this application's replicas to a
+  # healthy member; purgeMode Graciously drains the old placement after the new
+  # one is up (avoids a hard cut). Reference HA posture (ADR-0025 §3) — tune the
+  # toleration to the customer's RTO.
+  failover:
+    application:
+      decisionConditions:
+        tolerationSeconds: 120
+      purgeMode: Graciously

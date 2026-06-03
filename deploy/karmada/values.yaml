@@ -1,13 +1,18 @@
-# Karmada chart values overrides for Phase 11 P11-T-102 deployment.
-# Per ADR-0018 §2 Decision B(upstream karmada-charts/karmada · direct
-# chart · NOT karmada-operator)+ §4 Open question (a) Karmada HA留 Phase 12+.
+# Karmada chart values overrides — Phase 13 P13-T-205 HA control-plane.
+# Per ADR-0018 §2 Decision B (upstream karmada-charts/karmada · direct chart ·
+# NOT karmada-operator) + ADR-0025 §2 Decision D (Karmada HA = control-plane
+# 3-replica + HA etcd) + §3 right-sizing (reference-grade HA · NOT full DR).
 #
-# Phase 11 ships single Karmada control-plane(1 replica · 同 demo-backend
-# ADR-0015 §3.3 active-standby + Lease 选主 posture)· production HA(3+
-# replica + external etcd HA)留 Phase 12+ production hardening cohort.
+# Phase 11 (P11-T-102) shipped a single-replica control-plane (ADR-0018 §4 (a)
+# deferred HA to "Phase 12+ production hardening"). Phase 13 lights that up:
+# every control-plane component runs 3 replicas + the internal etcd is a 3-node
+# quorum StatefulSet. The upstream Deployments carry their own soft pod
+# anti-affinity (chart default), so replicas spread across nodes where the
+# cluster has >1 node; on a single-node kind cluster they co-locate (the
+# replica COUNT is still verifiable — true node-spread HA is lab/real-cluster).
 
 # installMode = host: install Karmada control-plane components into the
-# host cluster directly(suitable for kind / demo). Alternative "agent"
+# host cluster directly (suitable for kind / demo). Alternative "agent"
 # mode is for member-cluster karmada-agent install only.
 installMode: host
 
@@ -16,27 +21,47 @@ installMode: host
 components:
   - schedulerEstimator
 
-# Phase 11 single-replica posture(per ADR-0018 §4 (a)).
+# P13-T-205: control-plane HA = 3 replicas per component (was 1 in Phase 11).
+# karmada-apiserver + aggregated-apiserver are stateless front-ends (scale
+# horizontally); controller-manager + scheduler run active-passive with
+# leader-election (3 replicas = 1 active + 2 hot standby); webhook is
+# stateless (3 replicas behind the Service for admission availability).
 apiServer:
-  replicaCount: 1
+  replicaCount: 3
 controllerManager:
-  replicaCount: 1
+  replicaCount: 3
 scheduler:
-  replicaCount: 1
+  replicaCount: 3
 webhook:
-  replicaCount: 1
+  replicaCount: 3
 aggregatedApiServer:
-  replicaCount: 1
+  replicaCount: 3
 
-# etcd in-cluster mode for Phase 11(external etcd HA留 Phase 12+ per ADR-0018 §4 (a)).
+# P13-T-205: etcd HA. Internal mode = a 3-node etcd StatefulSet (quorum
+# tolerates 1 failure). This is the kind-verifiable HA default.
+#
+# PRODUCTION SWAP (external etcd · ADR-0025 §3 · real multi-region · lab-gated):
+# point Karmada at a customer-managed external etcd cluster instead —
+#   etcd:
+#     mode: external
+#     external:
+#       endpoints:
+#         - https://etcd-0.etcd.example.com:2379
+#         - https://etcd-1.etcd.example.com:2379
+#         - https://etcd-2.etcd.example.com:2379
+#       caFile: /etc/karmada/etcd/ca.crt
+#       certFile: /etc/karmada/etcd/tls.crt
+#       keyFile: /etc/karmada/etcd/tls.key
+# An external etcd is the right backend for genuine multi-region DR (its own
+# raft quorum spans AZs); the internal 3-node StatefulSet is the reference HA.
 etcd:
   mode: internal
   internal:
-    replicaCount: 1
+    replicaCount: 3         # 3-node quorum (HA · was 1 in Phase 11)
     storageClassName: ""    # default StorageClass · kind PV provisioner OK
     pvcSize: 1Gi
 
-# certs: chart-managed self-signed(Phase 11 demo · Phase 12+ Vault path
-# per ADR-0018 §4 (c)).
+# certs: chart-managed self-signed (demo/reference · Vault path per ADR-0018
+# §4 (c) / P13-T-203 external-secrets remains the production cert-rotation swap).
 certs:
   mode: auto

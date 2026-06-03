@@ -1,0 +1,39 @@
+---
+# Cross-cluster RBAC propagation (P13-T-205 · ADR-0025 §2 Decision D ·
+# closes the P13-T-202 carry — T202 deliberately left cross-cluster RBAC
+# propagation to T205 to avoid intruding on this policy's ownership).
+#
+# Component charts install each component's RBAC per-cluster (the host runs the
+# operators; members run the propagated workloads). When a workload's RBAC must
+# be IDENTICAL on every member (e.g. a ClusterRole the propagated Deployments'
+# ServiceAccounts bind to), this ClusterPropagationPolicy keeps it consistent:
+# it propagates ONLY RBAC objects explicitly opted-in with the label
+#   ocloud.edge.example.com/propagate: "true"
+# (an allow-list — never blanket-propagate cluster RBAC · least-surprise).
+#
+# Cluster-scoped resources (ClusterRole / ClusterRoleBinding) MUST use a
+# ClusterPropagationPolicy (not a namespaced PropagationPolicy · per Karmada).
+# Duplicated scheduling → byte-identical RBAC on each member.
+apiVersion: policy.karmada.io/v1alpha1
+kind: ClusterPropagationPolicy
+metadata:
+  name: rbac-all-members
+spec:
+  resourceSelectors:
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      labelSelector:
+        matchLabels:
+          ocloud.edge.example.com/propagate: "true"
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      labelSelector:
+        matchLabels:
+          ocloud.edge.example.com/propagate: "true"
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - member1
+        - member2
+    replicaScheduling:
+      replicaSchedulingType: Duplicated   # identical RBAC on every member

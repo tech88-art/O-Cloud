@@ -13,6 +13,14 @@
 # Per ADR-0017 §2 Decision A 主线 2 + ADR-0018 §3 Phase 11 delivery
 # scope T102.
 #
+# P13-T-205 (ADR-0025 §2 Decision D): the control-plane is now HA —
+# deploy/karmada/values.yaml runs 3 replicas per component + a 3-node internal
+# etcd quorum. This script is unchanged in flow (it already -f values.yaml);
+# step 3.5 below verifies the replica counts came up. Real multi-region L4 LB
+# fronting the apiserver + external etcd are lab/real-cluster (ADR-0018 §2 ·
+# §3 right-sizing) — kind co-locates the 3 replicas on its single node, which
+# verifies the replica COUNT but not true node-spread fault tolerance.
+#
 # Usage:
 #   bash deploy/karmada/install.sh                              # 默认拓扑
 #   KARMADA_CHART_VERSION=1.13.0 bash .../install.sh             # 锁定版本
@@ -109,6 +117,16 @@ helm --kube-context="kind-${HOST_CLUSTER}" upgrade --install karmada \
   echo "ERR: helm install karmada failed"
   exit 3
 }
+
+# 3.5 Verify control-plane HA replica counts (P13-T-205 · ADR-0025 §2 Decision D)
+echo ""
+echo "== Verify control-plane HA: deployments in ${KARMADA_NS} should be 3-replica =="
+kubectl --context="kind-${HOST_CLUSTER}" -n "${KARMADA_NS}" get deploy \
+  -o custom-columns='NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas' 2>/dev/null || true
+echo "  (etcd is a StatefulSet: kubectl -n ${KARMADA_NS} get sts)"
+kubectl --context="kind-${HOST_CLUSTER}" -n "${KARMADA_NS}" get sts 2>/dev/null || true
+echo "  NOTE: on single-node kind the 3 replicas co-locate (replica COUNT HA · "
+echo "        true node-spread + external-etcd DR is lab/real-cluster · ADR-0018 §2)."
 
 # 4. Extract Karmada apiserver kubeconfig
 echo ""

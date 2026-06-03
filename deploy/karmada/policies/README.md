@@ -13,6 +13,13 @@
 | `propagation-npuslicepool.yaml` | PropagationPolicy(ns-scope) | NPUSlicePool | Duplicated(each member 自己 NPU 资源) |
 | `propagation-quota.yaml` | PropagationPolicy(ns-scope) | Quota(namespace-scope) | Duplicated(per-member enforce) |
 | `cluster-propagation-clusterquota.yaml` | ClusterPropagationPolicy | ClusterQuota(cluster-scope) | Duplicated(consistent across members) |
+| `propagation-rbac.yaml` | ClusterPropagationPolicy | ClusterRole/ClusterRoleBinding labelled `ocloud.edge.example.com/propagate=true` | Duplicated(identical RBAC per member) |
+
+> **P13-T-205 (ADR-0025 §2 Decision D) propagation hardening**: `propagation-modelservice.yaml`
+> gains `propagateDeps: true` (carry referenced ConfigMaps/Secrets) + application
+> `failover` (reschedule replicas off an unhealthy member after a 120s toleration
+> window · purgeMode Graciously); `propagation-rbac.yaml` adds opt-in cross-cluster
+> RBAC propagation (closes the P13-T-202 carry · allow-list by label · never blanket).
 
 ## Apply
 
