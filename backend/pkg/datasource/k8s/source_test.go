@@ -52,18 +52,15 @@ func TestStubMethods_ReturnErrCapabilityUnavailable(t *testing.T) {
 	src := NewSourceWithClient(fake.NewSimpleClientset(), Options{})
 	ctx := context.Background()
 
+	// NOTE (P13-T-103): GetTopology / GetTopologyWithFabric are NO LONGER
+	// stubs — they now build the real cluster→node→npu HCCS graph from Nodes +
+	// ResourceSlice attributes (topology.go). Their behaviour is covered by
+	// topology_test.go; they were removed from this stub list when the real
+	// body landed (ADR-0024 §2 Decision C).
 	tests := []struct {
 		name string
 		do   func() error
 	}{
-		{"GetTopology", func() error {
-			_, err := src.GetTopology(ctx, "any", "slice")
-			return err
-		}},
-		{"GetTopologyWithFabric", func() error {
-			_, err := src.GetTopologyWithFabric(ctx, "any", "slice", datasource.TopologyOptions{})
-			return err
-		}},
 		{"ListNPUSlicePools", func() error {
 			_, err := src.ListNPUSlicePools(ctx)
 			return err

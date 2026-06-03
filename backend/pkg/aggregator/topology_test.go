@@ -7,6 +7,7 @@
 package aggregator
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -942,4 +943,163 @@ func TestBuildTopology_RunsOn_SkippedWhenBoundOrNoNode(t *testing.T) {
 	}
 	// Sanity: the bound pod did get its binds-to edge.
 	assert.Contains(t, indexEdges(topo), [3]string{"pod/ns/bound", "node-1-npu-0-slice-0", "binds-to"})
+}
+
+// ---- P13-T-103 ADR-0024 §2 Decision C/G real-topology path ----------------
+//
+// These cases pin the SEAM-ABOVE invariant: the aggregator emits the SAME HCCS
+// ring shape whether the NPUs' hccsGroup came from a mock fixture or from a real
+// Source's ResourceSlice / NPUPool.status.hccsTopology projection. We model the
+// real shape exactly as the k8s + crd sources produce it — NPUs whose hccsGroup
+// is node-namespaced ("<node>-hccs-<ring>" / "<node>-<groupId>") and whose
+// HCCSBandwidthGBps carries the datasheet nominal — and assert the ring closes
+// identically to the mock path. There is NO real-specific aggregator branch; if
+// these pass for the real-shaped input AND the mock cases above still pass, the
+// decoupling-seam invariant holds.
+
+// realTopologyNPUs builds the NPU list a real Source emits for an 8-card 910B
+// node: 4 NPUs on ring 0 (NUMA 0), 4 on ring 1 (NUMA 1), hccsGroup namespaced by
+// node exactly like k8s/topology.go applyResourceSliceOverlay +
+// crd/topology.go projectPoolsToNPUs. bw stamped per the source nominal.
+func realTopologyNPUs(node string) []*model.NPU {
+	bw := f64p(56.0)
+	npus := make([]*model.NPU, 0, 8)
+	for i := 0; i < 8; i++ {
+		ring := i / 4 // 0..3 → ring 0, 4..7 → ring 1 (real 910B 4-per-ring layout)
+		npus = append(npus, &model.NPU{
+			ID:                node + "-npu-" + strconv.Itoa(i),
+			NodeName:          node,
+			Model:             "Ascend910B",
+			Index:             i,
+			HCCSGroup:         node + "-hccs-" + strconv.Itoa(ring),
+			NumaNode:          ring,
+			Status:            "healthy",
+			SliceMode:         "whole",
+			HCCSBandwidthGBps: bw,
+		})
+	}
+	return npus
+}
+
+func TestBuildTopology_RealPath_HCCSRingsFromResourceSliceShape(t *testing.T) {
+	// Mirrors the k8s.Source GetTopologyWithFabric(IncludeFabric=true) output:
+	// 1 cluster + 1 node + 8 NPUs, two HCCS rings of 4 (one per NUMA), each
+	// closing into a 4-edge ring. depth=npu so no slice layer (k8s topology is
+	// npu-deep).
+	in := TopologyInputs{
+		Cluster: &model.Cluster{ID: "kubernetes", Name: "kubernetes", Status: "healthy", NodeCount: 1, NPUCount: 8},
+		Nodes: []model.NodeDetail{
+			{Node: model.Node{Name: "atlas-800-01", ClusterID: "kubernetes", Status: "Ready", NPUCount: 8}},
+		},
+		NPUs:          realTopologyNPUs("atlas-800-01"),
+		Depth:         DepthNPU,
+		IncludeFabric: true,
+	}
+
+	topo := BuildTopology(in)
+	require.NotNil(t, topo)
+
+	// 1 cluster + 1 node + 8 npu = 10 nodes.
+	assert.Len(t, topo.Nodes, 10)
+
+	// Two closed rings of 4 NPUs → 4 + 4 = 8 hccs edges, on top of the
+	// 1 cluster→node + 8 node→npu = 9 contains edges → 17 edges total.
+	var hccs, contains int
+	var hccsSample *model.TopologyEdge
+	for i := range topo.Edges {
+		switch topo.Edges[i].Type {
+		case edgeTypeHCCS:
+			hccs++
+			hccsSample = &topo.Edges[i]
+		case edgeTypeContains:
+			contains++
+		}
+	}
+	assert.Equal(t, 8, hccs, "two NUMA-aligned rings of 4 → 8 hccs edges")
+	assert.Equal(t, 9, contains, "1 cluster→node + 8 node→npu contains edges")
+	assert.Len(t, topo.Edges, 17)
+
+	// Ring-0 closes: npu-0↔1↔2↔3↔0 (sorted by index). Spot-check the closing edge.
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{"atlas-800-01-npu-0", "atlas-800-01-npu-1", "hccs"})
+	assert.Contains(t, edges, [3]string{"atlas-800-01-npu-3", "atlas-800-01-npu-0", "hccs"}) // ring 0 closes
+	assert.Contains(t, edges, [3]string{"atlas-800-01-npu-4", "atlas-800-01-npu-5", "hccs"})
+	assert.Contains(t, edges, [3]string{"atlas-800-01-npu-7", "atlas-800-01-npu-4", "hccs"}) // ring 1 closes
+
+	// Bandwidth nominal rides through onto the edge attribute (frontend hover).
+	require.NotNil(t, hccsSample)
+	assert.Equal(t, 56.0, hccsSample.Attributes["bandwidthGBps"])
+
+	// Cross-ring NPUs (npu-0 ring 0, npu-4 ring 1) are NOT directly linked —
+	// the node-namespaced hccsGroup keeps the two rings separate.
+	assert.NotContains(t, edges, [3]string{"atlas-800-01-npu-0", "atlas-800-01-npu-4", "hccs"})
+	assert.NotContains(t, edges, [3]string{"atlas-800-01-npu-3", "atlas-800-01-npu-4", "hccs"})
+}
+
+func TestBuildTopology_RealPath_MultiNodeRingsDoNotCrossNodes(t *testing.T) {
+	// Two nodes, each with one ring of 4. The node-namespaced hccsGroup (the
+	// real Source's invariant) must keep each node's ring closed within itself
+	// — no cross-node hccs edge even though both rings are "ring 0".
+	mk := func(node string) []*model.NPU {
+		bw := f64p(56.0)
+		out := make([]*model.NPU, 0, 4)
+		for i := 0; i < 4; i++ {
+			out = append(out, &model.NPU{
+				ID: node + "-npu-" + strconv.Itoa(i), NodeName: node, Model: "Ascend910B",
+				Index: i, HCCSGroup: node + "-hccs-0", Status: "healthy", SliceMode: "whole",
+				HCCSBandwidthGBps: bw,
+			})
+		}
+		return out
+	}
+	in := TopologyInputs{
+		Cluster: &model.Cluster{ID: "kubernetes", Name: "kubernetes", Status: "healthy", NodeCount: 2, NPUCount: 8},
+		Nodes: []model.NodeDetail{
+			{Node: model.Node{Name: "node-a", ClusterID: "kubernetes", Status: "Ready", NPUCount: 4}},
+			{Node: model.Node{Name: "node-b", ClusterID: "kubernetes", Status: "Ready", NPUCount: 4}},
+		},
+		NPUs:          append(mk("node-a"), mk("node-b")...),
+		Depth:         DepthNPU,
+		IncludeFabric: true,
+	}
+
+	topo := BuildTopology(in)
+
+	hccs := 0
+	for _, e := range topo.Edges {
+		if e.Type == edgeTypeHCCS {
+			hccs++
+		}
+	}
+	// Two independent closed rings of 4 → 8 hccs edges, none crossing nodes.
+	assert.Equal(t, 8, hccs)
+	edges := indexEdges(topo)
+	assert.Contains(t, edges, [3]string{"node-a-npu-0", "node-a-npu-1", "hccs"})
+	assert.Contains(t, edges, [3]string{"node-b-npu-0", "node-b-npu-1", "hccs"})
+	// No cross-node edge despite both being "ring 0".
+	assert.NotContains(t, edges, [3]string{"node-a-npu-0", "node-b-npu-0", "hccs"})
+	assert.NotContains(t, edges, [3]string{"node-a-npu-3", "node-b-npu-0", "hccs"})
+}
+
+func TestBuildTopology_RealPath_NoFabricFlag_NoHCCS(t *testing.T) {
+	// Zero-regression: the real-shaped NPUs with IncludeFabric=false emit the
+	// structural cluster→node→npu graph with NO hccs edges — identical contract
+	// to the mock path, proving the flag (not a profile branch) gates fabric.
+	in := TopologyInputs{
+		Cluster: &model.Cluster{ID: "kubernetes", Name: "kubernetes", Status: "healthy"},
+		Nodes: []model.NodeDetail{
+			{Node: model.Node{Name: "atlas-800-01", ClusterID: "kubernetes", Status: "Ready"}},
+		},
+		NPUs:          realTopologyNPUs("atlas-800-01"),
+		Depth:         DepthNPU,
+		IncludeFabric: false,
+	}
+
+	topo := BuildTopology(in)
+	for _, e := range topo.Edges {
+		assert.NotEqual(t, edgeTypeHCCS, e.Type, "no hccs without IncludeFabric (real shape, same gate as mock)")
+	}
+	// 1 cluster + 1 node + 8 npu = 10 nodes; 9 contains edges, 0 hccs.
+	assert.Len(t, topo.Nodes, 10)
+	assert.Len(t, topo.Edges, 9)
 }

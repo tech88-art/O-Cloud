@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -39,12 +40,23 @@ import (
 type Source struct {
 	client kubernetes.Interface
 
+	// dyn is the dynamic client used to read ResourceSlice objects for the
+	// real-topology path (P13-T-103 / ADR-0024 §2 Decision C). We use the
+	// dynamic client (unstructured) rather than a typed resource.k8s.io
+	// import so the backend stays version-agnostic across the v1beta1→v1
+	// ResourceSlice migration (ADR-0024 §4(a)): the GVR version is resolved
+	// at read time, not pinned at compile time. nil → GetTopology falls back
+	// to the structural (cluster→node→npu) graph without HCCS/PCIE fabric
+	// edges (tests that construct via NewSourceWithClient without a dynamic
+	// client still exercise the structural path).
+	dyn dynamic.Interface
+
 	// clusterID is the synthetic id we expose via ListClusters. The
 	// apiserver doesn't carry a stable "cluster id" of its own; we pull
 	// it from the kube-system/cluster-info ConfigMap when present, fall
 	// back to a constructor-supplied override, and finally synthesize a
 	// "kubernetes" literal so the wire shape always carries SOMETHING.
-	clusterID string
+	clusterID   string
 	clusterName string
 }
 
@@ -77,7 +89,17 @@ func NewSource(opts Options) (*Source, error) {
 	if err != nil {
 		return nil, fmt.Errorf("k8s: build clientset: %w", err)
 	}
-	return NewSourceWithClient(client, opts), nil
+	// Dynamic client for the ResourceSlice read in GetTopology (P13-T-103).
+	// Built from the same rest.Config so it shares the kubeconfig / in-cluster
+	// SA chain. Same module-boundary rationale as crd.Source: unstructured
+	// reads avoid pulling a versioned resource.k8s.io typed import.
+	dyn, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("k8s: build dynamic client: %w", err)
+	}
+	src := NewSourceWithClient(client, opts)
+	src.dyn = dyn
+	return src, nil
 }
 
 // NewSourceWithClient builds a Source against a caller-supplied
@@ -92,6 +114,17 @@ func NewSourceWithClient(client kubernetes.Interface, opts Options) *Source {
 		clusterID:   opts.ClusterIDOverride,
 		clusterName: opts.ClusterNameOverride,
 	}
+}
+
+// NewSourceWithClients is the test seam for the real-topology path (P13-T-103):
+// it injects both the typed clientset AND a dynamic client (the latter backs
+// the ResourceSlice read in GetTopology). Unit tests pass a
+// kubernetes/fake.Clientset + a dynamic/fake.FakeDynamicClient. Production
+// callers use NewSource (which wires both from the rest.Config).
+func NewSourceWithClients(client kubernetes.Interface, dyn dynamic.Interface, opts Options) *Source {
+	s := NewSourceWithClient(client, opts)
+	s.dyn = dyn
+	return s
 }
 
 // Compile-time check: *Source must satisfy datasource.Source so
@@ -122,13 +155,9 @@ func (s *Source) Capabilities() datasource.Capabilities {
 // These satisfy the Source interface today. Each method's body is
 // replaced wholesale by the corresponding P2-T-00x task.
 
-func (s *Source) GetTopology(_ context.Context, _, _ string) (*model.Topology, error) {
-	return nil, datasource.ErrCapabilityUnavailable
-}
-
-func (s *Source) GetTopologyWithFabric(_ context.Context, _, _ string, _ datasource.TopologyOptions) (*model.Topology, error) {
-	return nil, datasource.ErrCapabilityUnavailable
-}
+// GetTopology / GetTopologyWithFabric live in topology.go (P13-T-103 —
+// real-topology aggregation from Nodes + Ascend capacity + ResourceSlice
+// HCCS/NUMA attributes, replacing the Phase 2 ErrCapabilityUnavailable stub).
 
 // ListNPUs lives in npu.go (P2-T-002).
 

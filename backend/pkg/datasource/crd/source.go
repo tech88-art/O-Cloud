@@ -112,6 +112,11 @@ func (s *Source) Name() string { return "crd" }
 func (s *Source) Capabilities() datasource.Capabilities {
 	return datasource.Capabilities{
 		Pools: true,
+		// P13-T-103: GetTopology now builds the cluster→node→npu HCCS graph
+		// from NPUPool.status.hccsTopology (ADR-0024 §2 Decision C). The
+		// fabric edges ride IncludeFabric in BuildTopology — the same code
+		// path the k8s + mock sources drive (decoupling-seam invariant).
+		Topology: true,
 	}
 }
 
@@ -123,12 +128,10 @@ func (s *Source) ListClusters(_ context.Context) ([]*model.Cluster, error) {
 func (s *Source) GetCluster(_ context.Context, _ string) (*model.Cluster, error) {
 	return nil, datasource.ErrCapabilityUnavailable
 }
-func (s *Source) GetTopology(_ context.Context, _, _ string) (*model.Topology, error) {
-	return nil, datasource.ErrCapabilityUnavailable
-}
-func (s *Source) GetTopologyWithFabric(_ context.Context, _, _ string, _ datasource.TopologyOptions) (*model.Topology, error) {
-	return nil, datasource.ErrCapabilityUnavailable
-}
+
+// GetTopology / GetTopologyWithFabric live in topology.go (P13-T-103 —
+// real-topology aggregation from NPUPool.status.hccsTopology, replacing the
+// Phase 2 ErrCapabilityUnavailable stub).
 func (s *Source) ListNodes(_ context.Context, _ model.NodeFilter) ([]*model.Node, error) {
 	return nil, datasource.ErrCapabilityUnavailable
 }

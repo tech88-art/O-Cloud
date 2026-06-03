@@ -23,6 +23,17 @@
 // When both flags are false (default) the output graph is byte-equivalent
 // to the T102 build — zero regression for the depth=node/npu/slice paths.
 // Fabric and workload branches coexist independently when both flags are on.
+//
+// P13-T-103 (ADR-0024 §2 Decision G — decoupling-seam invariant): this package
+// is the seam-ABOVE shared layer and MUST stay source-agnostic. The k8s / crd
+// sources feed the SAME TopologyInputs the mock source does — HCCS rings arrive
+// as NPUs whose hccsGroup/HCCSBandwidthGBps the Source already populated (from
+// ResourceSlice attributes / NPUPool.status.hccsTopology for the real sources,
+// from JSON fixtures for the mock), and appendHCCS rings them up through one
+// code path. The only mock-vs-real difference is which Source the datasource
+// layer selected (config mapping.topology) — there is no source-conditional
+// branch in this file, and adding one would break the invariant and let
+// demo/real regressions diverge. Keep this file free of any source-name check.
 package aggregator
 
 import (

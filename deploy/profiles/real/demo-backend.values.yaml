@@ -3,10 +3,11 @@
 # 选择:helm upgrade --install demo-backend deploy/helm-charts/demo-backend \
 #         -n ocloud-system -f deploy/profiles/real/demo-backend.values.yaml
 #
-# ⚠️ Phase-13 边界:mapping.topology / deploy 仍 = mock(GetTopology / Deploy
-#    真体未建)。这两条仍需 mock-data fixtures —— 但 demo-backend chart 只挂
-#    config、不挂 mock-data(见 README「mock-data 缺口」)→ 上真集群前需另挂
-#    mock-data ConfigMap 到 /etc/demo-backend/mock-data,否则 /api/v1/topology 500。
+# ✅ Phase-13 P13-T-103:mapping.topology 已切 k8s 真源(ResourceSlice
+#    hccs_ring/numa_node 聚合 · ADR-0024 §2 Decision C)→ topology 不再需要
+#    mock-data。⚠️ 仅 mapping.deploy 仍 = mock(真 Deploy() 体待 P13-T-104),
+#    deploy 不消费 mock-data fixtures(preset 走 configmap 真源)→ 真集群部署
+#    已不再依赖 mock-data ConfigMap(原「mock-data 缺口」随 topology 转真源消解)。
 
 replicaCount: 2            # 真版 HA(leader + standby)
 leaseElection:
@@ -25,9 +26,9 @@ config:
     logging:
       level: info
     datasources:
-      mock:                      # 仅给 topology + deploy(Phase-13)
+      mock:                      # 仅给 deploy(真 Deploy() 体待 P13-T-104)
         enabled: true
-        path: /etc/demo-backend/mock-data   # 需另挂 mock-data ConfigMap
+        path: /etc/demo-backend/mock-data   # deploy 不读 fixtures;topology 已切 k8s
       k8s:
         enabled: true
         kubeconfig: ""           # in-cluster ServiceAccount
@@ -43,14 +44,14 @@ config:
         path: "ocloud-system/ocloud-presets"
     mapping:
       clusters: k8s
-      topology: mock           # PHASE-13: ErrCapabilityUnavailable
+      topology: k8s            # P13-T-103: 真拓扑(ResourceSlice hccs_ring/numa_node) · 备选 crd
       nodes: k8s
       npus: k8s
       pools: crd
       workloads: k8s
       metrics: prometheus
       presets: configmap
-      deploy: mock             # PHASE-13: 无真 Deploy() 体
+      deploy: mock             # PHASE-13: 无真 Deploy() 体(P13-T-104)
       logs: k8s
     cache:
       defaults:

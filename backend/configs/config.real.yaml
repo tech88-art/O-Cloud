@@ -5,11 +5,14 @@
 # 两版只差这一份配置 —— 数据源抽象(backend/pkg/datasource + mapping.<resource>)
 # 让切换零代码改动(见 config.example.yaml §P1-T-303 DATASET SWAP CONTRACT)。
 #
-# ⚠️ Phase-13 边界(如实 · 不是 bug):
-#   - mapping.topology 仍 = mock —— k8s.Source/crd.Source 的 GetTopology 当前
-#     返回 ErrCapabilityUnavailable(真拓扑聚合是 Phase-13 功能体)。
-#   - mapping.deploy   仍 = mock —— 无真 Deploy() 体(Phase-13)。
-#   其余(clusters/nodes/npus/pools/workloads/metrics/presets/logs)已可接真源。
+# ✅ Phase-13 P13-T-103:mapping.topology 已切真源(k8s)—— k8s.Source.GetTopology
+#   现从 live Node + Ascend 容量 + ResourceSlice device attr(npu.huawei.com/
+#   hccs_ring + numa_node · real-Ascend DRA publisher P13-T-101 产出)聚合真拓扑,
+#   不再返回 ErrCapabilityUnavailable(ADR-0024 §2 Decision C)。crd 源是等价备选
+#   (读 NPUPool.status.hccsTopology · 已实现+测)→ 改本行为 `topology: crd` 即可。
+# ⚠️ 仍 mock(待后续 Phase-13 task):
+#   - mapping.deploy 仍 = mock —— 无真 Deploy() 体(P13-T-104)。
+#   其余(clusters/nodes/npus/pools/workloads/metrics/presets/logs)已接真源。
 #
 # 运行前置(README real profile 同步):
 #   1) Pod 以 in-cluster ServiceAccount 跑(kubeconfig 留空)· RBAC 见
@@ -31,7 +34,8 @@ grafana:
   baseUrl: ""
 
 datasources:
-  # mock 仅保留给 topology + deploy(真体待 Phase-13)。
+  # mock 仅保留给 deploy(真 Deploy() 体待 P13-T-104)。topology 已切 k8s 真源,
+  # 不再需要 mock-data fixtures。
   mock:
     enabled: true
     path: "./configs/mock-data/set-a-small"
@@ -55,17 +59,18 @@ datasources:
     kubeconfig: ""
     path: "ocloud-system/ocloud-presets"
 
-# resource → source 名。topology/deploy 锁 mock(Phase-13);其余接真源。
+# resource → source 名。topology 已切 k8s 真源(P13-T-103);deploy 仍 mock
+# (P13-T-104);其余接真源。
 mapping:
   clusters: k8s
-  topology: mock          # PHASE-13: GetTopology = ErrCapabilityUnavailable
+  topology: k8s           # P13-T-103: 真拓扑(ResourceSlice hccs_ring/numa_node) · 备选 crd
   nodes: k8s
   npus: k8s
   pools: crd
   workloads: k8s
   metrics: prometheus
   presets: configmap
-  deploy: mock            # PHASE-13: 无真 Deploy() 体
+  deploy: mock            # PHASE-13: 无真 Deploy() 体(P13-T-104)
   logs: k8s
 
 cache:
