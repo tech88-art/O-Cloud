@@ -71,6 +71,13 @@ type NPUVerticalScalerReconciler struct {
 	// Now is overridable for tests so cooldown + scaleHistory timestamps
 	// are deterministic. Zero means time.Now.
 	Now func() time.Time
+
+	// ClusterScaleCap, when non-nil, returns the cluster-wide scale-event
+	// usage + cap for cross-cluster rate enforcement (P13-T-204 · ADR-0025
+	// §2 Decision C). A scale commit is deferred (not applied) when
+	// found && cap>0 && used+1 > cap. nil → no cluster-cap enforcement
+	// (backward-compatible with Phase 8 wiring). Fail-open on err.
+	ClusterScaleCap func(ctx context.Context) (used, capacity int32, found bool, err error)
 }
 
 // NPUVerticalScaler-specific condition reasons.
@@ -83,6 +90,7 @@ const (
 	reasonNoActiveTransition   = "NoActiveTransition"
 	reasonTemplateNotFound     = "TemplateNotFound"
 	reasonNoDataThisTick       = "NoDataThisTick"
+	reasonClusterQuotaExceeded = "ClusterQuotaScaleRateExceeded"
 )
 
 // Pod-label / annotation keys consumed by downstream controllers.
@@ -224,6 +232,30 @@ func (r *NPUVerticalScalerReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 	}
 
+	// Step 6.5 (P13-T-204): cluster-wide ClusterQuota scale-rate gate. A
+	// scale event that would exceed the cluster-wide cap is deferred (not
+	// committed) — defends the cluster budget even when the namespace cap
+	// has headroom. Fail-open: a reader error logs + proceeds (the webhook
+	// + controller tick remain the authoritative enforcement; the scaler
+	// gate is best-effort defence-in-depth).
+	if r.ClusterScaleCap != nil {
+		used, capacity, found, err := r.ClusterScaleCap(ctx)
+		if err != nil {
+			lg.V(1).Info("ClusterScaleCap read failed; fail-open", "err", err.Error())
+		} else if found && capacity > 0 && used+1 > capacity {
+			lg.Info("scale deferred: cluster scale-rate cap reached",
+				"clusterUsed", used, "clusterCap", capacity)
+			r.Recorder.Eventf(&scaler, "Warning", "ClusterQuotaExceeded",
+				"scale to %s deferred: cluster scale-event rate cap %d reached (current %d)",
+				decision.target, capacity, used)
+			if werr := r.writeStatus(ctx, &scaler, &target, currentTemplate,
+				r.clusterQuotaExceededCondition(used, capacity)); werr != nil {
+				return ctrl.Result{}, werr
+			}
+			return ctrl.Result{RequeueAfter: requeueAfterScale}, nil
+		}
+	}
+
 	// Step 7: Commit scaling — patch ModelService annotation + record event.
 	if err := r.patchModelServiceAnnotation(ctx, &target, &scaler, decision.target); err != nil {
 		return ctrl.Result{}, fmt.Errorf("patch target annotation: %w", err)
@@ -294,8 +326,8 @@ func (r *NPUVerticalScalerReconciler) patchModelServiceAnnotation(
 	patch := map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"annotations": map[string]string{
-				annotationSliceTemplate:                      templateName,
-				inferencev1alpha1.AnnotationManagedBy:        scaler.Name,
+				annotationSliceTemplate:               templateName,
+				inferencev1alpha1.AnnotationManagedBy: scaler.Name,
 			},
 		},
 	}
@@ -386,6 +418,19 @@ func (r *NPUVerticalScalerReconciler) scalingTransitioningCondition() metav1.Con
 		Status:  metav1.ConditionTrue,
 		Reason:  reasonScalingTransitioning,
 		Message: "Scaling transition committed; waiting for rolling-restart effect",
+	}
+}
+
+// clusterQuotaExceededCondition reports a scale deferred by the cluster-wide
+// ClusterQuota scale-rate cap (P13-T-204). Active stays True (the scaler is
+// healthy — it is intentionally holding back), surfaced as a distinct
+// condition type so operators can alert on cluster-budget pressure.
+func (r *NPUVerticalScalerReconciler) clusterQuotaExceededCondition(used, capacity int32) metav1.Condition {
+	return metav1.Condition{
+		Type:    inferencev1alpha1.ConditionActive,
+		Status:  metav1.ConditionTrue,
+		Reason:  reasonClusterQuotaExceeded,
+		Message: fmt.Sprintf("scale deferred: cluster scale-event rate cap %d reached (current %d)", capacity, used),
 	}
 }
 

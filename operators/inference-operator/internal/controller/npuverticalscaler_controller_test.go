@@ -80,8 +80,8 @@ func buildTargetFixture(modifiers ...func(*inferencev1alpha1.ModelService)) *inf
 			Namespace: "ai-edge-demo",
 		},
 		Spec: inferencev1alpha1.ModelServiceSpec{
-			Model:    inferencev1alpha1.ModelSpec{Image: "vllm:test", ModelPath: "/m"},
-			PDPair:   inferencev1alpha1.PDPairSpec{Prefill: inferencev1alpha1.PDReplicaSpec{Replicas: 1}, Decode: inferencev1alpha1.PDReplicaSpec{Replicas: 1}},
+			Model:           inferencev1alpha1.ModelSpec{Image: "vllm:test", ModelPath: "/m"},
+			PDPair:          inferencev1alpha1.PDPairSpec{Prefill: inferencev1alpha1.PDReplicaSpec{Replicas: 1}, Decode: inferencev1alpha1.PDReplicaSpec{Replicas: 1}},
 			NPUSlicePoolRef: corev1.LocalObjectReference{Name: "ascend-910b-pool"},
 		},
 	}
@@ -362,5 +362,77 @@ func TestNPUVerticalScalerReconcile_TargetNotFound(t *testing.T) {
 	}
 	if active.Reason != "TargetNotFound" {
 		t.Fatalf("ConditionActive.Reason = %q, want TargetNotFound", active.Reason)
+	}
+}
+
+// TestNPUVerticalScalerReconcile_ClusterCapDefers covers P13-T-204: a scale
+// that would cross busyThreshold is DEFERRED (target annotation unchanged · no
+// ScaleEvent) when the cluster-wide ClusterQuota scale-rate cap is reached,
+// even though the per-scaler cooldown + metric say "scale now".
+func TestNPUVerticalScalerReconcile_ClusterCapDefers(t *testing.T) {
+	now := time.Date(2026, 6, 3, 14, 0, 0, 0, time.UTC)
+	scaler := buildScalerFixture()
+	target := buildTargetFixture(func(m *inferencev1alpha1.ModelService) {
+		m.SetAnnotations(map[string]string{annotationSliceTemplate: "qwen-pd-idle"})
+	})
+	r, _ := newScalerReconciler(t, now, []metrics.IngestorResult{{Value: 87}}, scaler, target)
+	// Cluster at rate cap: used=3, cap=3 → used+1 > cap → defer.
+	r.ClusterScaleCap = func(_ context.Context) (int32, int32, bool, error) {
+		return 3, 3, true, nil
+	}
+
+	res, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{
+		Name: scaler.Name, Namespace: scaler.Namespace,
+	}})
+	if err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+	if res.RequeueAfter != requeueAfterScale {
+		t.Fatalf("RequeueAfter = %v, want %v on cluster-cap defer", res.RequeueAfter, requeueAfterScale)
+	}
+	// Target annotation must be UNCHANGED (scale deferred).
+	var refreshed inferencev1alpha1.ModelService
+	_ = r.Client.Get(context.Background(), types.NamespacedName{Name: target.Name, Namespace: target.Namespace}, &refreshed)
+	if v := refreshed.GetAnnotations()[annotationSliceTemplate]; v != "qwen-pd-idle" {
+		t.Fatalf("annotation %q = %q, want qwen-pd-idle (deferred)", annotationSliceTemplate, v)
+	}
+	var sr inferencev1alpha1.NPUVerticalScaler
+	_ = r.Client.Get(context.Background(), types.NamespacedName{Name: scaler.Name, Namespace: scaler.Namespace}, &sr)
+	if len(sr.Status.ScaleHistory) != 0 {
+		t.Fatalf("ScaleHistory len = %d, want 0 on cluster-cap defer", len(sr.Status.ScaleHistory))
+	}
+	var active *metav1.Condition
+	for i := range sr.Status.Conditions {
+		if sr.Status.Conditions[i].Type == inferencev1alpha1.ConditionActive {
+			active = &sr.Status.Conditions[i]
+			break
+		}
+	}
+	if active == nil || active.Reason != reasonClusterQuotaExceeded {
+		t.Fatalf("ConditionActive.Reason = %v, want %s", active, reasonClusterQuotaExceeded)
+	}
+}
+
+// TestNPUVerticalScalerReconcile_ClusterCapUnderProceeds: cluster under cap →
+// scale proceeds normally (annotation patched to busy).
+func TestNPUVerticalScalerReconcile_ClusterCapUnderProceeds(t *testing.T) {
+	now := time.Date(2026, 6, 3, 14, 0, 0, 0, time.UTC)
+	scaler := buildScalerFixture()
+	target := buildTargetFixture(func(m *inferencev1alpha1.ModelService) {
+		m.SetAnnotations(map[string]string{annotationSliceTemplate: "qwen-pd-idle"})
+	})
+	r, _ := newScalerReconciler(t, now, []metrics.IngestorResult{{Value: 87}}, scaler, target)
+	r.ClusterScaleCap = func(_ context.Context) (int32, int32, bool, error) {
+		return 1, 10, true, nil // headroom
+	}
+	if _, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{
+		Name: scaler.Name, Namespace: scaler.Namespace,
+	}}); err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+	var refreshed inferencev1alpha1.ModelService
+	_ = r.Client.Get(context.Background(), types.NamespacedName{Name: target.Name, Namespace: target.Namespace}, &refreshed)
+	if v := refreshed.GetAnnotations()[annotationSliceTemplate]; v != "qwen-pd-busy" {
+		t.Fatalf("annotation %q = %q, want qwen-pd-busy (cluster under cap → proceed)", annotationSliceTemplate, v)
 	}
 }

@@ -128,8 +128,15 @@ func (q *QuotaCache) Invalidate(namespace string) {
 //
 // MaxSliceAllocations=0 means unbounded — admit. No-quota-in-namespace
 // means unbounded — admit (fail-open semantics).
+//
+// P13-T-204 (ADR-0025 §2 Decision C): when ClusterCache is non-nil the
+// validator ALSO enforces the cluster-wide ClusterQuota cap after the
+// namespace check passes — a CREATE must be under BOTH the namespace cap
+// and the cluster-wide total cap. ClusterCache nil = namespace-only
+// (backward-compatible with the Phase 9 wiring).
 type QuotaSliceAllocationValidator struct {
-	Cache *QuotaCache
+	Cache        *QuotaCache
+	ClusterCache *ClusterQuotaCache
 }
 
 func (v *QuotaSliceAllocationValidator) Handle(ctx context.Context, req admission.Request) admission.Response {
@@ -167,7 +174,41 @@ func (v *QuotaSliceAllocationValidator) handle(ctx context.Context, req admissio
 		msg := fmt.Sprintf("namespace %s at NPUSliceAllocation cap %d; current %d", req.Namespace, cap, used)
 		return admission.Denied(msg)
 	}
-	return admission.Allowed("under cap")
+	// P13-T-204: cluster-wide ClusterQuota total cap (after namespace check).
+	if resp := v.checkClusterAllocCap(ctx, lg); resp != nil {
+		return *resp
+	}
+	return admission.Allowed("under namespace + cluster cap")
+}
+
+// checkClusterAllocCap enforces the cluster-wide ClusterQuota slice cap.
+// Returns nil to continue (no ClusterCache wired · no ClusterQuota set ·
+// unbounded cap · or under cap), or a Denied/Allowed pointer to short-circuit.
+// Fail-open: transient API errors continue (logged) rather than block CREATE.
+func (v *QuotaSliceAllocationValidator) checkClusterAllocCap(ctx context.Context, lg logr.Logger) *admission.Response {
+	if v.ClusterCache == nil {
+		return nil
+	}
+	cq, ok, err := v.ClusterCache.Get(ctx)
+	if err != nil {
+		lg.V(1).Info("ClusterQuota get failed; fail-open", "err", err.Error())
+		return nil
+	}
+	if !ok || cq == nil {
+		return nil
+	}
+	ccap := cq.Spec.Enforcement.MaxSliceAllocations
+	if ccap == 0 {
+		return nil
+	}
+	cused := cq.Status.Usage.Total.CurrentSliceAllocations
+	if cused+1 > ccap {
+		resp := admission.Denied(fmt.Sprintf(
+			"cluster at NPUSliceAllocation cap %d; current cluster total %d (ClusterQuota %s)",
+			ccap, cused, cq.Name))
+		return &resp
+	}
+	return nil
 }
 
 // QuotaScalerValidator enforces Webhook B per ADR-0014 §2 Decision C.
@@ -178,9 +219,16 @@ func (v *QuotaSliceAllocationValidator) handle(ctx context.Context, req admissio
 // UPDATE that does not change scaleSlice templates is admitted (status
 // updates / other spec changes pass through). CREATE / DELETE are NOT
 // intercepted by this webhook.
+//
+// P13-T-204 (ADR-0025 §2 Decision C): when ClusterCache is non-nil the
+// validator ALSO enforces the cluster-wide ClusterQuota scale-event rate
+// cap after the namespace rate check — a scale event must be under BOTH
+// the namespace rate cap and the cluster-wide rate cap. ClusterCache nil =
+// namespace-only (backward-compatible).
 type QuotaScalerValidator struct {
-	Cache   *QuotaCache
-	Decoder admission.Decoder
+	Cache        *QuotaCache
+	ClusterCache *ClusterQuotaCache
+	Decoder      admission.Decoder
 }
 
 func (v *QuotaScalerValidator) Handle(ctx context.Context, req admission.Request) admission.Response {
@@ -243,7 +291,41 @@ func (v *QuotaScalerValidator) handle(ctx context.Context, req admission.Request
 		}
 	}
 
-	return admission.Allowed("under cap and templates whitelisted")
+	// P13-T-204: cluster-wide ClusterQuota scale-event rate cap (after the
+	// namespace rate + whitelist checks).
+	if resp := v.checkClusterScaleRate(ctx, lg); resp != nil {
+		return *resp
+	}
+	return admission.Allowed("under namespace + cluster cap and templates whitelisted")
+}
+
+// checkClusterScaleRate enforces the cluster-wide ClusterQuota scale-event
+// rate cap. Same nil/unbounded/fail-open semantics as checkClusterAllocCap.
+func (v *QuotaScalerValidator) checkClusterScaleRate(ctx context.Context, lg logr.Logger) *admission.Response {
+	if v.ClusterCache == nil {
+		return nil
+	}
+	cq, ok, err := v.ClusterCache.Get(ctx)
+	if err != nil {
+		lg.V(1).Info("ClusterQuota get failed; fail-open", "err", err.Error())
+		return nil
+	}
+	if !ok || cq == nil {
+		return nil
+	}
+	rateCap := cq.Spec.Enforcement.MaxScaleEventsPerWindow.Count
+	if rateCap == 0 {
+		return nil
+	}
+	used := cq.Status.Usage.Total.ScaleEventsInWindow
+	if used+1 > rateCap {
+		windowSec := cq.Spec.Enforcement.MaxScaleEventsPerWindow.WindowSeconds
+		resp := admission.Denied(fmt.Sprintf(
+			"cluster scale event rate cap %d / %ds; current cluster total %d (ClusterQuota %s)",
+			rateCap, windowSec, used, cq.Name))
+		return &resp
+	}
+	return nil
 }
 
 func templateInWhitelist(name string, wl []string) bool {
@@ -255,3 +337,70 @@ func templateInWhitelist(name string, wl []string) bool {
 	return false
 }
 
+// ClusterQuotaCache is an in-memory snapshot of the cluster-scoped
+// ClusterQuota object (P13-T-204 · ADR-0025 §2 Decision C). ClusterQuota is
+// conventionally a singleton; when multiple exist the first by list order is
+// used deterministically (mirrors QuotaCache's per-namespace pick). Read by
+// both webhook validators on every cluster-cap decision; refreshed by List
+// when the cached entry exceeds TTL. Cluster-scoped → no namespace key.
+type ClusterQuotaCache struct {
+	Client client.Client
+	TTL    time.Duration
+
+	mu    sync.Mutex
+	entry *clusterQuotaCacheEntry
+}
+
+type clusterQuotaCacheEntry struct {
+	quota    *inferencev1alpha1.ClusterQuota
+	at       time.Time
+	notFound bool
+}
+
+// NewClusterQuotaCache constructs a fresh cache backed by `c`. Default TTL
+// (DefaultQuotaCacheTTL) applied when ttl is zero.
+func NewClusterQuotaCache(c client.Client, ttl time.Duration) *ClusterQuotaCache {
+	if ttl <= 0 {
+		ttl = DefaultQuotaCacheTTL
+	}
+	return &ClusterQuotaCache{Client: c, TTL: ttl}
+}
+
+// Get returns the active ClusterQuota. Returns (nil, false, nil) when none is
+// set (fail-open semantics — cluster cap unbounded). Returns (nil, false, err)
+// only on transient API errors.
+func (c *ClusterQuotaCache) Get(ctx context.Context) (*inferencev1alpha1.ClusterQuota, bool, error) {
+	c.mu.Lock()
+	entry := c.entry
+	c.mu.Unlock()
+
+	now := time.Now()
+	if entry != nil && now.Sub(entry.at) < c.TTL {
+		if entry.notFound {
+			return nil, false, nil
+		}
+		return entry.quota, true, nil
+	}
+
+	var list inferencev1alpha1.ClusterQuotaList
+	if err := c.Client.List(ctx, &list); err != nil {
+		return nil, false, err
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(list.Items) == 0 {
+		c.entry = &clusterQuotaCacheEntry{notFound: true, at: now}
+		return nil, false, nil
+	}
+	quota := list.Items[0].DeepCopy()
+	c.entry = &clusterQuotaCacheEntry{quota: quota, at: now}
+	return quota, true, nil
+}
+
+// Invalidate forces the next Get to skip cache. Used from tests.
+func (c *ClusterQuotaCache) Invalidate() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entry = nil
+}

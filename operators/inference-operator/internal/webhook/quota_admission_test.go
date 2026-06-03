@@ -176,3 +176,100 @@ func TestWebhookB_WhitelistDeny(t *testing.T) {
 		t.Errorf("non-whitelisted template should be rejected; got %+v", resp)
 	}
 }
+
+// ---- P13-T-204: cluster-wide ClusterQuota enforcement (ADR-0025 §2 Decision C) ----
+
+func makeClusterQuota(maxAlloc, maxScale int32, total inferencev1alpha1.QuotaUsage) *inferencev1alpha1.ClusterQuota {
+	return &inferencev1alpha1.ClusterQuota{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster-quota"},
+		Spec: inferencev1alpha1.ClusterQuotaSpec{
+			Enforcement: inferencev1alpha1.QuotaEnforcement{
+				MaxSliceAllocations: maxAlloc,
+				MaxScaleEventsPerWindow: inferencev1alpha1.ScaleEventRateCap{
+					Count: maxScale, WindowSeconds: 3600,
+				},
+			},
+		},
+		Status: inferencev1alpha1.ClusterQuotaStatus{
+			Usage: inferencev1alpha1.ClusterQuotaUsage{Total: total},
+		},
+	}
+}
+
+// TestWebhookA_ClusterCapReject: namespace UNDER cap but cluster OVER cap →
+// CREATE denied (must be under BOTH). This is the build-doc §5 acceptance:
+// "apply ClusterQuota + over-cap NPUSliceAllocation → admission 拒".
+func TestWebhookA_ClusterCapReject(t *testing.T) {
+	scheme := quotaWebhookTestScheme(t)
+	q := makeQuota("ai-edge-demo", 8, 5, inferencev1alpha1.QuotaUsage{CurrentSliceAllocations: 2}, nil) // ns under cap
+	cq := makeClusterQuota(10, 20, inferencev1alpha1.QuotaUsage{CurrentSliceAllocations: 10})           // cluster AT cap
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(q, cq).Build()
+	v := &QuotaSliceAllocationValidator{Cache: NewQuotaCache(c, 0), ClusterCache: NewClusterQuotaCache(c, 0)}
+	resp := v.Handle(context.Background(), makeNPUSliceAllocCreateReq("ai-edge-demo"))
+	if resp.Allowed {
+		t.Errorf("cluster-over-cap NPUSliceAllocation should be rejected even when namespace under cap; got %+v", resp)
+	}
+}
+
+// TestWebhookA_ClusterCapAllow: both namespace + cluster under cap → allowed.
+func TestWebhookA_ClusterCapAllow(t *testing.T) {
+	scheme := quotaWebhookTestScheme(t)
+	q := makeQuota("ai-edge-demo", 8, 5, inferencev1alpha1.QuotaUsage{CurrentSliceAllocations: 2}, nil)
+	cq := makeClusterQuota(10, 20, inferencev1alpha1.QuotaUsage{CurrentSliceAllocations: 4})
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(q, cq).Build()
+	v := &QuotaSliceAllocationValidator{Cache: NewQuotaCache(c, 0), ClusterCache: NewClusterQuotaCache(c, 0)}
+	resp := v.Handle(context.Background(), makeNPUSliceAllocCreateReq("ai-edge-demo"))
+	if !resp.Allowed {
+		t.Errorf("under both namespace + cluster cap should be allowed; got %+v", resp)
+	}
+}
+
+// TestWebhookA_NilClusterCacheBackcompat: ClusterCache nil → namespace-only
+// (Phase 9 backward-compatible · no cluster enforcement).
+func TestWebhookA_NilClusterCacheBackcompat(t *testing.T) {
+	scheme := quotaWebhookTestScheme(t)
+	q := makeQuota("ai-edge-demo", 8, 5, inferencev1alpha1.QuotaUsage{CurrentSliceAllocations: 2}, nil)
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(q).Build()
+	v := &QuotaSliceAllocationValidator{Cache: NewQuotaCache(c, 0)} // ClusterCache nil
+	resp := v.Handle(context.Background(), makeNPUSliceAllocCreateReq("ai-edge-demo"))
+	if !resp.Allowed {
+		t.Errorf("nil ClusterCache should be namespace-only (allow); got %+v", resp)
+	}
+}
+
+// TestWebhookB_ClusterScaleRateReject: namespace scale-rate has headroom but
+// cluster-wide scale-rate AT cap → scaler template change denied.
+func TestWebhookB_ClusterScaleRateReject(t *testing.T) {
+	scheme := quotaWebhookTestScheme(t)
+	q := makeQuota("ai-edge-demo", 8, 5, inferencev1alpha1.QuotaUsage{ScaleEventsInWindow: 1}, nil) // ns under rate cap
+	cq := makeClusterQuota(64, 3, inferencev1alpha1.QuotaUsage{ScaleEventsInWindow: 3})             // cluster AT rate cap
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(q, cq).Build()
+	dec := admission.NewDecoder(scheme)
+	v := &QuotaScalerValidator{Cache: NewQuotaCache(c, 0), ClusterCache: NewClusterQuotaCache(c, 0), Decoder: dec}
+	req := makeScalerUpdateReq(t, "ai-edge-demo", "qwen-pd-idle", "qwen-pd-idle", "qwen-pd-busy", "qwen-pd-idle")
+	resp := v.Handle(context.Background(), req)
+	if resp.Allowed {
+		t.Errorf("cluster-over-rate-cap scaler change should be rejected even when namespace under cap; got %+v", resp)
+	}
+}
+
+// TestClusterQuotaCache_GetAndNotFound: cache returns the singleton, and
+// (nil,false,nil) when none set (fail-open).
+func TestClusterQuotaCache_GetAndNotFound(t *testing.T) {
+	scheme := quotaWebhookTestScheme(t)
+	// not-found path
+	empty := fake.NewClientBuilder().WithScheme(scheme).Build()
+	if cq, ok, err := NewClusterQuotaCache(empty, 0).Get(context.Background()); err != nil || ok || cq != nil {
+		t.Errorf("empty cluster → (nil,false,nil); got (%v,%v,%v)", cq, ok, err)
+	}
+	// found path
+	cq := makeClusterQuota(10, 5, inferencev1alpha1.QuotaUsage{CurrentSliceAllocations: 3})
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cq).Build()
+	got, ok, err := NewClusterQuotaCache(c, 0).Get(context.Background())
+	if err != nil || !ok || got == nil {
+		t.Fatalf("present ClusterQuota → (obj,true,nil); got (%v,%v,%v)", got, ok, err)
+	}
+	if got.Status.Usage.Total.CurrentSliceAllocations != 3 {
+		t.Errorf("cached Total = %d; want 3", got.Status.Usage.Total.CurrentSliceAllocations)
+	}
+}

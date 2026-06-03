@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"os"
@@ -175,11 +176,25 @@ func main() {
 	// annotation per ADR-0012 §5 mutation model · drives 8-step reconcile
 	// loop (Get scaler → Get target → Query Ingestor → decide → cooldown
 	// → patch annotation → record ScaleEvent → update status).
+	// P13-T-204: cluster-scoped ClusterQuota cache (ADR-0025 §2 Decision C),
+	// shared by the scaler cluster-rate gate + both quota admission webhooks.
+	clusterQuotaCache := webhook.NewClusterQuotaCache(mgr.GetClient(), 0)
+
 	nvsr := &controller.NPUVerticalScalerReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("npuverticalscaler-controller"),
 		Ingestor: ingestor,
+		// Cluster-wide scale-rate gate: read ClusterQuota.status.usage.Total
+		// via the shared cache (fail-open — nil/err/unset → no cluster cap).
+		ClusterScaleCap: func(ctx context.Context) (int32, int32, bool, error) {
+			cq, ok, err := clusterQuotaCache.Get(ctx)
+			if err != nil || !ok || cq == nil {
+				return 0, 0, false, err
+			}
+			return cq.Status.Usage.Total.ScaleEventsInWindow,
+				cq.Spec.Enforcement.MaxScaleEventsPerWindow.Count, true, nil
+		},
 	}
 	if err := nvsr.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to register NPUVerticalScalerReconciler")
@@ -203,15 +218,31 @@ func main() {
 	}
 	setupLog.Info("QuotaReconciler registered", "task", "P9-T-006")
 
+	// P13-T-204 (ADR-0025 §2 Decision C): ClusterQuota controller reconciles
+	// cluster-wide status.usage (PerCluster buckets → RecomputeTotal) on a 60s
+	// tick; the two webhooks below ALSO enforce the cluster-wide cap via the
+	// shared clusterQuotaCache constructed above.
+	cqr := &controller.ClusterQuotaReconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("clusterquota-controller"),
+	}
+	if err := cqr.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to register ClusterQuotaReconciler")
+		os.Exit(1)
+	}
+	setupLog.Info("ClusterQuotaReconciler registered", "task", "P13-T-204")
+
 	quotaCache := webhook.NewQuotaCache(mgr.GetClient(), 0)
 	mgr.GetWebhookServer().Register(webhook.PathQuotaValidateNPUSliceAllocation,
-		&ctrladmission.Webhook{Handler: &webhook.QuotaSliceAllocationValidator{Cache: quotaCache}})
+		&ctrladmission.Webhook{Handler: &webhook.QuotaSliceAllocationValidator{Cache: quotaCache, ClusterCache: clusterQuotaCache}})
 	mgr.GetWebhookServer().Register(webhook.PathQuotaValidateNPUVerticalScaler,
-		&ctrladmission.Webhook{Handler: &webhook.QuotaScalerValidator{Cache: quotaCache, Decoder: ctrladmission.NewDecoder(mgr.GetScheme())}})
+		&ctrladmission.Webhook{Handler: &webhook.QuotaScalerValidator{Cache: quotaCache, ClusterCache: clusterQuotaCache, Decoder: ctrladmission.NewDecoder(mgr.GetScheme())}})
 	setupLog.Info("Quota admission webhooks registered",
 		"task", "P9-T-006",
 		"webhookA", webhook.PathQuotaValidateNPUSliceAllocation,
 		"webhookB", webhook.PathQuotaValidateNPUVerticalScaler,
+		"clusterCapEnforced", true,
 		"cacheTTL", webhook.DefaultQuotaCacheTTL.String())
 
 	// +kubebuilder:scaffold:builder
