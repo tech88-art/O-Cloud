@@ -38,6 +38,28 @@ rules:
   - apiGroups: ["inference.ocloud.edge.example.com"]
     resources: ["quotas/finalizers"]
     verbs: ["update", "patch"]
+  # ClusterQuota — P13-T-202 wires the RBAC the P13-T-204 webhook B +
+  # NPUVerticalScaler controller need (ADR-0025 §2 Decision C). The
+  # cluster-scoped ClusterQuota (P11-T-104 · clusterquota_types.go ·
+  # ADR-0014 §7 + ADR-0018 §2 Decision D) caps cluster-wide slice totals.
+  # The inference-operator controller OWNS this kind:
+  #   - clusterquota_controller.go tick reconcile aggregates namespace
+  #     usage → status.usage (RecomputeTotal) → needs status update/patch;
+  #   - webhook B ValidateClusterQuota() reads status.usage.Total via the
+  #     informer cache → needs get/list/watch;
+  #   - NPUVerticalScaler reads status.usage.Total before scaling.
+  # Mirrors the namespace-scope `quotas` block above (same owner pattern).
+  # ClusterQuota is cluster-scoped → granted via this ClusterRole (correct
+  # scope; a namespaced Role could not reach it).
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["clusterquotas"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["clusterquotas/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["inference.ocloud.edge.example.com"]
+    resources: ["clusterquotas/finalizers"]
+    verbs: ["update", "patch"]
   # NPUSlicePool — read for spec.npuSlicePoolRef resolution. Same-namespace
   # convention (operators/CLAUDE.md §4 Phase 1-2 isolation-by-convention).
   - apiGroups: ["ims.ocloud.edge.example.com"]

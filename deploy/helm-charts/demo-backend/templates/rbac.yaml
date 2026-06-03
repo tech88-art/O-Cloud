@@ -40,3 +40,111 @@ subjects:
     name: {{ include "demo-backend.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 {{- end }}
+{{- if .Values.rbac.clusterRead }}
+---
+# P13-T-202 · closes the P13-T-103 RBAC carry (real topology source).
+# CLUSTER-scoped: resource.k8s.io ResourceSlices + nodes are cluster-scoped
+# objects, so a ClusterRole is required (a namespaced Role cannot grant
+# them). Least-privilege: READ-ONLY (get/list/watch) — the backend never
+# mutates ResourceSlices or Nodes; it only assembles the HCCS topology
+# graph from the real-Ascend publisher's ResourceSlice attrs
+# (npu.huawei.com/hccs_ring + numa_node · ADR-0024 §2 Decision C).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "demo-backend.fullname" . }}-cluster-read
+  labels:
+    {{- include "demo-backend.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - resource.k8s.io
+    resources:
+      - resourceslices
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "demo-backend.fullname" . }}-cluster-read
+  labels:
+    {{- include "demo-backend.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "demo-backend.fullname" . }}-cluster-read
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "demo-backend.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+{{- if .Values.rbac.deployWrite }}
+{{- $deployNs := default .Release.Namespace .Values.rbac.workloadNamespace }}
+---
+# P13-T-202 · closes the P13-T-104 RBAC carry (real Deploy()/DeleteDeploy()).
+# NAMESPACE-scoped Role (workloads materialise in one namespace, not
+# cluster-wide). Least-privilege: only the verbs the typed client-go path
+# in backend/pkg/datasource/k8s/deploy.go actually issues —
+#   create (apply Deployment+Service) · get (round-trip read) ·
+#   list (label-selector delete scan: deploy.ocloud.io/id=<id>) ·
+#   delete (DeleteDeploy) · update/patch (idempotent re-apply).
+# NO wildcard; NO secrets/configmaps/RBAC-write (the apply needs none).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "demo-backend.fullname" . }}-deploy
+  namespace: {{ $deployNs }}
+  labels:
+    {{- include "demo-backend.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "demo-backend.fullname" . }}-deploy
+  namespace: {{ $deployNs }}
+  labels:
+    {{- include "demo-backend.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "demo-backend.fullname" . }}-deploy
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "demo-backend.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

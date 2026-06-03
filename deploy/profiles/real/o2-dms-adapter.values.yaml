@@ -1,0 +1,52 @@
+# Real edition — o2-dms-adapter helm values.
+# 生产硬化 authz(P13-T-202 · ADR-0025 §2 Decision A)。
+# 选择:helm upgrade --install o2-dms-adapter deploy/helm-charts/o2-dms-adapter \
+#         -n ocloud-system -f deploy/profiles/real/o2-dms-adapter.values.yaml
+#
+# authz 真接(替换 Phase-9 静态 bearer placeholder · build-doc §5 项 1):
+#   - OIDCValidator(外部 IdP 路径)指向 Dex 参考 IdP(deploy/idp/dex.yaml ·
+#     甲方 swap point · deploy/idp/README.md)。o2-dms cmd/main.go 读
+#     O2DMS_OIDC_ISSUER → 走 OIDCValidator(JWKS+JWT)。
+#   - K8sTokenReviewValidator(in-cluster 主路径 · P13-T-201)= issuer 未配置
+#     / drift 未修时的 active validator → SA 仍需 tokenreviews:create 权限,
+#     故 tokenReview.rbac=true(与 OIDC 并存 · 最小权限单 verb · 非
+#     system:auth-delegator 宽授权)。
+#
+# ⚠️ 已知 chart env 漂移(deploy/idp/README.md 详 · 留 T201 follow-up):
+#    chart deployment.yaml 现发 `O2DMS_OIDC_ISSUER_URL`,但 T201 代码读
+#    `O2DMS_OIDC_ISSUER`(无 _URL)。修该 env key 前,设 issuerUrl 不会激活
+#    OIDCValidator → 代码 fall through 到 in-cluster TokenReview(故上面
+#    tokenReview.rbac=true 是真正生效的主路径 RBAC)。deployment.yaml 不在
+#    P13-T-202 Allowed Paths(T202 仅 owns chart 的 rbac.yaml)→ 此处文档化
+#    不静默改。
+#
+# 真机 token→OIDCValidator 端到端验证 lab-gated → 见 docs/devlog/phase-13-t202.md
+# + deploy/idp/README.md「End-to-end (lab-gated · P13-T-301)」。
+
+replicaCount: 1            # 参考 adapter · 非 HA(ADR-0025 §3 right-sizing)
+
+podLabels:
+  ocloud.edge.example.com/edition: real
+
+# RBAC(chart 默认即 create: true · 真版显式确认)。
+rbac:
+  create: true
+
+# authz wiring → Dex 参考 IdP(issuerURL/audience 甲方 swap · §4(a))。
+auth:
+  # mode=oidc:OIDCValidator 路径(chart 发 OIDC env + 不发 placeholder bearer)。
+  # 注:见上「env 漂移」—— issuer env key 修复前 active validator 实为
+  # in-cluster TokenReview(下 tokenReview.rbac 已授权)。
+  mode: oidc
+  oidc:
+    # Dex 参考 IdP in-cluster issuer(deploy/idp/dex.yaml · 单一真值源)。
+    # 甲方 swap:改成甲方 IdP issuer(e.g. https://login.example.com/realms/ocloud)。
+    issuerUrl: "http://dex.ocloud-system.svc.cluster.local:5556/dex"
+    # o2-dms 强制的 aud claim = Dex static-client id `o2-dms`。
+    # 甲方 swap:改成甲方为 O2 DMS 注册的 audience。
+    audience: "o2-dms"
+  tokenReview:
+    # in-cluster 主路径(P13-T-201)· SA 需 tokenreviews:create。
+    # rbac=true 独立于 mode 授该单 verb(deploy/helm-charts/o2-dms-adapter/
+    # templates/rbac.yaml · 最小权限)→ OIDC active 时该 fallback 仍可用。
+    rbac: true

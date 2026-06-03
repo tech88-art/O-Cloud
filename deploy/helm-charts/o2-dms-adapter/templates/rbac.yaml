@@ -31,11 +31,22 @@ rules:
   - apiGroups: ["inference.ocloud.edge.example.com"]
     resources: ["npuverticalscalers"]
     verbs: ["get", "list", "watch"]
-  {{- if eq .Values.auth.mode "tokenReview" }}
+  {{- if or (eq .Values.auth.mode "tokenReview") .Values.auth.tokenReview.rbac }}
   # P11-T-106 · TokenReview API for K8s SA token validation
   # (per ADR-0017 §2 Decision A Stream 5 part 1 substrate · ADR-0013
   # §6 forward note authn 完整实现 Validator interface "TokenReview"
   # impl pathway).
+  #
+  # P13-T-202 (ADR-0025 §2 Decision A · closes the P13-T-201 RBAC carry):
+  # T201 made K8sTokenReviewValidator the in-cluster PRIMARY path — it is
+  # the validator whenever O2DMS_OIDC_ISSUER is unset and auth is not
+  # local-dev. So the o2-dms SA needs `tokenreviews: create` for that
+  # primary path EVEN when an external OIDC IdP (Dex) is also wired as the
+  # active middleware validator. `auth.tokenReview.rbac=true` grants the
+  # verb independently of `auth.mode` (the real profile sets it so the
+  # in-cluster fallback works regardless of which validator is selected).
+  # This is the least-privilege alternative to binding the broad built-in
+  # `system:auth-delegator` ClusterRole (only the one verb on one resource).
   - apiGroups: ["authentication.k8s.io"]
     resources: ["tokenreviews"]
     verbs: ["create"]

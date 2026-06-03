@@ -104,3 +104,11 @@ auth:
     # TokenReview API. Empty triggers fallback to current Pod SA(via
     # rest.InClusterConfig).
     serviceAccountName: ""
+    # rbac grants the SA `authentication.k8s.io/v1 tokenreviews: create`
+    # INDEPENDENTLY of auth.mode (P13-T-202 · ADR-0025 §2 Decision A).
+    # P13-T-201 made TokenReview the in-cluster PRIMARY path (active
+    # whenever O2DMS_OIDC_ISSUER is unset + not local-dev), so the verb is
+    # needed even when an external OIDC IdP (Dex) is the active middleware
+    # validator. Set true on the real profile. Default false keeps the
+    # demo/placeholder profile minimal (mode=tokenReview also implies it).
+    rbac: false

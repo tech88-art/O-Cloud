@@ -9,14 +9,16 @@
 #    Deployment+Service · ADR-0024 §2 Decision E)→ 全部资源接真源,无 mock 引用,
 #    真集群部署已不再依赖 mock-data ConfigMap。
 #
-# ⚠️ RBAC 前置(carry-forward · deploy-module territory):真 Deploy()/DeleteDeploy()
-#    要求 backend ServiceAccount 对 apps/v1 deployments + core/v1 services 有
-#    create / delete / list / get 权限(label-selector delete 需 list)。base helm
-#    chart 的 RBAC 模板(deploy/helm-charts/demo-backend/templates/rbac.yaml)目前
-#    只授读权限(topology/workloads/...);需由 deploy 模块补 deployments/services
-#    的写权限 verb,否则真 POST /api/v1/deploy 会被 apiserver 403。本 values 文件
-#    不改 base chart RBAC(模块边界)—— 仅在此标注,P13-T-202(RBAC manifest)或真机
-#    E2E(P13-T-301)收口时落地。
+# ✅ Phase-13 P13-T-202:RBAC carry CLOSED(base chart `templates/rbac.yaml` 加了
+#    gated 的 cluster-read + deploy-write RBAC · ADR-0025 §2 Decision A 最小权限)。
+#    本 profile 下面 `rbac:` 块翻开两个开关:
+#      - clusterRead → P13-T-103 真拓扑(resource.k8s.io resourceslices + nodes
+#        READ-ONLY · cluster-scoped ClusterRole)。缺它则 HCCS overlay 静默退化到
+#        静态布局(非 fatal · 见 phase-13-t103.md)。
+#      - deployWrite → P13-T-104 真 Deploy()/DeleteDeploy()(apps deployments +
+#        core services create/delete/list/get/update/patch · namespaced Role in
+#        release ns)。缺它则真 POST /api/v1/deploy 被 apiserver 403。
+#    无 wildcard · verb 精确到 client-go 路径实际所需(deploy.go)。
 
 replicaCount: 2            # 真版 HA(leader + standby)
 leaseElection:
@@ -25,6 +27,14 @@ serviceMonitor:
   enabled: true            # 接 kube-prometheus-stack
 podLabels:
   ocloud.edge.example.com/edition: real
+
+# P13-T-202:真数据源 RBAC(demo 版默认全 false · 真版按需翻开 · 最小权限)。
+rbac:
+  clusterRead: true        # P13-T-103: ResourceSlice(hccs_ring/numa_node)+ nodes READ
+  deployWrite: true        # P13-T-104: Deployment+Service 写(真 Deploy/DeleteDeploy)
+  # workloadNamespace 留空 = release namespace(backend 与 workload 同 ns 部署)。
+  # 若 workload 要落到专用 ns,在此填该 ns(deploy Role 会建在那里)。
+  workloadNamespace: ""
 
 # 物理数据源 mapping(= backend/configs/config.real.yaml,内联给 chart 挂载)。
 config:

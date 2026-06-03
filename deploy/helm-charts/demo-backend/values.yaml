@@ -24,6 +24,34 @@ serviceAccount:
   name: ""
   annotations: {}
 
+# rbac controls the demo-backend datasource RBAC beyond the Lease Role.
+# DEFAULT OFF (demo profile = mock datasources → no live K8s reads/writes,
+# minimal blast radius). The real profile (deploy/profiles/real/
+# demo-backend.values.yaml) flips these on to grant exactly the verbs the
+# real k8s datasource needs — and NOTHING more (P13-T-202 least-privilege,
+# ADR-0025 §2 Decision A). Each toggle 1:1 maps a real datasource body:
+#
+#   - clusterRead  → P13-T-103 real GetTopology: list resource.k8s.io
+#     ResourceSlices (HCCS hccs_ring/numa_node attrs) + read nodes. These
+#     are CLUSTER-scoped objects → must be a ClusterRole.
+#   - deployWrite  → P13-T-104 real Deploy()/DeleteDeploy(): create/delete/
+#     list/get apps/v1 Deployments + core/v1 Services. NAMESPACE-scoped →
+#     a Role in workloadNamespace (default = release namespace), NOT a
+#     ClusterRole (workloads materialise in one namespace).
+rbac:
+  # clusterRead grants resource.k8s.io ResourceSlices + nodes read for the
+  # real topology source (P13-T-103). Without it the HCCS overlay silently
+  # degrades to the static layout (non-fatal — see phase-13-t103.md).
+  clusterRead: false
+  # deployWrite grants apps/Deployments + core/Services write for the real
+  # Deploy()/DeleteDeploy() path (P13-T-104). Without it a real
+  # POST /api/v1/deploy gets apiserver 403.
+  deployWrite: false
+  # workloadNamespace scopes the deployWrite Role. Empty = release namespace
+  # (the backend deploys workloads alongside itself). Set to a dedicated
+  # tenant/workload namespace to scope writes there instead.
+  workloadNamespace: ""
+
 service:
   type: ClusterIP
   port: 8080
