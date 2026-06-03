@@ -1,16 +1,18 @@
 # Real edition — npu-dra-driver helm values.
 # 真硬件版:发布者切到 real-ascend 源(走 npu-smi / DCMI 读真 NPU 拓扑/切片)。
 #
-# ⚠️ Phase-13(关键 · 如实):publisher.sourceType=real-ascend 今天的 source body
-#    返回 ErrNotImplemented(operators/npu-dra-driver/internal/source/realascend/
-#    realascend.go · W1 stub)。chart 不阻止选择 —— 部署成功,但 reconcile 日志出
-#    non-fatal warning,真 ResourceSlice 发布要等 Phase 13 T101 lab body 点亮。
-#    npu-smi 拓扑解析器(parse.go)已写+测(fake 输出),只差真机接线 + 验证。
+# Phase 13 P13-T-101(ADR-0024 §2 Decision A/B · lab-gating FLIP):real-ascend
+# source body 已点亮(operators/npu-dra-driver/internal/source/realascend/
+# realascend.go) —— List/QueryTopology/Watch 走 npusmi.ExecClient(shell out
+# 到 npu-smi:`info -t topo` → ParseTopoMatrix · `info -t board` → ParseBoardInfo ·
+# `info -t health` → ParseHealth)。captured-fixture table-test 通(离线层功能验证)。
+# 真机「对接」验证(真 npu-smi 输出与 fixture 同形)= lab-gated(plan §8 + ADR-0024 §3)。
+# publisher.enabled=true(base chart 默认)→ real-ascend publisher 走真 allocator 路径。
 
 publisher:
-  sourceType: "real-ascend"   # PHASE-13 stub:body 返回 ErrNotImplemented
-  realAscendMode: "exec"      # T101 lab body:shell out 到 npu-smi
+  sourceType: "real-ascend"   # P13-T-101: 真体已 land(npu-smi info/topo/board/health)
+  realAscendMode: "exec"      # ExecClient:shell out 到 npu-smi(无 cgo · arm64 交叉编译绿)
 mockConfigMap:
-  create: false               # 真版不挂 mock npus.json
+  create: false               # 真版不挂 mock npus.json(真源读真硬件)
 podLabels:
   ocloud.edge.example.com/edition: real

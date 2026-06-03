@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 // ExecClient implements Client by shelling out to the npu-smi binary
@@ -81,30 +82,47 @@ func (e *ExecClient) QueryTopo(ctx context.Context) ([]TopoEntry, error) {
 	return entries, nil
 }
 
-// QueryDeviceInfo runs `npu-smi info -t board -i <devID>`. Phase 7 W1
-// returns ErrNotImplemented-equivalent (npu-smi-not-on-CI scenario);
-// T101 lab body parses the board info output for chip name, cores,
-// memory, NUMA, driver versions.
+// QueryDeviceInfo runs `npu-smi info -t board -i <devID>` and parses the
+// board view (chip name, AI-core count, memory, NUMA, driver/firmware
+// versions) via ParseBoardInfo (P13-T-101 · ADR-0024 §2 Decision B). The
+// board view is a flat "Key : Value" list; lab driver-version variants in
+// key spelling extend ParseBoardInfo's alias sets (ADR-0024 §3 fallback).
 func (e *ExecClient) QueryDeviceInfo(ctx context.Context, devID int) (*DeviceInfo, error) {
-	// Phase 7 W1 scaffold: probe binary availability so callers fail
-	// fast in dev environments without a real driver install.
-	if _, err := exec.LookPath(e.binary()); err != nil {
-		return nil, ErrNoCommand
+	out, err := e.run(ctx, "info", "-t", "board", "-i", strconv.Itoa(devID))
+	if err != nil {
+		return nil, err
 	}
-	// Run command but don't parse output yet (Phase 7 T101 lands the parser).
-	cmd := exec.CommandContext(ctx, e.binary(), "info", "-t", "board", "-i", strconv.Itoa(devID))
-	if _, err := cmd.Output(); err != nil {
-		return nil, fmt.Errorf("npusmi ExecClient: %s info -t board -i %d: %w", e.binary(), devID, err)
-	}
-	return nil, fmt.Errorf("npusmi ExecClient.QueryDeviceInfo: parser deferred to Phase 7 T101 lab body")
+	return ParseBoardInfo(out, devID)
 }
 
-// QueryHealth runs the cheapest available health query. Phase 7 W1
-// probes `npu-smi info -t health` (or similar) but doesn't parse —
-// returns ErrNotImplemented-equivalent until T101 lands the parser.
+// QueryHealth runs the cheap `npu-smi info -t health -i <devID>` view and
+// parses the health state via ParseHealth (P13-T-101). Callers (Source.
+// Watch) treat any error as "health query unsupported on this driver" and
+// degrade to timer-tick reconcile (ADR-0024 §2 Decision B fallback).
 func (e *ExecClient) QueryHealth(ctx context.Context, devID int) (HealthState, error) {
-	if _, err := exec.LookPath(e.binary()); err != nil {
-		return HealthUnknown, ErrNoCommand
+	out, err := e.run(ctx, "info", "-t", "health", "-i", strconv.Itoa(devID))
+	if err != nil {
+		return HealthUnknown, err
 	}
-	return HealthUnknown, fmt.Errorf("npusmi ExecClient.QueryHealth: parser deferred to Phase 7 T101 lab body")
+	return ParseHealth(out)
+}
+
+// run executes npu-smi with the given args, capturing stdout. It maps a
+// missing binary to ErrNoCommand so callers can distinguish "no driver
+// install" from "command failed", and wraps other failures with the
+// command line for diagnosis.
+func (e *ExecClient) run(ctx context.Context, args ...string) (string, error) {
+	if _, err := exec.LookPath(e.binary()); err != nil {
+		return "", ErrNoCommand
+	}
+	cmd := exec.CommandContext(ctx, e.binary(), args...)
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			return "", ErrNoCommand
+		}
+		return "", fmt.Errorf("npusmi ExecClient: %s %s: %w", e.binary(), strings.Join(args, " "), err)
+	}
+	return stdout.String(), nil
 }
