@@ -63,6 +63,42 @@ NPU_DRA_IMG="${NPU_DRA_IMG:-ocloud/npu-dra-driver:e2e}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
+# retry <attempts> <sleep_seconds> <cmd...> — re-run cmd against transient CI
+# flakes (Docker Hub / quay.io pull `context deadline exceeded`). Returns 0 on
+# first success, else the last failure's status. Safe under `set -e` (cmd runs
+# in an if-condition).
+retry() {
+  local attempts="$1" sleep_s="$2"; shift 2
+  local i=1
+  while true; do
+    if "$@"; then return 0; fi
+    if [[ "${i}" -ge "${attempts}" ]]; then return 1; fi
+    echo "  [retry ${i}/${attempts}] failed: $* — sleeping ${sleep_s}s" >&2
+    sleep "${sleep_s}"
+    i=$(( i + 1 ))
+  done
+}
+
+# `kind create cluster` with retry. The node-image pull from Docker Hub
+# (`kindest/node`) intermittently times out on CI runners
+# (`Get https://registry-1.docker.io/...: context deadline exceeded` —
+# observed dev run 26858766479). Each failed attempt deletes the half-created
+# cluster so the retry starts clean.
+kind_create_with_retry() {
+  local attempts=3 i=1
+  while true; do
+    if kind create cluster --config "${SCRIPT_DIR}/kind-config.yaml"; then return 0; fi
+    if [[ "${i}" -ge "${attempts}" ]]; then
+      echo "::error::kind create cluster failed after ${attempts} attempts (transient registry/network flake?)" >&2
+      return 1
+    fi
+    echo "::warning::kind create attempt ${i}/${attempts} failed (likely Docker Hub kindest/node pull timeout); cleaning up + retrying" >&2
+    kind delete cluster --name "${KIND_CLUSTER}" >/dev/null 2>&1 || true
+    sleep $(( i * 15 ))
+    i=$(( i + 1 ))
+  done
+}
+
 cmd_build_images() {
   echo "== build pool-operator image =="
   (cd "${REPO_ROOT}/operators/pool-operator" && make docker-build IMG="${POOL_OPERATOR_IMG}")
@@ -83,9 +119,9 @@ cmd_build_images() {
 }
 
 cmd_up() {
-  echo "== kind create cluster (idempotent) =="
+  echo "== kind create cluster (idempotent · retry on transient image-pull flake) =="
   if ! kind get clusters | grep -q "^${KIND_CLUSTER}\$"; then
-    kind create cluster --config "${SCRIPT_DIR}/kind-config.yaml"
+    kind_create_with_retry
   fi
 
   echo "== verify DRA v1beta1 API is being served by kube-apiserver =="
@@ -140,7 +176,7 @@ cmd_up() {
   # Ready inside the helm `--wait` window.
   CERT_MANAGER_VERSION="v1.16.0"
   for img in controller webhook cainjector acmesolver startupapicheck; do
-    docker pull "quay.io/jetstack/cert-manager-${img}:${CERT_MANAGER_VERSION}" || true
+    retry 3 8 docker pull "quay.io/jetstack/cert-manager-${img}:${CERT_MANAGER_VERSION}" || true
     kind load docker-image "quay.io/jetstack/cert-manager-${img}:${CERT_MANAGER_VERSION}" --name "${KIND_CLUSTER}" || true
   done
 
