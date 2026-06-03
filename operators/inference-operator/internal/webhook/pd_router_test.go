@@ -192,6 +192,85 @@ func fmtPatchValue(v interface{}) string {
 	}
 }
 
+// TestHandle_PDEndpoint_InjectedForPDRolePod exercises P13-T-105: a
+// PD-pair Pod carrying the pd-role label gets the REAL prefill→decode
+// KV-cache endpoint annotation injected ALONGSIDE the (unchanged
+// ADR-0008) slice-bindings annotation. A prefill Pod points at the
+// decode sibling Service.
+func TestHandle_PDEndpoint_InjectedForPDRolePod(t *testing.T) {
+	dec := newDecoder(t)
+	a1 := newAllocation("alloc-pd-1", "ns/ms-pd", "nodeA", "nodeA", "nodeA-npu-0", 32, "Allocated")
+	cli := newFakeClientWithAllocations(t, a1)
+	h := &PDRouter{Decoder: dec, Client: cli, DenyOnOrphaned: true}
+
+	pod := newPod("p-pd", "ns", map[string]string{
+		LabelModelService: "ms-pd",
+		RoleLabelKey:      "prefill",
+	})
+	req := podAdmissionRequest(t, pod)
+	resp := h.Handle(context.Background(), req)
+
+	if !resp.Allowed {
+		t.Fatalf("PD-role happy path should Allow; got %+v", resp)
+	}
+	if len(resp.Patches) == 0 {
+		t.Fatalf("PD-role happy path should produce patches; got 0")
+	}
+	var sawSliceBindings, sawPDEndpoint, sawDecodeSibling bool
+	for _, p := range resp.Patches {
+		if !strings.Contains(p.Path, "annotations") {
+			continue
+		}
+		val := fmtPatchValue(p.Value)
+		if strings.Contains(p.Path, "slice-bindings") || strings.Contains(val, "slice-bindings") {
+			sawSliceBindings = true
+		}
+		if strings.Contains(p.Path, "pd-endpoint") || strings.Contains(val, "pd-endpoint") {
+			sawPDEndpoint = true
+		}
+		// prefill side → decode sibling Service.
+		if strings.Contains(val, "ms-pd-decode:8000") || strings.Contains(p.Path, "pd-endpoint") {
+			sawDecodeSibling = true
+		}
+	}
+	if !sawSliceBindings {
+		t.Errorf("ADR-0008 slice-bindings annotation must still be patched; patches: %+v", resp.Patches)
+	}
+	if !sawPDEndpoint {
+		t.Errorf("P13-T-105 pd-endpoint annotation should be patched; patches: %+v", resp.Patches)
+	}
+	if !sawDecodeSibling {
+		t.Errorf("prefill-side PD endpoint should point at the decode sibling; patches: %+v", resp.Patches)
+	}
+}
+
+// TestPDEndpointFor covers the sibling-endpoint resolution table.
+func TestPDEndpointFor(t *testing.T) {
+	cases := []struct {
+		msName, role, want string
+	}{
+		{"ms-pd", "prefill", "ms-pd-decode:8000"},
+		{"ms-pd", "decode", "ms-pd-prefill:8000"},
+		{"ms-pd", "single", ""},
+		{"ms-pd", "", ""},
+		{"", "prefill", ""},
+	}
+	for _, c := range cases {
+		if got := pdEndpointFor(c.msName, c.role); got != c.want {
+			t.Errorf("pdEndpointFor(%q,%q) = %q, want %q", c.msName, c.role, got, c.want)
+		}
+	}
+}
+
+// TestAnnotationPDEndpoint_KeyStable guards the P13-T-105 annotation key
+// (consumed by the vllm-ascend disaggregated launcher).
+func TestAnnotationPDEndpoint_KeyStable(t *testing.T) {
+	const expected = "inference.ocloud.edge.example.com/pd-endpoint"
+	if AnnotationPDEndpoint != expected {
+		t.Errorf("AnnotationPDEndpoint drift: want %q, got %q", expected, AnnotationPDEndpoint)
+	}
+}
+
 func TestHandle_NoMatchingAllocations_AllowedWithoutPatch(t *testing.T) {
 	dec := newDecoder(t)
 	// One allocation but for a DIFFERENT ModelService — should be filtered out

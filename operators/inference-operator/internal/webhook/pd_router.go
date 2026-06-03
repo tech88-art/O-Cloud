@@ -74,6 +74,37 @@ const LabelModelService = "inference.ocloud.edge.example.com/model-service"
 // comma-separated `<node>/<pool>/<device>:<aiCores>` entries.
 const AnnotationSliceBindings = "npu.huawei.com/slice-bindings"
 
+// AnnotationPDEndpoint is the annotation key P13-T-105 stamps onto each
+// PD-pair Pod carrying the REAL prefill→decode KV-cache transfer
+// endpoint (ADR-0024 §2 Decision F · ADR-0008 PD Router contract). The
+// vllm-ascend disaggregated_prefill_v1 launcher reads it to learn the
+// sibling side's host:port so prefilled KV-cache transfers to the
+// decode replicas.
+//
+// Value = `<peer-service>:<kvPort>` where peer-service follows the
+// inference-operator per-side Service convention `<ms.Name>-<otherSide>`
+// (matching deployment_builder.go's VLLM_PD_PREFILL_HOST/DECODE_HOST
+// sidecar env). A prefill Pod points at the decode Service and vice
+// versa.
+//
+// This is ADDITIVE — the npu.huawei.com/slice-bindings annotation
+// (ADR-0008 contract) key/shape is UNCHANGED; T105 only adds the real
+// PD endpoint alongside it on the same admission patch.
+const AnnotationPDEndpoint = "inference.ocloud.edge.example.com/pd-endpoint"
+
+// RoleLabelKey is the pod label key carrying the PD role
+// (prefill/decode). Mirrors deployment_builder.go DefaultRouterLabelKey;
+// the webhook reads it to compute the sibling endpoint. Text-duplicated
+// per operators/CLAUDE.md §1 (no cross-package Go import for a const).
+const RoleLabelKey = "inference.ocloud.edge.example.com/pd-role"
+
+// pdKVCachePort is the KV-cache transfer port the vllm-ascend
+// disaggregated prefill server listens on for the sibling side. Matches
+// the VLLM_PD_SIBLING_LOCALHOST_PORT convention in deployment_builder.go
+// (proxy reaches local vllm-ascend on 8000); the cross-Pod KV-cache
+// transfer uses the same serving port via the per-side Service.
+const pdKVCachePort = "8000"
+
 // npuSliceAllocationListGVK is the GVK for cluster-wide List of the
 // NPUSliceAllocation audit objects. Cross-module Go imports are
 // forbidden (operators/CLAUDE.md §1), so the webhook reads via
@@ -190,14 +221,28 @@ func (h *PDRouter) handle(ctx context.Context, lg logr.Logger, req admission.Req
 		return admission.Allowed("no slice bindings yet")
 	}
 
-	// All allocated → inject annotation.
+	// All allocated → inject annotation(s).
 	allocatedBindings := FilterAllocated(bindings)
 	value := EncodeBindings(allocatedBindings)
 	patchedPod := pod.DeepCopy()
 	if patchedPod.Annotations == nil {
 		patchedPod.Annotations = make(map[string]string)
 	}
+	// ADR-0008 contract annotation (key/shape UNCHANGED).
 	patchedPod.Annotations[AnnotationSliceBindings] = value
+	// P13-T-105: ADDITIVE real PD endpoint (prefill→decode KV-cache
+	// transfer URL). Derived from the Pod's pd-role label + the
+	// ModelService name (sibling Service convention). Only stamped when
+	// the role label is present AND a sibling endpoint resolves — a
+	// single-pod / role-less ModelService gets slice-bindings but no
+	// PD endpoint (no sibling to transfer to).
+	if ep := pdEndpointFor(nameVal, pod.Labels[RoleLabelKey]); ep != "" {
+		patchedPod.Annotations[AnnotationPDEndpoint] = ep
+		lg.V(1).Info("PD endpoint injected",
+			"model-service-ref", msRef,
+			"pd-role", pod.Labels[RoleLabelKey],
+			"endpoint", ep)
+	}
 
 	marshalled, err := json.Marshal(patchedPod)
 	if err != nil {
@@ -250,4 +295,32 @@ func (h *PDRouter) listBindings(ctx context.Context, msRef string) ([]SliceBindi
 		})
 	}
 	return out, nil
+}
+
+// pdEndpointFor returns the sibling-side KV-cache transfer endpoint for
+// a PD-pair Pod, or "" when the role is unknown / not a PD side.
+//
+// Convention (matches deployment_builder.go VLLM_PD_PREFILL_HOST /
+// VLLM_PD_DECODE_HOST sidecar env): each side reaches the OTHER side's
+// per-side Service `<msName>-<otherSide>` on the KV-cache port. A
+// prefill Pod transfers its KV-cache TO the decode Service; a decode
+// Pod's endpoint points back at prefill (symmetric so either side can
+// dial the other).
+//
+//	role     → endpoint
+//	prefill  → <msName>-decode:8000
+//	decode   → <msName>-prefill:8000
+//	other/"" → "" (no PD endpoint stamped)
+func pdEndpointFor(msName, role string) string {
+	if msName == "" {
+		return ""
+	}
+	switch role {
+	case "prefill":
+		return msName + "-decode:" + pdKVCachePort
+	case "decode":
+		return msName + "-prefill:" + pdKVCachePort
+	default:
+		return ""
+	}
 }

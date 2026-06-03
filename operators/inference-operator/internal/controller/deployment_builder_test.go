@@ -19,6 +19,8 @@ package controller
 import (
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	inferencev1alpha1 "github.com/tech88-art/O-Cloud/operators/inference-operator/api/v1alpha1"
@@ -277,4 +279,182 @@ func TestSliceTemplateLabelPropagation(t *testing.T) {
 			t.Fatalf("ResourceClaim spec annotation %q unexpectedly present; want absent", SliceTemplateAnnotation)
 		}
 	})
+}
+
+// findContainer returns the named container from a Deployment Pod
+// template, or nil.
+func findContainer(dep *appsv1.Deployment, name string) *corev1.Container {
+	for i := range dep.Spec.Template.Spec.Containers {
+		if dep.Spec.Template.Spec.Containers[i].Name == name {
+			return &dep.Spec.Template.Spec.Containers[i]
+		}
+	}
+	return nil
+}
+
+// envValue returns the value of the named env var in a container, plus
+// whether it was found.
+func envValue(c *corev1.Container, name string) (string, bool) {
+	for _, e := range c.Env {
+		if e.Name == name {
+			return e.Value, true
+		}
+	}
+	return "", false
+}
+
+// TestBuildDeployment_RealInferenceShape exercises P13-T-105 (ADR-0024
+// §2 Decision F): the PD-pair Deployments carry a REAL vllm-ascend
+// serving shape — real image, model-weights volume + mount, CANN env,
+// and a huawei.com/Ascend910 device-plugin request+limit — for BOTH
+// Prefill and Decode sides. This is the offline-layer functional
+// assertion; the real-machine "Pod Ready on 910B + inference responds"
+// stamp is lab-gated (plan §8 · devlog).
+func TestBuildDeployment_RealInferenceShape(t *testing.T) {
+	ms := makeTestModelService()
+	// Real Qwen 8B image + weights path (sourced from spec — no
+	// hardcoded registry in Go).
+	ms.Spec.Model.Image = "quay.io/ascend/vllm-ascend:v0.11.0"
+	ms.Spec.Model.ModelPath = "/models/qwen-8b"
+
+	// Both sides must materialise (the controller calls buildDeployment
+	// for PDSidePrefill + PDSideDecode → 2 Deployments).
+	for _, tc := range []struct {
+		side PDSide
+		name string
+	}{
+		{PDSidePrefill, "llama-7b-prefill"},
+		{PDSideDecode, "llama-7b-decode"},
+	} {
+		dep := buildDeployment(ms, tc.side)
+		if dep.Name != tc.name {
+			t.Fatalf("side %s: Deployment name = %q, want %q", tc.side, dep.Name, tc.name)
+		}
+
+		// (1) Real image on the vllm-ascend container.
+		c := findContainer(dep, "vllm-ascend")
+		if c == nil {
+			t.Fatalf("side %s: vllm-ascend container missing", tc.side)
+		}
+		if c.Image != "quay.io/ascend/vllm-ascend:v0.11.0" {
+			t.Fatalf("side %s: container image = %q, want the spec image", tc.side, c.Image)
+		}
+
+		// (2) Model-weights volume present on the Pod + mounted at
+		// ModelPath inside the container.
+		var volFound bool
+		for _, v := range dep.Spec.Template.Spec.Volumes {
+			if v.Name == modelWeightsVolumeName {
+				volFound = true
+				if v.HostPath == nil {
+					t.Fatalf("side %s: model-weights volume is not a hostPath", tc.side)
+				}
+				if v.HostPath.Path != "/models/qwen-8b" {
+					t.Fatalf("side %s: model hostPath = %q, want /models/qwen-8b (empty root)", tc.side, v.HostPath.Path)
+				}
+			}
+		}
+		if !volFound {
+			t.Fatalf("side %s: model-weights Pod volume missing", tc.side)
+		}
+		var mountFound bool
+		for _, m := range c.VolumeMounts {
+			if m.Name == modelWeightsVolumeName {
+				mountFound = true
+				if m.MountPath != "/models/qwen-8b" {
+					t.Fatalf("side %s: model mount path = %q, want /models/qwen-8b", tc.side, m.MountPath)
+				}
+			}
+		}
+		if !mountFound {
+			t.Fatalf("side %s: model-weights volumeMount missing on vllm-ascend container", tc.side)
+		}
+
+		// (3) CANN env present — ASCEND_RT_VISIBLE_DEVICES is the
+		// load-bearing var the昇腾 runtime reads. ASCEND_TOOLKIT_HOME
+		// must default to a non-empty CANN toolkit path.
+		if _, ok := envValue(c, "ASCEND_RT_VISIBLE_DEVICES"); !ok {
+			t.Fatalf("side %s: ASCEND_RT_VISIBLE_DEVICES env missing", tc.side)
+		}
+		if v, ok := envValue(c, "ASCEND_TOOLKIT_HOME"); !ok || v == "" {
+			t.Fatalf("side %s: ASCEND_TOOLKIT_HOME env missing/empty (got %q)", tc.side, v)
+		}
+		if v, _ := envValue(c, "VLLM_PD_ROLE"); v != string(tc.side) {
+			t.Fatalf("side %s: VLLM_PD_ROLE = %q, want %q", tc.side, v, tc.side)
+		}
+
+		// (4) huawei.com/Ascend910 device-plugin request+limit present
+		// (alongside the DRA slice claim).
+		req, okReq := c.Resources.Requests[ascend910Resource]
+		lim, okLim := c.Resources.Limits[ascend910Resource]
+		if !okReq || !okLim {
+			t.Fatalf("side %s: huawei.com/Ascend910 request/limit missing (req=%v lim=%v)", tc.side, okReq, okLim)
+		}
+		if req.Value() != 1 || lim.Value() != 1 {
+			t.Fatalf("side %s: Ascend910 count req=%d lim=%d, want 1/1", tc.side, req.Value(), lim.Value())
+		}
+		// DRA slice claim must STILL be present (slice-granular HCCS
+		// binding coexists with the whole-device gate).
+		if len(c.Resources.Claims) != 1 || c.Resources.Claims[0].Name != claimRefNameInPod {
+			t.Fatalf("side %s: DRA slice claim missing/altered: %+v", tc.side, c.Resources.Claims)
+		}
+	}
+}
+
+// TestModelWeightsVolume_HostPathRootPrefix proves the configurable
+// MODEL_HOSTPATH_ROOT path: when ModelHostPathRoot is set (real
+// profile), the node hostPath gets the root prefix while the in-
+// container mount path stays ModelPath (so --model-path is stable
+// across profiles — decoupling-seam: config VALUE differs, SHAPE
+// invariant).
+func TestModelWeightsVolume_HostPathRootPrefix(t *testing.T) {
+	prev := ModelHostPathRoot
+	ModelHostPathRoot = "/data"
+	defer func() { ModelHostPathRoot = prev }()
+
+	ms := makeTestModelService()
+	ms.Spec.Model.ModelPath = "/models/qwen-8b"
+	dep := buildDeployment(ms, PDSidePrefill)
+
+	var vol *corev1.Volume
+	for i := range dep.Spec.Template.Spec.Volumes {
+		if dep.Spec.Template.Spec.Volumes[i].Name == modelWeightsVolumeName {
+			vol = &dep.Spec.Template.Spec.Volumes[i]
+		}
+	}
+	if vol == nil || vol.HostPath == nil {
+		t.Fatalf("model-weights hostPath volume missing")
+	}
+	if vol.HostPath.Path != "/data/models/qwen-8b" {
+		t.Fatalf("hostPath = %q, want /data/models/qwen-8b (root prefixed)", vol.HostPath.Path)
+	}
+	// Container mount path stays ModelPath regardless of host root.
+	c := findContainer(dep, "vllm-ascend")
+	for _, m := range c.VolumeMounts {
+		if m.Name == modelWeightsVolumeName && m.MountPath != "/models/qwen-8b" {
+			t.Fatalf("mount path = %q, want /models/qwen-8b (invariant)", m.MountPath)
+		}
+	}
+}
+
+// TestNPUDeviceCount_Configurable proves NPU_DEVICE_COUNT_PER_REPLICA
+// flows into the Ascend910 request+limit (real profile may raise it for
+// tensor-parallel prefill) without a code branch.
+func TestNPUDeviceCount_Configurable(t *testing.T) {
+	prev := NPUDeviceCountPerReplica
+	NPUDeviceCountPerReplica = 4
+	defer func() { NPUDeviceCountPerReplica = prev }()
+
+	ms := makeTestModelService()
+	dep := buildDeployment(ms, PDSideDecode)
+	c := findContainer(dep, "vllm-ascend")
+	if c == nil {
+		t.Fatal("vllm-ascend container missing")
+	}
+	if got := c.Resources.Requests[ascend910Resource]; got.Value() != 4 {
+		t.Fatalf("Ascend910 request = %d, want 4", got.Value())
+	}
+	if got := c.Resources.Limits[ascend910Resource]; got.Value() != 4 {
+		t.Fatalf("Ascend910 limit = %d, want 4", got.Value())
+	}
 }

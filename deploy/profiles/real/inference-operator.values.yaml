@@ -1,8 +1,52 @@
 # Real edition — inference-operator helm values.
+#
 # 真版:metrics ingestor 接 in-cluster Prometheus(kube-prometheus-stack)。
-# ModelService / PD Router webhook / scheduler 逻辑两版一致(非数据开关)。
+# ModelService / PD Router webhook / scheduler 逻辑两版一致(非数据开关 ·
+# ADR-0024 §2 Decision G decoupling-seam:demo/real 差异 = 下列 image/
+# model-mount/CANN VALUES,非代码分支)。
+#
+# P13-T-105 真 CANN + vllm-ascend PD 分离推理:
+#   - `defaults.proxyImage` 翻到真 vllm-ascend image → 缝下的 pd-proxy
+#     sidecar 走真 disaggregated_prefill_v1 proxy_server(DEFAULT_PROXY_IMAGE
+#     env · deployment_builder.go EffectiveProxyImage)。
+#   - `extraEnv` 注入 deployment_builder.go 读取的真-inference 配置
+#     (MODEL_HOSTPATH_ROOT / NPU_DEVICE_COUNT_PER_REPLICA / CANN_TOOLKIT_HOME
+#     / ASCEND_RT_VISIBLE_DEVICES)。这些 env 落到 operator Pod → 被 builder
+#     读 → stamp 到它产的 Prefill/Decode Deployment(缝下 · 缝上形状不变)。
+#   - vllm-ascend 主容器 image 来自 ModelService spec.model.image
+#     (config/samples/modelservice_qwen8b_pd.yaml · 真 Qwen 8B),operator
+#     侧不硬编码 registry。
+#
+# 真机点亮(Pods Ready on 910B + 推理响应)lab-gated —— 见
+# docs/devlog/phase-13-t105.md · plan §8 真机层。
 
 metrics:
   prometheusURL: "http://kube-prometheus-stack-prometheus.monitoring.svc:9090"
+
+# 真 vllm-ascend PD proxy_server sidecar image(缝下 · DEFAULT_PROXY_IMAGE
+# env wire · 甲方可 swap stable tag)。
+defaults:
+  proxyImage: "quay.io/vllm-project/vllm-ascend:v0.18.0"
+
+# 真-inference 配置,注入 operator Pod env → deployment_builder.go 读 →
+# stamp 到 Prefill/Decode Deployment(model mount root + 真 910B 整卡数 +
+# CANN toolkit 路径)。base chart `extraEnv` 既有 knob(values.yaml:197 ·
+# templates/deployment.yaml env block),不动 base chart。
+extraEnv:
+  # 节点上 staged 权重根。容器内 mount 路径恒为 spec.model.modelPath
+  # (e.g. /models/qwen-8b);host 实际目录 = /data + modelPath。
+  - name: MODEL_HOSTPATH_ROOT
+    value: "/data"
+  # 每 PD replica 申请的真 910B 整卡数(huawei.com/Ascend910 request+limit)。
+  - name: NPU_DEVICE_COUNT_PER_REPLICA
+    value: "1"
+  # CANN toolkit install 路径(Atlas 800 / openEuler 默认)。
+  - name: CANN_TOOLKIT_HOME
+    value: "/usr/local/Ascend/ascend-toolkit/latest"
+  # ASCEND_RT_VISIBLE_DEVICES 留空 → 由 Ascend Device Plugin 在 admission
+  # 注入分配到的 device 列表(动态绑定 · 优先)。静态 pin 才填 "0,1" 等。
+  - name: ASCEND_RT_VISIBLE_DEVICES
+    value: ""
+
 podLabels:
   ocloud.edge.example.com/edition: real

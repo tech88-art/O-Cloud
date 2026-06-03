@@ -17,8 +17,12 @@ limitations under the License.
 package controller
 
 import (
+	"os"
+	"strconv"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	inferencev1alpha1 "github.com/tech88-art/O-Cloud/operators/inference-operator/api/v1alpha1"
@@ -93,6 +97,103 @@ func claimTemplateName(ms *inferencev1alpha1.ModelService, side PDSide) string {
 // inside the Pod template (Pod.Spec.ResourceClaims[].Name). Containers
 // reference this name via container.Resources.Claims[].
 const claimRefNameInPod = "npu-slice"
+
+// ------------------------------------------------------------------
+// P13-T-105 · 真 CANN + vllm-ascend PD 分离推理 (ADR-0024 §2 Decision F)
+// ------------------------------------------------------------------
+//
+// The PD-pair Deployments carry a REAL vllm-ascend serving shape:
+//   * a model-weights volume mounted at ms.Spec.Model.ModelPath so the
+//     vllm-ascend process loads the Qwen/LLaMA weights from disk,
+//   * CANN runtime env (ASCEND_RT_VISIBLE_DEVICES + ASCEND_VISIBLE_
+//     DEVICES + the CANN toolkit path) so the昇腾 driver exposes the
+//     allocated 910B device(s) to the container,
+//   * a huawei.com/Ascend910 device-plugin resource request+limit so
+//     the kubelet admits the Pod only onto a node advertising real NPU
+//     capacity.
+//
+// **Decoupling-seam invariant (ADR-0024 §2 Decision G)**: this is the
+// SAME container SHAPE for demo and real. The demo-vs-real difference is
+// the VALUES — the image (ms.Spec.Model.Image / FallbackImage / chart
+// defaults), the model-mount host root, the device count, the visible-
+// device list — all sourced from config (ModelService spec + the
+// package vars below, which read operator-level env). There is NO
+// `if real {}` branch: a kind/mock cluster gets a benign hostPath
+// (DirectoryOrCreate) + a 1-device request; a real鲲鹏+910B node gets
+// the production root + real device count via the real profile env.
+
+// ascend910Resource is the Ascend Device Plugin extended-resource key
+// requested per PD-pair Pod. Matches `docs/build-and-production-
+// validation.md` §4.4(1) + the kind smoke fake-capacity key
+// (`tests/e2e/kind/install.sh` patches `huawei.com/Ascend910=8`
+// allocatable). The DRA ResourceClaim (claim_builder.go) remains the
+// slice-granular binding; this device-plugin request is the whole-
+// device admission gate the real昇腾 stack expects alongside CANN env.
+//
+// NB: backend `pkg/datasource/k8s/deploy.go` uses the `Ascend910B`
+// variant for its standalone deploy path — that drift is noted as
+// carry-forward in the T105 devlog (out of this task's Allowed Paths).
+const ascend910Resource = corev1.ResourceName("huawei.com/Ascend910")
+
+// modelWeightsVolumeName is the Pod volume + volumeMount name carrying
+// the model weights directory.
+const modelWeightsVolumeName = "model-weights"
+
+// cannToolkitPathDefault is the conventional CANN toolkit install path
+// inside the official昇腾 base image (Atlas 800 / openEuler). Exposed
+// via ASCEND_TOOLKIT_HOME so the vllm-ascend launcher sources
+// set_env.sh. Overridable via the CANN_TOOLKIT_HOME operator env.
+const cannToolkitPathDefault = "/usr/local/Ascend/ascend-toolkit/latest"
+
+// Real-inference config knobs. Read once at first build from operator
+// env so the values flow from chart values → container env →
+// deployment_builder, mirroring the DefaultProxyImage pattern WITHOUT
+// touching cmd/main.go (which is outside T105 Allowed Paths). Tests
+// override these package vars directly (see deployment_builder_test.go).
+var (
+	// ModelHostPathRoot is prepended to ms.Spec.Model.ModelPath to form
+	// the node hostPath backing the model-weights volume. Empty (demo
+	// default) → the hostPath IS ModelPath verbatim (e.g.
+	// /models/qwen-8b). The real profile sets MODEL_HOSTPATH_ROOT to the
+	// node mount root where weights are staged (e.g. /data). The volume
+	// always mounts AT ModelPath inside the container regardless of root
+	// so the --model-path flag is stable across profiles.
+	ModelHostPathRoot = os.Getenv("MODEL_HOSTPATH_ROOT")
+
+	// NPUDeviceCountPerReplica is the huawei.com/Ascend910 request+limit
+	// stamped per PD-pair Pod. Default 1. Real profile may raise it via
+	// NPU_DEVICE_COUNT_PER_REPLICA for tensor-parallel prefill.
+	NPUDeviceCountPerReplica = getenvInt("NPU_DEVICE_COUNT_PER_REPLICA", 1)
+
+	// AscendVisibleDevices seeds ASCEND_RT_VISIBLE_DEVICES. Empty (demo
+	// default) lets the Ascend Device Plugin inject the allocated device
+	// list at admission; an explicit value (e.g. "0,1") pins devices for
+	// a static real deployment. Sourced from ASCEND_RT_VISIBLE_DEVICES.
+	AscendVisibleDevices = os.Getenv("ASCEND_RT_VISIBLE_DEVICES")
+
+	// CANNToolkitHome is exposed as ASCEND_TOOLKIT_HOME. Defaults to the
+	// conventional install path; overridable via CANN_TOOLKIT_HOME.
+	CANNToolkitHome = getenvOr("CANN_TOOLKIT_HOME", cannToolkitPathDefault)
+)
+
+// getenvOr returns os.Getenv(key) or def when unset/empty.
+func getenvOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+// getenvInt parses os.Getenv(key) as an int, falling back to def on
+// unset / parse error / non-positive value.
+func getenvInt(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
+}
 
 // SchedulerNameDefault is the kube-scheduler profile name our
 // scheduler-plugin (operators/scheduler-plugin/) registers under per
@@ -199,6 +300,9 @@ func buildDeployment(ms *inferencev1alpha1.ModelService, side PDSide) *appsv1.De
 						Name:                      claimRefNameInPod,
 						ResourceClaimTemplateName: ptrString(claimTemplateName(ms, side)),
 					}},
+					// P13-T-105: model-weights volume so the vllm-ascend
+					// container loads real Qwen/LLaMA weights from disk.
+					Volumes:    []corev1.Volume{modelWeightsVolume(ms)},
 					Containers: buildPDPairContainers(ms, side, roleVal, claimRefNameInPod),
 				},
 			},
@@ -271,11 +375,22 @@ func buildPDPairContainers(ms *inferencev1alpha1.ModelService, side PDSide, role
 			"--model-path=" + ms.Spec.Model.ModelPath,
 			"--pd-role=" + roleVal,
 		},
-		Resources: corev1.ResourceRequirements{
-			Claims: []corev1.ResourceClaim{{
-				Name: claimRef,
-			}},
-		},
+		// P13-T-105: CANN runtime env so the昇腾 driver/toolkit expose the
+		// allocated 910B device(s) to the vllm-ascend process.
+		Env: cannEnv(roleVal),
+		// P13-T-105: mount the model weights at ModelPath so --model-path
+		// resolves to a real on-disk directory.
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      modelWeightsVolumeName,
+			MountPath: ms.Spec.Model.ModelPath,
+			ReadOnly:  true,
+		}},
+		// P13-T-105: keep the DRA slice claim (slice-granular binding) AND
+		// add the device-plugin whole-device request+limit the real昇腾
+		// stack admits against (ADR-0024 §2 Decision F). Both coexist:
+		// the claim drives HCCS-aware slice placement; the resource gate
+		// keeps the Pod off NPU-less nodes.
+		Resources: npuResourceRequirements(claimRef),
 	}}
 
 	proxyImage := EffectiveProxyImage(ms)
@@ -309,4 +424,60 @@ func buildPDPairContainers(ms *inferencev1alpha1.ModelService, side PDSide, role
 	}
 
 	return containers
+}
+
+// modelWeightsVolume returns the Pod volume backing the model weights.
+// hostPath with DirectoryOrCreate keeps it safe on demo/kind nodes
+// (the directory is created if absent) while pointing at the staged
+// weights root on a real node (ModelHostPathRoot + ModelPath).
+//
+// Decoupling-seam (ADR-0024 §2 Decision G): SAME volume shape both
+// profiles; only the host path root differs by config (MODEL_HOSTPATH_
+// ROOT env). Operators wanting a PVC instead override the chart's pod
+// volume in the real profile — the container-side mount (at ModelPath)
+// is invariant so --model-path never changes.
+func modelWeightsVolume(ms *inferencev1alpha1.ModelService) corev1.Volume {
+	hostDir := ModelHostPathRoot + ms.Spec.Model.ModelPath
+	hostType := corev1.HostPathDirectoryOrCreate
+	return corev1.Volume{
+		Name: modelWeightsVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: hostDir,
+				Type: &hostType,
+			},
+		},
+	}
+}
+
+// cannEnv returns the CANN runtime env-vars for a vllm-ascend container.
+// ASCEND_RT_VISIBLE_DEVICES is ALWAYS present (the env-var the昇腾
+// runtime + vllm-ascend read to pick devices); its value defaults to the
+// AscendVisibleDevices config (empty → Ascend Device Plugin injects the
+// allocated list at admission). ASCEND_VISIBLE_DEVICES mirrors it for
+// older driver builds. ASCEND_TOOLKIT_HOME points the launcher at the
+// CANN toolkit. VLLM_PD_ROLE carries the prefill/decode side so the
+// vllm-ascend disaggregated_prefill_v1 entrypoint knows its half.
+func cannEnv(roleVal string) []corev1.EnvVar {
+	return []corev1.EnvVar{
+		{Name: "ASCEND_RT_VISIBLE_DEVICES", Value: AscendVisibleDevices},
+		{Name: "ASCEND_VISIBLE_DEVICES", Value: AscendVisibleDevices},
+		{Name: "ASCEND_TOOLKIT_HOME", Value: CANNToolkitHome},
+		{Name: "VLLM_PD_ROLE", Value: roleVal},
+	}
+}
+
+// npuResourceRequirements builds the container ResourceRequirements
+// carrying BOTH the DRA slice claim (slice-granular HCCS binding) and
+// the huawei.com/Ascend910 device-plugin request+limit (whole-device
+// admission gate). NPUDeviceCountPerReplica controls the count.
+func npuResourceRequirements(claimRef string) corev1.ResourceRequirements {
+	qty := *resource.NewQuantity(int64(NPUDeviceCountPerReplica), resource.DecimalSI)
+	return corev1.ResourceRequirements{
+		Limits:   corev1.ResourceList{ascend910Resource: qty},
+		Requests: corev1.ResourceList{ascend910Resource: qty},
+		Claims: []corev1.ResourceClaim{{
+			Name: claimRef,
+		}},
+	}
 }

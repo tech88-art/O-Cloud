@@ -1,0 +1,56 @@
+# Qwen 8B PD-disaggregated ModelService — P13-T-105 real-inference sample.
+#
+# Real CANN + vllm-ascend prefill/decode split on昇腾 910B (ADR-0024 §2
+# Decision F). `kubectl apply --dry-run` gate + the canonical real-profile
+# inference target referenced by docs/build-and-production-validation.md
+# §4.4(4) ("CANN + vllm-ascend/MindIE 在真 910B 跑 Qwen 8B PD 分离").
+#
+# What the inference-operator materialises from this CR (T105):
+#   * Prefill + Decode Deployments (deployment_builder.go), each with
+#       - container image = spec.model.image (real vllm-ascend)
+#       - a model-weights hostPath volume mounted at spec.model.modelPath
+#       - CANN env (ASCEND_RT_VISIBLE_DEVICES / ASCEND_TOOLKIT_HOME)
+#       - a huawei.com/Ascend910 device-plugin request+limit
+#       - a DRA ResourceClaim (slice-granular HCCS binding)
+#   * the PD Router webhook (pd_router.go) then injects, at Pod admission:
+#       - npu.huawei.com/slice-bindings   (real allocated 910B slices · ADR-0008)
+#       - inference.ocloud.edge.example.com/pd-endpoint
+#                                          (real prefill→decode KV-cache endpoint)
+#
+# Real-machine "Pods Ready on 910B + inference responds" is lab-gated
+# (see docs/devlog/phase-13-t105.md · plan §8 真机层).
+apiVersion: inference.ocloud.edge.example.com/v1alpha1
+kind: ModelService
+metadata:
+  name: qwen-8b-pd
+  namespace: ocloud-system
+spec:
+  model:
+    # Real vllm-ascend image. The image flows through spec (per-CR) — the
+    # operator never hardcodes a registry. Operators pin their own stable
+    # tag; the real profile chart default (defaults.proxyImage) covers the
+    # optional pd-proxy sidecar separately.
+    image: quay.io/ascend/vllm-ascend:v0.11.0
+    # Model weights path INSIDE the container. The operator mounts the
+    # model-weights volume here (host root = MODEL_HOSTPATH_ROOT env, e.g.
+    # /data → /data/models/qwen-8b on the node; container path is stable).
+    modelPath: /models/qwen-8b
+  pdPair:
+    # Prefill is compute-heavy (prompt encode) — give it more replicas.
+    prefill:
+      replicas: 2
+    # Decode is the autoregressive token stream.
+    decode:
+      replicas: 2
+    routerLabel: inference.ocloud.edge.example.com/pd-role
+    # proxyImage: opt-in vllm-ascend disaggregated_prefill_v1 proxy_server
+    # sidecar. Left empty here → the real profile chart's defaults.proxyImage
+    # supplies it cluster-wide (DEFAULT_PROXY_IMAGE env · deployment_builder
+    # EffectiveProxyImage). Set explicitly to override per-CR.
+    #   proxyImage: quay.io/vllm-project/vllm-ascend:v0.18.0
+    # fallbackImage: leave EMPTY in production (only CI/kind smoke sets a
+    # busybox stand-in to skip the ~5GB image pull).
+  npuSlicePoolRef:
+    name: ascend-910b-pool
+  # schedulerOverride OMITTED → spec.schedulerName="npu-scheduler" auto-stamped
+  # (HCCS-aware placement on the real 910B ring · ADR-0011 §1).
