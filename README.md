@@ -216,7 +216,7 @@ cd frontend && pnpm install && pnpm dev --host 0.0.0.0
 | **M4** 工程化对外 | O2 DMS 接口 + 真实硬件 + 多站点 Karmada | Phase 9-10 |
 | **M5** 真生产化 foundation | chart packaging spine + Karmada propagation 第一波 + Frontend Workload extension | Phase 11 |
 | **M6** 平台真实化 + 操作台一体化 | aarch64 鲲鹏 + openEuler target + 拓扑全保真 + 前端 one-page workspace | Phase 12 |
-| **M7+** production hardening | Karmada HA + 完整 OIDC IdP + 真 aarch64 集群验证 + vLLM PD SLA | Phase 13+ |
+| **M7** 真生产化收口(final) | real 版完整化 + 真硬件点亮 → 项目收口:Bucket B 真硬件 body(real-Ascend + 真 telemetry + 真拓扑 + 真 Deploy + 真推理)+ Bucket A 生产硬化(OIDC/RBAC + Vault + ClusterQuota 真强制 + Karmada HA + vLLM PD P99 SLA)· 不规划 Phase 14 | Phase 13 |
 
 总周期估计 6-9 个月。
 
