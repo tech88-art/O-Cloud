@@ -54,13 +54,15 @@ func TestWorkloadCollector_HappyPath_3Containers(t *testing.T) {
 	assert.Equal(t, 3, testutil.CollectAndCount(c, "ascend_workload_active_slices"))
 }
 
-// TestWorkloadCollector_SourceUnavailable_NoMetrics verifies that an
-// unavailable source (empty SimRoot -> ErrSourceNotAvailable) results in
-// zero metrics being emitted (and a logged error, but the collector does
-// not panic or hang).
-func TestWorkloadCollector_SourceUnavailable_NoMetrics(t *testing.T) {
+// TestWorkloadCollector_RealProcEmpty_NoMetrics verifies that the real
+// /proc reader over a ProcRoot with no NPU-using processes emits zero
+// metrics (the idle-host case · P13-T-102) — the collector does not panic
+// or hang. ProcRoot is pointed at an empty temp dir so the assertion holds
+// on any platform (the dev box has no /proc).
+func TestWorkloadCollector_RealProcEmpty_NoMetrics(t *testing.T) {
 	src, err := sources.NewCgroupSource("")
 	require.NoError(t, err)
+	src.ProcRoot = t.TempDir() // exists, no pid dirs
 
 	c := NewWorkloadCollector(src)
 	assert.Equal(t, 0, testutil.CollectAndCount(c, "ascend_workload_npu_seconds_total"))

@@ -1,12 +1,49 @@
 # Real edition — ascend-npu-exporter-plus helm values.
-# 真硬件版:simulator 关 → exporter 走真 DCMI / npu-smi 源。
+# 真硬件版:simulator 关 → exporter 走真 DCMI / npu-smi 源(P13-T-102 已点亮)。
 #
-# ⚠️ Phase-13:simulator.enabled=false 只翻转二进制 flag;真 DCMI/npu-smi 指标
-#    source body 仍待 Phase-13 落地(无真 910B 节点时该 DaemonSet 不调度)。
+# Phase 13 P13-T-102(ADR-0024 §2 Decision D · lab-gating FLIP):真 telemetry
+# source body 已 land(exporters/ascend-npu-exporter-plus/internal/collector/
+# sources/{dcmi,npu_smi,cgroup}.go)—— DCMI-preferred 读路径走 npusmi exec
+# (`npu-smi info -l` 枚举 + `-t common`/`-t usages`/`-t board` 合并 → NPUSample:
+# utilization% / memory / HBM bandwidth / temp / power / health)· workload
+# correlation 走真 /proc(/dev/davinci* fd → per-container NPU 占用)。
+# **无 cgo**(ADR-0024 §4(c)):全部走 npu-smi os/exec · CGO_ENABLED=0
+# GOARCH=arm64 交叉编译绿 · 无 build-tag。captured-fixture table-test 通
+# (离线层功能验证)。真机「对接」验证(真 npu-smi 输出与 fixture 同形 +
+# `curl :9100/metrics | grep ascend_npu_` 真序列)= lab-gated(plan §8 + ADR-0024 §3)。
 
+# 关模拟器 → 二进制不再收 --simulator → 走真源(下面 extraArgs --source=real)。
 simulator:
-  enabled: false           # 关模拟器 → 真 DCMI/npu-smi(Phase-13 源体)
+  enabled: false
+
+# Real-source 启用 + 真硬件挂载。base chart(deploy/helm-charts/ascend-npu-
+# exporter-plus)当前只 wire --listen / --simulator / workload-correlation 三组
+# flag,故 real 版用 extraArgs 把 P13-T-102 新增的 --source=real 注进 argv。
+# **node-name**:base chart 未 wire downward-API env → --node-name 暂留空(NPUSample
+# 的 npu_id label 用 "<node>-npu-N";空 node 时退化为 "-npu-N")· 真机部署可在
+# extraArgs 补 "--node-name=<实际节点名>" 或 base chart 加 fieldRef(carry-forward)。
+extraArgs:
+  - --source=real
+
+# workloadCorrelation:真 /proc reader(simRoot 空 → readRealProc)· 需 hostPID
+# (base chart 在 workloadCorrelation.enabled && !simulator.enabled 时已自动开
+# hostPID · 见 daemonset.yaml)。默认仍 OFF(exporters/CLAUDE.md §8 /proc 扫描
+# 成本)· 真 PD Router demo 时翻 true。
+workloadCorrelation:
+  enabled: false
+  simRoot: ""              # 空 = 真 /proc(非 fake-fs)· P13-T-102 readRealProc
+
+# 只调度到真 Ascend 节点(device-plugin 打标)· soft arm64 affinity 由 base chart 提供。
 nodeSelector:
-  huawei.com/Ascend910B: "true"   # 只调度到真 Ascend 节点(device-plugin 打标)
+  huawei.com/Ascend910B: "true"
+
 serviceMonitor:
   enabled: true            # 接 kube-prometheus-stack
+
+# ⚠️ Chart-drift carry-forward(P13-T-102 devlog · 非本 task 越界范围):
+# base chart daemonset.yaml 尚未 wire (a) /dev/davinci* + /usr/local/Ascend/
+# driver/tools(npu-smi binary)hostPath volumeMount · (b) DCMI socket mount ·
+# (c) --node-name fieldRef($NODE_NAME)· (d) --npu-smi-path。真源**读路径已就绪**
+# 但 DaemonSet 真挂载需 base chart 模板补丁(deploy/helm-charts/** = deploy 模块
+# owner · 不在 P13-T-102 exporter Allowed Paths)→ 由 T301 真机 runbook / 后续
+# deploy task 落 · 真机部署前置:hostPath mount npu-smi + /dev/davinci* + hostPID。
