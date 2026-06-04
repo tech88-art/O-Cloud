@@ -215,12 +215,13 @@ Agent 想改契约 → 开 issue (title: RFC: xxx) → 协调者评估 → 批�
 
 ## 12. 当前 Phase
 
-**Phase 0**：架构设计与项目启动 — **已完成**
-**Phase 1**：核心样机（演示后端 + 前端 + Mock 数据）— **即将启动**
-  - 周期：4 周
-  - 任务包：31 个（详见 `docs/phase1-plan.md`）
+**项目已收官** — **Phase 13 complete · M7 真生产化收口**（2026-06-03 · tag `phase-13-complete` · final milestone）。demo 版（Phase 12）+ real 版（Phase 13）两版完整 · demo/real 隔离闭合（隔离活在 `Source` 接口缝 · ADR-0024 §2 Decision G）· build-doc §4.4/§5 软件层全 land（真机实测 lab-gated）。**不规划 Phase 14**。
 
-**Phase 2+** 见 `docs/architecture.md §13` 路线图。
+**全部 Phase 已完成**：Phase 0（架构启动）· Phase 1（核心样机 44/44）· Phase 2（真实数据源）· Phase 3（pool controllers + ascend-npu-exporter-plus）· Phase 4（npu-dra-driver + inference-operator scaffold）· Phase 5（real allocation + controller body）· Phase 6（HCCS/NUMA scheduler-plugin）· Phase 7（动态切分 + Source 接口 + lab gating）· Phase 8（垂直伸缩）· Phase 9（O2 DMS + 多租户配额 + IMS scaffold）· Phase 10（IMS controller body + framework migration）· Phase 11（chart packaging + Karmada 第一波）· Phase 12（平台真实化 aarch64 鲲鹏 + openEuler + one-page workspace）· Phase 13（real 版完整化 + 真硬件 body + 生产硬化）。
+
+**剩余仅信号触发的可选扩展**（不 gating 收口 · 不构成后续 phase）：真机实测 stamp（lab 接入跑 `tests/e2e/real/`）· 4 carry（Volcano / Partitionable Devices KEP-4815 / Go v1 ResourceSlice migration / Frontend G6 5.x）· 甲方 swap point（OIDC IdP / P99 SLO / Vault backend）。
+
+**路线图详** `docs/architecture.md` §1.3 + §13 · 各阶段 checkpoint `docs/checkpoint-phase*.md` · 收官声明 `docs/checkpoint-phase13.md`。
 
 ---
 
