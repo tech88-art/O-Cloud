@@ -34,10 +34,10 @@
 | 后端 config | `backend/configs/config.dev.yaml` | `backend/configs/config.real.yaml` |
 | 部署 overlay | `deploy/profiles/demo/*.values.yaml` | `deploy/profiles/real/*.values.yaml` |
 | 主要形态 | docker-compose / `make run`(localhost:3000) | K8s + helm(真集群) |
-| NPU 源 | `mock-json` | `real-ascend`(**Phase-13 stub** · 见下) |
+| NPU 源 | `mock-json` | `real-ascend`(npu-smi/DCMI 真体 · **P13-T-101** land · 见下) |
 | **选择** | `scripts/install.sh`(默认)或 `--profile demo` | `scripts/install.sh --profile real` 或 `helm -f deploy/profiles/real/<chart>.values.yaml` |
 
-**Real 版当前边界(如实 · Phase-13)**:`topology` + `deploy` 仍走 mock(真拓扑聚合 / `Deploy()` 真体未建);`real-ascend` NPU 源返回 `ErrNotImplemented`(npu-smi 解析器已写测、待真机接线);OIDC/Karmada/Vault/配额强制/SLA 未实现(§5)。即 **Real 版"已接线、可部署、多数资源接真源",但拓扑/部署/真 NPU 分配待 Phase-13 + 真机**。详见 `deploy/profiles/real/README.md`。
+**Real 版当前边界(如实 · `phase-13-complete`)**:Phase-13 已把 real 版**全部 stub/mock/`ErrNotImplemented` 填成真体** —— `topology` 真聚合(`GetTopology` 读 ResourceSlice `hccs_ring`/`numa_node` · **P13-T-103**)+ 真 `Deploy()/DeleteDeploy()`(client-go apply Deployment+Service · **P13-T-104**)+ `real-ascend` NPU 源(npu-smi/DCMI 真体 · **P13-T-101**)+ 真 telemetry(simulator off · **P13-T-102**)+ 真推理(CANN/vllm-ascend PD · **P13-T-105**)+ OIDC/RBAC + Vault + 配额真强制 + Karmada HA + P99 SLA(**P13-T-201..206** · §5 全 `[x]`)。即 **Real 版软件层完整 · 可部署 · 全资源接真源**;剩余仅 **真机运行对接验证**(lab-gated · `tests/e2e/real/` · §4.4 五项 stamp 🔴 随 lab 实测回填)。详见 `deploy/profiles/real/README.md`。
 
 ---
 
