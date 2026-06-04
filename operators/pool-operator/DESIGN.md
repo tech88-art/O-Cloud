@@ -130,8 +130,9 @@ controller-manager 起 → leader election → 按 `--enable-controllers` bitmas
   finalizer（requeue）② resolve `npuPoolRef`→NPUPool→Node→npuCount ③
   `computeTotalSlices` per Strategy ④ count ResourceSlices→`resourceSlicesObserved`
   ⑤ `availableSlices = totalSlices − allocatedSlices`（clamp ≥0）+ Ready=True。
-- **NodePool** (`For(NodePool)`): selector（required，空=Ready=False）+role+排除
-  arm64 → 聚合 nodes[]/totalCPU/totalMemory + Ready。
+- **NodePool** (`For(NodePool)`): selector（required，空=Ready=False）+ role 过滤
+  → 聚合 nodes[]/totalCPU/totalMemory + Ready。**arch-agnostic**（P13-fix-005 移除
+  amd64-only 过滤 · arm64 Kunpeng = 真目标 per ADR-0020 · 与 NPUPool/NPUSlicePool 一致）。
 - **ClusterPool** (`For(ClusterPool)`): 仅 emit `PhaseDeferred=True`
   (`WaitingForKarmada`)，幂等（已 True 则 skip update 避免 churn）。Karmada
   member-sync body 留 Phase 9。
@@ -173,13 +174,14 @@ finalizer（Phase 3 cleanup 为 placeholder；Phase 5 NPUSliceAllocation owner-r
 - **ClusterPool Karmada body**（Phase 9 / 现 deferred）: member-cluster sync +
   PropagationPolicy；现仅 PhaseDeferred condition 占位（watch Karmada CRD 在
   Phase 3 集群会 crash manager，故不 watch）。
-- **🔴 NodePool arm64 排除 = 待修 forward-fix**: `nodepool_controller.go` 仍按
-  *architecture.md §1.2 旧 amd64-only 假设* 过滤掉 `kubernetes.io/arch=arm64`
-  节点。**ADR-0020（Phase 12）已翻转目标平台为 aarch64 鲲鹏 920** → 真集群上
-  NodePool 会错误排除真实目标节点。NPUPool/NPUSlicePool 不含此过滤（按 NPU
-  capacity 聚合，arch-agnostic），故 real 版核心 NPU 路径不受影响；但 NodePool
-  CPU/Mem 聚合在真 arm64 集群会空。**收口已知残留**（非 real NPU 路径 gating ·
-  见本节末 + checkpoint-phase13 §残留候选）。
+- **✅ NodePool arch 过滤已移除（P13-fix-005 · ADR-0020）**: `nodepool_controller.go`
+  此前按 *ADR-0001 §13 旧 amd64-only 假设* 过滤掉 `kubernetes.io/arch=arm64` 节点。
+  **ADR-0020（Phase 12）翻转目标平台为 aarch64 鲲鹏 920** → 真集群每节点皆 arm64，
+  旧过滤会错误排空所有目标节点（status.nodes 空 / totalCPU·Mem 归零）。P13-fix-005
+  移除该 arch 过滤，使 CPU/Mem 聚合 **arch-agnostic**（与 NPUPool/NPUSlicePool 一致 —
+  后两者按 NPU capacity 聚合，从不按 arch 过滤）：arm64 Kunpeng（真目标）+ amd64
+  （dev/CI 保留）节点皆计入。回归守卫见 `nodepool_controller_test.go` 的「arm64
+  included」+「pure arm64 Kunpeng cluster」两用例。
 - **二级 watch 补全**: NPUPool/NodePool 现靠 periodic resync 感知 Node/Pod 变化
   （Phase 3 demo 4 节点足够）；大集群可加 Node/Pod secondary watch + 父池
   `Owns` 链。
@@ -226,7 +228,7 @@ spec:
 
 - **ADR-0001**（`docs/adr/0001-phase0-key-decisions.md`）§4 4 级池化决策 · §13 平台
 - **ADR-0010**（scheduler-plugin）§5 ResourceSlice 属性 schema = 跨 controller 契约
-- **ADR-0020**（aarch64 鲲鹏 target · supersede ADR-0001 §13）— NodePool arm64 过滤的 forward-fix 依据
+- **ADR-0020**（aarch64 鲲鹏 target · supersede ADR-0001 §13）— NodePool arch 过滤移除依据（P13-fix-005 已落地）
 - `operators/CLAUDE.md` §1 模块隔离（no cross-module import）· §4 4 级 CRD 关系 · §3.4 CRD 规范
 - `docs/architecture.md` §5 模块划分 · §6 CRD Schema · §1.3 Phase 路线图
 - `docs/phase3-plan.md`（P3-T-002..T005 + T105）· `docs/phase6-plan.md`（P6-T-003 HCCS）

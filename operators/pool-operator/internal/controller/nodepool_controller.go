@@ -46,12 +46,15 @@ const (
 
 // NodePoolReconciler reconciles NodePool resources.
 //
-// Reconcile contract (P3-T-004):
+// Reconcile contract (P3-T-004; arch filter removed in P13-fix-005 per ADR-0020):
 //   - Reads spec.selector + spec.role -> List matching Nodes.
-//   - Filters out arm64 nodes (architecture.md §1.2: hardware target = amd64
-//     only; the Ascend 910B platform is x86_64-only).
 //   - Aggregates matched node names + sums CPU / Memory capacity into
-//     status.nodes / totalCPU / totalMemory.
+//     status.nodes / totalCPU / totalMemory. Aggregation is arch-agnostic:
+//     both arm64 (Kunpeng 920 — the real deployment target per ADR-0020) and
+//     amd64 (retained for dev/CI/render-verify) nodes are counted. The earlier
+//     amd64-only filter encoded the superseded ADR-0001 §13 assumption and would
+//     have emptied status on a real all-arm64 cluster; NPUPool/NPUSlicePool never
+//     filtered by arch, so this brings NodePool in line with them.
 //   - Emits Ready=True (Reason=Reconciled) when at least one node matches,
 //     or Ready=False with one of MissingSelector / InvalidSelector /
 //     NoNodeMatched otherwise.
@@ -96,14 +99,14 @@ func (r *NodePoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	// 2. Filter by Role (spec.role = "edge" | "core") if set, and exclude
-	//    arm64 nodes (kunpeng / Ascend ARM SKUs are out of scope per
-	//    architecture.md §1.2).
+	// 2. Filter by Role (spec.role = "edge" | "core") if set. No architecture
+	//    filter is applied: arm64 Kunpeng 920 is the real deployment target
+	//    (ADR-0020, superseding the ADR-0001 §13 amd64-only assumption) and
+	//    amd64 dev/CI nodes stay valid, so the CPU/Mem rollup is arch-agnostic
+	//    — consistent with NPUPool/NPUSlicePool, which aggregate by capacity
+	//    regardless of node arch.
 	var matched []corev1.Node
 	for _, n := range nodes.Items {
-		if n.Labels["kubernetes.io/arch"] == "arm64" {
-			continue
-		}
 		if string(pool.Spec.Role) != "" {
 			if n.Labels[nodeRoleLabel] != string(pool.Spec.Role) {
 				continue
@@ -141,7 +144,7 @@ func (r *NodePoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			Status:             metav1.ConditionFalse,
 			ObservedGeneration: pool.Generation,
 			Reason:             "NoNodeMatched",
-			Message:            "Selector + Role filter matched no amd64 Nodes",
+			Message:            "Selector + Role filter matched no Nodes",
 		})
 	} else {
 		SetCondition(&pool.Status.Conditions, metav1.Condition{

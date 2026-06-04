@@ -214,8 +214,12 @@ var _ = Describe("NodePool Reconcile", func() {
 		Expect(ready.Reason).To(Equal("NoNodeMatched"))
 	})
 
-	It("arm64 excluded: 3 amd64 + 2 arm64 -> only amd64 counted", func() {
-		// 3 amd64 nodes that should match.
+	It("arm64 included: 3 amd64 + 2 arm64 Kunpeng -> all 5 counted (ADR-0020)", func() {
+		// Pre-ADR-0020 this spec asserted the 2 arm64 nodes were DROPPED by an
+		// amd64-only arch guard. ADR-0020 (Phase 12) flipped the deployment
+		// target to aarch64 Kunpeng 920, so arm64 nodes are now first-class
+		// members; amd64 stays valid for dev/CI. P13-fix-005 removed the guard.
+		// 3 amd64 dev nodes (8 CPU / 32Gi each).
 		amd64Label := map[string]string{
 			"site":               testTag,
 			nodeRoleLabelForTest: "edge",
@@ -227,8 +231,8 @@ var _ = Describe("NodePool Reconcile", func() {
 				"8", "32Gi", amd64Label)
 			trackNode(n)
 		}
-		// 2 arm64 nodes carrying the same site + role labels — must be
-		// dropped by the arch guard even though they pass the selector.
+		// 2 arm64 Kunpeng nodes (16 CPU / 64Gi each) with the same site + role
+		// labels — these must now be counted, not dropped.
 		armLabel := map[string]string{
 			"site":               testTag,
 			nodeRoleLabelForTest: "edge",
@@ -252,21 +256,71 @@ var _ = Describe("NodePool Reconcile", func() {
 		trackPool(pool)
 
 		updated := reconcileOnce(pool)
-		// Exactly the 3 amd64 nodes — none of the arm64 ones.
-		Expect(updated.Status.Nodes).To(HaveLen(3))
+		// All 5 nodes — both amd64 and arm64 — are present.
+		Expect(updated.Status.Nodes).To(HaveLen(5))
 		for i := 0; i < 3; i++ {
 			Expect(updated.Status.Nodes).To(ContainElement(
 				fmt.Sprintf("%s-amd-%d", testTag, i)))
 		}
 		for i := 0; i < 2; i++ {
-			Expect(updated.Status.Nodes).NotTo(ContainElement(
+			Expect(updated.Status.Nodes).To(ContainElement(
 				fmt.Sprintf("%s-arm-%d", testTag, i)))
 		}
 
-		// Totals reflect 3 * 8 CPU and 3 * 32Gi memory — the arm64
-		// 16-CPU / 64Gi capacity must NOT be summed in.
-		expectedCPU := resource.MustParse("24")
-		expectedMem := resource.MustParse("96Gi")
+		// Totals now include the arm64 capacity:
+		// CPU = 3*8 + 2*16 = 56 ; Mem = 3*32Gi + 2*64Gi = 224Gi.
+		expectedCPU := resource.MustParse("56")
+		expectedMem := resource.MustParse("224Gi")
+		Expect(updated.Status.TotalCPU.Cmp(expectedCPU)).To(Equal(0),
+			"TotalCPU got=%s want=%s", updated.Status.TotalCPU.String(), expectedCPU.String())
+		Expect(updated.Status.TotalMemory.Cmp(expectedMem)).To(Equal(0),
+			"TotalMemory got=%s want=%s", updated.Status.TotalMemory.String(), expectedMem.String())
+
+		ready := findCondition(updated.Status.Conditions, "Ready")
+		Expect(ready).NotTo(BeNil())
+		Expect(ready.Status).To(Equal(metav1.ConditionTrue))
+		Expect(ready.Reason).To(Equal("Reconciled"))
+		Expect(ready.Message).To(ContainSubstring("5 nodes matched"))
+	})
+
+	It("pure arm64 Kunpeng cluster: all nodes counted, status not empty (ADR-0020 real-target regression)", func() {
+		// Regression guard for the P13-fix-005 forward-fix: on a real Atlas 800
+		// cluster every node is arm64 (Kunpeng 920). The pre-fix amd64-only guard
+		// would have dropped ALL of them -> status.nodes empty, totalCPU/Mem zero.
+		armLabel := map[string]string{
+			"site":               testTag,
+			nodeRoleLabelForTest: "edge",
+			"kubernetes.io/arch": "arm64",
+		}
+		for i := 0; i < 3; i++ {
+			n := makeNodeWithCPUMem(ctx,
+				fmt.Sprintf("%s-kunpeng-%d", testTag, i),
+				"16", "64Gi", armLabel)
+			trackNode(n)
+		}
+
+		pool := &imsv1alpha1.NodePool{
+			ObjectMeta: metav1.ObjectMeta{Name: uniqueName("nodepool-kunpeng")},
+			Spec: imsv1alpha1.NodePoolSpec{
+				Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"site": testTag}},
+				Role:     imsv1alpha1.NodeRole("edge"),
+			},
+		}
+		Expect(k8sClient.Create(ctx, pool)).To(Succeed())
+		trackPool(pool)
+
+		updated := reconcileOnce(pool)
+		// The real-target regression: status must NOT be empty — all 3 arm64
+		// Kunpeng nodes are present.
+		Expect(updated.Status.Nodes).To(HaveLen(3))
+		for i := 0; i < 3; i++ {
+			Expect(updated.Status.Nodes).To(ContainElement(
+				fmt.Sprintf("%s-kunpeng-%d", testTag, i)))
+		}
+
+		// 3 * 16 = 48 CPU ; 3 * 64Gi = 192Gi.
+		expectedCPU := resource.MustParse("48")
+		expectedMem := resource.MustParse("192Gi")
 		Expect(updated.Status.TotalCPU.Cmp(expectedCPU)).To(Equal(0),
 			"TotalCPU got=%s want=%s", updated.Status.TotalCPU.String(), expectedCPU.String())
 		Expect(updated.Status.TotalMemory.Cmp(expectedMem)).To(Equal(0),
